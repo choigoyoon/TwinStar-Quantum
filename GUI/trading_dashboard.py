@@ -1424,17 +1424,21 @@ class TradingDashboard(QWidget):
         """봇 실행 스레드"""
         try:
             from core.unified_bot import create_bot
+            from paths import Paths
             import json
             import os
             
-            # [FIX] exchange_keys.json에서 직접 API 키 로드 (SecureStorage 대신)
-            keys_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'exchange_keys.json')
+            # [FIX] Paths.DATA 사용 (개발/설치 환경 모두 호환)
+            keys_path = os.path.join(Paths.DATA, 'exchange_keys.json')
             keys = {}
             if os.path.exists(keys_path):
                 with open(keys_path, 'r', encoding='utf-8') as f:
                     all_keys = json.load(f)
                 exchange_name = config['exchange'].lower()
                 keys = all_keys.get(exchange_name, {})
+            else:
+                print(f"[WARN] API 키 파일 없음: {keys_path}")
+
 
             
             bot_config = {

@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6.0 or later
 
 #define MyAppName "TwinStar Quantum"
-#define MyAppVersion "1.1.9"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "YoungStreet"
 #define MyAppURL "https://youngstreet.co.kr"
 #define MyAppExeName "TwinStar_Quantum.exe"

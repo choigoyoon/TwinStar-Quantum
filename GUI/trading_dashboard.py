@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
     QTextEdit, QMessageBox, QScrollArea, QFrame, QSplitter,
     QProgressDialog
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QFont, QColor
 
 # Path setup
@@ -1459,6 +1459,23 @@ class TradingDashboard(QWidget):
             key_preview = bot_config['api_key'][:4] if bot_config['api_key'] else 'None'
             print(f"[{config['exchange']}] Key: {key_preview}... loaded")
             
+            # [FIX] API 키 없으면 봇 시작 중단 + 사용자 알림
+            if not bot_config['api_key'] or not bot_config['api_secret']:
+                error_msg = (f"❌ [{config['exchange']}] API 키가 설정되지 않았습니다!\n\n"
+                            f"키 파일 위치: {keys_path}\n\n"
+                            f"해결 방법:\n"
+                            f"1. Settings → API 키 설정에서 키 입력\n"
+                            f"2. 또는 exchange_keys.json 파일을 data 폴더에 복사")
+                print(error_msg)
+                self._log(f"❌ [{config['exchange']}] API 키 없음 - Settings에서 설정 필요")
+                
+                # 메시지 박스 표시 (메인 스레드에서)
+                from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
+                from PyQt5.QtWidgets import QMessageBox
+                QMetaObject.invokeMethod(self, "_show_api_key_error", Qt.QueuedConnection,
+                                        Q_ARG(str, config['exchange']))
+                return
+            
             bot = create_bot(
                 exchange_name=config['exchange'],
                 config=bot_config
@@ -1473,6 +1490,22 @@ class TradingDashboard(QWidget):
             print(error_msg)
             import traceback
             traceback.print_exc()
+    
+    @pyqtSlot(str)
+    def _show_api_key_error(self, exchange: str):
+        """API 키 없을 때 사용자에게 알림 (메인 스레드에서 호출)"""
+        from PyQt5.QtWidgets import QMessageBox
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("API 키 설정 필요")
+        msg.setText(f"{exchange} API 키가 설정되지 않았습니다!")
+        msg.setInformativeText(
+            "해결 방법:\n"
+            "1. Settings 탭 → API 키 설정에서 키 입력\n"
+            "2. 또는 data/exchange_keys.json 파일 확인"
+        )
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
     
     def _on_row_stop(self, bot_key: str):
         """봇 정지"""

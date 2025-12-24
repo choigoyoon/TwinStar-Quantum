@@ -3,5 +3,5 @@
   "latest_version": "1.2.1",
   "release_date": "2025-12-24",
   "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/latest/download/TwinStar_Quantum_Setup.exe",
-  "changelog": "설치 시 version.txt 생성으로 업데이트 후 버전 인식 수정"
+  "changelog": "v1.2.1 - API 키 로딩 수정 및 클린 설치(삭제 후 재설치) 적용"
 }

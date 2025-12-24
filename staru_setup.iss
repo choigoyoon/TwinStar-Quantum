@@ -66,6 +66,37 @@ Name: "{app}\logs"; Permissions: users-modify
 Name: "{app}\data"; Permissions: users-modify
 
 [Code]
+function GetUninstallString(): String;
+var
+  sKey: String;
+  sUns: String;
+begin
+  Result := '';
+  sKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}_is1';
+  if RegQueryStringValue(HKCU, sKey, 'UninstallString', sUns) then
+    Result := sUns
+  else if RegQueryStringValue(HKLM, sKey, 'UninstallString', sUns) then
+    Result := sUns;
+end;
+
+function InitializeSetup(): Boolean;
+var
+  iResultCode: Integer;
+  sUnInstallString: String;
+begin
+  Result := True;
+  sUnInstallString := GetUninstallString();
+  if sUnInstallString <> '' then
+  begin
+    sUnInstallString := RemoveQuotes(sUnInstallString);
+    // [FIX] 삭제 후 재설치 (사용자 확인 없이 Silent 처리)
+    if Exec(sUnInstallString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+    begin
+      // Uninstall success
+    end;
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   VersionFile: String;

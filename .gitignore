@@ -1,0 +1,25 @@
+# TwinStar Quantum Build Artifacts
+dist/
+build/
+*.spec.bak
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+*.log
+logs/
+*.zip
+installer/
+
+# IDE
+.vscode/
+.idea/
+
+# Backup
+_backup*/
+*.bak
+
+# Temp
+*.tmp
+temp/

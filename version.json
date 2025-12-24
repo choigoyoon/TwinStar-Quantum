@@ -1,7 +1,7 @@
 {
-  "version": "1.2.0",
-  "latest_version": "1.2.0",
+  "version": "1.2.1",
+  "latest_version": "1.2.1",
   "release_date": "2025-12-24",
   "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/latest/download/TwinStar_Quantum_Setup.exe",
-  "changelog": "API 키 없을 때 경고 메시지 표시, Settings 안내, Paths.DATA 사용"
+  "changelog": "설치 시 version.txt 생성으로 업데이트 후 버전 인식 수정"
 }

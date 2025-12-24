@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6.0 or later
 
 #define MyAppName "TwinStar Quantum"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "YoungStreet"
 #define MyAppURL "https://youngstreet.co.kr"
 #define MyAppExeName "TwinStar_Quantum.exe"
@@ -64,3 +64,15 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 Name: "{app}\config"; Permissions: users-modify
 Name: "{app}\logs"; Permissions: users-modify
 Name: "{app}\data"; Permissions: users-modify
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  VersionFile: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    VersionFile := ExpandConstant('{app}\version.txt');
+    SaveStringToFile(VersionFile, '{#MyAppVersion}', False);
+  end;
+end;

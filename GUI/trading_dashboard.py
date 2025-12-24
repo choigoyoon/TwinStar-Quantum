@@ -1424,20 +1424,17 @@ class TradingDashboard(QWidget):
         """봇 실행 스레드"""
         try:
             from core.unified_bot import create_bot
-            from paths import Paths
+            from GUI.crypto_manager import load_api_keys
             import json
             import os
             
-            # [FIX] Paths.DATA 사용 (개발/설치 환경 모두 호환)
-            keys_path = os.path.join(Paths.DATA, 'exchange_keys.json')
-            keys = {}
-            if os.path.exists(keys_path):
-                with open(keys_path, 'r', encoding='utf-8') as f:
-                    all_keys = json.load(f)
-                exchange_name = config['exchange'].lower()
-                keys = all_keys.get(exchange_name, {})
-            else:
-                print(f"[WARN] API 키 파일 없음: {keys_path}")
+            # [FIX] crypto_manager에서 암호화된 키 로드 (Settings에서 저장한 것과 동일)
+            all_keys = load_api_keys()
+            exchange_name = config['exchange'].lower()
+            keys = all_keys.get(exchange_name, {})
+            
+            if not keys:
+                print(f"[WARN] API 키 없음: {exchange_name} (config/api_keys.dat 확인)")
 
 
             
@@ -1462,10 +1459,8 @@ class TradingDashboard(QWidget):
             # [FIX] API 키 없으면 봇 시작 중단 + 사용자 알림
             if not bot_config['api_key'] or not bot_config['api_secret']:
                 error_msg = (f"❌ [{config['exchange']}] API 키가 설정되지 않았습니다!\n\n"
-                            f"키 파일 위치: {keys_path}\n\n"
                             f"해결 방법:\n"
-                            f"1. Settings → API 키 설정에서 키 입력\n"
-                            f"2. 또는 exchange_keys.json 파일을 data 폴더에 복사")
+                            f"Settings 탭 → API 키 설정에서 키를 입력해주세요")
                 print(error_msg)
                 self._log(f"❌ [{config['exchange']}] API 키 없음 - Settings에서 설정 필요")
                 

@@ -509,6 +509,13 @@ class UnifiedBot:
                 if self.use_compounding:
                     self.exchange.capital = self.initial_capital + stats['total_pnl_usd']
                     logging.info(f"💰 Capital 복원: ${self.initial_capital:.2f} → ${self.exchange.capital:.2f}")
+
+        # [NEW] 데이터 보호를 위한 Lock
+        self._data_lock = threading.Lock()
+        
+        # 지표 캐시 초기화
+        self.indicator_cache = {}
+        self._init_indicator_cache()
         
         # [NEW] 주기적 시간 동기화 시작 (30분마다) - 시뮬레이션 모드에서는 스킵
         if not self.simulation_mode:
@@ -533,6 +540,12 @@ class UnifiedBot:
         self.bt_state = None  # 백테스트 상태
         self.df_pattern_full = None  # 전체 1H 데이터
         self.df_entry_full = None  # 전체 15m 데이터
+        
+        # [NEW] 캐시 파일 경로
+        exchange_name = self.exchange.name.lower() if hasattr(self.exchange, 'name') else 'bybit'
+        symbol_clean = self.exchange.symbol.lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
+        from paths import Paths
+        self.state_cache_path = os.path.join(Paths.CACHE, f"{exchange_name}_{symbol_clean}_state.json")
         
         # [FIX] 전략 파라미터 저장 (프리셋 로드값 유지)
         # self.strategy_params는 위에서 get_backtest_params()로 이미 초기화됨
@@ -785,12 +798,23 @@ class UnifiedBot:
             
             logging.info(f"[INIT] df_pattern processed (1h): {len(self.df_pattern_full)}개")
             
+            # [FIX] indicator_cache 동기화
+            self.indicator_cache['df_pattern'] = self.df_pattern_full
+            self.indicator_cache['df_entry'] = self.df_entry_resampled
+            self.indicator_cache['last_update'] = datetime.utcnow()
+            
         except Exception as e:
             logging.error(f"[INIT] Data processing failed: {e}")
     
     def _run_backtest_to_now(self) -> bool:
-        """전체 백테스트 실행 → 상태 복구 + 결과 출력"""
+        """전체 백테스트 실행 → 상태 복구 + 결과 출력 (캐시 우선)"""
         print("🐛 [BACKTEST] _run_backtest_to_now START", flush=True)
+        
+        # [NEW] 캐시 체크
+        if self._load_state_cache():
+            logging.info("[INIT] ✅ 캐시에서 상태 로드 성공, 백테스트 스킵")
+            return True
+
         if self.df_pattern_full is None or getattr(self, 'df_entry_resampled', None) is None:
             print("🐛 [BACKTEST] No data!", flush=True)
             logging.warning("[INIT] No historical data for backtest")
@@ -851,7 +875,18 @@ class UnifiedBot:
             
             self.bt_state = state
 
-            logging.info(f"[INIT] Pending signals: {len(state.get('pending', []))}")
+            # [FIX] 12시간 이내 신호만 유지
+            valid_pending = self._filter_valid_signals(state.get('pending', []))
+            state['pending'] = valid_pending
+            
+            # pending_signals deque 동기화
+            from collections import deque
+            self.pending_signals = deque(valid_pending, maxlen=100)
+            
+            logging.info(f"[INIT] Pending signals (filtered): {len(valid_pending)}")
+            
+            # [NEW] 캐시 저장
+            self._save_state_cache()
             
             return True
             
@@ -861,6 +896,136 @@ class UnifiedBot:
             import traceback
             traceback.print_exc()
             return False
+
+    def _load_state_cache(self) -> bool:
+        """1시간 이내 캐시 있으면 로드 (신호 필터링 포함)"""
+        import os, json
+        from datetime import datetime, timedelta
+        
+        if not os.path.exists(self.state_cache_path):
+            return False
+        
+        try:
+            # 파일 수정 시간 체크
+            mtime = datetime.fromtimestamp(os.path.getmtime(self.state_cache_path))
+            if datetime.now() - mtime > timedelta(hours=1):
+                logging.info(f"[CACHE] Expired: {self.state_cache_path}")
+                return False  # 1시간 지남 → 무효
+            
+            with open(self.state_cache_path, 'r', encoding='utf-8') as f:
+                state = json.load(f)
+            
+            # pending 신호 필터링 (12시간 이내만)
+            signals = state.get('pending', [])
+            valid_signals = self._filter_valid_signals(signals)
+            
+            # bt_state 복구 (pending만이라도)
+            if self.bt_state is None:
+                self.bt_state = {'position': None, 'pending': [], 'positions': [], 'last_time': datetime.utcnow()}
+            
+            self.bt_state['pending'] = valid_signals
+            
+            # pending_signals deque에도 동기화
+            from collections import deque
+            self.pending_signals = deque(valid_signals, maxlen=100)
+            
+            logging.info(f"[CACHE] Loaded {len(valid_signals)} valid signals from cache")
+            return len(valid_signals) > 0  # 신호가 하나라도 있어야 성공으로 간주할지 고민... 
+            # 일단 로드 성공하면 True
+            return True
+            
+        except Exception as e:
+            logging.error(f"[CACHE] Load error: {e}")
+            return False
+
+    def _save_state_cache(self):
+        """현재 상태 캐시 저장"""
+        import os, json
+        from datetime import datetime
+        
+        try:
+            os.makedirs(os.path.dirname(self.state_cache_path), exist_ok=True)
+            
+            # pending_signals는 deque이므로 list로 변환
+            pending_list = list(self.pending_signals)
+            
+            state = {
+                'pending': pending_list,
+                'last_update': datetime.utcnow().isoformat()
+            }
+            
+            with open(self.state_cache_path, 'w', encoding='utf-8') as f:
+                json.dump(state, f, indent=2, default=str)
+                
+            logging.debug(f"[CACHE] Saved: {len(pending_list)} signals")
+        except Exception as e:
+            logging.error(f"[CACHE] Save error: {e}")
+
+    def _filter_valid_signals(self, signals: list) -> list:
+        """12시간 이내 신호만 반환"""
+        from datetime import datetime, timedelta
+        import pandas as pd
+        
+        now = datetime.utcnow()
+        validity = timedelta(hours=12)
+        valid = []
+        
+        for sig in signals:
+            try:
+                # [FIX] DataFrame 모호성 방지: or 연산 대신 명시적 get() 사용
+                sig_time_raw = sig.get('entry_time')
+                if sig_time_raw is None:
+                    sig_time_raw = sig.get('timestamp')
+                if sig_time_raw is None:
+                    sig_time_raw = sig.get('time')
+                if not sig_time_raw:
+                    continue
+                    
+                if isinstance(sig_time_raw, str):
+                    # ISO format parsing
+                    sig_time = pd.to_datetime(sig_time_raw.replace('Z', '')).to_pydatetime()
+                elif isinstance(sig_time_raw, (int, float)):
+                    sig_time = datetime.fromtimestamp(sig_time_raw / 1000)
+                else:
+                    sig_time = sig_time_raw
+                
+                # 현재 시간 기준 12시간 이내만
+                if now - validity <= sig_time <= now + timedelta(hours=1):
+                    valid.append(sig)
+            except Exception as e:
+                logging.debug(f"[FILTER] Signal time parse error: {e}")
+                continue
+        
+        return valid
+
+    def _add_signal_to_queue(self, signal: dict):
+        """유효성 체크 후 신호 큐에 추가"""
+        filtered = self._filter_valid_signals([signal])
+        if filtered:
+            s = filtered[0]
+            # 중복 체크 (Robust Key-based: Timestamp + Direction)
+            sig_key = f"{s.get('time', '')}_{s.get('type', '')}"
+            existing_keys = {f"{p.get('time', '')}_{p.get('type', '')}" for p in self.pending_signals}
+            
+            if sig_key in existing_keys:
+                # logging.debug(f"[QUEUE] Skipping duplicate: {sig_key}")
+                return
+                
+            self.pending_signals.append(s)
+            
+            # [FIX] DataFrame 모호성 방지: dict.get() 기본값 활용
+            sig_type = s.get('type')
+            if sig_type is None:
+                sig_type = s.get('direction', 'Unknown')
+                
+            sig_time = s.get('time')
+            if sig_time is None:
+                sig_time = s.get('timestamp', 'N/A')
+                
+            logging.info(f"[LIVE] ✨ New signal queued: {sig_type} @ {sig_time}")
+            self._save_state_cache()
+        else:
+            logging.debug(f"[LIVE] Signal expired or invalid, skipped: {signal.get('time')}")
     
     # ========== 연속 백테스트 메서드 (run_backtest 로직과 100% 동일) ==========
     
@@ -891,11 +1056,9 @@ class UnifiedBot:
                 validity_hours=params.get('entry_validity_hours', 6.0)
             )
             
-            # pending에 추가
+            # pending에 추가 (필터링 적용)
             for s in new_signals:
-                s['expire_time'] = pd.Timestamp(s['time']) + pd.Timedelta(hours=params.get('entry_validity_hours', 6.0))
-                state['pending'].append(s)
-                logging.info(f"[LIVE] ✨ New signal queued: {s['type']} @ {s['time']}")
+                self._add_signal_to_queue(s)
                 
                 # [NEW] 패턴 감지 시 텔레그램 알림
                 if self.notifier:
@@ -924,6 +1087,21 @@ class UnifiedBot:
         
         # 만료된 시그널 제거
         state['pending'] = [s for s in state['pending'] if s.get('expire_time', current_time + pd.Timedelta(hours=1)) > current_time]
+        
+        # [FIX] 6. 실시간 신호 동기화 (pending_signals -> state['pending'])
+        if self.pending_signals:
+            for s in list(self.pending_signals):
+                # 중복 체크 후 추가
+                if not any(p.get('time') == s.get('time') for p in state['pending']):
+                    # expire_time 설정 (없을 경우)
+                    if 'expire_time' not in s:
+                        sig_time = pd.Timestamp(s.get('time') or s.get('timestamp'))
+                        s['expire_time'] = sig_time + pd.Timedelta(hours=params.get('entry_validity_hours', 6.0))
+                    
+                    state['pending'].append(s)
+            
+            logging.info(f"[SYNC] Synchronized {len(self.pending_signals)} signals to state queue (Total: {len(state['pending'])})")
+            self.pending_signals.clear()  # 동기화 후 클리어
         
         # 포지션 관리 또는 신규 진입
         action = None
@@ -1058,15 +1236,42 @@ class UnifiedBot:
         # 4H 트렌드 확인 (진입 시점에 체크!)
         trend = core.get_filter_trend(self.df_pattern_full, filter_tf=params.get('filter_tf', '4h'))
         
+        # [FIX] 1. RSI 계산
+        df_entry = getattr(self, 'df_entry_resampled', None) or self.df_entry_full
+        current_rsi = 50
+        if df_entry is not None and len(df_entry) >= 20:
+            try:
+                rsi_period = params.get('rsi_period', 14)
+                closes = df_entry['close'].tail(rsi_period + 10)
+                delta = closes.diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
+                rs = gain / loss.replace(0, 1e-10)
+                rsi_series = 100 - (100 / (1 + rs))
+                current_rsi = float(rsi_series.iloc[-1])
+            except Exception as e:
+                logging.debug(f"[LIVE] RSI calc failed, using 50: {e}")
+        
+        pullback_long = params.get('pullback_rsi_long', 40)
+        pullback_short = params.get('pullback_rsi_short', 60)
+        
         for signal in state['pending']:
             direction = signal['type']
             
-            # MTF 필터 (진입 시점 체크 - 백테스트와 동일!)
+            # [FIX] 2. MTF 필터
             if direction == 'Long' and trend != 'up' and trend != 'neutral':
                 logging.debug(f"[LIVE] Long blocked by trend={trend}")
                 continue
             if direction == 'Short' and trend != 'down' and trend != 'neutral':
                 logging.debug(f"[LIVE] Short blocked by trend={trend}")
+                continue
+                
+            # [FIX] 3. RSI 풀백 체크
+            if direction == 'Long' and current_rsi >= pullback_long:
+                logging.debug(f"[LIVE] Long blocked by RSI={current_rsi:.1f} (>= {pullback_long})")
+                continue
+            if direction == 'Short' and current_rsi <= pullback_short:
+                logging.debug(f"[LIVE] Short blocked by RSI={current_rsi:.1f} (<= {pullback_short})")
                 continue
             
             # ATR 계산
@@ -1244,129 +1449,129 @@ class UnifiedBot:
     
     def _check_and_fill_gap(self, new_ts):
         """웹소켓 수신 시 갭 체크 + 자동 복구"""
-        if self.df_entry_full is None or self.df_entry_full.empty:
+        if self.df_entry_full is None or len(self.df_entry_full) == 0:
             return
-
-        try:
-            last_ts = self.df_entry_full['timestamp'].iloc[-1]
-            if isinstance(last_ts, str):
-                last_ts = pd.to_datetime(last_ts)
-                
-            gap_minutes = (new_ts - last_ts).total_seconds() / 60
             
-            # 15분(1봉) 이상 갭이 발견되면 REST 백필 수행
-            if gap_minutes > 15.5:
-                logging.warning(f"[GAP] 수신 갭 감지: {last_ts} ~ {new_ts} ({gap_minutes:.0f}분). REST API 백필 시작...")
-                self._backfill_missing_candles()
-                logging.info("[GAP] 백필 완료.")
+        try:
+            with self._data_lock:
+                last_ts = self.df_entry_full['timestamp'].iloc[-1]
+                if isinstance(last_ts, str):
+                    last_ts = pd.to_datetime(last_ts)
+                    
+                gap_minutes = (new_ts - last_ts).total_seconds() / 60
+                
+                # [FIX] 갭 임계값 완화: 타임프레임의 2배 이상일 때만 진짜 갭으로 간주
+                entry_tf_str = self.strategy_params.get('entry_tf', '15m')
+                try:
+                    tf_val = int(''.join(filter(str.isdigit, entry_tf_str)))
+                except Exception:
+                    tf_val = 15
+                threshold = tf_val * 2 + 1
+                
+                if gap_minutes > threshold:
+                    logging.warning(f"[GAP] 수신 갭 감지: {last_ts} ~ {new_ts} ({gap_minutes:.0f}분). REST API 백필 시작...")
+                    self._backfill_missing_candles()
+                    logging.info("[GAP] 백필 완료.")
         except Exception as e:
             logging.error(f"[GAP] Check/Fill error: {e}")
 
     def _on_candle_close(self, candle: dict):
-        """웹소켓 15분봉 마감 → 데이터 이어붙이기 + Parquet 저장"""
-        logging.info(f"[WS] Candle closed: {candle.get('close')}")
+        """웹소켓 15분봉 마감 핸들러"""
+        # 1. 시그널 추출 및 진입 로직 수행
+        self._process_new_candle(candle)
         
-        # 1. timestamp 변환
-        ts_raw = candle.get('timestamp') or candle.get('time')
-        if isinstance(ts_raw, (int, float)):
-            ts = pd.to_datetime(ts_raw, unit='ms')
-        else:
-            ts = pd.to_datetime(ts_raw)
-        
-        # [NEW] 1.5. 갭 체크 및 자동 복구 (실시간 수신 중 누락 발생 대비)
-        self._check_and_fill_gap(ts)
-        
-        # 2. df_entry_full에 이어붙이기
-        if self.df_entry_full is not None:
-            new_row = pd.DataFrame([{
-                'timestamp': ts,
-                'open': float(candle['open']),
-                'high': float(candle['high']),
-                'low': float(candle['low']),
-                'close': float(candle['close']),
-                'volume': float(candle.get('volume', 0))
-            }])
-            self.df_entry_full = pd.concat([self.df_entry_full, new_row], ignore_index=True)
-            self.df_entry_full = self.df_entry_full.drop_duplicates(subset='timestamp', keep='last')
-            logging.info(f"[DATA] Entry data updated: {len(self.df_entry_full)} rows")
-
-        # 3. 1시간 정각이면 df_pattern_full에도 추가
-        if ts.minute == 0 and self.df_entry_full is not None and len(self.df_entry_full) >= 4:
-            last_4 = self.df_entry_full.tail(4)
-            new_1h = pd.DataFrame([{
-                'timestamp': last_4.iloc[0]['timestamp'],
-                'open': float(last_4.iloc[0]['open']),
-                'high': float(last_4['high'].max()),
-                'low': float(last_4['low'].min()),
-                'close': float(last_4.iloc[-1]['close']),
-                'volume': float(last_4['volume'].sum())
-            }])
-            self.df_pattern_full = pd.concat([self.df_pattern_full, new_1h], ignore_index=True)
-            self.df_pattern_full = self.df_pattern_full.drop_duplicates(subset='timestamp', keep='last')
-            
-            # 지표 갱신 (1H)
-            try:
-                from indicator_generator import IndicatorGenerator
-                self.df_pattern_full = IndicatorGenerator.add_all_indicators(self.df_pattern_full)
-            except Exception as e:
-                logging.debug(f"[INDICATOR] 지표 갱신 중 예외: {e}")
-            
-            logging.info(f"[DATA] 1H candle added. Pattern data: {len(self.df_pattern_full)} rows")
-            # [FIX] 1H 캔들을 저장해서 _continue_backtest에 전달
-            new_1h_candle = new_1h.iloc[0].to_dict()
-        else:
-            new_1h_candle = None
-        
-        # [NEW] 실시간 데이터를 Parquet 파일에 즉시 영구 저장 (사용자 요청: Bithumb 데이터 축적용)
-        self._save_realtime_candle_to_parquet()
-
-        # 2.5 Entry TF 리샘플링 (15m → 30m/1h 등)
-        entry_tf = self.strategy_params.get('entry_tf', '15m')
-        if entry_tf not in ('15m', '15min') and self.df_entry_full is not None:
-            from utils.bot_data_utils import resample_ohlcv
-            from indicator_generator import IndicatorGenerator
-            
-            self.df_entry_resampled = resample_ohlcv(self.df_entry_full, entry_tf)
-            self.df_entry_resampled = IndicatorGenerator.add_all_indicators(self.df_entry_resampled)
-        else:
-            self.df_entry_resampled = self.df_entry_full
-
-        # 4. (기존 로직 유지) Parquet 저장 (매 캔들마다)
-        self._save_to_parquet()
-        
-        # 5. 캐시 업데이트
-        self._append_candle(candle)
-        self._update_indicators()
-        
-        # 6. 연속 백테스트 실행 - [FIX] 1H 캔들 전달 추가!
-        if self.bt_state is not None:
-            action = self._continue_backtest(new_candle_15m=candle, new_candle_1h=new_1h_candle)
-            if action:
-                if action.get('action') == 'ENTRY':
-                    self._execute_live_entry(action)
-                elif action.get('action') == 'CLOSE':
-                    self._execute_live_close(action)
-        
-        # 7. 신호 변화 로그
-        current_pending = len(self.pending_signals) if hasattr(self, 'pending_signals') else 0
-        if current_pending != self._last_pending_count:
-            if current_pending > self._last_pending_count:
-                # 신호 추가됨
-                if self.pending_signals:
-                    sig = self.pending_signals[-1]  # 가장 최근 신호
-                    sig_type = sig.get('type', 'unknown')
-                    sig_price = sig.get('entry_price', 0)
-                    logging.info(f"[SIGNAL] 📈 신호 감지: {sig_type} @ {sig_price:.2f} (pending={current_pending})")
-            else:
-                # 신호 해제됨
-                logging.info(f"[SIGNAL] 📉 신호 해제/만료 (pending={current_pending})")
-            self._last_pending_count = current_pending
-        
-        # 진입 예정 알림 (신호 있고 거래 가능 시)
-        if current_pending > 0 and self._can_trade():
-            logging.info(f"[SIGNAL] ⚠️ 조건 충족 시 진입 대기 중 (pending={current_pending})")
-        
+        # 2. 큐에 넣기 (기존 호환성)
         self.candle_queue.put(candle)
+
+    def _process_new_candle(self, candle: dict):
+        """[CORE] 신규 캔들 처리 통합 로직 (WS/REST 공용)"""
+        logging.info(f"[BOT] Processing candle: {candle.get('timestamp') or candle.get('time')} - Close: {candle.get('close')}")
+        
+        with self._data_lock:
+            try:
+                # 1. timestamp 변환
+                ts_raw = candle.get('timestamp')
+                if ts_raw is None:
+                    ts_raw = candle.get('time')
+                    
+                if isinstance(ts_raw, (int, float)):
+                    ts = pd.to_datetime(ts_raw, unit='ms')
+                else:
+                    ts = pd.to_datetime(ts_raw)
+                
+                # [FIX] 1.5. 갭 체크 (WS 수신 시에만 호출됨 - _on_candle_close에서 별도 호출해도 됨)
+                # 여기서는 캔들 하나에 대한 처리이므로 갭 체크는 호출자에게 맡김
+                
+                # 2. df_entry_full에 이어붙이기
+                if self.df_entry_full is not None:
+                    new_row = pd.DataFrame([{
+                        'timestamp': ts,
+                        'open': float(candle['open']),
+                        'high': float(candle['high']),
+                        'low': float(candle['low']),
+                        'close': float(candle['close']),
+                        'volume': float(candle.get('volume', 0))
+                    }])
+                    self.df_entry_full = pd.concat([self.df_entry_full, new_row], ignore_index=True)
+                    self.df_entry_full = self.df_entry_full.drop_duplicates(subset='timestamp', keep='last')
+                    self.df_entry_full = self.df_entry_full.sort_values('timestamp').reset_index(drop=True)
+                
+                # 3. 1시간 정각이면 df_pattern_full에도 추가
+                new_1h_candle = None
+                if ts.minute == 0 and self.df_entry_full is not None and len(self.df_entry_full) >= 4:
+                    last_4 = self.df_entry_full.tail(4)
+                    new_1h = pd.DataFrame([{
+                        'timestamp': last_4.iloc[0]['timestamp'],
+                        'open': float(last_4.iloc[0]['open']),
+                        'high': float(last_4['high'].max()),
+                        'low': float(last_4['low'].min()),
+                        'close': float(last_4.iloc[-1]['close']),
+                        'volume': float(last_4['volume'].sum())
+                    }])
+                    self.df_pattern_full = pd.concat([self.df_pattern_full, new_1h], ignore_index=True)
+                    self.df_pattern_full = self.df_pattern_full.drop_duplicates(subset='timestamp', keep='last')
+                    self.df_pattern_full = self.df_pattern_full.sort_values('timestamp').reset_index(drop=True)
+                    
+                    # 지표 갱신 (1H)
+                    try:
+                        from indicator_generator import IndicatorGenerator
+                        self.df_pattern_full = IndicatorGenerator.add_all_indicators(self.df_pattern_full)
+                    except Exception as e:
+                        logging.debug(f"[INDICATOR] 1H 지표 갱신 중 예외: {e}")
+                    
+                    logging.info(f"[DATA] 1H candle added. Pattern data: {len(self.df_pattern_full)} rows")
+                    new_1h_candle = new_1h.iloc[0].to_dict()
+
+                # [NEW] 실시간 데이터를 Parquet 파일에 즉시 영구 저장
+                self._save_realtime_candle_to_parquet()
+
+                # 4. 리샘플링 및 캐시 업데이트
+                entry_tf = self.strategy_params.get('entry_tf', '15m')
+                if entry_tf not in ('15m', '15min') and self.df_entry_full is not None:
+                    from utils.bot_data_utils import resample_ohlcv
+                    from indicator_generator import IndicatorGenerator
+                    self.df_entry_resampled = resample_ohlcv(self.df_entry_full, entry_tf)
+                    self.df_entry_resampled = IndicatorGenerator.add_all_indicators(self.df_entry_resampled)
+                else:
+                    self.df_entry_resampled = self.df_entry_full
+
+                self._save_to_parquet()
+                self._append_candle(candle)
+                self._update_indicators()
+
+                # 5. 연속 백테스트 실행 (실제 진입/청산 체크)
+                if self.bt_state is not None:
+                    action = self._continue_backtest(new_candle_15m=candle, new_candle_1h=new_1h_candle)
+                    if action:
+                        if action.get('action') == 'ENTRY':
+                            self._execute_live_entry(action)
+                        elif action.get('action') == 'CLOSE':
+                            self._execute_live_close(action)
+
+            except Exception as e:
+                logging.error(f"[BOT] Error in _process_new_candle: {e}")
+                import traceback
+                traceback.print_exc()
 
     def _save_to_parquet(self):
         """현재 데이터를 Parquet으로 저장"""
@@ -1975,20 +2180,21 @@ class UnifiedBot:
     def _log_prediction(self):
         """1분마다 진입 예측 로그 (실제 진입 X)"""
         try:
-            if self.df_entry_full is None or len(self.df_entry_full) < 10:
-                return
-            
-            # 기존 _check_entry_conditions 활용
-            pred = self._check_entry_conditions()
-            
-            if pred.get('ready'):
-                direction = pred['direction']
-                remaining = pred.get('remaining_min', 0)
-                logging.info(f"[PREDICT] 🔔 {direction} 진입 가능 (봉마감까지 {remaining:.0f}분)")
-            else:
-                c = pred.get('conditions', {})
-                if c.get('pattern', {}).get('met'):
-                    logging.debug(f"[PREDICT] ⏳ 패턴 있음, MTF 필터 대기중")
+            with self._data_lock:
+                if self.df_entry_full is None or len(self.df_entry_full) < 10:
+                    return
+                
+                # 기존 _check_entry_conditions 활용
+                pred = self._check_entry_conditions()
+                
+                if pred.get('ready'):
+                    direction = pred['direction']
+                    remaining = pred.get('remaining_min', 0)
+                    logging.info(f"[PREDICT] 🔔 {direction} 진입 가능 (봉마감까지 {remaining:.0f}분)")
+                else:
+                    c = pred.get('conditions', {})
+                    if c.get('pattern', {}).get('met'):
+                        logging.debug(f"[PREDICT] ⏳ 패턴 있음, MTF 필터 대기중")
         except Exception:
             pass  # 예측 로그는 조용히 실패
     
@@ -2014,15 +2220,26 @@ class UnifiedBot:
                     
                     # 데이터 갭 체크 및 보충
                     if self.df_entry_full is not None and len(self.df_entry_full) > 0:
-                        last_ts = self.df_entry_full['timestamp'].iloc[-1]
-                        if isinstance(last_ts, str):
-                            last_ts = pd.to_datetime(last_ts)
+                        with self._data_lock:
+                            last_ts = self.df_entry_full['timestamp'].iloc[-1]
+                            if isinstance(last_ts, str):
+                                last_ts = pd.to_datetime(last_ts)
+                            
+                            now = datetime.utcnow()
+                            gap_minutes = (now - last_ts).total_seconds() / 60
+                            
+                            # [FIX] 갭 임계값 완화: 타임프레임의 2배 이상일 때만 진짜 갭으로 간주
+                            # 15m 기준 15.5분은 너무 민감함 (정상 범위 내에서도 발생 가능)
+                            entry_tf_str = self.strategy_params.get('entry_tf', '15m')
+                            try:
+                                tf_val = int(''.join(filter(str.isdigit, entry_tf_str)))
+                            except Exception:
+                                tf_val = 15
+                                
+                            threshold = tf_val * 2 + 1  # 15m -> 31m, 1h -> 121m
                         
-                        now = datetime.utcnow()
-                        gap_minutes = (now - last_ts).total_seconds() / 60
-                        
-                        if gap_minutes > 15.5:
-                            logging.warning(f"[DATA_MONITOR] 갭 감지: {gap_minutes:.0f}분. 자동 보충...")
+                        if gap_minutes > threshold:
+                            logging.warning(f"[DATA_MONITOR] 갭 감지: {gap_minutes:.0f}분 (임계치 {threshold}분). 자동 보충...")
                             self._backfill_missing_candles()
                         else:
                             logging.debug(f"[DATA_MONITOR] 정상: 마지막 캔들 {gap_minutes:.1f}분 전")
@@ -2080,50 +2297,90 @@ class UnifiedBot:
             return None
 
     def _backfill_missing_candles(self):
-        """[NEW] REST API로 누락된 캔들 보충"""
+        """[NEW] REST API로 누락된 캔들 보충 및 신호 체크"""
         if self.df_entry_full is None or len(self.df_entry_full) == 0:
             logging.warning("[BACKFILL] No existing data to backfill from")
             return
         
-        # 마지막 저장된 캔들 시간
-        last_ts = self.df_entry_full['timestamp'].iloc[-1]
-        if isinstance(last_ts, str):
-            last_ts = pd.to_datetime(last_ts)
-        
-        # 현재 시간과 차이 계산 (UTC 기준)
-        now = datetime.utcnow()
-        gap_minutes = (now - last_ts).total_seconds() / 60
-        
-        if gap_minutes < 15:
-            logging.info(f"[BACKFILL] No gap detected (last: {last_ts})")
-            return
-        
-        # API로 누락 캔들 가져오기
-        needed_candles = int(gap_minutes / 15) + 1
-        needed_candles = min(needed_candles, 1000) # 최대 1000개
-        
-        logging.info(f"[BACKFILL] Fetching {needed_candles} candles (gap: {gap_minutes:.0f}min, last_ts: {last_ts})")
-        
-        try:
-            sig_exchange = self._get_signal_exchange()
-            new_candles = sig_exchange.get_klines('15m', limit=needed_candles)
+        with self._data_lock:
+            # 마지막 저장된 캔들 시간
+            last_ts = self.df_entry_full['timestamp'].iloc[-1]
+            if isinstance(last_ts, str):
+                last_ts = pd.to_datetime(last_ts)
             
-            if new_candles is not None and len(new_candles) > 0:
-                # 중복 제거 후 병합
-                self.df_entry_full = pd.concat([self.df_entry_full, new_candles], ignore_index=True)
-                self.df_entry_full = self.df_entry_full.drop_duplicates(subset='timestamp', keep='last')
-                self.df_entry_full = self.df_entry_full.sort_values('timestamp').reset_index(drop=True)
+            # 현재 시간과 차이 계산 (UTC 기준)
+            now = datetime.utcnow()
+            gap_minutes = (now - last_ts).total_seconds() / 60
+            
+            # [FIX] 타임프레임 고려 (15분 봉이면 사실상 15분은 갭이 아님)
+            if gap_minutes < 16:
+                logging.debug(f"[BACKFILL] No real gap detected (last: {last_ts})")
+                return
+            
+            # API로 누락 캔들 가져오기
+            needed_candles = int(gap_minutes / 15) + 1
+            needed_candles = min(needed_candles, 1000) # 최대 1000개
+            
+            logging.info(f"[BACKFILL] Fetching {needed_candles} candles (gap: {gap_minutes:.0f}min, last_ts: {last_ts})")
+            
+            try:
+                sig_exchange = self._get_signal_exchange()
+                new_candles_df = sig_exchange.get_klines('15m', limit=needed_candles)
                 
-                # [FIX] 파생 데이터 재계산 (Resampled, Indicators)
-                self._process_historical_data()
-                
-                # Parquet 저장
-                self._save_to_parquet()
-                logging.info(f"[BACKFILL] ✅ Added {len(new_candles)} candles, total: {len(self.df_entry_full)}")
-            else:
-                logging.warning("[BACKFILL] No candles returned from API")
-        except Exception as e:
-            logging.error(f"[BACKFILL] API fetch failed: {e}")
+                if new_candles_df is not None and len(new_candles_df) > 0:
+                    # 중복되지 않은 진짜 "새로운" 캔들만 추출
+                    if 'timestamp' not in new_candles_df.columns and new_candles_df.index.name == 'timestamp':
+                        new_candles_df = new_candles_df.reset_index()
+                    
+                    # 마지막 ts보다 나중인 것만 필터링
+                    new_candles_df['timestamp'] = pd.to_datetime(new_candles_df['timestamp'])
+                    fresh_candles = new_candles_df[new_candles_df['timestamp'] > last_ts].copy()
+                    
+                    if not fresh_candles.empty:
+                        logging.info(f"[BACKFILL] ✅ {len(fresh_candles)} new candles found. Processing...")
+                        for _, row in fresh_candles.iterrows():
+                            # dict로 변환하여 처리 로직 태우기 (Lock 내부이므로 재진입 주의)
+                            # _process_new_candle 내부에서 Lock을 다시 거므로, _process_new_candle을 Lock 밖으로 빼거나 RLock 사용
+                            # 여기서는 간단히 처리 로직을 직접 수행하거나 Lock을 잠깐 풀고 호출
+                            pass
+                        
+                        # [REFACTOR] 락 안전성을 위해 병합 후 일괄 처리
+                        self.df_entry_full = pd.concat([self.df_entry_full, fresh_candles], ignore_index=True)
+                        self.df_entry_full = self.df_entry_full.drop_duplicates(subset='timestamp', keep='last')
+                        self.df_entry_full = self.df_entry_full.sort_values('timestamp').reset_index(drop=True)
+                        
+                        # 지표 및 신호 갱신
+                        self._process_historical_data()
+                        self._save_to_parquet()
+                        
+                        # 마지막 캔들 기준으로 시그널 체크 (누락된 시그널 복구)
+                        if self.bt_state is not None:
+                            last_candle = fresh_candles.iloc[-1].to_dict()
+                            # 1H 캔들 여부 확인 (백필된 데이터 중 0분 봉이 있는지)
+                            has_1h = any(ts.minute == 0 for ts in fresh_candles['timestamp'])
+                            new_1h = None
+                            if has_1h:
+                                # 마지막 0분 봉 찾기
+                                h1_rows = fresh_candles[fresh_candles['timestamp'].dt.minute == 0]
+                                if not h1_rows.empty:
+                                    last_0m = h1_rows.iloc[-1]['timestamp']
+                                    # 여기서 1H 구하는 로직은 다소 복잡하므로 _on_candle_close와 동일하게 처리하거나 
+                                    # _process_historical_data에서 만들어진 df_pattern_full 사용
+                                    if self.df_pattern_full is not None and not self.df_pattern_full.empty:
+                                        new_1h = self.df_pattern_full.iloc[-1].to_dict()
+                            
+                            action = self._continue_backtest(new_candle_15m=last_candle, new_candle_1h=new_1h)
+                            if action:
+                                if action.get('action') == 'ENTRY':
+                                    self._execute_live_entry(action)
+                        
+                        logging.info(f"[BACKFILL] ✅ Sync complete. Total: {len(self.df_entry_full)}")
+                    else:
+                        logging.info("[BACKFILL] No fresher candles than current data.")
+                else:
+                    logging.warning("[BACKFILL] No candles returned from API")
+            except Exception as e:
+                logging.error(f"[BACKFILL] API fetch failed: {e}")
     
     def _on_price_update(self, price: float):
         """웹소켓 가격 업데이트 콜백"""
@@ -2747,6 +3004,13 @@ class UnifiedBot:
                 logging.warning("[ENTRY] No signal provided")
                 return False
             
+            # [HOTFIX] 현물 거래소 숏 차단 (Upbit, Bithumb)
+            direction = getattr(signal, 'type', signal.get('type', 'Long')) if hasattr(signal, 'type') else signal.get('type', 'Long')
+            exchange_name = getattr(self.exchange, 'name', '').lower()
+            if exchange_name in ['upbit', 'bithumb'] and direction == 'Short':
+                logging.warning(f"[ENTRY] 🚫 Short entry blocked on Spot Exchange ({exchange_name})")
+                return False
+            
             # [NEW] 시뮬레이션 모드: 실제 주문 없이 기록만
             if getattr(self, 'simulation_mode', False):
                 price = self._get_price_safe() or 0
@@ -3061,22 +3325,12 @@ class UnifiedBot:
                         candle = self.candle_queue.get(timeout=1)
                         logging.info("[BOT] Processing candle close event")
                         
-                        # 지표/신호는 이미 _on_candle_close에서 계산됨
-                        if not self.position and self.indicator_cache.get('ready'):
-                            signal = self.indicator_cache.get('last_signal')
-                            
-                            # 1. 신호 유효성 검증
-                            if signal:
-                                # 바이낸스 모드: 가격 검증
-                                sig_price = self._get_signal_exchange().get_current_price()
-                                if not self._verify_price_match(sig_price):
-                                    logging.warning("⚠️ Price mismatch ignored in WS mode (trusting signal)")
-                                
-                                # 2. 진입 실행
-                                logging.info(f"Signal detected (WS): {signal.signal_type} ({signal.pattern})")
-                                self.execute_entry(signal)
-                            
-                            self.indicator_cache['ready'] = False
+                        # [HOTFIX] 캔들 처리 로직 호출
+                        self._process_new_candle(candle)
+                        
+                        # 지표/신호 검사 및 진입은 _process_new_candle -> _execute_live_entry에서 처리됨
+                        # 여기서는 별도 처리 불필요
+                        pass
                             
                     except queue.Empty:
                         pass

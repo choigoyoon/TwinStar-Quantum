@@ -48,10 +48,7 @@ class BybitExchange(BaseExchange):
             )
             
             # 시간 동기화
-            server_time = self.session.get_server_time()
-            server_ts = int(server_time['result']['timeSecond']) * 1000
-            local_ts = int(time.time() * 1000)
-            self.time_offset = server_ts - local_ts
+            self.sync_time()
             
             # [DEBUG] API 키 확인 (앞 4자만)
             key_prefix = self.api_key[:4] if self.api_key else 'None'
@@ -63,6 +60,21 @@ class BybitExchange(BaseExchange):
             logging.error(f"Bybit connect error: {e}")
             return False
     
+    def sync_time(self) -> bool:
+        """서버 시간 동기화"""
+        if self.session is None:
+            return False
+        try:
+            server_time = self.session.get_server_time()
+            server_ts = int(server_time['result']['timeSecond']) * 1000
+            local_ts = int(time.time() * 1000)
+            self.time_offset = server_ts - local_ts
+            logging.info(f"Time offset updated: {self.time_offset}ms")
+            return True
+        except Exception as e:
+            logging.error(f"Bybit sync_time error: {e}")
+            return False
+
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
         try:
@@ -117,15 +129,7 @@ class BybitExchange(BaseExchange):
         for attempt in range(max_retries):
             try:
                 # 주문 전 서버 시간 재동기화
-                try:
-                    server_time = self.session.get_server_time()
-                    server_ts = int(server_time['result']['timeSecond']) * 1000
-                    local_ts = int(time.time() * 1000)
-                    self.time_offset = server_ts - local_ts
-                    
-                    logging.info(f"Time offset check: {self.time_offset}ms")
-                except Exception:
-                    pass
+                self.sync_time()
 
                 price = self.get_current_price()
                 qty = size
@@ -302,6 +306,9 @@ class BybitExchange(BaseExchange):
     
     def get_balance(self) -> float:
         """잔고 조회 (Unified -> Contract -> Funding 확인)"""
+        if self.session is None:
+            return 0
+            
         try:
             # 1. UNIFIED or CONTRACT Checking
             for acc_type in ["UNIFIED", "CONTRACT"]:
@@ -319,7 +326,8 @@ class BybitExchange(BaseExchange):
                         balance = float(coins[0].get('walletBalance', 0))
                         if balance > 0:
                             return balance
-                except Exception:
+                except Exception as e:
+                    logging.debug(f"Balance check ({acc_type}) failed: {e}")
                     continue
 
             # 2. If 0, Check Funding Wallet (User Aid)
@@ -332,14 +340,15 @@ class BybitExchange(BaseExchange):
                         fund_bal = float(coins[0].get('walletBalance', 0))
                         if fund_bal > 0:
                             logging.warning(f"⚠️ USDT found in FUNDING wallet ({fund_bal}). Please transfer to DERIVATIVES/UNIFIED.")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Funding balance check failed: {e}")
 
             return 0
 
         except Exception as e:
             logging.error(f"Balance check error: {e}")
             return 0
+
     
     def get_positions(self) -> list:
         """모든 열린 포지션 조회 (긴급청산용)

@@ -3059,7 +3059,10 @@ class UnifiedBot:
                 return False
             
             # [HOTFIX] 현물 거래소 숏 차단 (Upbit, Bithumb)
-            direction = getattr(signal, 'type', signal.get('type', 'Long')) if hasattr(signal, 'type') else signal.get('type', 'Long')
+            if isinstance(signal, dict):
+                direction = signal.get('type', 'Long')
+            else:
+                direction = getattr(signal, 'type', 'Long')
             exchange_name = getattr(self.exchange, 'name', '').lower()
             if exchange_name in ['upbit', 'bithumb'] and direction == 'Short':
                 logging.warning(f"[ENTRY] 🚫 Short entry blocked on Spot Exchange ({exchange_name})")
@@ -3070,7 +3073,7 @@ class UnifiedBot:
                 price = self._get_price_safe() or 0
                 self.trade_history.append({
                     'type': 'ENTRY',
-                    'side': getattr(signal, 'type', signal.get('type', 'Long')) if hasattr(signal, 'type') else signal.get('type', 'Long'),
+                    'side': direction,
                     'price': price,
                     'time': datetime.now().isoformat(),
                     'sl': getattr(signal, 'stop_loss', None)

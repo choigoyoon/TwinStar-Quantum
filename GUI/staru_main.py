@@ -161,7 +161,7 @@ TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "1.2.5"
+    VERSION = "1.2.6"
     
     def __init__(self, user_tier='admin'):
         super().__init__()
@@ -418,7 +418,7 @@ class StarUWindow(QMainWindow):
         except Exception as e:
             import logging
             logging.debug(f"[UPDATER] 버전 확인 실패: {e}")
-            update_ver = "1.0.2"
+            update_ver = "1.2.6"
         
         update_btn = QPushButton(f"🔄 v{update_ver}")
         update_btn.setFixedWidth(80)

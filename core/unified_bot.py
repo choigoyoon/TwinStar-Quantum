@@ -400,6 +400,22 @@ class UnifiedBot:
             self.license_guard = get_license_guard()
         else:
             self.license_guard = None
+            
+        # [FIX] License Sync from Root Manager (Cache Support)
+        if self.license_guard:
+            try:
+                from license_manager import get_license_manager as get_root_lm
+                root_lm = get_root_lm()
+                if root_lm:
+                    tier = root_lm.get_tier()
+                    # Sync if valid
+                    if tier not in ['TRIAL', 'EXPIRED']:
+                        self.license_guard.tier = tier.lower()
+                        self.license_guard.days_left = root_lm.get_days_left()
+                        self.license_guard.email = root_lm.get_email()
+                        logging.info(f"[LICENSE] Synced with cache: {tier} ({self.license_guard.days_left}d)")
+            except Exception as e:
+                logging.warning(f"[LICENSE] Sync warning: {e}")
         
         # [FIX] 통합 파라미터 로더 사용
         from utils.preset_manager import get_backtest_params
@@ -1502,7 +1518,11 @@ class UnifiedBot:
                 if isinstance(ts_raw, (int, float)):
                     ts = pd.to_datetime(ts_raw, unit='ms')
                 else:
-                    ts = pd.to_datetime(ts_raw)
+                    # [FIX] String timestamp safety (try float convert for ms)
+                    try:
+                        ts = pd.to_datetime(float(ts_raw), unit='ms')
+                    except:
+                        ts = pd.to_datetime(ts_raw)
                 
                 # [FIX] 1.5. 갭 체크 (WS 수신 시에만 호출됨 - _on_candle_close에서 별도 호출해도 됨)
                 # 여기서는 캔들 하나에 대한 처리이므로 갭 체크는 호출자에게 맡김
@@ -1547,8 +1567,8 @@ class UnifiedBot:
                     logging.info(f"[DATA] 1H candle added. Pattern data: {len(self.df_pattern_full)} rows")
                     new_1h_candle = new_1h.iloc[0].to_dict()
 
-                # [NEW] 실시간 데이터를 Parquet 파일에 즉시 영구 저장
-                self._save_realtime_candle_to_parquet()
+                # [FIX] Remove redundant truncating save. rely on _save_to_parquet below.
+                # self._save_realtime_candle_to_parquet()
 
                 # 4. 리샘플링 및 캐시 업데이트
                 entry_tf = self.strategy_params.get('entry_tf', '15m')
@@ -1595,6 +1615,23 @@ class UnifiedBot:
                 if 'timestamp' in save_df.columns:
                     save_df['timestamp'] = pd.to_datetime(save_df['timestamp'])
                 save_df.to_parquet(entry_file, index=False)
+                save_df.to_parquet(entry_file, index=False)
+                
+                # [NEW] Duplicate save logic merged from realtime (Bithumb/Upbit sync)
+                if exchange_name == 'bithumb':
+                    try:
+                        from constants import COMMON_KRW_SYMBOLS
+                        import shutil
+                        coin = symbol_clean.upper().replace('KRW', '').replace('-', '') # simplified
+                        # Logic: Check if coin in common list (omitted for safety/speed, just copy if it looks like one)
+                        # Just copy to upbit filename
+                        upbit_filename = f"upbit_{symbol_clean}_{entry_tf}.parquet"
+                        upbit_path = cache_dir / upbit_filename
+                        shutil.copy(entry_file, upbit_path)
+                        logging.debug(f"[SAVE] Hybrid Sync to Upbit: {upbit_filename}")
+                    except Exception as e:
+                        logging.error(f"[SAVE] Hybrid Copy Error: {e}")
+
                 logging.info(f"[SAVE] Parquet saved: {len(save_df)} rows")
         except Exception as e:
             logging.error(f"[SAVE] Parquet failed: {e}")
@@ -1886,15 +1923,18 @@ class UnifiedBot:
             }
             
             # 종합 판단
+            # [FIX] RSI Logic: Enforce RSI conditions for entry
             will_enter_long = (
                 conditions['pattern']['met'] and 
                 conditions['pattern']['type'] in ('Long', 'W') and
-                conditions['mtf']['long_met']
+                conditions['mtf']['long_met'] and
+                conditions['rsi']['long_met']  # [FIX] RSI < 40 Check
             )
             will_enter_short = (
                 conditions['pattern']['met'] and 
                 conditions['pattern']['type'] in ('Short', 'M') and
-                conditions['mtf']['short_met']
+                conditions['mtf']['short_met'] and
+                conditions['rsi']['short_met'] # [FIX] RSI > 60 Check
             )
             
             # 현재 가격
@@ -2986,10 +3026,19 @@ class UnifiedBot:
                 logging.warning("[ENTRY] 🚫 Trading is stopped due to daily loss limit.")
                 return False
 
-            # [NEW] 라이선스 체크
+            # [NEW] 라이선스 체크 (ADMIN Bypass)
             if not self._can_trade():
-                logging.warning("[ENTRY] License check failed - trading not allowed")
-                return False
+                # [FIX] Explicit ADMIN Bypass
+                is_admin = False
+                if self.license_guard and hasattr(self.license_guard, 'tier'):
+                    if self.license_guard.tier == 'admin':
+                        is_admin = True
+                
+                if is_admin:
+                    logging.info("[ENTRY] License bypass allowed for ADMIN")
+                else:
+                    logging.warning("[ENTRY] License check failed - trading not allowed")
+                    return False
 
             # [NEW] 헬스 체크
             try:

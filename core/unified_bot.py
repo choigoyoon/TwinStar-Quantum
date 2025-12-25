@@ -1237,7 +1237,10 @@ class UnifiedBot:
         trend = core.get_filter_trend(self.df_pattern_full, filter_tf=params.get('filter_tf', '4h'))
         
         # [FIX] 1. RSI 계산
-        df_entry = getattr(self, 'df_entry_resampled', None) or self.df_entry_full
+        # [FIX] Safe assignment
+        df_entry = getattr(self, 'df_entry_resampled', None)
+        if df_entry is None:
+            df_entry = self.df_entry_full
         current_rsi = 50
         if df_entry is not None and len(df_entry) >= 20:
             try:
@@ -1275,7 +1278,9 @@ class UnifiedBot:
                 continue
             
             # ATR 계산
-            df_entry = getattr(self, 'df_entry_resampled', None) or self.df_entry_full
+            df_entry = getattr(self, 'df_entry_resampled', None)
+            if df_entry is None:
+                df_entry = self.df_entry_full
             if df_entry is not None and len(df_entry) >= 20:
                 atr = core.calculate_atr(df_entry.tail(20), period=params.get('atr_period', 14))
             else:
@@ -1926,7 +1931,7 @@ class UnifiedBot:
             logging.info(f"[PREDICT] ━━━ 진입 조건 체크 ━━━")
             logging.info(f"[PREDICT] 📊 {symbol} {entry_tf} ({remaining:.0f}분 후 마감)")
             logging.info(f"[PREDICT] ├─ 패턴: {'✅' if c['pattern']['met'] else '❌'} {c['pattern']['desc']}")
-            logging.info(f"[PREDICT] ├─ RSI: {c['rsi']['desc']} ({'✅ Long조건' if c['rsi']['long_met'] else '✅ Short조건' if c['rsi']['short_met'] else '⚪ 중립'})")
+            logging.info(f"[PREDICT] ├─ RSI: {c['rsi']['desc']} (Long:{'✅' if c['rsi']['long_met'] else '❌'} / Short:{'✅' if c['rsi']['short_met'] else '❌'})")
             logging.info(f"[PREDICT] ├─ MTF: {'✅' if c['mtf']['long_met'] or c['mtf']['short_met'] else '⚪'} {c['mtf']['desc']}")
             logging.info(f"[PREDICT] └─ 유효: {c['validity']['desc']}")
             

@@ -1,7 +1,7 @@
 {
-  "version": "1.2.4",
-  "latest_version": "1.2.4",
-  "release_date": "2025-12-25",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.2.4/TwinStar_Quantum_Setup_v1.2.4.exe",
-  "changelog": "v1.2.4 - WebSocket Stability Patch: Added threaded safe execution logic for seamless real-time data."
+  "version": "1.2.5",
+  "latest_version": "1.2.5",
+  "release_date": "2025-12-26",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.2.5/TwinStar_Quantum_Setup_v1.2.5.exe",
+  "changelog": "v1.2.5 - Critical Hotfix: Resolved dataframe crash in entry logic and clarified RSI analysis logs."
 }

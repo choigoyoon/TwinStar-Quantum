@@ -339,3 +339,11 @@ class WebSocketHandler:
         self.running = False
         if self.ws:
             asyncio.create_task(self.ws.close())
+
+    def run_sync(self):
+        """동기 실행 (스레드용)"""
+        try:
+            asyncio.run(self.connect())
+        except Exception as e:
+            logging.error(f"[WS] Sync run error: {e}")
+

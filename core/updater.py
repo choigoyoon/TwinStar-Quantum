@@ -89,9 +89,24 @@ class Updater:
                 'latest_version': latest,
                 'download_url': data.get('download_url', ''),  # Setup.exe URL
                 'download_size': data.get('download_size', ''),
-                'changelog': data.get('changelog', []),
+                'download_size': data.get('download_size', ''),
+                'changelog': self._parse_changelog(data.get('changelog', []), latest),
                 'force_update': data.get('force_update', False)
             }
+            
+    def _parse_changelog(self, raw_data, version: str) -> list:
+        """changelog 데이터 파싱 (Dict/List/Str -> List)"""
+        try:
+            if isinstance(raw_data, dict):
+                # "v1.2.3" or "1.2.3" key search
+                return raw_data.get(f"v{version}", raw_data.get(version, []))
+            elif isinstance(raw_data, str):
+                return [raw_data]
+            elif isinstance(raw_data, list):
+                return raw_data
+            return []
+        except Exception:
+            return []
         except requests.exceptions.RequestException as e:
             logging.error(f"[UPDATER] 버전 확인 실패: {e}")
             return {

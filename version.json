@@ -3,15 +3,12 @@
   "latest_version": "1.2.6",
   "release_date": "2025-12-26",
   "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.2.6/TwinStar_Quantum_Setup_v1.2.6.exe",
-  "changelog": {
-    "v1.2.6": [
-      "- [Fix] 15m Candle Data Storage Logic repaired (Full history save)",
-      "- [Fix] Admin License trading permission bypass added",
-      "- [Fix] RSI Entry Condition Strict Enforcement (Long<40, Short>60)",
-      "- [Improvement] Timestamp parsing robustness"
-    ],
-    "v1.2.5": [
-      "- Critical Hotfix: Resolved dataframe crash in entry logic and clarified RSI analysis logs."
-    ]
-  }
+  "changelog": [
+    "- [Fix] 15m Candle Data Storage Logic repaired (Full history save)",
+    "- [Fix] Admin License trading permission bypass added",
+    "- [Fix] RSI Entry Condition Strict Enforcement (Long<40, Short>60)",
+    "- [Improvement] Timestamp parsing robustness",
+    "",
+    "(Previous v1.2.5): Critical Hotfix: Resolved dataframe crash..."
+  ]
 }

@@ -1,10 +1,10 @@
 {
-  "version": "1.4.1",
-  "latest_version": "1.4.1",
+  "version": "1.4.2",
+  "latest_version": "1.4.2",
   "release_date": "2025-12-26",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.1/TwinStar_Quantum_Setup_v1.4.1.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.2/TwinStar_Quantum_Setup_v1.4.2.exe",
   "changelog": [
-    "- [Fix] STATE_FILE Always Saved for UI Sync",
-    "- [Stability] All v1.4.0 Features"
+    "- [Fix] UI Position Sync after Exchange Synchronization",
+    "- [Stability] Core Bot state persistence fixes"
   ]
 }

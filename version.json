@@ -1,12 +1,11 @@
 {
-  "version": "1.3.6",
-  "latest_version": "1.3.6",
+  "version": "1.3.7",
+  "latest_version": "1.3.7",
   "release_date": "2025-12-26",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.6/TwinStar_Quantum_Setup_v1.3.6.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.7/TwinStar_Quantum_Setup_v1.3.7.exe",
   "changelog": [
-    "- [Fix] DataFrame Truth Value Error (L1161)",
-    "- [Fix] Hedge Mode Position Sync (Long+Short)",
-    "- [Fix] order.get() Bool Safety",
-    "- [Debug] Bybit Position Raw Count Logging"
+    "- [Fix] bt_state Update After Order (UI Sync Prep)",
+    "- [Fix] Position Debug Logging (INFO Level)",
+    "- [Stability] All Previous Fixes Included"
   ]
 }

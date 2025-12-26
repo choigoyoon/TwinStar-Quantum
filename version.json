@@ -1,11 +1,13 @@
 {
-  "version": "1.3.9",
-  "latest_version": "1.3.9",
+  "version": "1.4.0",
+  "latest_version": "1.4.0",
   "release_date": "2025-12-26",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.9/TwinStar_Quantum_Setup_v1.3.9.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.0/TwinStar_Quantum_Setup_v1.4.0.exe",
   "changelog": [
-    "- [Fix] Complete bt_state Sync (current_sl, extreme_price)",
-    "- [Fix] SYNC Logs Upgraded to INFO Level",
+    "- [Major] UI Real-time Position Sync (2s Timer)",
+    "- [Major] STATE_FILE for Bot-UI Communication",
+    "- [Fix] Duplicate Entry Prevention (Bot + Exchange Check)",
+    "- [Fix] Complete bt_state Sync Fields",
     "- [Stability] All v1.3.x Fixes Accumulated"
   ]
 }

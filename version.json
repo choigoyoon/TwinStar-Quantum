@@ -1,11 +1,11 @@
 {
-  "version": "1.3.7",
-  "latest_version": "1.3.7",
+  "version": "1.3.8",
+  "latest_version": "1.3.8",
   "release_date": "2025-12-26",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.7/TwinStar_Quantum_Setup_v1.3.7.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.8/TwinStar_Quantum_Setup_v1.3.8.exe",
   "changelog": [
-    "- [Fix] bt_state Update After Order (UI Sync Prep)",
-    "- [Fix] Position Debug Logging (INFO Level)",
-    "- [Stability] All Previous Fixes Included"
+    "- [Critical] Duplicate Entry Prevention (Bot + Exchange Check)",
+    "- [Fix] Safe State Access (KeyError Prevention)",
+    "- [Fix] bt_state Persistence for Restart Recovery"
   ]
 }

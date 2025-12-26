@@ -1,14 +1,11 @@
 {
-  "version": "1.2.7",
-  "latest_version": "1.2.7",
+  "version": "1.3.1",
+  "latest_version": "1.3.1",
   "release_date": "2025-12-26",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.2.7/TwinStar_Quantum_Setup_v1.2.7.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.1/TwinStar_Quantum_Setup_v1.3.1.exe",
   "changelog": [
-    "- [Fix] 15m Candle Data Storage Logic repaired (Full history save)",
-    "- [Fix] Admin License trading permission bypass added",
-    "- [Fix] RSI Entry Condition Strict Enforcement (Long<40, Short>60)",
-    "- [Improvement] Timestamp parsing robustness",
-    "",
-    "(Previous v1.2.5): Critical Hotfix: Resolved dataframe crash..."
+    "- [Fix] BingX Exchange Syntax Error (Duplicate Code Block)",
+    "- [Fix] Premature get_kline API Call in __init__ (Moved to run())",
+    "- [New] Pre-release Verification System (verify_before_release.py)"
   ]
 }

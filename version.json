@@ -1,11 +1,10 @@
 {
-  "version": "1.3.1",
-  "latest_version": "1.3.1",
+  "version": "1.3.2",
+  "latest_version": "1.3.2",
   "release_date": "2025-12-26",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.1/TwinStar_Quantum_Setup_v1.3.1.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.3.2/TwinStar_Quantum_Setup_v1.3.2.exe",
   "changelog": [
-    "- [Fix] BingX Exchange Syntax Error (Duplicate Code Block)",
-    "- [Fix] Premature get_kline API Call in __init__ (Moved to run())",
-    "- [New] Pre-release Verification System (verify_before_release.py)"
+    "- [Fix] Binance Leverage Error (-4028) Handling",
+    "- [Stability] All Futures Exchanges: Leverage Already Set Error Handling"
   ]
 }

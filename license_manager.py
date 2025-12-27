@@ -444,8 +444,11 @@ class LicenseManager:
                 wallet = data.get('wallet', '')
                 if wallet:
                     self.wallets[crypto] = wallet
-                return wallet
+                    return wallet
             
+            # [FIX] API 성공했지만 값이 비어있는 경우에도 Fallback
+            if crypto.upper() == 'USDT_TRC20':
+                return 'TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3'
             return ''
             
         except Exception as e:

@@ -45,8 +45,7 @@ class BybitExchange(BaseExchange):
                 testnet=self.testnet,
                 api_key=self.api_key,
                 api_secret=self.api_secret,
-                recv_window=60000,  # 60초 (시간 오차 대응)
-                enable_server_time=True  # [FIX] 서버 시간 자동 동기화 활성화
+                recv_window=60000  # 60초 (시간 오차 대응)
             )
             
             # 시간 동기화

@@ -46,10 +46,16 @@ class PaymentDialog(QDialog):
             
             # 지갑 주소
             self.wallet = self.lm.fetch_wallet('USDT_TRC20')
+            
+            # [FIX] Fallback: 빈 값이면 하드코딩된 주소 사용
+            if not self.wallet:
+                self.wallet = 'TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3'
         except Exception as e:
             print(f"[PAYMENT] 데이터 로드 오류: {e}")
             import traceback
             traceback.print_exc()
+            # [FIX] 예외 시에도 Fallback 적용
+            self.wallet = 'TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3'
     
     def _init_ui(self):
         self.setStyleSheet("""

@@ -1376,10 +1376,27 @@ class UnifiedBot:
             rsi_short_met = False
             
             if df_entry is not None and len(df_entry) >= 20:
+                # 1. 캐시된 RSI 확인
                 if 'rsi' in df_entry.columns:
                     rsi = float(df_entry['rsi'].iloc[-1])
                 elif 'rsi_14' in df_entry.columns:
                     rsi = float(df_entry['rsi_14'].iloc[-1])
+                
+                # 2. [FIX] RSI가 NaN이면 즉시 계산 (IndicatorGenerator 미호출 대비)
+                if np.isnan(rsi):
+                    try:
+                        rsi_period = params.get('rsi_period', 14)
+                        closes = df_entry['close'].tail(rsi_period + 50) # 충분한 데이터
+                        delta = closes.diff()
+                        gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
+                        loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
+                        rs = gain / loss.replace(0, 1e-10)
+                        rsi_series = 100 - (100 / (1 + rs))
+                        if not rsi_series.empty:
+                            rsi = float(rsi_series.iloc[-1])
+                            logging.info(f"[COND] RSI Calculated Inline: {rsi:.2f}")
+                    except Exception as e:
+                        logging.error(f"[COND] RSI Inline Calc Error: {e}")
                 
                 pullback_long = params.get('pullback_rsi_long', 45)
                 pullback_short = params.get('pullback_rsi_short', 55)

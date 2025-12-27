@@ -33,6 +33,7 @@ class BinanceExchange(BaseExchange):
         self.testnet = config.get('testnet', False)
         self.client = None
         self.authenticated = False
+        self.hedge_mode = False
     
     def connect(self) -> bool:
         """API 연결 (SecureStorage 연동)"""
@@ -63,6 +64,16 @@ class BinanceExchange(BaseExchange):
                 self.client.futures_ping()
                 account = self.client.futures_account()
                 balance = account.get('totalWalletBalance', 0)
+                
+                # [NEW] Hedge Mode Check
+                try:
+                    mode = self.client.futures_get_position_mode()
+                    self.hedge_mode = mode.get('dualSidePosition', False)
+                    logging.info(f"[Binance] Position Mode: {'Hedge' if self.hedge_mode else 'One-Way'}")
+                except Exception as e:
+                    logging.warning(f"[Binance] Failed to check position mode: {e}. Defaulting to One-Way.")
+                    self.hedge_mode = False
+                    
                 self.authenticated = True
                 logging.info(f"[Binance] 인증 연결 성공. 잔고: {balance} USDT")
             else:
@@ -135,12 +146,18 @@ class BinanceExchange(BaseExchange):
             logging.info(f"[Binance] Placing {order_side} {qty} {self.symbol} @ {current_price} (SL: {stop_loss})")
             
             # 1. 메인 주문 실행
-            order = self.client.futures_create_order(
-                symbol=self.symbol,
-                side=order_side,
-                type='MARKET',
-                quantity=qty
-            )
+            params = {
+                'symbol': self.symbol,
+                'side': order_side,
+                'type': 'MARKET',
+                'quantity': qty
+            }
+            
+            # [NEW] Hedge Mode Support
+            if self.hedge_mode:
+                params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                
+            order = self.client.futures_create_order(**params)
             
             if not order:
                 logging.error("[Binance] Main order failed (no response)")
@@ -189,10 +206,11 @@ class BinanceExchange(BaseExchange):
                 initial_sl=stop_loss if stop_loss else 0,
                 risk=abs(current_price - stop_loss) if stop_loss else 0,
                 be_triggered=False,
-                entry_time=datetime.now()
+                entry_time=datetime.now(),
+                order_id=str(order_id) if order_id else ""
             )
             
-            return True
+            return str(order_id) if order_id else "True"
             
         except Exception as e:
             logging.error(f"[Binance] Order execution error: {e}")
@@ -207,14 +225,20 @@ class BinanceExchange(BaseExchange):
             self.client.futures_cancel_all_open_orders(symbol=self.symbol)
             
             # 새 스탑 주문 생성
-            sl_side = SIDE_SELL if self.position.side == 'Long' else SIDE_BUY
-            sl_order = self.client.futures_create_order(
-                symbol=self.symbol,
-                side=sl_side,
-                type=FUTURE_ORDER_TYPE_STOP_MARKET,
-                stopPrice=round(new_sl, 2),
-                closePosition='true'
-            )
+            sl_side = 'SELL' if self.position.side == 'Long' else 'BUY'
+            params = {
+                'symbol': self.symbol,
+                'side': sl_side,
+                'type': 'STOP_MARKET',
+                'stopPrice': round(new_sl, 2),
+                'closePosition': 'true'
+            }
+            
+            # [FIX] Hedge Mode Support
+            if self.hedge_mode:
+                params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+
+            sl_order = self.client.futures_create_order(**params)
             
             if sl_order:
                 self.position.stop_loss = new_sl
@@ -235,13 +259,22 @@ class BinanceExchange(BaseExchange):
             
             side = SIDE_SELL if self.position.side == 'Long' else SIDE_BUY
             
-            order = self.client.futures_create_order(
-                symbol=self.symbol,
-                side=side,
-                type=ORDER_TYPE_MARKET,
-                quantity=self.position.size,
-                reduceOnly='true'
-            )
+            params = {
+                'symbol': self.symbol,
+                'side': side,
+                'type': ORDER_TYPE_MARKET,
+                'quantity': self.position.size,
+                'reduceOnly': 'true'
+            }
+            
+            # [NEW] Hedge Mode Support (reduceOnly not needed for Close in Hedge Mode usually, but API allows it with positionSide?)
+            # Actually for Hedge Mode Close: Side=Sell, PositionSide=LONG (to close Long).
+            if self.hedge_mode:
+                params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+                # reduceOnly is implicit when closing specific positionSide with opposite order, 
+                # but explicit reduceOnly with positionSide is safe.
+            
+            order = self.client.futures_create_order(**params)
             
             if order:
                 price = self.get_current_price()
@@ -327,6 +360,12 @@ class BinanceExchange(BaseExchange):
             logging.info(f"[Binance] Leverage set to {leverage}x")
             return True
         except Exception as e:
+            err_str = str(e)
+            # -4028: No need to change leverage (already set to target)
+            if '-4028' in err_str or 'No need to change' in err_str:
+                logging.info(f"[Binance] Leverage already {leverage}x (OK)")
+                self.leverage = leverage
+                return True
             logging.error(f"[Binance] Leverage error: {e}")
             return False
     
@@ -425,6 +464,6 @@ class BinanceExchange(BaseExchange):
             if self.client:
                 server_time = self.client.get_server_time()
                 return server_time['serverTime']
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)

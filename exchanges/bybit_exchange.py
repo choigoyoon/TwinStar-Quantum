@@ -31,6 +31,7 @@ class BybitExchange(BaseExchange):
         self.api_secret = config.get('api_secret', '')
         self.testnet = config.get('testnet', False)
         self.session = None
+        self.hedge_mode = False
         self.time_offset = 0
     
     def connect(self) -> bool:
@@ -50,6 +51,21 @@ class BybitExchange(BaseExchange):
             # 시간 동기화
             self.sync_time()
             
+            # [NEW] Check Position Mode (One-Way vs Hedge)
+            try:
+                # V5 API: /v5/position/list returns 'positionIdx'
+                # If any position has idx > 0, we assume Hedge Mode usage
+                pos_info = self.session.get_positions(category="linear", symbol=self.symbol)
+                if pos_info['retCode'] == 0:
+                     p_list = pos_info['result']['list']
+                     self.hedge_mode = any(p.get('positionIdx', 0) > 0 for p in p_list)
+                     logging.info(f"[Bybit] Position Mode: {'Hedge' if self.hedge_mode else 'One-Way'}")
+                else:
+                     self.hedge_mode = False
+            except Exception as e:
+                logging.warning(f"[Bybit] Failed to detect position mode: {e}")
+                self.hedge_mode = False
+
             # [DEBUG] API 키 확인 (앞 4자만)
             key_prefix = self.api_key[:4] if self.api_key else 'None'
             logging.info(f"Bybit connected. Time offset: {self.time_offset}ms (recv_window: 60s) [Key: {key_prefix}...]")
@@ -94,11 +110,13 @@ class BybitExchange(BaseExchange):
                 limit=limit
             )
             
-            if result['retCode'] != 0:
-                logging.error(f"Kline error: {result['retMsg']}")
+            if result.get('retCode') != 0:
+                logging.error(f"Kline error: {result.get('retMsg', 'Unknown')}")
                 return None
             
-            data = result['result']['list']
+            data = result.get('result', {}).get('list', [])
+            if not data:
+                return None
             df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
             df['timestamp'] = pd.to_datetime(df['timestamp'].astype(int), unit='ms')
             for col in ['open', 'high', 'low', 'close', 'volume']:
@@ -113,11 +131,10 @@ class BybitExchange(BaseExchange):
     def get_current_price(self) -> float:
         """현재 가격"""
         try:
-            result = self.session.get_tickers(
-                category="linear",
-                symbol=self.symbol
-            )
-            return float(result['result']['list'][0]['lastPrice'])
+            res_list = result.get('result', {}).get('list', [])
+            if res_list:
+                return float(res_list[0].get('lastPrice', 0))
+            return 0
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
             return 0
@@ -151,6 +168,15 @@ class BybitExchange(BaseExchange):
                     "recvWindow": 60000
                 }
                 
+                # [NEW] Hedge Mode Support
+                # 0: One-Way Mode
+                # 1: Buy Side (Hedge Mode)
+                # 2: Sell Side (Hedge Mode)
+                if self.hedge_mode:
+                    order_params["positionIdx"] = 1 if side == 'Long' else 2
+                else:
+                    order_params["positionIdx"] = 0
+                
                 if sl_price > 0:
                     order_params["stopLoss"] = str(sl_price)
                 if sl_price > 0:
@@ -158,7 +184,8 @@ class BybitExchange(BaseExchange):
 
                 result = self.session.place_order(**order_params)
                 
-                if result['retCode'] == 0:
+                if result.get('retCode') == 0:
+                    order_id = result.get('result', {}).get('orderId', '')
                     self.position = Position(
                         symbol=self.symbol,
                         side=side,
@@ -168,12 +195,13 @@ class BybitExchange(BaseExchange):
                         initial_sl=stop_loss,
                         risk=abs(price - stop_loss),
                         be_triggered=False,
-                        entry_time=datetime.now()
+                        entry_time=datetime.now(),
+                        order_id=order_id
                     )
-                    logging.info(f"Order placed: {side} {qty} @ {price}")
-                    return True
+                    logging.info(f"Order placed: {side} {qty} @ {price} (ID: {order_id})")
+                    return order_id  # [FIX] Return order_id instead of just True
                 else:
-                    logging.error(f"Order error: {result['retMsg']} (Code: {result['retCode']})")
+                    logging.error(f"Order error: {result.get('retMsg')} (Code: {result.get('retCode')})")
                     if attempt < max_retries - 1:
                         time.sleep(2)
                     
@@ -201,20 +229,25 @@ class BybitExchange(BaseExchange):
             tick_size = self._get_tick_size()
             sl_price = round(new_sl, tick_size['price_decimals'])
             
+            # [FIX] Hedge Mode 및 방향에 따른 positionIdx 선택
+            idx = 0
+            if self.hedge_mode and self.position:
+                idx = 1 if self.position.side == 'Long' else 2
+            
             result = self.session.set_trading_stop(
                 category="linear",
                 symbol=self.symbol,
                 stopLoss=str(sl_price),
-                positionIdx=0
+                positionIdx=idx
             )
             
-            if result['retCode'] == 0:
+            if result.get('retCode') == 0:
                 if self.position:
                     self.position.stop_loss = new_sl
                 logging.info(f"SL updated: {sl_price}")
                 return True
             else:
-                logging.error(f"SL update error: {result['retMsg']}")
+                logging.error(f"SL update error: {result.get('retMsg')}")
                 return False
                 
         except Exception as e:
@@ -236,7 +269,7 @@ class BybitExchange(BaseExchange):
                 reduceOnly=True
             )
             
-            if result['retCode'] == 0:
+            if result.get('retCode') == 0:
                 price = self.get_current_price()
                 if self.position.side == 'Long':
                     pnl = (price - self.position.entry_price) / self.position.entry_price * 100
@@ -250,7 +283,7 @@ class BybitExchange(BaseExchange):
                 self.position = None
                 return True
             else:
-                logging.error(f"Close error: {result['retMsg']}")
+                logging.error(f"Close error: {result.get('retMsg')}")
                 return False
                 
         except Exception as e:
@@ -286,18 +319,21 @@ class BybitExchange(BaseExchange):
                 **extra_params
             )
             
-            if result['retCode'] == 0:
+            if result.get('retCode') == 0:
+                order_id = result.get('result', {}).get('orderId', '')
                 # 평단가 재계산 (가중 평균)
                 total_size = self.position.size + qty
                 avg_price = (self.position.entry_price * self.position.size + price * qty) / total_size
                 
                 self.position.size = total_size
                 self.position.entry_price = avg_price
+                # [NEW] order_id 업데이트 (멀티 오더 추적은 일단 덮어쓰기나 로깅으로 처리)
+                self.position.order_id = order_id
                 
-                logging.info(f"🔥 Added Position: {qty} @ {price} | New Avg: {avg_price:.2f} | Total: {total_size}")
-                return True
+                logging.info(f"🔥 Added Position: {qty} @ {price} | New Avg: {avg_price:.2f} | Total: {total_size} (ID: {order_id})")
+                return order_id
             else:
-                logging.error(f"Add position error: {result['retMsg']}")
+                logging.error(f"Add position error: {result.get('retMsg')}")
                 return False
                 
         except Exception as e:
@@ -376,19 +412,30 @@ class BybitExchange(BaseExchange):
                 return []
             
             positions = []
-            for pos in result.get('result', {}).get('list', []):
+            raw_list = result.get('result', {}).get('list', [])
+            
+            # [DEBUG] Hedge Mode 진단: 원시 데이터 개수 로깅
+            logging.info(f"[Bybit] 원시 포지션 데이터: {len(raw_list)}개")
+            for pos in raw_list:
                 size = float(pos.get('size', 0))
+                pos_idx = pos.get('positionIdx', 0)
+                side = pos.get('side', 'N/A')
+                avg_price = pos.get('avgPrice', 0)
+                logging.info(f"  - posIdx={pos_idx}, side={side}, size={size}, avgPrice={avg_price}")
+                
                 if size > 0:  # 열린 포지션만
                     positions.append({
                         'symbol': pos.get('symbol'),
                         'side': pos.get('side'),
                         'size': size,
                         'entry_price': float(pos.get('avgPrice', 0)),
+                        'stop_loss': float(pos.get('stopLoss', 0)) if pos.get('stopLoss') else 0,
                         'unrealized_pnl': float(pos.get('unrealisedPnl', 0)),
-                        'leverage': int(pos.get('leverage', 1))
+                        'leverage': int(pos.get('leverage', 1)),
+                        'positionIdx': pos_idx  # [NEW] Hedge Mode 구분용
                     })
             
-            logging.info(f"[Bybit] 열린 포지션: {len(positions)}개")
+            logging.info(f"[Bybit] 열린 포지션: {len(positions)}개 (원시 {len(raw_list)}개)")
             return positions
             
         except Exception as e:
@@ -410,19 +457,32 @@ class BybitExchange(BaseExchange):
                 sellLeverage=str(leverage)
             )
             
-            if result['retCode'] == 0:
+            ret_code = result.get('retCode', -1)
+            ret_msg = str(result.get('retMsg', ''))
+            
+            # 성공
+            if ret_code == 0:
                 self.leverage = leverage
                 logging.info(f"[Bybit] Leverage set to {leverage}x")
                 return True
-            else:
-                # 이미 설정된 레버리지와 동일하면 성공 처리 (110043: leverage not modified)
-                if "110043" in str(result.get('retMsg', '')):
-                    self.leverage = leverage
-                    return True
-                logging.error(f"[Bybit] Leverage error: {result['retMsg']}")
-                return False
+            
+            # 110043: leverage not modified (이미 설정됨) -> 성공 처리
+            if ret_code == 110043 or '110043' in ret_msg:
+                self.leverage = leverage
+                logging.info(f"[Bybit] Leverage already {leverage}x (OK)")
+                return True
+            
+            # 기타 에러
+            logging.error(f"[Bybit] Leverage error: {ret_code} - {ret_msg}")
+            return False
                 
         except Exception as e:
+            err_str = str(e)
+            # Exception에서도 110043 체크
+            if '110043' in err_str or 'not modified' in err_str.lower():
+                self.leverage = leverage
+                logging.info(f"[Bybit] Leverage already {leverage}x (Exception OK)")
+                return True
             logging.error(f"[Bybit] Leverage exception: {e}")
             return False
     
@@ -437,12 +497,13 @@ class BybitExchange(BaseExchange):
                 limit=limit
             )
             
-            if result['retCode'] != 0:
-                logging.error(f"Trade history error: {result['retMsg']}")
+            if result.get('retCode') != 0:
+                logging.error(f"Trade history error: {result.get('retMsg')}")
                 return []
             
             trades = []
-            for t in result['result']['list']:
+            res_list = result.get('result', {}).get('list', [])
+            for t in res_list:
                 trades.append({
                     'symbol': t['symbol'],
                     'side': t['side'],

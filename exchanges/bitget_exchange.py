@@ -36,6 +36,7 @@ class BitgetExchange(BaseExchange):
         self.testnet = config.get('testnet', False)
         self.exchange = None
         self.time_offset = 0
+        self.hedge_mode = False
     
     def connect(self) -> bool:
         """API 연결"""
@@ -62,6 +63,18 @@ class BitgetExchange(BaseExchange):
             self.sync_time()
             
             self.exchange.load_markets()
+            
+            # [NEW] Hedge Mode Check
+            try:
+                # Bitget may not support fetchPositionMode via CCXT consistently, but we try
+                # If unsupported, User should ensure One-Way or we assume One-Way
+                self.hedge_mode = False 
+                # Uncomment if CCXT implementation is verified:
+                # mode = self.exchange.fetch_position_mode(self._convert_symbol(self.symbol))
+                # self.hedge_mode = mode['hedged']
+                logging.info(f"Bitget Position Mode: {'Hedge (Assumed False)' if self.hedge_mode else 'One-Way'}")
+            except Exception:
+                self.hedge_mode = False
             
             logging.info(f"Bitget connected. Time offset: {self.time_offset}ms")
             return True
@@ -112,11 +125,18 @@ class BitgetExchange(BaseExchange):
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
+                # [NEW] Hedge Mode Logic (Bitget uses 'posSide' -> 'long'/'short')
+                # User Script check: positionSide handled via posSide
+                params = {}
+                if self.hedge_mode:
+                    params['posSide'] = 'long' if side == 'Long' else 'short'
+                
                 order = self.exchange.create_order(
                     symbol=symbol,
                     type='market',
                     side=order_side,
-                    amount=size
+                    amount=size,
+                    params=params
                 )
                 
                 if order:
@@ -125,20 +145,26 @@ class BitgetExchange(BaseExchange):
                     if stop_loss > 0:
                         try:
                             sl_side = 'sell' if side == 'Long' else 'buy'
+                            sl_params = {
+                                'stopPrice': stop_loss,
+                                'reduceOnly': True,
+                                'triggerType': 'mark_price'
+                            }
+                            # [FIX] Hedge Mode Support (Bitget using posSide)
+                            if self.hedge_mode:
+                                sl_params['posSide'] = 'long' if side == 'Long' else 'short'
+
                             self.exchange.create_order(
                                 symbol=symbol,
                                 type='stop_market',
                                 side=sl_side,
                             amount=size,
-                            params={
-                                'stopPrice': stop_loss,
-                                'reduceOnly': True,
-                                'triggerType': 'mark_price'
-                            }
+                            params=sl_params
                         )
                         except Exception as sl_err:
                             logging.warning(f"SL order failed: {sl_err}")
                     
+                    order_id = str(order.get('id', ''))
                     self.position = Position(
                         symbol=self.symbol,
                         side=side,
@@ -148,11 +174,12 @@ class BitgetExchange(BaseExchange):
                         initial_sl=stop_loss,
                         risk=abs(price - stop_loss),
                         be_triggered=False,
-                        entry_time=datetime.now()
+                        entry_time=datetime.now(),
+                        order_id=order_id
                     )
                     
-                    logging.info(f"[Bitget] Order placed: {side} {size} @ {price}")
-                    return True
+                    logging.info(f"[Bitget] Order placed: {side} {size} @ {price} (ID: {order_id})")
+                    return order_id
                     
             except Exception as e:
                 logging.error(f"[Bitget] Order error: {e}")
@@ -171,22 +198,28 @@ class BitgetExchange(BaseExchange):
                 orders = self.exchange.fetch_open_orders(symbol)
                 for order in orders:
                     if order.get('type') in ['stop_market', 'stop']:
-                        self.exchange.cancel_order(order['id'], symbol)
-            except Exception:
-                pass
+                        if isinstance(order, dict) and order.get('id'):
+                            self.exchange.cancel_order(order['id'], symbol)
+            except Exception as e:
+                logging.debug(f"Order cancel ignored: {e}")
             
             # 새 스탑 주문
             if self.position:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
+                params = {
+                    'stopPrice': new_sl,
+                    'reduceOnly': True
+                }
+                # [FIX] Hedge Mode Support (Bitget using posSide)
+                if self.hedge_mode:
+                    params['posSide'] = 'long' if self.position.side == 'Long' else 'short'
+
                 self.exchange.create_order(
                     symbol=symbol,
                     type='stop_market',
                     side=sl_side,
                     amount=self.position.size,
-                    params={
-                        'stopPrice': new_sl,
-                        'reduceOnly': True
-                    }
+                    params=params
                 )
                 self.position.stop_loss = new_sl
                 logging.info(f"[Bitget] SL updated: {new_sl}")
@@ -207,12 +240,17 @@ class BitgetExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
             
+            params = {'reduceOnly': True}
+            # [FIX] Hedge Mode Support (Bitget using posSide)
+            if self.hedge_mode:
+                params['posSide'] = 'long' if self.position.side == 'Long' else 'short'
+
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
                 side=close_side,
                 amount=self.position.size,
-                params={'reduceOnly': True}
+                params=params
             )
             
             if order:
@@ -408,7 +446,7 @@ class BitgetExchange(BaseExchange):
         try:
             if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
                 return self.exchange.fetch_time()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 

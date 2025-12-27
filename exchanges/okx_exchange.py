@@ -113,7 +113,7 @@ class OKXExchange(BaseExchange):
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
-                # OKX는 posSide 필요
+                # OKX는 posSide 필요 (User Script check: positionSide)
                 pos_side = 'long' if side == 'Long' else 'short'
                 
                 order = self.exchange.create_order(
@@ -147,6 +147,7 @@ class OKXExchange(BaseExchange):
                         except Exception as sl_err:
                             logging.warning(f"SL order failed: {sl_err}")
                     
+                    order_id = str(order.get('id', ''))
                     self.position = Position(
                         symbol=self.symbol,
                         side=side,
@@ -156,11 +157,12 @@ class OKXExchange(BaseExchange):
                         initial_sl=stop_loss,
                         risk=abs(price - stop_loss),
                         be_triggered=False,
-                        entry_time=datetime.now()
+                        entry_time=datetime.now(),
+                        order_id=order_id
                     )
                     
-                    logging.info(f"[OKX] Order placed: {side} {size} @ {price}")
-                    return True
+                    logging.info(f"[OKX] Order placed: {side} {size} @ {price} (ID: {order_id})")
+                    return order_id
                     
             except Exception as e:
                 logging.error(f"[OKX] Order error: {e}")
@@ -179,9 +181,10 @@ class OKXExchange(BaseExchange):
                 orders = self.exchange.fetch_open_orders(symbol)
                 for order in orders:
                     if order.get('type') in ['stop_market', 'stop']:
-                        self.exchange.cancel_order(order['id'], symbol)
+                        if isinstance(order, dict) and order.get('id'):
+                            self.exchange.cancel_order(order['id'], symbol)
             except Exception as e:
-                logging.debug(f'무시된 예외: {e}')
+                logging.debug(f"Order cancel ignored: {e}")
             
             # 새 스탑 주문
             if self.position:
@@ -434,8 +437,8 @@ class OKXExchange(BaseExchange):
         try:
             if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
                 return self.exchange.fetch_time()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 
 

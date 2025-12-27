@@ -299,8 +299,9 @@ class WebSocketHandler:
 
     async def _parse_okx(self, data: dict):
         # {"arg":{...}, "data": [ {"c":..., "confirm":"1"} ]}
-        if 'data' not in data: return
-        for k in data['data']:
+        data_list = data.get('data', [])
+        if not isinstance(data_list, list): return
+        for k in data_list:
             is_closed = (k.get('confirm') == '1')
             candle = {
                 'timestamp': int(k.get('ts', 0)),
@@ -318,8 +319,9 @@ class WebSocketHandler:
         # {"action":"snapshot", "arg":{...}, "data":[ {"open":..., "close":..., "ts":...} ]}
         # Bitget doesn't have 'confirm' flag in all streams. 
         # Assuming we just update price.
-        if 'data' not in data: return
-        for k in data['data']:
+        data_list = data.get('data', [])
+        if not isinstance(data_list, list): return
+        for k in data_list:
             price = float(k.get('close', 0))
             if self.on_price_update: self.on_price_update(price)
             

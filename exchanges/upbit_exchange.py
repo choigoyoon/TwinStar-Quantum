@@ -129,7 +129,8 @@ class UpbitExchange(BaseExchange):
                 # 매도: size는 코인 수량
                 result = self.upbit.sell_market_order(self.symbol, size)
             
-            if result and 'uuid' in result:
+            if result and result.get('uuid'):
+                order_id = str(result.get('uuid'))
                 self.position = Position(
                     symbol=self.symbol,
                     side=side,
@@ -139,11 +140,12 @@ class UpbitExchange(BaseExchange):
                     initial_sl=stop_loss,
                     risk=abs(price - stop_loss),
                     be_triggered=False,
-                    entry_time=datetime.now()
+                    entry_time=datetime.now(),
+                    order_id=order_id
                 )
                 
-                logging.info(f"[Upbit] Order placed: {side} @ {price:,.0f}원")
-                return True
+                logging.info(f"[Upbit] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
+                return order_id
             else:
                 logging.error(f"[Upbit] Order failed: {result}")
                 return False
@@ -177,7 +179,7 @@ class UpbitExchange(BaseExchange):
             if balance and balance > 0:
                 result = self.upbit.sell_market_order(self.symbol, balance)
                 
-                if result and 'uuid' in result:
+                if result and result.get('uuid'):
                     price = self.get_current_price()
                     if self.position.side == 'Long':
                         pnl = (price - self.position.entry_price) / self.position.entry_price * 100
@@ -212,15 +214,17 @@ class UpbitExchange(BaseExchange):
             else:
                 result = self.upbit.sell_market_order(self.symbol, size)
             
-            if result and 'uuid' in result:
+            if result and result.get('uuid'):
+                order_id = str(result.get('uuid'))
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
                 self.position.size = total_size
                 self.position.entry_price = avg_price
+                self.position.order_id = order_id
                 
-                logging.info(f"[Upbit] Added: {size} @ {price:,.0f}원")
-                return True
+                logging.info(f"[Upbit] Added: {size} @ {price:,.0f}원 (ID: {order_id})")
+                return order_id
             
             return False
             
@@ -339,7 +343,7 @@ class UpbitExchange(BaseExchange):
         try:
             if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
                 return self.exchange.fetch_time()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 

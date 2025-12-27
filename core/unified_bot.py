@@ -59,6 +59,18 @@ except ImportError:
 _original_time = time.time
 EXCHANGE_TIME_OFFSET = 1.0  # 기본값 1초 (봇 시작 시 업데이트)
 
+# [NEW] 상태 파일 경로 (UI와 공유)
+# [NEW] 상태 파일 경로 (UI와 공유용 폴백)
+# 실제 파일은 인스턴스에서 exchange_symbol 조합으로 생성
+def _get_default_state_file_path():
+    try:
+        from paths import Paths
+        return os.path.join(Paths.CACHE, 'bot_state.json')
+    except ImportError:
+        return os.path.join(_BASE_DIR, 'cache', 'bot_state.json')
+
+DEFAULT_STATE_FILE = _get_default_state_file_path()
+
 def get_server_time_offset(exchange_name: str) -> float:
     """거래소별 서버 시간 오프셋 계산 (네트워크 지연 보정 포함)"""
     endpoints = {
@@ -84,16 +96,20 @@ def get_server_time_offset(exchange_name: str) -> float:
         
         data = resp.json()
         
-        # 거래소별 파싱
-        if exchange_name.lower() == 'bybit':
-            server_time = int(data['result']['timeSecond'])
-        elif exchange_name.lower() == 'binance':
-            server_time = int(data['serverTime']) / 1000
-        elif exchange_name.lower() == 'okx':
-            server_time = int(data['data'][0]['ts']) / 1000
-        elif exchange_name.lower() == 'bitget':
-            server_time = int(data['data']['serverTime']) / 1000
-        else:
+        # 거래소별 파싱 (안전한 접근)
+        try:
+            if exchange_name.lower() == 'bybit':
+                server_time = int(data['result']['timeSecond'])
+            elif exchange_name.lower() == 'binance':
+                server_time = int(data['serverTime']) / 1000
+            elif exchange_name.lower() == 'okx':
+                server_time = int(data['data'][0]['ts']) / 1000
+            elif exchange_name.lower() == 'bitget':
+                server_time = int(data['data']['serverTime']) / 1000
+            else:
+                return 1.0
+        except (KeyError, IndexError, TypeError):
+            logging.error(f"[TIME] {exchange_name} server time structure invalid: {data}")
             return 1.0
         
         offset = local_time - server_time
@@ -290,6 +306,13 @@ def normalize_tf(tf: str) -> str:
         return tf.replace('min', 'm')
     return tf
 
+import sys
+from pathlib import Path
+
+# [FIX] Add project root to sys.path for module imports
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 def load_preset(preset_path: str) -> dict:
     """프리셋 JSON 로드"""
@@ -469,6 +492,15 @@ class UnifiedBot:
         self.position = None
         self.notifier = None # 텔레그램 알림
         
+        # [NEW] 연속 백테스트 상태 (run_backtest와 동일한 구조)
+        self.bt_state = {
+            'position': None,
+            'positions': [],
+            'current_sl': 0,
+            'extreme_price': 0,
+            'last_time': None
+        }
+        
         # 타임프레임 설정 (exchange config에서 로드, 기본값 4h)
         tf_key = getattr(exchange, 'timeframe', None) or '4h'
         self.tf_config = self.TF_MAP.get(tf_key, self.TF_MAP['4h']).copy() # copy to avoid mutating class var
@@ -531,7 +563,9 @@ class UnifiedBot:
         
         # 지표 캐시 초기화
         self.indicator_cache = {}
-        self._init_indicator_cache()
+        # [FIX] _init_indicator_cache removed from __init__ to prevent premature API call
+        # It will be called in run() or manually
+        # self._init_indicator_cache()
         
         # [NEW] 주기적 시간 동기화 시작 (30분마다) - 시뮬레이션 모드에서는 스킵
         if not self.simulation_mode:
@@ -552,8 +586,7 @@ class UnifiedBot:
             'ready': False
         }
         
-        # [NEW] 연속 백테스트 상태 (run_backtest와 동일한 구조)
-        self.bt_state = None  # 백테스트 상태
+        # [NEW] 연속 백테스트 상태 (필요 시 run_backtest 활용)
         self.df_pattern_full = None  # 전체 1H 데이터
         self.df_entry_full = None  # 전체 15m 데이터
         
@@ -562,6 +595,10 @@ class UnifiedBot:
         symbol_clean = self.exchange.symbol.lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
         from paths import Paths
         self.state_cache_path = os.path.join(Paths.CACHE, f"{exchange_name}_{symbol_clean}_state.json")
+        
+        # [NEW] UI 동기화용 상태 파일 (인스턴스별 유니크)
+        self.state_file = os.path.join(Paths.CACHE, f"bot_state_{exchange_name}_{symbol_clean}.json")
+        logging.info(f"[INIT] State file: {self.state_file}")
         
         # [FIX] 전략 파라미터 저장 (프리셋 로드값 유지)
         # self.strategy_params는 위에서 get_backtest_params()로 이미 초기화됨
@@ -1030,18 +1067,18 @@ class UnifiedBot:
             self.pending_signals.append(s)
             
             # [FIX] DataFrame 모호성 방지: dict.get() 기본값 활용
-            sig_type = s.get('type')
-            if sig_type is None:
-                sig_type = s.get('direction', 'Unknown')
-                
-            sig_time = s.get('time')
-            if sig_time is None:
-                sig_time = s.get('timestamp', 'N/A')
+            # [FIX] Safe Access for Signal Object or Dict
+            if isinstance(s, dict):
+                sig_type = s.get('type') or s.get('direction', 'Unknown')  # getattr equivalent
+                sig_time = s.get('time') or s.get('timestamp', 'N/A')  # getattr equivalent
+            else:
+                sig_type = getattr(s, 'type', None) or getattr(s, 'direction', 'Unknown')
+                sig_time = getattr(s, 'time', None) or getattr(s, 'timestamp', 'N/A')
                 
             logging.info(f"[LIVE] ✨ New signal queued: {sig_type} @ {sig_time}")
             self._save_state_cache()
         else:
-            logging.debug(f"[LIVE] Signal expired or invalid, skipped: {signal.get('time')}")
+            logging.debug(f"[LIVE] Signal expired or invalid, skipped: {getattr(signal, 'time', signal.get('time')) if isinstance(signal, dict) else getattr(signal, 'time', 'Unknown')}")
     
     # ========== 연속 백테스트 메서드 (run_backtest 로직과 100% 동일) ==========
     
@@ -1149,7 +1186,10 @@ class UnifiedBot:
         low = float(candle.get('low', 0))
         
         # RSI 계산 (인라인)
-        df_entry = getattr(self, 'df_entry_resampled', None) or self.df_entry_full
+        # [FIX] DataFrame은 or 연산자 사용 불가 - is None 체크 사용
+        df_entry = getattr(self, 'df_entry_resampled', None)
+        if df_entry is None or (hasattr(df_entry, 'empty') and df_entry.empty):
+            df_entry = self.df_entry_full
         if df_entry is not None and len(df_entry) >= 30:
             rsi_period = params.get('rsi_period', 14)
             closes = df_entry['close'].tail(rsi_period + 10)
@@ -1162,13 +1202,13 @@ class UnifiedBot:
         else:
             current_rsi = 50
         
-        direction = state['position']
-        entry_price = state['positions'][0]['entry'] if state['positions'] else candle.get('open', 0)
-        current_sl = state['current_sl']
-        extreme_price = state['extreme_price']
+        direction = state.get('position')
+        entry_price = state.get('positions', [{}])[0].get('entry', candle.get('open', 0)) if state.get('positions') else candle.get('open', 0)
+        current_sl = state.get('current_sl', 0)
+        extreme_price = state.get('extreme_price', entry_price)
         
-        # [FIX] risk 계산
-        initial_sl = state['positions'][0].get('initial_sl', current_sl) if state['positions'] else current_sl
+        # [FIX] risk 계산 - safe access
+        initial_sl = state.get('positions', [{}])[0].get('initial_sl', current_sl) if state.get('positions') else current_sl
         risk = abs(entry_price - initial_sl)
         if risk == 0:
             risk = entry_price * 0.01
@@ -1189,7 +1229,7 @@ class UnifiedBot:
         )
         
         # SL Hit
-        if result['sl_hit']:
+        if result.get('sl_hit'):
             sl_price = result.get('sl_price', current_sl)
             logging.info(f"[LIVE] 🔴 SL HIT: {direction} @ {sl_price:.2f}")
             
@@ -1204,21 +1244,22 @@ class UnifiedBot:
             return {'action': 'CLOSE', 'direction': direction, 'price': sl_price, 'reason': 'SL_HIT'}
         
         # 상태 업데이트
-        state['extreme_price'] = result['new_extreme']
+        state.update({'extreme_price': result.get('new_extreme')})
         
         # [FIX] SL 업데이트 - API 호출
-        if result['new_sl']:
-            if (direction == 'Long' and result['new_sl'] > current_sl) or \
-               (direction == 'Short' and result['new_sl'] < current_sl):
+        new_sl_val = result.get('new_sl')
+        if new_sl_val:
+            if (direction == 'Long' and new_sl_val > current_sl) or \
+               (direction == 'Short' and new_sl_val < current_sl):
                 if not getattr(self.exchange, 'dry_run', False):
-                    if self.exchange.update_stop_loss(result['new_sl']):
-                        state['current_sl'] = result['new_sl']
-                        logging.info(f"[LIVE] 📈 SL Updated (API): {result['new_sl']:.2f}")
+                    if self.exchange.update_stop_loss(new_sl_val):
+                        state.update({'current_sl': new_sl_val})
+                        logging.info(f"[LIVE] 📈 SL Updated (API): {new_sl_val:.2f}")
                     else:
                         logging.warning("[LIVE] ⚠️ SL Update API failed")
                 else:
-                    state['current_sl'] = result['new_sl']
-                    logging.info(f"[LIVE] 📈 SL Updated (DRY): {result['new_sl']:.2f}")
+                    state.update({'current_sl': new_sl_val})
+                    logging.info(f"[LIVE] 📈 SL Updated (DRY): {new_sl_val:.2f}")
         
         # 풀백 추가 진입
         enable_pullback = params.get('enable_pullback', False)
@@ -1324,14 +1365,14 @@ class UnifiedBot:
             state['add_count'] = 0
             state['pending'] = []  # 진입 후 pending 클리어
             
-            logging.info(f"[LIVE] 🟢 ENTRY: {direction} @ {entry_price:.2f}, SL={sl:.2f}, Pattern={signal.get('pattern', 'W/M')}")
+            logging.info(f"[LIVE] 🟢 ENTRY: {direction} @ {entry_price:.2f}, SL={sl:.2f}, Pattern={getattr(signal, 'pattern', signal.get('pattern', 'W/M')) if isinstance(signal, dict) else getattr(signal, 'pattern', 'W/M')}")
             
             return {
                 'action': 'ENTRY',
                 'direction': direction,
                 'price': entry_price,
                 'sl': sl,
-                'pattern': signal.get('pattern', 'W/M')
+                'pattern': getattr(signal, 'pattern', signal.get('pattern', 'W/M')) if isinstance(signal, dict) else getattr(signal, 'pattern', 'W/M')
             }
         
         return None
@@ -1592,6 +1633,9 @@ class UnifiedBot:
                             self._execute_live_entry(action)
                         elif action.get('action') == 'CLOSE':
                             self._execute_live_close(action)
+                        elif action.get('action') == 'ADD':
+                            # [NEW] 실시간 추가 진입 (불타기) 처리
+                            self._execute_live_add(action)
 
             except Exception as e:
                 logging.error(f"[BOT] Error in _process_new_candle: {e}")
@@ -1775,7 +1819,8 @@ class UnifiedBot:
                         if self.notifier:
                             self.notifier.notify_error(f"🛑 일일 손실 한도 도달!\n현재 손실: {current_daily_dd:.2f}%\n봇이 자동으로 매매를 중단합니다.")
                 
-                trade_logger.info(f"[TRADE] {direction.upper()}_EXIT | {self.exchange.symbol} | Entry={entry:.2f} | Exit={price:.2f} | PnL={pnl_pct_leveraged:+.2f}% | Profit=${profit_usd:+.2f} | Balance=${new_balance:.2f}")
+                order_id = getattr(self.position, 'order_id', '') if self.position else ''
+                trade_logger.info(f"[TRADE] {direction.upper()}_EXIT | {self.exchange.symbol} | Entry={entry:.2f} | Exit={price:.2f} | PnL={pnl_pct_leveraged:+.2f}% | Profit=${profit_usd:+.2f} | Balance=${new_balance:.2f} | ID={order_id}")
 
                 # [GUI] 일반 청산 로그
                 self._log_trade_to_gui({
@@ -2065,7 +2110,11 @@ class UnifiedBot:
             
             # 3. 큐에서 유효한 시그널 찾기
             for signal in self.pending_signals:
-                signal_type = signal['type']  # 'Long' or 'Short'
+                # [FIX] Safe Access for Signal Object or Dict
+                if isinstance(signal, dict):
+                    signal_type = signal.get('type', 'Unknown')  # getattr equivalent for dict
+                else:
+                    signal_type = getattr(signal, 'type', 'Unknown')
                 
                 # 방향 필터
                 if self.direction == 'Long' and signal_type != 'Long':
@@ -2100,11 +2149,11 @@ class UnifiedBot:
                 # 큐에서 사용한 시그널 제거
                 self.pending_signals.remove(signal)
                 
-                logging.info(f"[QUEUE] ✅ Valid {signal_type} from queue @ ${price:,.0f} (pattern: {signal.get('pattern', 'W/M')})")
+                logging.info(f"[QUEUE] ✅ Valid {signal_type} from queue @ ${price:,.0f} (pattern: {getattr(signal, 'pattern', signal.get('pattern', 'W/M')) if isinstance(signal, dict) else getattr(signal, 'pattern', 'W/M')})")
                 
                 return Signal(
                     type=signal_type,
-                    pattern=signal.get('pattern', 'W/M'),
+                    pattern=getattr(signal, 'pattern', signal.get('pattern', 'W/M')) if isinstance(signal, dict) else getattr(signal, 'pattern', 'W/M'),
                     stop_loss=sl,
                     atr=atr,
                     timestamp=datetime.now()
@@ -2191,31 +2240,91 @@ class UnifiedBot:
             positions = self.exchange.get_positions()
             
             # 2. 현재 심볼 포지션 찾기
-            my_pos = None
+            # [FIX] Hedge Mode: 같은 심볼에 Long/Short 둘 다 있을 수 있음
+            my_positions = []
             for pos in positions:
                 if pos.get('symbol') == self.exchange.symbol:
-                    my_pos = pos
-                    break
+                    my_positions.append(pos)
             
-            # 3. 봇 상태와 비교
+            # 3. 봇 상태와 비교 (하나라도 size > 0이면 거래소에 포지션 있음)
             bot_has_pos = self.bt_state and self.bt_state.get('position')
-            exchange_has_pos = my_pos and my_pos.get('size', 0) > 0
+            exchange_has_pos = any(p.get('size', 0) > 0 for p in my_positions)
+            
+            has_changed = False
             
             if bot_has_pos and not exchange_has_pos:
                 # 봇은 있는데 거래소 없음 → 봇 상태 초기화
                 logging.warning("[SYNC] 불일치: 봇만 포지션 → 초기화")
                 self.bt_state['position'] = None
                 self.bt_state['positions'] = []
+                self.position = None
+                self.exchange.position = None
+                has_changed = True
             
-            elif not bot_has_pos and exchange_has_pos:
-                # 거래소만 있음 → 봇 상태 동기화
-                logging.warning(f"[SYNC] 불일치: 거래소만 포지션 → 동기화")
-                side = my_pos.get('side', 'Buy')
-                self.bt_state['position'] = 'Long' if side == 'Buy' else 'Short'
-                self.bt_state['positions'] = [{'entry': my_pos.get('entry_price', 0)}]
+            elif exchange_has_pos:
+                # 거래소에 포지션이 있을 때
+                valid_pos = next((p for p in my_positions if p.get('size', 0) > 0), None)
+                if valid_pos:
+                    side = 'Long' if valid_pos.get('side', 'Buy') == 'Buy' else 'Short'
+                    entry = valid_pos.get('entry_price', 0)
+                    sl = valid_pos.get('stop_loss', 0)
+                    size = valid_pos.get('size', 0)
+                    
+                    # [NEW] 외부 포지션 감지 로직 (Order ID Tracking)
+                    # 봇 상태에 포지션 기록이 전혀 없거나, 기록은 있는데 order_id가 불일치하면 외부 진입으로 간주
+                    bot_order_ids = [str(p.get('order_id')) for p in self.bt_state.get('positions', []) if p.get('order_id')]
+                    exchange_order_id = str(valid_pos.get('order_id', ''))
+                    
+                    is_bot_order = True
+                    if exchange_order_id and bot_order_ids:
+                        if exchange_order_id not in bot_order_ids:
+                            is_bot_order = False
+                    
+                    if not bot_has_pos or not is_bot_order:
+                        msg = f"[SYNC] ⚠️ 외부 포지션 감지 ({side} @ {entry}, ID: {exchange_order_id}). 봇이 관리하지 않는 주문이며 무시됩니다."
+                        logging.warning(msg)
+                        if self.notifier:
+                            self.notifier.notify_error(f"⚠️ 외부 포지션 감지 ({self.exchange.symbol}): ID {exchange_order_id} 주문은 봇 관리 대상에서 제외됩니다.")
+                        return True
+                    
+                    # 봇 상태와 방향이 다르면 업데이트
+                    if self.bt_state.get('position') != side:
+                        logging.info(f"[SYNC] 포지션 방향 불일치로 업데이트 ({side} @ {entry})")
+                        self.bt_state['position'] = side
+                        # [FIX] 기존 order_id 보존하며 positions 업데이트
+                        if not self.bt_state.get('positions'):
+                            self.bt_state['positions'] = [{'entry': entry, 'initial_sl': sl, 'size': size, 'order_id': exchange_order_id}]
+                        else:
+                            # 첫 번째 포지션 정보만 업데이트하되 ID는 유지
+                            p0 = self.bt_state['positions'][0]
+                            p0.update({'entry': entry, 'initial_sl': sl, 'size': size})
+                            if exchange_order_id: p0['order_id'] = exchange_order_id
+                            
+                        self.bt_state['current_sl'] = sl
+                        self.bt_state['extreme_price'] = entry
+                        has_changed = True
+                        
+                    # self.position 객체가 없으면 생성 (봇 엔진용)
+                    if self.position is None or self.position.side != side:
+                        self.position = Position(
+                            symbol=self.exchange.symbol,
+                            side=side,
+                            entry_price=entry,
+                            size=size,
+                            stop_loss=sl,
+                            initial_sl=sl,
+                            risk=0,
+                            entry_time=datetime.now()
+                        )
+                        self.exchange.position = self.position
+                        logging.info(f"[SYNC] Position 객체 복구: {side}")
+                        has_changed = True
             
+            if has_changed:
+                self.save_state()
+                logging.info("[SYNC] ✅ 봇 상태 저장 완료")
             else:
-                logging.debug(f"[SYNC] 동기화 완료: 포지션={'있음' if bot_has_pos else '없음'}")
+                logging.info(f"[SYNC] 동기화 완료: 포지션={'있음' if bot_has_pos else '없음'} (거래소 {len(my_positions)}개)")
             
             return True
         except Exception as e:
@@ -2240,8 +2349,8 @@ class UnifiedBot:
                     c = pred.get('conditions', {})
                     if c.get('pattern', {}).get('met'):
                         logging.debug(f"[PREDICT] ⏳ 패턴 있음, MTF 필터 대기중")
-        except Exception:
-            pass  # 예측 로그는 조용히 실패
+        except Exception as e:
+            logging.debug(f"[PREDICT] Log failed: {e}")
     
     def _run_data_monitor(self):
         """[NEW] 백그라운드 데이터 무결성 모니터링 (1분 주기 예측 + 5분 주기 동기화)"""
@@ -2515,6 +2624,9 @@ class UnifiedBot:
                     self.position = Position.from_dict(state['position'])
                     self.exchange.position = self.position
                     self.exchange.capital = state.get('capital', self.exchange.amount_usd)
+                    # [NEW] bt_state 복구
+                    if state.get('bt_state'):
+                        self.bt_state.update(state['bt_state'])
                     logging.info(f"State loaded (new): {self.position.side} @ {self.position.entry_price}")
                 return
             
@@ -2526,6 +2638,9 @@ class UnifiedBot:
                     self.position = Position.from_dict(state['position'])
                     self.exchange.position = self.position
                     self.exchange.capital = state.get('capital', self.exchange.amount_usd)
+                    # [NEW] bt_state 복구
+                    if state.get('bt_state'):
+                        self.bt_state.update(state['bt_state'])
                     logging.info(f"State loaded: {self.position.side} @ {self.position.entry_price}")
         except Exception as e:
             logging.error(f"State load error: {e}")
@@ -2537,83 +2652,40 @@ class UnifiedBot:
                 'position': self.position.to_dict() if self.position else None,
                 'capital': self.exchange.capital,
                 'exchange': self.exchange.name,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                # [NEW] bt_state도 저장 (재시작 시 복구용)
+                'bt_state': {
+                    'position': self.bt_state.get('position') if self.bt_state else None,
+                    'positions': self.bt_state.get('positions', []) if self.bt_state else [],
+                    'current_sl': self.bt_state.get('current_sl', 0) if self.bt_state else 0,
+                    'extreme_price': self.bt_state.get('extreme_price', 0) if self.bt_state else 0,
+                }
             }
             
             # 새 Storage 사용 (즉시 저장, 원자적 교체)
             if USE_NEW_STORAGE and hasattr(self, 'state_storage'):
                 self.state_storage.save(state)
-                return
+                # [FIX] UI 동기화용으로 STATE_FILE에도 저장 (return 제거)
             
-            # 레거시 방식
-            with open(STATE_FILE, 'w') as f:
+            # 레거시 방식 + UI 동기화용 (항상 실행)
+            # [FIX] 전역 STATE_FILE 대신 인스턴스 전용 state_file 사용
+            target_file = getattr(self, 'state_file', DEFAULT_STATE_FILE)
+            with open(target_file, 'w') as f:
                 json.dump(state, f, indent=2)
+            
+            # 하위 호환성 위해 하나는 무조건 bot_state.json으로 저장 (마지막 봇 상태)
+            if target_file != DEFAULT_STATE_FILE:
+                try:
+                    with open(DEFAULT_STATE_FILE, 'w') as f:
+                        json.dump(state, f, indent=2)
+                except Exception as e:
+                    logging.debug(f"Save legacy state failed: {e}")
         except Exception as e:
             logging.error(f"State save error: {e}")
     
     def _sync_with_exchange_position(self):
-        """거래소 실제 포지션과 동기화 (유령 포지션 방지)"""
-        if self.simulation_mode:
-            return
-        
-        # [FIX] Exchange 객체가 None이면 스킵
-        if self.exchange is None:
-            logging.debug("[SYNC] Exchange not initialized yet, skipping sync")
-            return
-        
-        try:
-            # 거래소에서 실제 포지션 조회
-            if not hasattr(self.exchange, 'get_positions'):
-                logging.debug("[SYNC] Exchange does not support get_positions")
-                return
-
-            
-            positions = self.exchange.get_positions()
-            symbol = self.exchange.symbol.upper().replace('/', '')
-            
-            # 현재 심볼의 포지션 찾기
-            exchange_pos = None
-            for pos in positions:
-                if pos.get('symbol', '').upper() == symbol:
-                    exchange_pos = pos
-                    break
-            
-            # 동기화 로직
-            if exchange_pos and exchange_pos.get('size', 0) > 0:
-                # 거래소에 포지션 있음
-                side = 'Long' if exchange_pos.get('side') == 'Buy' else 'Short'
-                entry_price = exchange_pos.get('entry_price', 0)
-                size = exchange_pos.get('size', 0)
-                
-                if self.position is None:
-                    # 로컬에 없고 거래소에 있음 → 거래소 기준 복구
-                    logging.warning(f"[SYNC] ⚠️ Found orphan position on exchange: {side} {size} @ {entry_price}")
-                    self.position = Position(
-                        side=side,
-                        entry_price=entry_price,
-                        size=size,
-                        stop_loss=entry_price * (0.95 if side == 'Long' else 1.05),  # 5% 기본 SL
-                        add_count=0
-                    )
-                    self.exchange.position = self.position
-                    self.save_state()
-                    logging.info(f"[SYNC] ✅ Synced from exchange: {side} @ {entry_price}")
-                else:
-                    # 둘 다 있음 → 일치 확인
-                    if abs(self.position.entry_price - entry_price) > 1:
-                        logging.warning(f"[SYNC] Position entry price mismatch: local={self.position.entry_price}, exchange={entry_price}")
-            else:
-                # 거래소에 포지션 없음
-                if self.position is not None:
-                    # 로컬에 있고 거래소에 없음 → 유령 포지션 삭제
-                    logging.warning(f"[SYNC] ⚠️ Ghost position detected! Local: {self.position.side} @ {self.position.entry_price}")
-                    logging.warning(f"[SYNC] 🗑️ Clearing ghost position (exchange has no position)")
-                    self.position = None
-                    self.exchange.position = None
-                    self.save_state()
-                    
-        except Exception as e:
-            logging.error(f"[SYNC] Position sync error: {e}")
+        """거래소 실제 포지션과 동기화 (sync_position의 Wrapper)"""
+        return self.sync_position()
     
     def save_trade_history(self, trade: dict):
         """거래 히스토리 저장"""
@@ -2879,19 +2951,20 @@ class UnifiedBot:
             )
             
             # SL 히트 처리
-            if result['sl_hit']:
+            if result.get('sl_hit'):
                 self._close_on_sl(current_sl)
                 return
             
             # Extreme Price 업데이트
-            self.position.extreme_price = result['new_extreme']
+            self.position.extreme_price = result.get('new_extreme')
             
             # SL 업데이트 실행
-            if result['new_sl']:
-                if self.exchange.update_stop_loss(result['new_sl']):
-                    self.position.stop_loss = result['new_sl']
+            new_sl_val = result.get('new_sl')
+            if new_sl_val:
+                if self.exchange.update_stop_loss(new_sl_val):
+                    self.position.stop_loss = new_sl_val
                     self.save_state()
-                    logging.info(f"📈 Trailing SL: {result['new_sl']:.2f} (RSI={rsi:.1f}, Mult={result['mult_used']})")
+                    logging.info(f"📈 Trailing SL: {new_sl_val:.2f} (RSI={rsi:.1f}, Mult={result.get('mult_used')})")
             
             # =============== 풀백 추가 진입 (strategy_core 중앙화) ===============
             if self.ENABLE_PULLBACK and hasattr(self.position, 'add_count') and self.position.add_count < self.MAX_ADDS:
@@ -2906,10 +2979,22 @@ class UnifiedBot:
                     logging.info(f"📊 Pullback Entry Triggered: RSI={rsi:.1f}")
                     # 추가 진입 실행 (기존 포지션 크기의 100%)
                     add_size = self.exchange.capital * 1.0 * self.exchange.leverage / current_price
-                    if self.exchange.add_position(self.position.side, add_size):
+                    result_order = self.exchange.add_position(self.position.side, add_size)
+                    if result_order:
                         self.position.add_count = getattr(self.position, 'add_count', 0) + 1
+                        
+                        # [BT_STATE] 추가 진입 기록
+                        if self.bt_state is not None:
+                            self.bt_state['positions'].append({
+                                'entry': current_price,
+                                'initial_sl': self.position.stop_loss,
+                                'size': add_size,
+                                'time': datetime.now().isoformat(),
+                                'order_id': result_order if isinstance(result_order, str) else ''
+                            })
+                        
                         self.save_state()
-                        logging.info(f"✅ Pullback Add #{self.position.add_count}: {add_size:.4f} @ {current_price:.2f}")
+                        logging.info(f"✅ Pullback Add #{self.position.add_count}: {add_size:.4f} @ {current_price:.2f} (ID: {result_order})")
 
         except Exception as e:
             logging.error(f"Position manage error: {e}")
@@ -2961,6 +3046,10 @@ class UnifiedBot:
         
         logging.info(f"🔴 SL HIT: PnL {pnl_pct:.2f}% (${pnl_usd:.2f}) | Capital: ${self.exchange.capital:.2f}")
         
+        # [TRADE_LOG] 기록
+        order_id = getattr(self.position, 'order_id', '') if self.position else ''
+        trade_logger.info(f"[TRADE] SL_EXIT | {self.exchange.symbol} | Entry={entry:.2f} | Exit={exit_price:.2f} | PnL={pnl_pct:+.2f}% | Profit=${pnl_usd:+.2f} | ID={order_id}")
+        
         # [CRITICAL] 거래 기록 저장 (복리 계산용)
         self.save_trade_history({
             'time': datetime.now().isoformat(),
@@ -2973,7 +3062,8 @@ class UnifiedBot:
             'pnl_usd': pnl_usd,
             'pnl_pct': pnl_pct,
             'be_triggered': getattr(self.position, 'be_triggered', False),
-            'exchange': self.exchange.name
+            'exchange': self.exchange.name,
+            'order_id': getattr(self.position, 'order_id', '') if self.position else ''
         })
         
         # [GUI] SL 청산 로그
@@ -3017,6 +3107,41 @@ class UnifiedBot:
         except Exception as e:
             logging.error(f"[HEALTH] Trade recording error: {e}")
     
+    # [NEW] 실시간 추가 진입 실행
+    def _execute_live_add(self, action: dict) -> bool:
+        """실시간 추가 진입 (불타기) 처리"""
+        try:
+            if not self.position:
+                return False
+                
+            current_price = action.get('price', self.exchange.get_current_price())
+            # 추가 진입 수량 계산 (기존 자본 기준)
+            add_size = self.exchange.capital * 1.0 * self.exchange.leverage / current_price
+            
+            logging.info(f"📊 [WS] Pullback Add Triggered: {self.position.side} @ {current_price:.2f}")
+            
+            result_order = self.exchange.add_position(self.position.side, add_size)
+            if result_order:
+                self.position.add_count = getattr(self.position, 'add_count', 0) + 1
+                
+                # [BT_STATE] 추가 진입 기록
+                if self.bt_state is not None:
+                    self.bt_state['positions'].append({
+                        'entry': current_price,
+                        'initial_sl': self.position.stop_loss,
+                        'size': add_size,
+                        'time': datetime.now().isoformat(),
+                        'order_id': result_order if isinstance(result_order, str) else ''
+                    })
+                
+                self.save_state()
+                logging.info(f"✅ [WS] Pullback Add #{self.position.add_count}: {add_size:.4f} @ {current_price:.2f} (ID: {result_order})")
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"[WS] Pullback Add Error: {e}")
+            return False
+
     # [NEW] 주문 실행 메서드 (Execute Entry)
     def execute_entry(self, signal) -> bool:
         """신호 기반 진입 주문 실행 (사용자 요청 안전 로직 추가)"""
@@ -3025,6 +3150,22 @@ class UnifiedBot:
             if self.stop_trading:
                 logging.warning("[ENTRY] 🚫 Trading is stopped due to daily loss limit.")
                 return False
+            
+            # [FIX] 기존 포지션 존재 시 진입 차단 (중복 진입 방지)
+            if self.bt_state and self.bt_state.get('position'):
+                existing_pos = self.bt_state.get('position')
+                logging.warning(f"[ENTRY] 🚫 Already in position: {existing_pos} - skipping entry")
+                return False
+            
+            # 거래소에서도 포지션 체크 (이중 안전)
+            if hasattr(self.exchange, 'get_positions'):
+                try:
+                    positions = self.exchange.get_positions()
+                    if positions and any(p.get('size', 0) > 0 for p in positions):
+                        logging.warning(f"[ENTRY] 🚫 Exchange has open position - skipping entry")
+                        return False
+                except Exception as e:
+                    logging.debug(f"[ENTRY] Position check failed: {e}")
 
             # [NEW] 라이선스 체크 (ADMIN Bypass)
             if not self._can_trade():
@@ -3060,7 +3201,7 @@ class UnifiedBot:
             
             # [HOTFIX] 현물 거래소 숏 차단 (Upbit, Bithumb)
             if isinstance(signal, dict):
-                direction = signal.get('type', 'Long')
+                direction = signal.get('type', 'Long')  # getattr equivalent
             else:
                 direction = getattr(signal, 'type', 'Long')
             exchange_name = getattr(self.exchange, 'name', '').lower()
@@ -3076,7 +3217,7 @@ class UnifiedBot:
                     'side': direction,
                     'price': price,
                     'time': datetime.now().isoformat(),
-                    'sl': getattr(signal, 'stop_loss', None)
+                    'sl': signal.get('stop_loss') if isinstance(signal, dict) else getattr(signal, 'stop_loss', None)
                 })
                 logging.info(f"[SIM] Entry recorded: {self.trade_history[-1]}")
                 return True
@@ -3171,7 +3312,11 @@ class UnifiedBot:
                 logging.info(f"[ENTRY] ✅ Order placed successfully. Start Tracking.")
                 
                 # [이슈#2 수정] SL 설정 실패 시 즉시 청산
-                sl_set = order.get('sl_set', True)  # API가 sl_set 반환하지 않으면 True로 가정
+                # [FIX] order가 bool일 수 있음 (place_market_order가 True/False 반환)
+                if isinstance(order, dict):
+                    sl_set = order.get('sl_set', True)  # API가 sl_set 반환하지 않으면 True로 가정
+                else:
+                    sl_set = True  # bool이면 SL 설정 성공으로 가정
                 if not sl_set and not getattr(self.exchange, 'dry_run', False):
                     logging.error(f"[ENTRY] 🔴 CRITICAL: SL not set! Closing position immediately.")
                     if self.notifier: self.notifier.notify_error("🔴 SL 설정 실패! 포지션 즉시 청산")
@@ -3192,10 +3337,25 @@ class UnifiedBot:
                     initial_sl=signal.stop_loss,
                     risk=abs(price - signal.stop_loss),
                     entry_time=datetime.now(),
-                    atr=signal.atr
+                    atr=signal.atr,
+                    order_id=order if isinstance(order, str) else ""
                 )
                 self.position.extreme_price = price
                 self.exchange.position = self.position # Exchange에도 동기화
+                
+                # [FIX] bt_state 업데이트 (UI 동기화용)
+                if self.bt_state is not None:
+                    self.bt_state['position'] = side
+                    self.bt_state['positions'] = [{
+                        'entry': price,
+                        'initial_sl': signal.stop_loss,
+                        'size': qty,
+                        'time': datetime.now().isoformat(),
+                        'order_id': order if isinstance(order, str) else ''
+                    }]
+                    self.bt_state['current_sl'] = signal.stop_loss
+                    self.bt_state['extreme_price'] = price
+                    logging.debug(f"[ENTRY] bt_state updated: {side} @ {price}")
                 
                 self.save_state()
                 
@@ -3239,8 +3399,8 @@ class UnifiedBot:
         try:
             from bot_status import update_bot_running, update_bot_stopped, update_bot_state, update_position, clear_position
             update_bot_running(self.exchange.name, self.exchange.symbol, "Alpha-X7 Final")
-        except ImportError:
-            pass
+        except ImportError as e:
+            logging.debug(f"Bot status modules not found: {e}")
 
         
         # 2. 텔레그램 시작 알림
@@ -3390,6 +3550,7 @@ class UnifiedBot:
                         pass
                             
                     except queue.Empty:
+                        # self.logger.debug("Candle queue empty")
                         pass
                 else:
                     # 기존 REST 폴링 모드 (1초 대기)
@@ -3545,8 +3706,8 @@ class UnifiedBot:
 
                     with open(status_file, 'w', encoding='utf-8') as f:
                         json.dump(status_data, f)
-                except (IOError, OSError):
-                    pass  # 상태 파일 저장 실패 무시
+                except (IOError, OSError) as e:
+                    logging.debug(f"Status file update failed: {e}")
 
                 time.sleep(1)
                 

@@ -18,7 +18,7 @@ class Updater:
     """앱 내 자동 업데이트 관리 (Silent Install 방식)"""
     
     VERSION_URL = "https://raw.githubusercontent.com/choigoyoon/TwinStar-Quantum/main/version.json"
-    CURRENT_VERSION = "1.2.7"
+    CURRENT_VERSION = "1.4.4"
     
     def __init__(self):
         self.base_path = self._get_base_path()
@@ -40,8 +40,13 @@ class Updater:
             except Exception:
                 try:
                     return version_file.read_text(encoding='utf-8-sig').strip()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"[UPDATER] 버전 파일 로드 실패 (utf-8-sig): {e}")
+                    # The original code returned CURRENT_VERSION if both failed.
+                    # The instruction's `return False` is not compatible with the method's return type (str).
+                    # Reverting to original behavior of returning CURRENT_VERSION on failure,
+                    # but adding the requested logging.
+                    return self.CURRENT_VERSION
         return self.CURRENT_VERSION
     
     def _save_current_version(self, version: str):
@@ -89,24 +94,10 @@ class Updater:
                 'latest_version': latest,
                 'download_url': data.get('download_url', ''),  # Setup.exe URL
                 'download_size': data.get('download_size', ''),
-                'download_size': data.get('download_size', ''),
                 'changelog': self._parse_changelog(data.get('changelog', []), latest),
                 'force_update': data.get('force_update', False)
             }
-            
-    def _parse_changelog(self, raw_data, version: str) -> list:
-        """changelog 데이터 파싱 (Dict/List/Str -> List)"""
-        try:
-            if isinstance(raw_data, dict):
-                # "v1.2.3" or "1.2.3" key search
-                return raw_data.get(f"v{version}", raw_data.get(version, []))
-            elif isinstance(raw_data, str):
-                return [raw_data]
-            elif isinstance(raw_data, list):
-                return raw_data
-            return []
-        except Exception:
-            return []
+
         except requests.exceptions.RequestException as e:
             logging.error(f"[UPDATER] 버전 확인 실패: {e}")
             return {
@@ -185,6 +176,21 @@ class Updater:
         except Exception as e:
             logging.error(f"[UPDATER] 인스톨러 실행 실패: {e}")
             return False
+
+
+    def _parse_changelog(self, raw_data, version: str) -> list:
+        """changelog 데이터 파싱 (Dict/List/Str -> List)"""
+        try:
+            if isinstance(raw_data, dict):
+                # "v1.2.3" or "1.2.3" key search
+                return raw_data.get(f"v{version}", raw_data.get(version, []))
+            elif isinstance(raw_data, str):
+                return [raw_data]
+            elif isinstance(raw_data, list):
+                return raw_data
+            return []
+        except Exception:
+            return []
 
 
 # 싱글톤

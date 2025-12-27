@@ -325,6 +325,7 @@ class CCXTExchange(BaseExchange):
                 except Exception as sl_err:
                     logging.warning(f"SL order not supported or failed: {sl_err}")
                 
+                order_id = str(order.get('id', ''))
                 self.position = Position(
                     symbol=self.symbol,
                     side=side,
@@ -334,11 +335,12 @@ class CCXTExchange(BaseExchange):
                     initial_sl=stop_loss,
                     risk=abs(price - stop_loss),
                     be_triggered=False,
-                    entry_time=datetime.now()
+                    entry_time=datetime.now(),
+                    order_id=order_id
                 )
                 
-                logging.info(f"Order placed: {side} {size} @ {price}")
-                return True
+                logging.info(f"Order placed: {side} {size} @ {price} (ID: {order_id})")
+                return order_id
             
             return False
             
@@ -356,9 +358,10 @@ class CCXTExchange(BaseExchange):
                 open_orders = self.ccxt_exchange.fetch_open_orders(symbol)
                 for order in open_orders:
                     if order.get('type') in ['stop_market', 'stop']:
-                        self.ccxt_exchange.cancel_order(order['id'], symbol)
-            except Exception:
-                pass
+                        if isinstance(order, dict) and order.get('id'):
+                            self.ccxt_exchange.cancel_order(order['id'], symbol)
+            except Exception as e:
+                logging.debug(f"Order cancel ignored: {e}")
             
             # 새 스탑 주문 생성
             if self.position:
@@ -444,15 +447,17 @@ class CCXTExchange(BaseExchange):
             if order:
                 price = self.get_current_price()
                 
+                order_id = str(order.get('id', ''))
                 # 평단가 재계산
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
                 self.position.size = total_size
                 self.position.entry_price = avg_price
+                self.position.order_id = order_id
                 
-                logging.info(f"Added position: {side} {size} @ {price}")
-                return True
+                logging.info(f"Added position: {side} {size} @ {price} (ID: {order_id})")
+                return order_id
             
             return False
             

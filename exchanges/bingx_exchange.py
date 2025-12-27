@@ -36,6 +36,7 @@ class BingXExchange(BaseExchange):
         self.testnet = config.get('testnet', False)
         self.exchange = None
         self.time_offset = 0
+        self.hedge_mode = False
     
     def connect(self) -> bool:
         """API 연결"""
@@ -109,12 +110,19 @@ class BingXExchange(BaseExchange):
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
+                params = {'recvWindow': 60000}
+                
+                # [NEW] Hedge Mode Check (BingX usually One-Way, but if Hedge enabled:)
+                # BingX Standard Params for Hedge: positionSide=LONG/SHORT
+                if self.hedge_mode:
+                     params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                
                 order = self.exchange.create_order(
                     symbol=symbol,
                     type='market',
                     side=order_side,
                     amount=size,
-                    params={'recvWindow': 60000}
+                    params=params
                 )
                 
                 if order:
@@ -123,15 +131,20 @@ class BingXExchange(BaseExchange):
                     # SL 설정
                     try:
                         sl_side = 'sell' if side == 'Long' else 'buy'
+                        sl_params = {
+                            'stopPrice': stop_loss,
+                            'reduceOnly': True
+                        }
+                        # [FIX] Hedge Mode Support (BingX using positionSide)
+                        if self.hedge_mode:
+                            sl_params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+
                         self.exchange.create_order(
                             symbol=symbol,
                             type='stop_market',
                             side=sl_side,
                             amount=size,
-                            params={
-                                'stopPrice': stop_loss,
-                                'reduceOnly': True
-                            }
+                            params=sl_params
                         )
                     except Exception as sl_err:
                         logging.warning(f"SL order failed: {sl_err}")
@@ -168,23 +181,29 @@ class BingXExchange(BaseExchange):
                 orders = self.exchange.fetch_open_orders(symbol)
                 for order in orders:
                     if order.get('type') in ['stop_market', 'stop']:
-                        self.exchange.cancel_order(order['id'], symbol)
+                        oid = order.get('id') if isinstance(order, dict) else None
+                    if oid:
+                        self.exchange.cancel_order(oid, symbol)
             except Exception as e:
                 logging.debug(f'무시된 예외: {e}')
             
             # 새 스탑 주문
             if self.position:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
+                params = {
+                    'stopPrice': new_sl,
+                    'reduceOnly': True
+                }
+                # [FIX] Hedge Mode Support (BingX using positionSide)
+                if self.hedge_mode:
+                    params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
                 
                 self.exchange.create_order(
                     symbol=symbol,
                     type='stop_market',
                     side=sl_side,
                     amount=self.position.size,
-                    params={
-                        'stopPrice': new_sl,
-                        'reduceOnly': True
-                    }
+                    params=params
                 )
                 self.position.stop_loss = new_sl
                 logging.info(f"[BingX] SL updated: {new_sl}")
@@ -205,12 +224,17 @@ class BingXExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
             
+            params = {'reduceOnly': True}
+            # [FIX] Hedge Mode Support (BingX using positionSide)
+            if self.hedge_mode:
+                params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
                 side=close_side,
                 amount=self.position.size,
-                params={'reduceOnly': True}
+                params=params
             )
             
             if order:
@@ -410,8 +434,8 @@ class BingXExchange(BaseExchange):
         try:
             if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
                 return self.exchange.fetch_time()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 
 

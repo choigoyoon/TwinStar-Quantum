@@ -28,6 +28,9 @@ class Position:
     extreme_price: float = 0.0
     trail_start_price: float = 0.0
     trail_dist: float = 0.0
+    # Tracking
+    order_id: str = ""
+    status: str = "open"
     
     def to_dict(self) -> dict:
         return {
@@ -43,7 +46,9 @@ class Position:
             'atr': self.atr,
             'extreme_price': self.extreme_price,
             'trail_start_price': self.trail_start_price,
-            'trail_dist': self.trail_dist
+            'trail_dist': self.trail_dist,
+            'order_id': self.order_id,
+            'status': self.status
         }
     
     @classmethod
@@ -61,7 +66,9 @@ class Position:
             atr=data.get('atr', 0.0),
             extreme_price=data.get('extreme_price', 0.0),
             trail_start_price=data.get('trail_start_price', 0.0),
-            trail_dist=data.get('trail_dist', 0.0)
+            trail_dist=data.get('trail_dist', 0.0),
+            order_id=data.get('order_id', ''),
+            status=data.get('status', 'open')
         )
 
 
@@ -228,11 +235,11 @@ class BaseExchange(ABC):
                 with open(log_file, 'r', encoding='utf-8') as f:
                     trades = json.load(f)
                 return trades[:limit]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to load trade history from {log_file}: {e}")
         return []
     
-    def get_realized_pnl(self, limit: int = 100) -> float:
+    def get_realized_pnl(selfself, limit: int = 100) -> float:
         """누적 실현 손익 조회"""
         trades = self.get_trade_history(limit=limit)
         return sum(t.get('pnl', 0) for t in trades)

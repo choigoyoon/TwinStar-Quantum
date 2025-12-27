@@ -193,6 +193,7 @@ class BithumbExchange(BaseExchange):
             result = self.bithumb.sell_market_order(self.coin, size)
         
         if result and result[0] == 'success':
+            order_id = str(result[2]) if len(result) > 2 else "True"
             self.position = Position(
                 symbol=self.symbol,
                 side=side,
@@ -202,10 +203,11 @@ class BithumbExchange(BaseExchange):
                 initial_sl=stop_loss,
                 risk=abs(price - stop_loss),
                 be_triggered=False,
-                entry_time=datetime.now()
+                entry_time=datetime.now(),
+                order_id=order_id
             )
-            logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원")
-            return True
+            logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
+            return order_id
         
         logging.error(f"[Bithumb] Order failed: {result}")
         return False
@@ -223,6 +225,7 @@ class BithumbExchange(BaseExchange):
         )
         
         if order:
+            order_id = str(order.get('id', ''))
             self.position = Position(
                 symbol=self.symbol,
                 side=side,
@@ -232,10 +235,11 @@ class BithumbExchange(BaseExchange):
                 initial_sl=stop_loss,
                 risk=abs(price - stop_loss),
                 be_triggered=False,
-                entry_time=datetime.now()
+                entry_time=datetime.now(),
+                order_id=order_id
             )
-            logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원")
-            return True
+            logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
+            return order_id
         
         return False
     
@@ -296,14 +300,21 @@ class BithumbExchange(BaseExchange):
                     result = self.bithumb.sell_market_order(self.coin, size)
             
             if result and (self.use_ccxt or result[0] == 'success'):
+                order_id = ""
+                if self.use_ccxt:
+                    order_id = str(result.get('id', ''))
+                elif len(result) > 2:
+                    order_id = str(result[2])
+                
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
                 self.position.size = total_size
                 self.position.entry_price = avg_price
+                self.position.order_id = order_id
                 
-                logging.info(f"[Bithumb] Added: {size} @ {price:,.0f}원")
-                return True
+                logging.info(f"[Bithumb] Added: {size} @ {price:,.0f}원 (ID: {order_id})")
+                return order_id
             
             return False
             
@@ -458,7 +469,7 @@ class BithumbExchange(BaseExchange):
         try:
             if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
                 return self.exchange.fetch_time()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 

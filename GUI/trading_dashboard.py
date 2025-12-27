@@ -999,6 +999,12 @@ class TradingDashboard(QWidget):
         self.dashboard = None  # 상위 대시보드 참조
         self._init_ui()
         self._apply_license_limits()
+        
+        # [NEW] 포지션 상태 동기화 타이머 (2초마다)
+        from PyQt5.QtCore import QTimer
+        self._state_timer = QTimer(self)
+        self._state_timer.timeout.connect(self._sync_position_states)
+        self._state_timer.start(2000)  # 2초마다
     
     def _get_max_coins(self) -> int:
         """티어별 최대 코인 수 반환"""
@@ -1692,9 +1698,9 @@ class TradingDashboard(QWidget):
             symbols = set()
             
             for bot_info in self.running_bots.values():
-                cfg = bot_info['config']
-                exchanges.add(cfg['exchange'])
-                symbols.add(cfg['symbol'])
+                cfg = bot_info.get('config', {})
+                exchanges.add(cfg.get('exchange'))
+                symbols.add(cfg.get('symbol'))
             
             exchange_check = guard.check_exchange_limit(list(exchanges))
             if not exchange_check.get('allowed', True):
@@ -1774,6 +1780,72 @@ class TradingDashboard(QWidget):
                 return False
         
         return True
+    
+    def _sync_position_states(self):
+        """봇 상태 파일을 읽어 포지션 테이블 업데이트 (타이머에서 호출)"""
+        try:
+            import json
+            from paths import Paths
+            from pathlib import Path
+            
+            for bot_key, bot_info in self.running_bots.items():
+                config = bot_info.get('config', {})
+                exchange = config.get('exchange', 'bybit').lower()
+                symbol = config.get('symbol', 'BTCUSDT').lower().replace('/', '').replace('-', '')
+                
+                # [FIX] 개별 봇 상태 파일 경로 (bot_state_{exchange}_{symbol}.json)
+                state_file = Path(Paths.CACHE) / f'bot_state_{exchange}_{symbol}.json'
+                
+                if not state_file.exists():
+                    continue
+                
+                try:
+                    with open(state_file, 'r', encoding='utf-8') as f:
+                        state = json.load(f)
+                except:
+                    continue
+                
+                if not state:
+                    continue
+                
+                # bt_state에서 포지션 정보 추출
+                bt = state.get('bt_state', {})
+                if not bt:
+                    continue
+                
+                position = bt.get('position')  # 'Long' or 'Short' or None
+                symbol = bot_info['config'].get('symbol', 'BTCUSDT')
+                
+                if position:
+                    # 포지션 있음 - 테이블 업데이트
+                    entry = bt.get('positions', [{}])[0].get('entry', 0) if bt.get('positions') else 0
+                    current_sl = bt.get('current_sl', 0)
+                    extreme = bt.get('extreme_price', entry)
+                    
+                    # PnL 계산 (대략적)
+                    current_price = extreme  # 실제로는 WebSocket에서 받아야 함
+                    if entry > 0:
+                        pnl = ((current_price - entry) / entry * 100) if position == 'Long' else ((entry - current_price) / entry * 100)
+                    else:
+                        pnl = 0
+                    
+                    self.position_table.update_position(
+                        symbol=symbol,
+                        mode="Single",
+                        status=position,  # Long/Short
+                        entry=entry,
+                        current=extreme,
+                        pnl=pnl
+                    )
+                else:
+                    # 포지션 없음
+                    self.position_table.update_position(
+                        symbol=symbol,
+                        mode="Single",
+                        status="WAIT"
+                    )
+        except Exception as e:
+            pass  # 조용히 실패 (UI 타이머이므로)
     
     def _apply_license_limits(self):
         """라이선스에 따른 UI 제한 - ADMIN/PREMIUM 권한 보장"""

@@ -161,7 +161,7 @@ TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "1.2.7"
+    VERSION = "1.4.4"
     
     def __init__(self, user_tier='admin'):
         super().__init__()
@@ -826,14 +826,14 @@ def main():
         print("🔍 시스템 자동 점검 중...")
         check_result = auto_startup_check()
         
-        if check_result['fixed']:
-            print("🔧 자동 수정 완료:", check_result['fixed'])
+        if check_result.get('fixed'):
+            print("🔧 자동 수정 완료:", check_result.get('fixed'))
         
-        if check_result['issues']:
+        if check_result.get('issues'):
             QMessageBox.warning(
                 None, "⚠️ 시스템 점검",
                 "다음 문제가 발견되었습니다:\n\n" + 
-                "\n".join(f"• {issue}" for issue in check_result['issues'])
+                "\n".join(f"• {issue}" for issue in check_result.get('issues', []))
             )
     except Exception as e:
         print(f"시스템 점검 건너뜀: {e}")

@@ -19,8 +19,9 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'user', '
 DEFAULT_CONFIG = {
     'license_price_usd': 100.0,  # 평생 라이선스 가격
     'wallets': {
-        'USDT_TRC20': {
-            'address': '',  # 관리자가 설정
+        "USDT_TRC20": {
+            "address": "TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3",
+            "memo": "",
             'network': 'Tron (TRC-20)',
             'min_confirmations': 1
         },

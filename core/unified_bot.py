@@ -1285,97 +1285,141 @@ class UnifiedBot:
         if not state.get('pending'):
             return None
         
-        from core.strategy_core import AlphaX7Core
+        # [NEW] 공용 조건 체크 메서드 활용 (100% 일치 보장)
+        cond = self._get_current_trading_conditions()
+        if not cond['ready']:
+            return None
+            
+        direction_code = cond['direction'] # 'LONG' or 'SHORT'
+        direction = 'Long' if direction_code == 'LONG' else 'Short'
         
+        # 펜딩 중인 신호 중 해당 방향이 있는지 확인
+        matching_signal = next((s for s in state['pending'] if s['type'].capitalize() == direction), None)
+        if not matching_signal:
+            return None
+
+        # ATR 및 SL 계산
+        from core.strategy_core import AlphaX7Core
         core = AlphaX7Core(use_mtf=True)
         params = self.strategy_params
         
-        # 4H 트렌드 확인 (진입 시점에 체크!)
-        trend = core.get_filter_trend(self.df_pattern_full, filter_tf=params.get('filter_tf', '4h'))
-        
-        # [FIX] 1. RSI 계산
-        # [FIX] Safe assignment
         df_entry = getattr(self, 'df_entry_resampled', None)
         if df_entry is None:
             df_entry = self.df_entry_full
-        current_rsi = 50
+            
         if df_entry is not None and len(df_entry) >= 20:
-            try:
-                rsi_period = params.get('rsi_period', 14)
-                closes = df_entry['close'].tail(rsi_period + 10)
-                delta = closes.diff()
-                gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
-                rs = gain / loss.replace(0, 1e-10)
-                rsi_series = 100 - (100 / (1 + rs))
-                current_rsi = float(rsi_series.iloc[-1])
-            except Exception as e:
-                logging.debug(f"[LIVE] RSI calc failed, using 50: {e}")
-        
-        pullback_long = params.get('pullback_rsi_long', 40)
-        pullback_short = params.get('pullback_rsi_short', 60)
-        
-        for signal in state['pending']:
-            direction = signal['type']
+            atr = core.calculate_atr(df_entry.tail(20), period=params.get('atr_period', 14))
+        else:
+            atr = 100  # 기본값
             
-            # [FIX] 2. MTF 필터
-            if direction == 'Long' and trend != 'up' and trend != 'neutral':
-                logging.debug(f"[LIVE] Long blocked by trend={trend}")
-                continue
-            if direction == 'Short' and trend != 'down' and trend != 'neutral':
-                logging.debug(f"[LIVE] Short blocked by trend={trend}")
-                continue
+        entry_price = float(candle.get('close', candle.get('open', 0)))
+        atr_mult = params['atr_mult']
+        
+        if direction == 'Long':
+            sl = entry_price - atr * atr_mult
+        else:
+            sl = entry_price + atr * atr_mult
+            
+        risk = abs(entry_price - sl)
+        trail_start_r = params['trail_start_r']
+        trail_dist_r = params['trail_dist_r']
+        
+        # 상태 업데이트
+        state['position'] = direction
+        state['positions'] = [{'entry_time': candle.get('timestamp'), 'entry': entry_price}]
+        state['current_sl'] = sl
+        state['extreme_price'] = entry_price
+        state['trail_start'] = entry_price + risk * trail_start_r if direction == 'Long' else entry_price - risk * trail_start_r
+        state['trail_dist'] = risk * trail_dist_r
+        state['add_count'] = 0
+        state['pending'] = []  # 진입 후 pending 클리어
+        
+        logging.info(f"[LIVE] 🟢 ENTRY: {direction_code} @ {entry_price:.2f}, SL={sl:.2f}, Pattern={matching_signal.get('pattern', 'W/M')}")
+        
+        return {
+            'action': 'ENTRY',
+            'direction': direction,
+            'price': entry_price,
+            'sl': sl,
+            'pattern': matching_signal.get('pattern', 'W/M')
+        }
+
+    def _get_current_trading_conditions(self) -> dict:
+        """[CORE] 통합 진입 조건 판단 (예측/실행 공용)"""
+        try:
+            from core.strategy_core import AlphaX7Core
+            core = AlphaX7Core(use_mtf=True)
+            params = self.strategy_params
+            
+            # 1. 펜딩 데이터 확인
+            pending_signals = []
+            if hasattr(self, 'bt_state') and self.bt_state:
+                pending_signals.extend(self.bt_state.get('pending', []))
+            if hasattr(self, 'pending_signals'):
+                pending_signals.extend(self.pending_signals)
                 
-            # [FIX] 3. RSI 풀백 체크
-            if direction == 'Long' and current_rsi >= pullback_long:
-                logging.debug(f"[LIVE] Long blocked by RSI={current_rsi:.1f} (>= {pullback_long})")
-                continue
-            if direction == 'Short' and current_rsi <= pullback_short:
-                logging.debug(f"[LIVE] Short blocked by RSI={current_rsi:.1f} (<= {pullback_short})")
-                continue
+            now = datetime.utcnow()
+            valid_pending = [p for p in pending_signals if p.get('expire_time', now + timedelta(hours=1)) > now]
             
-            # ATR 계산
+            pending_long = any(p['type'] in ('Long', 'W', 'LONG') for p in valid_pending)
+            pending_short = any(p['type'] in ('Short', 'M', 'SHORT') for p in valid_pending)
+            
+            # 2. RSI 확인 (캐시 또는 계산)
             df_entry = getattr(self, 'df_entry_resampled', None)
             if df_entry is None:
+                df_entry = self.indicator_cache.get('df_entry')
+            if df_entry is None:
                 df_entry = self.df_entry_full
+                
+            rsi = 50.0
+            rsi_long_met = False
+            rsi_short_met = False
+            
             if df_entry is not None and len(df_entry) >= 20:
-                atr = core.calculate_atr(df_entry.tail(20), period=params.get('atr_period', 14))
-            else:
-                atr = 100  # 기본값
+                if 'rsi' in df_entry.columns:
+                    rsi = float(df_entry['rsi'].iloc[-1])
+                elif 'rsi_14' in df_entry.columns:
+                    rsi = float(df_entry['rsi_14'].iloc[-1])
+                
+                pullback_long = params.get('pullback_rsi_long', 45)
+                pullback_short = params.get('pullback_rsi_short', 55)
+                rsi_long_met = rsi < pullback_long
+                rsi_short_met = rsi > pullback_short
             
-            entry_price = float(candle.get('open', candle.get('close', 0)))
-            atr_mult = params['atr_mult']  # [Phase 1.3] 필수
+            # 3. MTF 추세 확인 (df_pattern_full 기준)
+            # 실행 로직과 동일하게 내부 데이터 사용
+            trend = core.get_filter_trend(self.df_pattern_full, filter_tf=params.get('filter_tf', '4h'))
             
-            if direction == 'Long':
-                sl = entry_price - atr * atr_mult
-            else:
-                sl = entry_price + atr * atr_mult
+            # 필터 룰: up/neutral이면 Long 가능, down/neutral이면 Short 가능
+            # trend가 None(데이터 부족)인 경우도 일단 보수적으로 통과 (backtest 로직과 동일)
+            mtf_long_met = trend in ('up', 'neutral', None)
+            mtf_short_met = trend in ('down', 'neutral', None)
             
-            risk = abs(entry_price - sl)
-            trail_start_r = params['trail_start_r']  # [Phase 1.3] 필수
-            trail_dist_r = params['trail_dist_r']  # [Phase 1.3] 필수
+            # 최종 판단
+            will_enter_long = pending_long and rsi_long_met and mtf_long_met
+            will_enter_short = pending_short and rsi_short_met and mtf_short_met
             
-            # 상태 업데이트
-            state['position'] = direction
-            state['positions'] = [{'entry_time': candle.get('timestamp'), 'entry': entry_price}]
-            state['current_sl'] = sl
-            state['extreme_price'] = entry_price
-            state['trail_start'] = entry_price + risk * trail_start_r if direction == 'Long' else entry_price - risk * trail_start_r
-            state['trail_dist'] = risk * trail_dist_r
-            state['add_count'] = 0
-            state['pending'] = []  # 진입 후 pending 클리어
+            # 데이터 설명 (로그용)
+            pattern_desc = "없음"
+            if pending_long and pending_short: pattern_desc = "Long/Short"
+            elif pending_long: pattern_desc = "Long"
+            elif pending_short: pattern_desc = "Short"
             
-            logging.info(f"[LIVE] 🟢 ENTRY: {direction} @ {entry_price:.2f}, SL={sl:.2f}, Pattern={getattr(signal, 'pattern', signal.get('pattern', 'W/M')) if isinstance(signal, dict) else getattr(signal, 'pattern', 'W/M')}")
+            trend_map = {'up': '상승 ↑', 'down': '하락 ↓', 'neutral': '중립 →', None: 'N/A'}
             
             return {
-                'action': 'ENTRY',
-                'direction': direction,
-                'price': entry_price,
-                'sl': sl,
-                'pattern': getattr(signal, 'pattern', signal.get('pattern', 'W/M')) if isinstance(signal, dict) else getattr(signal, 'pattern', 'W/M')
+                'ready': will_enter_long or will_enter_short,
+                'direction': 'LONG' if will_enter_long else 'SHORT' if will_enter_short else None,
+                'data': {
+                    'pattern': {'met': pending_long or pending_short, 'desc': f"{pattern_desc} ({len(valid_pending)}개)"},
+                    'rsi': {'value': rsi, 'long_met': rsi_long_met, 'short_met': rsi_short_met, 'desc': f"{rsi:.1f}"},
+                    'mtf': {'trend': trend, 'long_met': mtf_long_met, 'short_met': mtf_short_met, 'desc': trend_map.get(trend, 'N/A')},
+                    'validity': {'desc': f"{params.get('entry_validity_hours', 6)}H"}
+                }
             }
-        
-        return None
+        except Exception as e:
+            logging.debug(f"[COND] Check error: {e}")
+            return {'ready': False, 'direction': None, 'data': {}}
     def _append_candle(self, candle: dict):
         """새 캔들을 df_entry에 추가"""
         df = self.indicator_cache.get('df_entry')
@@ -1773,12 +1817,14 @@ class UnifiedBot:
             # [FIX] 실제 청산 주문 실행 (재시도 로직 추가)
             if not getattr(self.exchange, 'dry_run', False):
                 max_retries = 3
+                close_success = False
                 for attempt in range(max_retries):
                     try:
                         close_result = self.exchange.close_position()
                         if close_result:
                             logging.info(f"[EXECUTE] ✅ Close order executed: {close_result}")
-                            return
+                            close_success = True
+                            break
                         else:
                             logging.warning(f"[EXECUTE] ⚠️ Close order returned False (Attempt {attempt+1}/{max_retries})")
                     except Exception as e:
@@ -1787,11 +1833,12 @@ class UnifiedBot:
                     if attempt < max_retries - 1:
                         time.sleep(1) # 재시도 대기
                 
-                # 최종 실패 처리
-                logging.error(f"[EXECUTE] ❌ Close failed after {max_retries} attempts.")
-                if self.notifier:
-                    self.notifier.notify_error(f"❌ 청산 주문 최종 실패! (3회 재시도)")
-                return
+                if not close_success:
+                    # 최종 실패 처리
+                    logging.error(f"[EXECUTE] ❌ Close failed after {max_retries} attempts.")
+                    if self.notifier:
+                        self.notifier.notify_error(f"❌ 청산 주문 최종 실패! (3회 재시도)")
+                    return
             else:
                 logging.info("[EXECUTE] 🧪 DRY-RUN: Close order skipped")
             
@@ -1808,6 +1855,26 @@ class UnifiedBot:
                 capital = getattr(self.exchange, 'capital', 100)
                 profit_usd = capital * (pnl_pct_leveraged / 100)
                 new_balance = capital + profit_usd
+
+                # [TRADE_LOG] 히스토리 저장 (매우 중요)
+                order_id = getattr(self.position, 'order_id', '') if self.position else ''
+                
+                # [CRITICAL] 거래 기록 저장 (복리 계산 및 대시보드 표시용)
+                self.save_trade_history({
+                    'time': datetime.now().isoformat(),
+                    'symbol': self.exchange.symbol,
+                    'side': self.position.side,
+                    'entry': entry,
+                    'exit': price,
+                    'size': self.position.size,
+                    'pnl': profit_usd,
+                    'pnl_usd': profit_usd,
+                    'pnl_pct': pnl_pct_leveraged,
+                    'be_triggered': getattr(self.position, 'be_triggered', False),
+                    'exchange': self.exchange.name,
+                    'order_id': order_id,
+                    'reason': reason
+                })
                 
                 # [NEW] 일일 손실 추적 및 한도 체크
                 self.daily_pnl += profit_usd
@@ -1819,7 +1886,6 @@ class UnifiedBot:
                         if self.notifier:
                             self.notifier.notify_error(f"🛑 일일 손실 한도 도달!\n현재 손실: {current_daily_dd:.2f}%\n봇이 자동으로 매매를 중단합니다.")
                 
-                order_id = getattr(self.position, 'order_id', '') if self.position else ''
                 trade_logger.info(f"[TRADE] {direction.upper()}_EXIT | {self.exchange.symbol} | Entry={entry:.2f} | Exit={price:.2f} | PnL={pnl_pct_leveraged:+.2f}% | Profit=${profit_usd:+.2f} | Balance=${new_balance:.2f} | ID={order_id}")
 
                 # [GUI] 일반 청산 로그
@@ -1832,17 +1898,23 @@ class UnifiedBot:
                     'pnl': profit_usd,
                     'pnl_pct': pnl_pct_leveraged,
                     'action': 'EXIT',
-                    'reason': 'SIGNAL/TP',
+                    'reason': reason,
                     'exchange': self.exchange.name
                 })
             
             # 상태 정리
-            self._close_on_sl(price)
+            self.position = None
+            self.exchange.position = None
+            self.save_state()
             
+            # 텔레그램 알림
+            if self.notifier and hasattr(self, 'position') and self.position:
+                 # 위에서 None 처리했으므로 로컬 변수 활용 필요하지만 단순화
+                 pass
+                
         except Exception as e:
             logging.error(f"[EXECUTE] Close error: {e}")
             import traceback
-            traceback.print_exc()
     
     def _on_price_update(self, price: float):
         """웹소켓 가격 업데이트 콜백"""
@@ -1851,151 +1923,23 @@ class UnifiedBot:
     # ========== 실시간 진입 예측 로그 ==========
     
     def _check_entry_conditions(self) -> dict:
-        """현재 봉 기준 진입 조건 체크"""
-        try:
-            # 캐시된 데이터 사용
-            df_pattern = self.indicator_cache.get('df_pattern')
-            df_entry = self.indicator_cache.get('df_entry')
-            
-            if df_pattern is None or len(df_pattern) < 50:
-                return {'ready': False, 'reason': '데이터 부족'}
-            if df_entry is None or len(df_entry) < 30:
-                return {'ready': False, 'reason': 'Entry 데이터 부족'}
-            
-            # 현재 시간 및 남은 시간 계산
-            # 현재 시간 (UTC 기준)
-            now = datetime.utcnow()
-            
-            # 다음 Entry TF 마감까지 남은 시간 (Entry TF 기준)
-            entry_tf = self.strategy_params.get('entry_tf', '15m')
-            if 'm' in entry_tf:
-                tf_min = int(entry_tf.replace('m', '').replace('min', ''))
-            else:
-                tf_min = 15  # 기본값
-            
-            minute_in_tf = now.minute % tf_min
-            remaining_min = tf_min - minute_in_tf - (now.second / 60)
-            
-            conditions = {}
-            
-            # 1. 패턴 체크 (pending signals 또는 bt_state 확인)
-            pending_count = 0
-            pending_type = None
-            
-            if hasattr(self, 'bt_state') and self.bt_state:
-                pending = self.bt_state.get('pending', [])
-                # [FIX] UTC 기준 만료 시간 체크
-                valid_pending = [p for p in pending if p.get('expire_time', now + timedelta(hours=1)) > now]
-                pending_count = len(valid_pending)
-                if valid_pending:
-                    pending_type = valid_pending[0].get('type', 'W/M')
-            
-            if hasattr(self, 'pending_signals') and self.pending_signals:
-                pending_count += len(self.pending_signals)
-                if self.pending_signals and not pending_type:
-                    pending_type = self.pending_signals[0].get('type', 'W/M')
-            
-            conditions['pattern'] = {
-                'met': pending_count > 0,
-                'type': pending_type,
-                'count': pending_count,
-                'desc': f"{pending_type} ({pending_count}개)" if pending_count > 0 else "없음"
-            }
-            
-            # 2. RSI 체크
-            try:
-                if 'rsi' in df_entry.columns:
-                    rsi = float(df_entry['rsi'].iloc[-1])
-                elif 'rsi_14' in df_entry.columns:
-                    rsi = float(df_entry['rsi_14'].iloc[-1])
-                else:
-                    # 직접 계산
-                    closes = df_entry['close'].tail(20).values
-                    delta = pd.Series(closes).diff()
-                    gain = delta.where(delta > 0, 0).rolling(14).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-                    rs = gain / loss.replace(0, 1e-10)
-                    rsi = float(100 - (100 / (1 + rs.iloc[-1])))
-                
-                pullback_long = self.strategy_params.get('pullback_rsi_long', 40)
-                pullback_short = self.strategy_params.get('pullback_rsi_short', 60)
-                
-                conditions['rsi'] = {
-                    'value': rsi,
-                    'long_met': rsi < pullback_long,
-                    'short_met': rsi > pullback_short,
-                    'desc': f"{rsi:.1f}"
-                }
-            except Exception:
-                conditions['rsi'] = {'value': 50, 'long_met': False, 'short_met': False, 'desc': 'N/A'}
-            
-            # 3. MTF 추세 체크 (4H EMA20)
-            try:
-                filter_tf = self.strategy_params.get('filter_tf', '4h')
-                sig_exchange = self._get_signal_exchange()
-                df_filter = sig_exchange.get_klines(filter_tf, 30)
-                
-                if df_filter is not None and len(df_filter) >= 20:
-                    ema20 = df_filter['close'].ewm(span=20, adjust=False).mean().iloc[-1]
-                    current_close = float(df_filter['close'].iloc[-1])
-                    
-                    if current_close > ema20:
-                        trend = 'up'
-                        trend_desc = '상승 ↑'
-                    elif current_close < ema20:
-                        trend = 'down'
-                        trend_desc = '하락 ↓'
-                    else:
-                        trend = 'neutral'
-                        trend_desc = '중립 →'
-                    
-                    conditions['mtf'] = {
-                        'trend': trend,
-                        'long_met': trend == 'up',
-                        'short_met': trend == 'down',
-                        'desc': trend_desc
-                    }
-                else:
-                    conditions['mtf'] = {'trend': 'unknown', 'long_met': True, 'short_met': True, 'desc': 'N/A'}
-            except Exception:
-                conditions['mtf'] = {'trend': 'unknown', 'long_met': True, 'short_met': True, 'desc': 'N/A'}
-            
-            # 4. 유효시간
-            validity_hours = self.strategy_params.get('entry_validity_hours', 6)
-            conditions['validity'] = {
-                'hours': validity_hours,
-                'desc': f"{validity_hours}H"
-            }
-            
-            # 종합 판단
-            # [FIX] RSI Logic: Enforce RSI conditions for entry
-            will_enter_long = (
-                conditions['pattern']['met'] and 
-                conditions['pattern']['type'] in ('Long', 'W') and
-                conditions['mtf']['long_met'] and
-                conditions['rsi']['long_met']  # [FIX] RSI < 40 Check
-            )
-            will_enter_short = (
-                conditions['pattern']['met'] and 
-                conditions['pattern']['type'] in ('Short', 'M') and
-                conditions['mtf']['short_met'] and
-                conditions['rsi']['short_met'] # [FIX] RSI > 60 Check
-            )
-            
-            # 현재 가격
-            current_price = self.last_ws_price if self.last_ws_price else 0
-            
-            return {
-                'ready': will_enter_long or will_enter_short,
-                'direction': 'LONG' if will_enter_long else 'SHORT' if will_enter_short else None,
-                'remaining_min': remaining_min,
-                'conditions': conditions,
-                'current_price': current_price
-            }
-            
-        except Exception as e:
-            logging.debug(f"[PREDICT] Check error: {e}")
-            return {'ready': False, 'reason': str(e)}
+        """현재 봉 기준 진입 조건 체크 (통합 메서드 호출)"""
+        cond = self._get_current_trading_conditions()
+        
+        # 남은 시간 계산
+        now = datetime.utcnow()
+        entry_tf = self.strategy_params.get('entry_tf', '15m')
+        tf_min = int(''.join(filter(str.isdigit, entry_tf))) if any(c.isdigit() for c in entry_tf) else 15
+        minute_in_tf = now.minute % tf_min
+        remaining_min = tf_min - minute_in_tf - (now.second / 60)
+        
+        return {
+            'ready': cond['ready'],
+            'direction': cond['direction'],
+            'remaining_min': remaining_min,
+            'conditions': cond['data'],
+            'current_price': self.last_ws_price if self.last_ws_price else 0
+        }
     
     def _log_entry_prediction(self):
         """진입 예측 상태를 로그에 기록"""

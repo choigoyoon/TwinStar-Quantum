@@ -128,7 +128,7 @@ class BinanceExchange(BaseExchange):
             logging.error(f"Price fetch error: {e}")
             return 0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float = None) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float = None, take_profit: float = 0) -> bool:
         """시장가 주문 실행 + SL 실패 시 즉시 청산"""
         if not self.authenticated:
             logging.error("[Binance] Not authenticated - cannot place orders")
@@ -143,7 +143,7 @@ class BinanceExchange(BaseExchange):
             qty = round(size, 3)
             current_price = self.get_current_price()
             
-            logging.info(f"[Binance] Placing {order_side} {qty} {self.symbol} @ {current_price} (SL: {stop_loss})")
+            logging.info(f"[Binance] Placing {order_side} {qty} {self.symbol} @ {current_price} (SL: {stop_loss}, TP: {take_profit})")
             
             # 1. 메인 주문 실행
             params = {
@@ -196,7 +196,23 @@ class BinanceExchange(BaseExchange):
                     
                     return False
 
-            # 3. Position 객체 업데이트 (GUI 표시용)
+            # 3. TP 주문 설정 (Binance는 별도 주문 필요)
+            if take_profit and take_profit > 0:
+                try:
+                    # TP 주문은 SL 주문과 동일한 side를 사용하며, type만 TAKE_PROFIT_MARKET으로 변경
+                    # closePosition='true'는 포지션 전체 청산을 의미
+                    tp_order = self.client.futures_create_order(
+                        symbol=self.symbol,
+                        side=sl_side, # SL과 동일한 방향 (포지션 청산 방향)
+                        type='TAKE_PROFIT_MARKET',
+                        stopPrice=round(take_profit, 2),
+                        closePosition='true'
+                    )
+                    logging.info(f"[Binance] TP Order Set: {take_profit}")
+                except Exception as tp_error:
+                    logging.warning(f"[Binance] ⚠️ TP Setting Failed (Non-critical): {tp_error}")
+
+            # 4. Position 객체 업데이트 (GUI 표시용)
             self.position = Position(
                 symbol=self.symbol,
                 side=side,

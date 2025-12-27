@@ -31,6 +31,7 @@ class Position:
     # Tracking
     order_id: str = ""
     status: str = "open"
+    take_profit: float = 0.0  # [NEW] TP tracking
     
     def to_dict(self) -> dict:
         return {
@@ -131,12 +132,13 @@ class BaseExchange(ABC):
         pass
     
     @abstractmethod
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
         """
         시장가 주문
         side: 'Long' or 'Short'
         size: 수량
         stop_loss: 손절가
+        take_profit: 익절가
         """
         pass
     

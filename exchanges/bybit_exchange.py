@@ -45,7 +45,8 @@ class BybitExchange(BaseExchange):
                 testnet=self.testnet,
                 api_key=self.api_key,
                 api_secret=self.api_secret,
-                recv_window=60000  # 60초 (시간 오차 대응)
+                recv_window=60000,  # 60초 (시간 오차 대응)
+                enable_server_time=True  # [FIX] 서버 시간 자동 동기화 활성화
             )
             
             # 시간 동기화
@@ -139,7 +140,7 @@ class BybitExchange(BaseExchange):
             logging.error(f"Price fetch error: {e}")
             return 0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
         """시장가 주문"""
         max_retries = 3
         
@@ -155,6 +156,7 @@ class BybitExchange(BaseExchange):
                 tick_size = self._get_tick_size()
                 qty = round(qty, tick_size['qty_decimals'])
                 sl_price = round(stop_loss, tick_size['price_decimals'])
+                tp_price = round(take_profit, tick_size['price_decimals']) if take_profit > 0 else 0
                 
                 # 중요: extra_params에 recvWindow 명시적으로 전달
                 extra_params = {'recvWindow': 60000}
@@ -169,9 +171,6 @@ class BybitExchange(BaseExchange):
                 }
                 
                 # [NEW] Hedge Mode Support
-                # 0: One-Way Mode
-                # 1: Buy Side (Hedge Mode)
-                # 2: Sell Side (Hedge Mode)
                 if self.hedge_mode:
                     order_params["positionIdx"] = 1 if side == 'Long' else 2
                 else:
@@ -179,8 +178,8 @@ class BybitExchange(BaseExchange):
                 
                 if sl_price > 0:
                     order_params["stopLoss"] = str(sl_price)
-                if sl_price > 0:
-                    order_params["stopLoss"] = str(sl_price)
+                if tp_price > 0:
+                    order_params["takeProfit"] = str(tp_price)
 
                 result = self.session.place_order(**order_params)
                 
@@ -198,8 +197,8 @@ class BybitExchange(BaseExchange):
                         entry_time=datetime.now(),
                         order_id=order_id
                     )
-                    logging.info(f"Order placed: {side} {qty} @ {price} (ID: {order_id})")
-                    return order_id  # [FIX] Return order_id instead of just True
+                    logging.info(f"Order placed: {side} {qty} @ {price} (ID: {order_id}, TP: {tp_price})")
+                    return order_id
                 else:
                     logging.error(f"Order error: {result.get('retMsg')} (Code: {result.get('retCode')})")
                     if attempt < max_retries - 1:
@@ -208,6 +207,7 @@ class BybitExchange(BaseExchange):
             except Exception as e:
                 error_msg = str(e)
                 logging.error(f"Order exception: {error_msg}")
+                # ... rest of error handling ...
                 
                 # 치명적 에러: API 키 무효 -> 재시도 의미 없음, 봇 중지
                 if "10003" in error_msg:

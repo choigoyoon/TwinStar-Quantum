@@ -12,6 +12,7 @@ import threading
 import requests  # [NEW] Multi Explorer API 연동용
 from pathlib import Path
 from datetime import datetime
+from GUI.position_widget import PositionStatusWidget  # [NEW]
 from typing import Optional, Dict, List
 
 from PyQt5.QtWidgets import (
@@ -1081,11 +1082,24 @@ class TradingDashboard(QWidget):
         layout.addLayout(header)
         
         
+        # === Main Layout ===
+        main_h_layout = QHBoxLayout()
+        left_layout = QVBoxLayout()
+        
         # === Single Trading ===
-        layout.addWidget(self._init_single_trading())
+        left_layout.addWidget(self._init_single_trading())
         
         # === Multi Explorer (Premium) ===
-        layout.addWidget(self._init_multi_explorer())
+        left_layout.addWidget(self._init_multi_explorer())
+        
+        main_h_layout.addLayout(left_layout, 2)
+        
+        # === Position Status Widget (Right Side Panel) ===
+        self.pos_status_widget = PositionStatusWidget()
+        self.pos_status_widget.setFixedWidth(300)
+        main_h_layout.addWidget(self.pos_status_widget, 1)
+        
+        layout.addLayout(main_h_layout)
         
         # === Position Table ===
         pos_group = QGroupBox("📊 실시간 현황")
@@ -1837,6 +1851,16 @@ class TradingDashboard(QWidget):
                         current=extreme,
                         pnl=pnl
                     )
+                    
+                    # [NEW] PositionStatusWidget 동기화
+                    self.pos_status_widget.add_position(
+                        symbol=symbol,
+                        side=position.upper(),
+                        entry_price=entry,
+                        current_price=extreme,
+                        stop_loss=current_sl,
+                        size=bt.get('positions', [{}])[0].get('size', 0) if bt.get('positions') else 0
+                    )
                 else:
                     # 포지션 없음
                     self.position_table.update_position(
@@ -1844,6 +1868,7 @@ class TradingDashboard(QWidget):
                         mode="Single",
                         status="WAIT"
                     )
+                    self.pos_status_widget.remove_position(symbol)
         except Exception as e:
             pass  # 조용히 실패 (UI 타이머이므로)
     

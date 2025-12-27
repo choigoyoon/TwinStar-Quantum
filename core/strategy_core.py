@@ -413,7 +413,7 @@ class AlphaX7Core:
                 print(f"[SIGNAL] ✅ Valid Short @ ${price:,.0f} (M pattern, {hours_since:.1f}h old)")
                 
                 return TradeSignal(
-                    signal_type='Short', pattern='M', stop_loss=sl,
+                    signal_type='Short', pattern='M', stop_loss=sl, 
                     atr=atr, timestamp=datetime.utcnow()
                 )
         

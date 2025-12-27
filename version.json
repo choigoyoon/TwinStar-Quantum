@@ -1,16 +1,12 @@
 {
-  "version": "1.4.6",
-  "latest_version": "1.4.6",
+  "version": "1.4.7",
+  "latest_version": "1.4.7",
   "release_date": "2025-12-27",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.6/TwinStar_Quantum_Setup_v1.4.6.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.7/TwinStar_Quantum_Setup_v1.4.7.exe",
   "changelog": [
-    "Fix: 업그레이드 다이얼로그 지갑주소 미표시 버그 수정 (fetch_wallet Fallback 강화)",
-    "Feature: 통합 진입 엔진(_get_current_trading_conditions) 도입 (예측-집행 100% 일치)",
-    "Feature: 대시보드 실시간 포지션 위젯 통합",
-    "Fix: Bybit API 10002 Time Sync 해결 & recv_window 최적화",
-    "Fix: 봉 마감 시 진입가 체결 로직 최적화 (Open -> Close)",
-    "Fix: Trade History 저장 누락 해결",
-    "Security: USDT TRC20 결제 주소 하드코딩 (Fallback)",
-    "Critical: 멀티봇 UI 충돌 해결 (독립 상태 파일)"
+    "Fix: Bybit enable_server_time 파라미터 완전 제거 (연결 오류 해결)",
+    "Fix: 업그레이드 다이얼로그 지갑주소 3중 Fallback 적용",
+    "Feature: 통합 진입 엔진 도입 (예측-집행 100% 일치)",
+    "Fix: Trade History 저장 누락 해결"
   ]
 }

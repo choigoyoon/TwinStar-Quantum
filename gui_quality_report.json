@@ -1,0 +1,104 @@
+{
+  "summary": {
+    "pass": 16,
+    "risk": 22,
+    "syntax_error": 0
+  },
+  "issues": [
+    {
+      "file": "backtest_result_widget.py",
+      "type": "RISK",
+      "count": 4
+    },
+    {
+      "file": "backtest_widget.py",
+      "type": "PASS",
+      "count": 1
+    },
+    {
+      "file": "data_collector_widget.py",
+      "type": "PASS",
+      "count": 2
+    },
+    {
+      "file": "data_manager.py",
+      "type": "PASS",
+      "count": 2
+    },
+    {
+      "file": "data_manager.py",
+      "type": "RISK",
+      "count": 3
+    },
+    {
+      "file": "developer_mode_widget.py",
+      "type": "PASS",
+      "count": 2
+    },
+    {
+      "file": "glossary_popup.py",
+      "type": "RISK",
+      "count": 1
+    },
+    {
+      "file": "login_dialog.py",
+      "type": "RISK",
+      "count": 1
+    },
+    {
+      "file": "multi_system_widget.py",
+      "type": "RISK",
+      "count": 4
+    },
+    {
+      "file": "optimization_widget.py",
+      "type": "PASS",
+      "count": 1
+    },
+    {
+      "file": "payment_dialog.py",
+      "type": "RISK",
+      "count": 1
+    },
+    {
+      "file": "pc_license_dialog.py",
+      "type": "RISK",
+      "count": 2
+    },
+    {
+      "file": "security.py",
+      "type": "PASS",
+      "count": 1
+    },
+    {
+      "file": "settings_widget.py",
+      "type": "PASS",
+      "count": 1
+    },
+    {
+      "file": "strategy_interface.py",
+      "type": "RISK",
+      "count": 3
+    },
+    {
+      "file": "symbol_cache.py",
+      "type": "PASS",
+      "count": 2
+    },
+    {
+      "file": "symbol_cache.py",
+      "type": "RISK",
+      "count": 3
+    },
+    {
+      "file": "trading_dashboard.py",
+      "type": "PASS",
+      "count": 3
+    },
+    {
+      "file": "websocket_manager.py",
+      "type": "PASS",
+      "count": 1
+    }
+  ]
+}

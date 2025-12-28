@@ -1,0 +1,19 @@
+{
+  "running": true,
+  "exchange": "Bybit",
+  "symbol": "BTCUSDT",
+  "strategy": "Alpha-X7 Final",
+  "state": "waiting",
+  "last_update": "2025-12-24 14:17:29",
+  "position_side": "",
+  "entry_price": 0.0,
+  "current_price": 0.0,
+  "stop_loss": 0.0,
+  "size": 0.0,
+  "pnl_percent": 0.0,
+  "pnl_usd": 0.0,
+  "today_trades": 0,
+  "today_pnl": 0.0,
+  "total_trades": 0,
+  "win_rate": 0.0
+}

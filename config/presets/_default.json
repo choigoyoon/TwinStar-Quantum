@@ -1,0 +1,15 @@
+{
+    "_description": "Default Strategy Parameters",
+    "_updated": "2025-12-10 14:20:03",
+    "atr_mult": 1.5,
+    "trail_start_r": 1.0,
+    "trail_dist_r": 0.2,
+    "pattern_tolerance": 0.05,
+    "entry_validity_hours": 4.0,
+    "pullback_rsi_long": 40,
+    "pullback_rsi_short": 60,
+    "rsi_period": 21,
+    "max_adds": 1,
+    "trend_interval": "1h",
+    "entry_tf": "15min"
+}

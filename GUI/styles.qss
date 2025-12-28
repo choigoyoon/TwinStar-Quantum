@@ -1,0 +1,306 @@
+/* TwinStar Quantum - Premium Dark Theme */
+
+/* ===== 전역 스타일 ===== */
+* {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+}
+
+QMainWindow, QWidget {
+    background-color: #0b0e14;
+    color: #d1d4dc;
+}
+
+/* ===== 스크롤바 ===== */
+QScrollBar:vertical {
+    background: #0b0e14;
+    width: 10px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical {
+    background: #2a2e3b;
+    border-radius: 5px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #3a3f4b;
+}
+
+QScrollBar:horizontal {
+    background: #0b0e14;
+    height: 10px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #2a2e3b;
+    border-radius: 5px;
+    min-width: 30px;
+}
+
+/* ===== 버튼 ===== */
+QPushButton {
+    background-color: #2962FF;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QPushButton:hover {
+    background-color: #5c8aff;
+}
+
+QPushButton:pressed {
+    background-color: #1e4bd1;
+}
+
+QPushButton:disabled {
+    background-color: #2a2e3b;
+    color: #787b86;
+}
+
+/* 성공 버튼 */
+QPushButton[class="success"] {
+    background-color: #26a69a;
+}
+
+QPushButton[class="success"]:hover {
+    background-color: #2bbd9a;
+}
+
+/* 위험 버튼 */
+QPushButton[class="danger"] {
+    background-color: #ef5350;
+}
+
+QPushButton[class="danger"]:hover {
+    background-color: #f06560;
+}
+
+/* ===== 입력 필드 ===== */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background-color: #131722;
+    border: 1px solid #2a2e3b;
+    border-radius: 8px;
+    padding: 10px;
+    color: #d1d4dc;
+    font-size: 13px;
+}
+
+QLineEdit:focus, QTextEdit:focus {
+    border-color: #2962FF;
+}
+
+/* ===== 콤보박스 ===== */
+QComboBox {
+    background-color: #131722;
+    border: 1px solid #2a2e3b;
+    border-radius: 8px;
+    padding: 8px 15px;
+    color: #d1d4dc;
+    min-width: 120px;
+}
+
+QComboBox:hover {
+    border-color: #3a3f4b;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 30px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #1e2330;
+    border: 1px solid #2a2e3b;
+    selection-background-color: #2962FF;
+}
+
+/* ===== 스핀박스 ===== */
+QSpinBox, QDoubleSpinBox {
+    background-color: #131722;
+    border: 1px solid #2a2e3b;
+    border-radius: 8px;
+    padding: 8px;
+    color: #d1d4dc;
+}
+
+/* ===== 체크박스 ===== */
+QCheckBox {
+    color: #d1d4dc;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid #2a2e3b;
+    background: #131722;
+}
+
+QCheckBox::indicator:checked {
+    background: #2962FF;
+    border-color: #2962FF;
+}
+
+/* ===== 탭 ===== */
+QTabWidget::pane {
+    border: none;
+    background: #0b0e14;
+}
+
+QTabBar::tab {
+    background: #0b0e14;
+    color: #787b86;
+    padding: 15px 25px;
+    font-size: 13px;
+    font-weight: bold;
+    border-bottom: 2px solid transparent;
+}
+
+QTabBar::tab:selected {
+    color: #2962FF;
+    border-bottom: 2px solid #2962FF;
+}
+
+QTabBar::tab:hover {
+    color: #d1d4dc;
+}
+
+/* ===== 그룹박스 ===== */
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #2a2e3b;
+    border-radius: 10px;
+    margin-top: 15px;
+    padding: 15px;
+    background: #131722;
+}
+
+QGroupBox::title {
+    color: #d1d4dc;
+    subcontrol-origin: margin;
+    left: 15px;
+    padding: 0 10px;
+}
+
+/* ===== 테이블 ===== */
+QTableWidget {
+    background-color: #0b0e14;
+    border: 1px solid #2a2e3b;
+    border-radius: 8px;
+    gridline-color: #1e2330;
+}
+
+QTableWidget::item {
+    padding: 10px;
+    color: #d1d4dc;
+}
+
+QTableWidget::item:selected {
+    background-color: #2962FF40;
+}
+
+QHeaderView::section {
+    background-color: #131722;
+    color: #787b86;
+    padding: 12px;
+    border: none;
+    border-bottom: 1px solid #2a2e3b;
+    font-weight: bold;
+}
+
+/* ===== 진행률 바 ===== */
+QProgressBar {
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+    background-color: #1e2330;
+    color: white;
+    font-weight: bold;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #2962FF, stop:1 #7c4dff);
+    border-radius: 5px;
+}
+
+/* ===== 슬라이더 ===== */
+QSlider::groove:horizontal {
+    border: none;
+    height: 6px;
+    background: #2a2e3b;
+    border-radius: 3px;
+}
+
+QSlider::handle:horizontal {
+    background: #2962FF;
+    width: 16px;
+    height: 16px;
+    margin: -5px 0;
+    border-radius: 8px;
+}
+
+QSlider::handle:horizontal:hover {
+    background: #5c8aff;
+}
+
+/* ===== 툴팁 ===== */
+QToolTip {
+    background-color: #1e2330;
+    color: #d1d4dc;
+    border: 1px solid #2a2e3b;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+/* ===== 메뉴 ===== */
+QMenu {
+    background-color: #1e2330;
+    border: 1px solid #2a2e3b;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+QMenu::item {
+    padding: 10px 20px;
+    color: #d1d4dc;
+    border-radius: 5px;
+}
+
+QMenu::item:selected {
+    background-color: #2962FF;
+}
+
+/* ===== 라벨 ===== */
+QLabel {
+    color: #d1d4dc;
+}
+
+/* ===== 날짜 편집기 ===== */
+QDateEdit {
+    background-color: #131722;
+    border: 1px solid #2a2e3b;
+    border-radius: 8px;
+    padding: 8px;
+    color: #d1d4dc;
+}
+
+QCalendarWidget {
+    background-color: #1e2330;
+}
+
+QCalendarWidget QToolButton {
+    color: #d1d4dc;
+    background: transparent;
+}
+
+QCalendarWidget QMenu {
+    background-color: #1e2330;
+}

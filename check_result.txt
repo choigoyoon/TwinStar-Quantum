@@ -1,0 +1,12 @@
+TwinStar Quantum Logic Check Details:
+❌ place_order 호출: 
+
+============================================================
+TwinStar Quantum Logic Check Result
+============================================================
+PASS: 34
+FAIL: 1
+WARN: 0
+TOTAL: 35
+
+RESULT: FAIL (Action Required)

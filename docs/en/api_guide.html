@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Setup Guide - TwinStar Quantum</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <a href="../ko/api_guide.html">🇰🇷 한국어</a>
+        <a href="../en/api_guide.html" class="active">🇺🇸 English</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔑 API Key Setup Guide</h1>
+            <nav>
+                <a href="index.html">← Home</a>
+                <a href="user_guide.html">Next: User Guide →</a>
+            </nav>
+        </div>
+
+        <div class="info">
+            API keys allow the program to access your exchange account. Each exchange has different setup procedures -
+            follow the guide below.
+        </div>
+
+        <!-- Bybit -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bybit">🟠 Bybit</span>
+                <h3>Bybit API Key Setup</h3>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://www.bybit.com" target="_blank">Bybit website</a></li>
+                    <li>Click profile icon → <strong>API Management</strong></li>
+                    <li>Click <strong>Create New Key</strong> → Select <strong>API Transaction</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Read-Write</li>
+                            <li>✅ Contract - Order</li>
+                            <li>✅ Contract - Position</li>
+                        </ul>
+                    </li>
+                    <li>IP restriction: Enter your IP or select <code>No IP restriction</code></li>
+                    <li>Complete 2FA and copy <strong>API Key</strong> and <strong>Secret Key</strong></li>
+                </ol>
+
+                <div class="success">No Passphrase required</div>
+            </div>
+        </div>
+
+        <!-- Binance -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-binance">🟡 Binance Futures</span>
+                <h3>Binance API Key Setup</h3>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://www.binance.com" target="_blank">Binance website</a></li>
+                    <li>Go to Profile → <strong>API Management</strong></li>
+                    <li>Click <strong>Create API</strong> → Select <strong>System generated</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Enable Reading</li>
+                            <li>✅ Enable Futures</li>
+                            <li>✅ Enable Spot & Margin Trading</li>
+                        </ul>
+                    </li>
+                    <li>IP Access: <code>Unrestricted</code> or register your IP</li>
+                    <li>Copy <strong>API Key</strong> and <strong>Secret Key</strong></li>
+                </ol>
+
+                <div class="warning">
+                    <strong>If you get -2015 error:</strong><br>
+                    1. Verify Enable Futures permission<br>
+                    2. Check IP Whitelist settings<br>
+                    3. Confirm Testnet/Production key distinction
+                </div>
+            </div>
+        </div>
+
+        <!-- OKX -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-okx">⚫ OKX</span>
+                <h3>OKX API Key Setup</h3>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://www.okx.com" target="_blank">OKX website</a></li>
+                    <li>Go to Profile → <strong>API</strong></li>
+                    <li>Click <strong>Create V5 API Key</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Trade</li>
+                        </ul>
+                    </li>
+                    <li><strong>Enter Passphrase</strong> (Required! Remember it)</li>
+                    <li>Copy <strong>API Key</strong>, <strong>Secret Key</strong>, and <strong>Passphrase</strong></li>
+                </ol>
+
+                <div class="error">
+                    If you lose the Passphrase, you must regenerate the API key!
+                </div>
+            </div>
+        </div>
+
+        <!-- Bitget -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bitget">🔵 Bitget</span>
+                <h3>Bitget API Key Setup</h3>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://www.bitget.com" target="_blank">Bitget website</a></li>
+                    <li>Go to Profile → <strong>API Management</strong></li>
+                    <li>Click <strong>Create API</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Futures Trade</li>
+                        </ul>
+                    </li>
+                    <li><strong>Enter Passphrase</strong> (Required!)</li>
+                    <li>Copy <strong>API Key</strong>, <strong>Secret Key</strong>, and <strong>Passphrase</strong></li>
+                </ol>
+
+                <div class="warning">
+                    Like OKX, Passphrase is mandatory.
+                </div>
+            </div>
+        </div>
+
+        <!-- BingX -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bingx">🟢 BingX</span>
+                <h3>BingX API Key Setup</h3>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://www.bingx.com" target="_blank">BingX website</a></li>
+                    <li>Go to Profile → <strong>API Management</strong></li>
+                    <li>Click <strong>Create API</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Futures</li>
+                        </ul>
+                    </li>
+                    <li>Copy <strong>API Key</strong> and <strong>Secret Key</strong></li>
+                </ol>
+
+                <div class="success">No Passphrase required</div>
+            </div>
+        </div>
+
+        <!-- Upbit -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-upbit">🟣 Upbit (Korean Exchange)</span>
+                <h3>Upbit API Key Setup</h3>
+
+                <div class="warning">
+                    <strong>Spot Trading Only!</strong> Futures trading is not supported.
+                </div>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://upbit.com" target="_blank">Upbit website</a></li>
+                    <li>Go to My Page → <strong>Open API Management</strong></li>
+                    <li>Click <strong>Issue Open API Key</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Asset Query</li>
+                            <li>✅ Order Query</li>
+                            <li>✅ <strong>Place Order</strong> (Required!)</li>
+                        </ul>
+                    </li>
+                    <li><strong>IP Registration Required</strong> - Enter your IP</li>
+                    <li>Copy <strong>Access Key</strong> and <strong>Secret Key</strong></li>
+                </ol>
+
+                <div class="info">
+                    In the program, enter Access Key as API Key and Secret Key as Secret.
+                </div>
+            </div>
+        </div>
+
+        <!-- Bithumb -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bithumb">🟤 Bithumb (Korean Exchange)</span>
+                <h3>Bithumb API Key Setup</h3>
+
+                <div class="warning">
+                    <strong>Spot Trading Only!</strong> Futures trading is not supported.
+                </div>
+
+                <ol class="steps">
+                    <li>Log in to <a href="https://www.bithumb.com" target="_blank">Bithumb website</a></li>
+                    <li>Go to My Page → <strong>API Management</strong></li>
+                    <li>Click <strong>Create API Key</strong></li>
+                    <li>
+                        Set permissions:
+                        <ul>
+                            <li>✅ Query</li>
+                            <li>✅ Trade</li>
+                            <li>❌ Withdrawal - <strong>Disable recommended</strong></li>
+                        </ul>
+                    </li>
+                    <li>Copy <strong>API Key</strong> and <strong>Secret Key</strong></li>
+                </ol>
+
+                <div class="error">
+                    For security, always disable withdrawal permissions!
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Table -->
+        <div class="section">
+            <h2>📋 Exchange Summary</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Exchange</th>
+                        <th>Passphrase</th>
+                        <th>IP Required</th>
+                        <th>Futures</th>
+                        <th>Currency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Bybit</td>
+                        <td>❌ No</td>
+                        <td>Optional</td>
+                        <td>✅ Yes</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>Binance</td>
+                        <td>❌ No</td>
+                        <td>Optional</td>
+                        <td>✅ Yes</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>OKX</td>
+                        <td>✅ Required</td>
+                        <td>Optional</td>
+                        <td>✅ Yes</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>Bitget</td>
+                        <td>✅ Required</td>
+                        <td>Optional</td>
+                        <td>✅ Yes</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>BingX</td>
+                        <td>❌ No</td>
+                        <td>Optional</td>
+                        <td>✅ Yes</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>Upbit</td>
+                        <td>❌ No</td>
+                        <td>✅ Required</td>
+                        <td>❌ Spot Only</td>
+                        <td>KRW</td>
+                    </tr>
+                    <tr>
+                        <td>Bithumb</td>
+                        <td>❌ No</td>
+                        <td>Optional</td>
+                        <td>❌ Spot Only</td>
+                        <td>KRW</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="index.html">← Home</a>
+            <a href="user_guide.html">Next: User Guide →</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 TwinStar Quantum. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - TwinStar Quantum</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <a href="../ko/troubleshooting.html">🇰🇷 한국어</a>
+        <a href="../en/troubleshooting.html" class="active">🇺🇸 English</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Troubleshooting</h1>
+            <nav>
+                <a href="index.html">← Home</a>
+                <a href="user_guide.html">Previous: User Guide</a>
+                <a href="strategy.html">Next: Strategy Guide →</a>
+            </nav>
+        </div>
+
+        <!-- API Errors -->
+        <div class="section">
+            <h2>🔐 API Related Errors</h2>
+
+            <div class="card">
+                <h3>Binance -2015 Error</h3>
+                <div class="error">
+                    "Invalid API-key, IP, or permissions for action"
+                </div>
+
+                <h4>Cause</h4>
+                <p>API permission or IP configuration issue</p>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Go to <a href="https://www.binance.com/en/my/settings/api-management" target="_blank">Binance
+                            API Management</a></li>
+                    <li>Verify <strong>Enable Futures</strong> permission is active</li>
+                    <li>Check IP Access Restrictions:
+                        <ul>
+                            <li>Select <code>Unrestricted</code>, or</li>
+                            <li>Register your exact IP address</li>
+                        </ul>
+                    </li>
+                    <li>Confirm Testnet vs Production key</li>
+                    <li>Generate a new API key and try again</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>OKX/Bitget Authentication Failed</h3>
+                <div class="error">
+                    "Authentication failed" or "Invalid passphrase"
+                </div>
+
+                <h4>Cause</h4>
+                <p>Missing or incorrect Passphrase</p>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Enter the exact Passphrase you created during API setup</li>
+                    <li>Check <strong>case sensitivity</strong></li>
+                    <li>Verify the Passphrase field exists in Settings tab</li>
+                    <li>If Passphrase is lost → Regenerate API key</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>Korean Exchange Balance Shows 0</h3>
+                <div class="error">
+                    "Balance: 0 KRW"
+                </div>
+
+                <h4>Cause</h4>
+                <p>No KRW balance or spot-only exchange</p>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Verify you have KRW balance on the exchange</li>
+                    <li>Upbit/Bithumb support <strong>spot trading only</strong> (no futures)</li>
+                    <li>For futures trading, use Bybit, Binance, OKX, etc.</li>
+                </ol>
+
+                <div class="warning">
+                    Leverage does not work on Upbit/Bithumb.
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Errors -->
+        <div class="section">
+            <h2>📊 Data Related Errors</h2>
+
+            <div class="card">
+                <h3>parquet not found</h3>
+                <div class="error">
+                    "15m parquet not found" or "No data available"
+                </div>
+
+                <h4>Cause</h4>
+                <p>Data for the symbol has not been downloaded</p>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Go to the <strong>Data</strong> tab</li>
+                    <li>Select exchange and symbol</li>
+                    <li>Click <strong>Download</strong> button</li>
+                    <li>Wait for download to complete</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>[Crypto] Repeated Messages</h3>
+                <div class="warning">
+                    "[Crypto] API key decryption complete" appears multiple times
+                </div>
+
+                <h4>Cause</h4>
+                <p>Redundant loading (does not affect functionality)</p>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Restart the program</li>
+                    <li>If it persists, will be fixed in next version</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Bot Issues -->
+        <div class="section">
+            <h2>🤖 Bot Related Issues</h2>
+
+            <div class="card">
+                <h3>No Entry Happening</h3>
+                <div class="info">
+                    "[STATUS] No Position | Pending=0"
+                </div>
+
+                <h4>This is NOT an error!</h4>
+                <p>The bot is waiting because entry conditions are not met.</p>
+
+                <h4>How to Verify</h4>
+                <ol class="steps">
+                    <li>Check the <code>[PREDICT]</code> section in Bot Log</li>
+                    <li>Review Pattern / RSI / MTF conditions</li>
+                    <li>If conditions are not met, waiting is <strong>normal behavior</strong></li>
+                </ol>
+
+                <div class="success">
+                    Not trading when conditions aren't right is correct behavior.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>[PREDICT] Log Not Showing</h3>
+                <div class="error">
+                    Entry prediction log is not displayed
+                </div>
+
+                <h4>Cause</h4>
+                <p>Insufficient historical data</p>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Download data from the <strong>Data</strong> tab</li>
+                    <li>Stop and restart the bot</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>Stop Loss Not Working</h3>
+                <div class="error">
+                    Stop loss is not being executed
+                </div>
+
+                <h4>Possible Causes</h4>
+                <ul>
+                    <li>Exchange API delay</li>
+                    <li>Rapid price movement (slippage)</li>
+                    <li>Network issues</li>
+                </ul>
+
+                <h4>Solution</h4>
+                <ol class="steps">
+                    <li>Check positions directly on the exchange</li>
+                    <li>Close manually if necessary</li>
+                    <li>Verify network connection</li>
+                </ol>
+
+                <div class="warning">
+                    If the program closes, SL may not work. Keep the program running while the bot is active.
+                </div>
+            </div>
+        </div>
+
+        <!-- Program Issues -->
+        <div class="section">
+            <h2>💻 Program Issues</h2>
+
+            <div class="card">
+                <h3>Program Won't Start</h3>
+
+                <h4>Solutions</h4>
+                <ol class="steps">
+                    <li>Add exception in Windows Defender or antivirus</li>
+                    <li>Run as Administrator</li>
+                    <li>Check folder permissions (<code>C:\TwinStar</code>)</li>
+                    <li>Reinstall the program</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>Display Issues / Text Not Visible</h3>
+
+                <h4>Solutions</h4>
+                <ol class="steps">
+                    <li>Check Windows display scaling is at 100%</li>
+                    <li>Set DPI scaling override in program compatibility settings</li>
+                    <li>Update graphics drivers</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="section">
+            <h2>❓ Frequently Asked Questions</h2>
+
+            <div class="card">
+                <h3>Q: Does the bot keep running if I close the program?</h3>
+                <p><strong>A: No.</strong> Closing the program stops the bot. Open positions remain on the exchange and
+                    must be managed manually.</p>
+            </div>
+
+            <div class="card">
+                <h3>Q: Can I trade multiple symbols at once?</h3>
+                <p><strong>A: Yes.</strong> You can run multiple bots simultaneously. However, the maximum number of
+                    positions may be limited by your license.</p>
+            </div>
+
+            <div class="card">
+                <h3>Q: Why are backtest and live results different?</h3>
+                <p><strong>A:</strong> Slippage, fees, and real-time price fluctuations cause differences. This is
+                    common in all trading systems.</p>
+            </div>
+
+            <div class="card">
+                <h3>Q: What if my API key is compromised?</h3>
+                <p><strong>A:</strong> Immediately delete the API key on the exchange and generate a new one. If
+                    withdrawal permission was disabled, asset loss risk is low.</p>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="user_guide.html">← Previous: User Guide</a>
+            <a href="strategy.html">Next: Strategy Guide →</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 TwinStar Quantum. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

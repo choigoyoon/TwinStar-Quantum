@@ -1,0 +1,14 @@
+{
+  "total_capital": 1000.0,
+  "risk_per_trade": 2.0,
+  "max_positions": 3,
+  "leverage": 3,
+  "max_leverage": 10,
+  "auto_leverage": false,
+  "auto_sizing": false,
+  "volatility_adjust": true,
+  "kelly_fraction": 0.5,
+  "max_drawdown": 20.0,
+  "daily_loss_limit": 5.0,
+  "stop_on_loss": true
+}

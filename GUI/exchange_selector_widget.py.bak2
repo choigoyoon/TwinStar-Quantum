@@ -1,0 +1,258 @@
+# exchange_selector_widget.py
+
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
+    QRadioButton, QButtonGroup, QCompleter, QFrame
+)
+from PyQt5.QtCore import Qt, pyqtSignal, QStringListModel
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
+
+from exchanges.exchange_manager import ExchangeManager
+
+
+class ExchangeSelectorWidget(QWidget):
+    """
+    ê±°ë˜?? ë§ˆì¼“ ?€?? ?¬ë³¼??? íƒ?˜ëŠ” ?„ì ¯
+    """
+    
+    # ?¬ë³¼ ë³€ê²??œê·¸??(exchange_id, market_type, symbol)
+    symbol_changed = pyqtSignal(str, str, str)
+    
+    def __init__(self, exchange_manager: ExchangeManager = None):
+        super().__init__()
+        self.em = exchange_manager if exchange_manager else ExchangeManager()
+        
+        # ?„ì¬ ? íƒ ?íƒœ
+        self.current_exchange = 'binance'
+        self.current_market_type = 'usdt_futures'
+        self.current_symbol = 'BTC/USDT:USDT'
+        
+        self.init_ui()
+        self.load_exchanges()
+        
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        
+        # 1. ê±°ë˜??? íƒ
+        ex_layout = QHBoxLayout()
+        lbl_ex = QLabel("Exchange:")
+        lbl_ex.setFixedWidth(70)
+        self.combo_exchange = QComboBox()
+        self.combo_exchange.currentIndexChanged.connect(self.on_exchange_changed)
+        ex_layout.addWidget(lbl_ex)
+        ex_layout.addWidget(self.combo_exchange)
+        layout.addLayout(ex_layout)
+        
+        # 2. ë§ˆì¼“ ?€??(Spot / USDT Futures / Coin Futures)
+        type_layout = QHBoxLayout()
+        lbl_type = QLabel("Market:")
+        lbl_type.setFixedWidth(70)
+        type_layout.addWidget(lbl_type)
+        
+        self.bg_type = QButtonGroup(self)
+        
+        self.rb_spot = QRadioButton("Spot")
+        self.rb_usdt = QRadioButton("USDT-M")
+        self.rb_coin = QRadioButton("Coin-M")
+        
+        self.bg_type.addButton(self.rb_spot, 1)
+        self.bg_type.addButton(self.rb_usdt, 2)
+        self.bg_type.addButton(self.rb_coin, 3)
+        
+        self.rb_usdt.setChecked(True) # ê¸°ë³¸ê°?
+        
+        self.bg_type.buttonClicked.connect(self.on_type_changed)
+        
+        type_layout.addWidget(self.rb_spot)
+        type_layout.addWidget(self.rb_usdt)
+        type_layout.addWidget(self.rb_coin)
+        layout.addLayout(type_layout)
+        
+        # 3. ?¬ë³¼ ? íƒ (ê²€??ê°€??
+        sym_layout = QHBoxLayout()
+        lbl_sym = QLabel("Symbol:")
+        lbl_sym.setFixedWidth(70)
+        self.combo_symbol = QComboBox()
+        self.combo_symbol.setEditable(True)
+        self.combo_symbol.setInsertPolicy(QComboBox.NoInsert)
+        self.combo_symbol.currentIndexChanged.connect(self.on_symbol_changed)
+        
+        # ?ë™?„ì„± ?¤ì •
+        self.completer = QCompleter()
+        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchContains)
+        self.combo_symbol.setCompleter(self.completer)
+        
+        sym_layout.addWidget(lbl_sym)
+        sym_layout.addWidget(self.combo_symbol)
+        layout.addLayout(sym_layout)
+        
+        # 4. ?°ì»¤ ?•ë³´ ?œì‹œ (ê°„ëµ)
+        self.info_frame = QFrame()
+        self.info_frame.setStyleSheet("background-color: #161b22; border-radius: 4px; padding: 5px;")
+        info_layout = QHBoxLayout(self.info_frame)
+        info_layout.setContentsMargins(5, 5, 5, 5)
+        
+        self.lbl_price = QLabel("Price: -")
+        self.lbl_change = QLabel("24h: -")
+        
+        info_layout.addWidget(self.lbl_price)
+        info_layout.addStretch()
+        info_layout.addWidget(self.lbl_change)
+        
+        layout.addWidget(self.info_frame)
+        
+    def load_exchanges(self):
+        """ê±°ë˜??ëª©ë¡ ë¡œë“œ"""
+        self.combo_exchange.blockSignals(True)
+        self.combo_exchange.clear()
+        
+        # ?´ì™¸ ê±°ë˜??ë¨¼ì?
+        for ex in self.em.get_overseas_exchanges():
+            self.combo_exchange.addItem(f"?Œ {ex.name}", ex.id)
+            
+        # êµ?‚´ ê±°ë˜??
+        for ex in self.em.get_domestic_exchanges():
+            self.combo_exchange.addItem(f"?‡°?‡· {ex.name}", ex.id)
+            
+        self.combo_exchange.blockSignals(False)
+        
+        # ê¸°ë³¸ê°??¤ì • (Binance)
+        idx = self.combo_exchange.findData('binance')
+        if idx >= 0:
+            self.combo_exchange.setCurrentIndex(idx)
+        else:
+            self.on_exchange_changed(0)
+            
+    def on_exchange_changed(self, index):
+        """ê±°ë˜??ë³€ê²??¸ë“¤??""
+        exchange_id = self.combo_exchange.currentData()
+        self.current_exchange = exchange_id
+        print(f"?”„ Exchange changed to: {exchange_id}")
+        
+        # ë§ˆì¼“ ?€??? íš¨??ê²€??ë°?ë¹„í™œ?±í™”
+        config = self.em.get_supported_exchanges().get(exchange_id)
+        if config:
+            self.rb_spot.setEnabled(config.spot)
+            self.rb_usdt.setEnabled(config.futures)
+            self.rb_coin.setEnabled(config.futures)
+            
+            # ?„ì¬ ? íƒ???€?…ì´ ë¶ˆê??¥í•˜ë©?ê°€?¥í•œ ?€?…ìœ¼ë¡?ë³€ê²?
+            if self.rb_usdt.isChecked() and not config.futures:
+                self.rb_spot.setChecked(True)
+                self.current_market_type = 'spot'
+            elif self.rb_spot.isChecked() and not config.spot:
+                self.rb_usdt.setChecked(True)
+                self.current_market_type = 'usdt_futures'
+                
+        self.load_symbols()
+        
+    def on_type_changed(self, button):
+        """ë§ˆì¼“ ?€??ë³€ê²??¸ë“¤??""
+        if button == self.rb_spot:
+            self.current_market_type = 'spot'
+        elif button == self.rb_usdt:
+            self.current_market_type = 'usdt_futures'
+        elif button == self.rb_coin:
+            self.current_market_type = 'coin_futures'
+            
+        print(f"?”„ Market type changed to: {self.current_market_type}")
+        self.load_symbols()
+        
+    def load_symbols(self):
+        """?¬ë³¼ ëª©ë¡ ë¡œë“œ"""
+        self.combo_symbol.blockSignals(True)
+        self.combo_symbol.clear()
+        
+        print(f"??Loading symbols for {self.current_exchange} ({self.current_market_type})...")
+        symbols = self.em.get_symbols(self.current_exchange, self.current_market_type)
+        
+        symbol_names = []
+        for s in symbols:
+            name = s['symbol']
+            self.combo_symbol.addItem(name)
+            symbol_names.append(name)
+            
+        # ?ë™?„ì„± ëª¨ë¸ ?…ë°?´íŠ¸
+        model = QStringListModel(symbol_names)
+        self.completer.setModel(model)
+        
+        self.combo_symbol.blockSignals(False)
+        
+        if symbols:
+            self.combo_symbol.setCurrentIndex(0)
+            self.on_symbol_changed(0)
+        else:
+            self.lbl_price.setText("Price: -")
+            self.lbl_change.setText("24h: -")
+            
+    def on_symbol_changed(self, index):
+        """?¬ë³¼ ë³€ê²??¸ë“¤??""
+        symbol = self.combo_symbol.currentText()
+        if not symbol:
+            return
+            
+        self.current_symbol = symbol
+        print(f"??Symbol selected: {symbol}")
+        
+        # ?œê·¸??ë°œì†¡
+        self.symbol_changed.emit(self.current_exchange, self.current_market_type, symbol)
+        
+        # ?°ì»¤ ?…ë°?´íŠ¸ (ë¹„ë™ê¸°ë¡œ ?˜ë©´ ì¢‹ì?ë§??¼ë‹¨ ?™ê¸° ?¸ì¶œ)
+        # ?¤ì œ ?±ì—?œëŠ” ë³„ë„ ?¤ë ˆ?œë‚˜ ?€?´ë¨¸ë¡?ì£¼ê¸°???…ë°?´íŠ¸ ?„ìš”
+        self.update_ticker()
+        
+    def update_ticker(self):
+        """?°ì»¤ ?•ë³´ ?…ë°?´íŠ¸"""
+        ticker = self.em.get_ticker(self.current_exchange, self.current_symbol)
+        if ticker:
+            price = ticker['price']
+            change = ticker['change_24h']
+            
+            self.lbl_price.setText(f"Price: {price:,.4f}")
+            
+            color = "#ff4d4d" if change < 0 else "#00cc00" if change > 0 else "#c9d1d9"
+            sign = "+" if change > 0 else ""
+            self.lbl_change.setText(f"24h: {sign}{change:.2f}%")
+            self.lbl_change.setStyleSheet(f"color: {color}; font-weight: bold;")
+        else:
+            self.lbl_price.setText("Price: -")
+            self.lbl_change.setText("24h: -")
+            self.lbl_change.setStyleSheet("color: #c9d1d9;")
+
+
+# ?ŒìŠ¤??
+if __name__ == "__main__":
+    import sys
+    from PyQt5.QtWidgets import QApplication
+    
+    app = QApplication(sys.argv)
+    
+    # ?¤í¬ ?Œë§ˆ ?ìš©
+    app.setStyle('Fusion')
+    
+    window = QWidget()
+    layout = QVBoxLayout(window)
+    window.setStyleSheet("background-color: #0d1117; color: #c9d1d9;")
+    
+    # ExchangeManager ?¸ìŠ¤?´ìŠ¤ (?ŒìŠ¤?¸ìš©)
+    em = ExchangeManager()
+    
+    widget = ExchangeSelectorWidget(em)
+    layout.addWidget(widget)
+    
+    # ê²°ê³¼ ?œì‹œ ?¼ë²¨
+    lbl_result = QLabel("Selected: -")
+    layout.addWidget(lbl_result)
+    
+    def on_change(ex, mk, sym):
+        lbl_result.setText(f"Selected: {ex} | {mk} | {sym}")
+        
+    widget.symbol_changed.connect(on_change)
+    
+    window.resize(400, 200)
+    window.show()
+    
+    sys.exit(app.exec_())

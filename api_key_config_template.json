@@ -1,0 +1,7 @@
+{
+    "baseUrl": "https://mainnet.zklighter.elliot.ai",
+    "accountIndex": 1,
+    "privateKeys": {
+        "여기에_API_KEY_INDEX": "여기에_PRIVATE_KEY_붙여넣기"
+    }
+}

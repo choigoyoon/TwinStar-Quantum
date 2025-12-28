@@ -1,0 +1,21 @@
+{
+    "_description": "Default Strategy Parameters",
+    "_updated": "2025-12-11 17:34:39",
+    "atr_mult": 1.75,
+    "trail_start_r": 1.2,
+    "trail_dist_r": 0.3,
+    "pattern_tolerance": 0.05,
+    "entry_validity_hours": 4.0,
+    "pullback_rsi_long": 35,
+    "pullback_rsi_short": 55,
+    "rsi_period": 21,
+    "max_adds": 1,
+    "slippage_pct": 0.05,
+    "fee_pct": 0.055,
+    "leverage": 10,
+    "trend_interval": "1d",
+    "filter_tf": "1w",
+    "entry_tf": "1h",
+    "direction": "Both",
+    "max_mdd": 20.0
+}

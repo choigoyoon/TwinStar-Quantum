@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Guide - TwinStar Quantum</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <a href="../ko/strategy.html">🇰🇷 한국어</a>
+        <a href="../en/strategy.html" class="active">🇺🇸 English</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 Strategy Guide</h1>
+            <nav>
+                <a href="index.html">← Home</a>
+                <a href="troubleshooting.html">Previous: Troubleshooting</a>
+            </nav>
+        </div>
+
+        <!-- Overview -->
+        <div class="section">
+            <h2>🎯 Alpha-X7 Strategy Overview</h2>
+            <div class="card">
+                <p>Alpha-X7 is a <strong>trend-following strategy</strong> based on W/M pattern detection.</p>
+
+                <h4>Key Features</h4>
+                <ul>
+                    <li>📈 <strong>W Pattern (Double Bottom)</strong>: Long entry signal</li>
+                    <li>📉 <strong>M Pattern (Double Top)</strong>: Short entry signal</li>
+                    <li>🔍 <strong>RSI Filter</strong>: Confirms overbought/oversold conditions</li>
+                    <li>🌐 <strong>MTF (Multi-Timeframe)</strong>: Higher timeframe trend alignment</li>
+                    <li>🎚️ <strong>ATR-based SL/TP</strong>: Volatility-adjusted risk management</li>
+                    <li>🔄 <strong>Trailing Stop</strong>: Profit protection mechanism</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Entry Conditions -->
+        <div class="section">
+            <h2>🟢 Entry Conditions</h2>
+
+            <div class="card">
+                <h3>Long Entry (Buy)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Condition</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pattern</td>
+                            <td>W Pattern (Double Bottom) detected</td>
+                        </tr>
+                        <tr>
+                            <td>RSI</td>
+                            <td>&lt; 35 (Oversold condition)</td>
+                        </tr>
+                        <tr>
+                            <td>MTF Trend</td>
+                            <td>Uptrend on higher timeframe</td>
+                        </tr>
+                        <tr>
+                            <td>Validity</td>
+                            <td>Within configured time after pattern detection</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="success">
+                    When all conditions are met, entry occurs at the open of the next bar.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Short Entry (Sell)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Condition</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pattern</td>
+                            <td>M Pattern (Double Top) detected</td>
+                        </tr>
+                        <tr>
+                            <td>RSI</td>
+                            <td>&gt; 65 (Overbought condition)</td>
+                        </tr>
+                        <tr>
+                            <td>MTF Trend</td>
+                            <td>Downtrend on higher timeframe</td>
+                        </tr>
+                        <tr>
+                            <td>Validity</td>
+                            <td>Within configured time after pattern detection</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pattern Explanation -->
+        <div class="section">
+            <h2>📐 W/M Pattern Explanation</h2>
+
+            <div class="card">
+                <h3>W Pattern (Double Bottom)</h3>
+                <pre><code>
+         /\
+        /  \    /
+       /    \  /
+      /      \/
+     L1      L2
+</code></pre>
+                <p><strong>L1</strong>: First low point</p>
+                <p><strong>L2</strong>: Second low point (similar or slightly higher than L1)</p>
+                <p>→ Bullish reversal expected after L2 → <strong>Long entry</strong></p>
+            </div>
+
+            <div class="card">
+                <h3>M Pattern (Double Top)</h3>
+                <pre><code>
+      H1      H2
+     /  \    /  \
+    /    \  /    \
+   /      \/      \
+</code></pre>
+                <p><strong>H1</strong>: First high point</p>
+                <p><strong>H2</strong>: Second high point (similar or slightly lower than H1)</p>
+                <p>→ Bearish reversal expected after H2 → <strong>Short entry</strong></p>
+            </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="section">
+            <h2>⚙️ Parameter Descriptions</h2>
+
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                            <th>Range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>filter_tf</code></td>
+                            <td>Trend filter timeframe</td>
+                            <td>4h</td>
+                            <td>2h, 4h, D</td>
+                        </tr>
+                        <tr>
+                            <td><code>atr_mult</code></td>
+                            <td>SL distance (ATR multiplier)</td>
+                            <td>1.25</td>
+                            <td>1.0 ~ 2.0</td>
+                        </tr>
+                        <tr>
+                            <td><code>trail_start_r</code></td>
+                            <td>Trailing start (R multiple)</td>
+                            <td>1.0</td>
+                            <td>0.5 ~ 2.0</td>
+                        </tr>
+                        <tr>
+                            <td><code>trail_dist_r</code></td>
+                            <td>Trailing distance (R multiple)</td>
+                            <td>0.2</td>
+                            <td>0.1 ~ 0.5</td>
+                        </tr>
+                        <tr>
+                            <td><code>entry_validity_hours</code></td>
+                            <td>Signal validity period</td>
+                            <td>6</td>
+                            <td>4 ~ 48</td>
+                        </tr>
+                        <tr>
+                            <td><code>pattern_tolerance</code></td>
+                            <td>Pattern matching tolerance</td>
+                            <td>5%</td>
+                            <td>3% ~ 10%</td>
+                        </tr>
+                        <tr>
+                            <td><code>rsi_period</code></td>
+                            <td>RSI calculation period</td>
+                            <td>21</td>
+                            <td>14 ~ 28</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trailing Stop -->
+        <div class="section">
+            <h2>🔄 Trailing Stop</h2>
+
+            <div class="card">
+                <h4>How It Works</h4>
+                <ol class="steps">
+                    <li>After entry, price moves in favorable direction</li>
+                    <li>When profit reaches <code>trail_start_r</code> × Risk, trailing starts</li>
+                    <li>As price continues favorably, SL moves along</li>
+                    <li>When price retraces by <code>trail_dist_r</code> × Risk, position closes</li>
+                </ol>
+
+                <h4>Example</h4>
+                <pre><code>Entry price: $100
+SL: $95 (Risk = $5)
+trail_start_r = 1.0
+trail_dist_r = 0.2
+
+Price rises to $105 (1R profit)
+→ Trailing starts
+→ New SL = $104 (High - 0.2R)
+
+Price rises to $108
+→ New SL = $107
+
+Price drops to $107
+→ SL hit, closed (Profit: $7)</code></pre>
+            </div>
+        </div>
+
+        <!-- Risk Management -->
+        <div class="section">
+            <h2>⚠️ Risk Management</h2>
+
+            <div class="card">
+                <h4>Recommended Settings</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Recommended</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Leverage</td>
+                            <td>3 ~ 10x</td>
+                            <td>Higher = more risk</td>
+                        </tr>
+                        <tr>
+                            <td>Position Size</td>
+                            <td>5-10% of total capital</td>
+                            <td>Diversify risk</td>
+                        </tr>
+                        <tr>
+                            <td>Daily Max Loss</td>
+                            <td>Below 5%</td>
+                            <td>Rest after losses</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="error">
+                    Excessive leverage increases liquidation risk. Only invest what you can afford to lose.
+                </div>
+            </div>
+        </div>
+
+        <!-- Backtest Interpretation -->
+        <div class="section">
+            <h2>📈 Interpreting Backtest Results</h2>
+
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Good</th>
+                            <th>Average</th>
+                            <th>Poor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Win Rate</td>
+                            <td>&gt; 60%</td>
+                            <td>50-60%</td>
+                            <td>&lt; 50%</td>
+                        </tr>
+                        <tr>
+                            <td>MDD</td>
+                            <td>&lt; 15%</td>
+                            <td>15-25%</td>
+                            <td>&gt; 25%</td>
+                        </tr>
+                        <tr>
+                            <td>Profit Factor</td>
+                            <td>&gt; 2.0</td>
+                            <td>1.5-2.0</td>
+                            <td>&lt; 1.5</td>
+                        </tr>
+                        <tr>
+                            <td>Sharpe Ratio</td>
+                            <td>&gt; 2.0</td>
+                            <td>1.0-2.0</td>
+                            <td>&lt; 1.0</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="warning">
+                    Backtest results are based on historical data and do not guarantee future profits.
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="troubleshooting.html">← Previous: Troubleshooting</a>
+            <a href="index.html">Home →</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 TwinStar Quantum. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

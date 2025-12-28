@@ -1,0 +1,51 @@
+backtest_widget.py|L691|Error|QMessageBox.warning(self, "Error", "Select a symbol")
+backtest_widget.py|L954|Error|QMessageBox.warning(self, "Error", "Strategy not loaded")
+backtest_widget.py|L1082|Error|QMessageBox.critical(self, "Error", message)
+backtest_widget.py|L1099|Error|QMessageBox.warning(self, "Error", f"Apply failed: {e}")
+backtest_widget.py|L1120|Success|QMessageBox.information(self, "Success", f"Preset '{text}' saved.")
+backtest_widget.py|L1126|Failed|QMessageBox.warning(self, "Failed", "Preset save failed")
+backtest_widget.py|L1132|Error|QMessageBox.warning(self, "Error", "Cannot delete default preset.")
+bot_status_widget.py|L111|Entry|labels = ["Entry", "Current", "Stop Loss", "PnL"]
+cache_manager_widget.py|L143|Error|QMessageBox.critical(self, "Error", f"Failed to delete: {e}")
+cache_manager_widget.py|L158|Success|QMessageBox.information(self, "Success", "All cache files deleted.")
+cache_manager_widget.py|L161|Error|QMessageBox.critical(self, "Error", f"Failed to delete all: {e}")
+data_collector_widget.py|L879|Warning|QMessageBox.warning(self, "Warning", "Please select at least one symbo
+data_download_widget.py|L211|Error|QMessageBox.warning(self, "Error", "Could not find listing date.\nTry 
+data_download_widget.py|L215|Error|QMessageBox.warning(self, "Error", f"Error finding listing date:\n{e}"
+data_download_widget.py|L230|Warning|QMessageBox.warning(self, "Warning", "Please select at least one timef
+developer_mode_widget.py|L297|Error|QMessageBox.warning(self, "Error", f"No data found for {symbol}. Pleas
+developer_mode_widget.py|L434|Error|QMessageBox.critical(self, "Error", f"Optimization failed: {e}")
+glossary_popup.py|L65|Entry|"Entry": {
+glossary_popup.py|L66|Entry|"full": "Entry",
+history_widget.py|L187|Close|close_btn = QPushButton("Close")
+history_widget.py|L565|Success|QMessageBox.information(self, "Success", f"Imported {len(trades)} trad
+history_widget.py|L567|Warning|QMessageBox.warning(self, "Warning", "No trades found in CSV")
+history_widget.py|L966|Entry|writer.writerow(["#", "Date/Time", "Symbol", "Side", "Entry", "Exit", 
+history_widget.py|L980|Success|QMessageBox.information(self, "Success", f"Exported {len(self._filtere
+history_widget.py|L982|Error|QMessageBox.critical(self, "Error", f"Export failed: {e}")
+login.py|L246|Error|QMessageBox.warning(self, "Error", "Please enter email and password")
+login.py|L254|Error|QMessageBox.warning(self, "Error", "Account not found. Please sign up 
+login.py|L287|Error|QMessageBox.warning(self, "Error", "Please enter a valid email")
+login.py|L291|Error|QMessageBox.warning(self, "Error", "Password must be at least 4 charac
+login.py|L295|Error|QMessageBox.warning(self, "Error", "Passwords do not match")
+login.py|L307|Error|QMessageBox.warning(self, "Error", "Payment system not available")
+login.py|L334|Success|QMessageBox.information(self, "Success",
+optimization_widget.py|L666|Quick|mode_text = "Quick"
+optimization_widget.py|L669|Deep|mode_text = "Deep"
+optimization_widget.py|L672|Standard|mode_text = "Standard"
+optimization_widget.py|L830|Warning|QMessageBox.warning(self, "Warning", "Please select a data source firs
+optimization_widget.py|L836|Warning|QMessageBox.warning(self, "Warning", "Data load failed")
+optimization_widget.py|L846|Warning|QMessageBox.warning(self, "Warning", "Failed to generate parameter gri
+optimization_widget.py|L903|Error|QMessageBox.critical(self, "Error", f"Optimization start failed: {e}")
+optimization_widget.py|L963|Error|QMessageBox.critical(self, "Error", f"Optimization failed: {message}")
+optimization_widget.py|L1046|Apply|apply_btn = QPushButton("Apply")
+settings_widget.py|L189|Error|QMessageBox.warning(self, "Error", "Enter Token and Chat ID")
+settings_widget.py|L194|Success|QMessageBox.information(self, "Success", "Test message sent!")
+settings_widget.py|L196|Error|QMessageBox.warning(self, "Error", f"Send failed: {resp.text}")
+settings_widget.py|L198|Error|QMessageBox.critical(self, "Error", f"Error: {e}")
+settings_widget.py|L413|Error|QMessageBox.warning(self, "Error", "Enter API key")
+telegram_settings_widget.py|L85|Settings|settings_group = QGroupBox("Settings")
+telegram_settings_widget.py|L197|Success|QMessageBox.information(self, "Success", "Settings saved!")
+telegram_settings_widget.py|L202|Error|QMessageBox.warning(self, "Error", "Telegram module not available")
+telegram_settings_widget.py|L216|Success|QMessageBox.information(self, "Success", "Test message sent!")
+telegram_settings_widget.py|L218|Error|QMessageBox.warning(self, "Error",

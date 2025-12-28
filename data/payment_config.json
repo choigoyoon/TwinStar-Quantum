@@ -1,0 +1,20 @@
+{
+    "license_price_usd": 100.0,
+    "wallets": {
+        "USDT_TRC20": {
+            "address": "TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3",
+            "network": "Tron (TRC-20)",
+            "min_confirmations": 1
+        },
+        "BTC": {
+            "address": "",
+            "network": "Bitcoin",
+            "min_confirmations": 3
+        },
+        "ETH": {
+            "address": "",
+            "network": "Ethereum",
+            "min_confirmations": 12
+        }
+    }
+}

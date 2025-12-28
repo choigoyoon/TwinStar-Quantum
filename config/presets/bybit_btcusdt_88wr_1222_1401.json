@@ -1,0 +1,32 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "entry_tf": "15m",
+        "created": "2025-12-22 14:01:49",
+        "candles": 201102,
+        "period_start": "1585132200",
+        "period_end": "1766123100"
+    },
+    "_result": {
+        "trades": 2400,
+        "win_rate": 88.0,
+        "total_return": 12692.7,
+        "mdd": 18.8,
+        "sharpe": 24.4
+    },
+    "params": {
+        "trend_interval": "1h",
+        "filter_tf": "4h",
+        "entry_tf": "15m",
+        "leverage": 9,
+        "direction": "Both",
+        "max_mdd": 20.0,
+        "atr_mult": 1.1,
+        "trail_start_r": 1.0,
+        "trail_dist_r": 0.15,
+        "pattern_tolerance": 0.05,
+        "entry_validity_hours": 12.0
+    }
+}

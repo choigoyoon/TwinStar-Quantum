@@ -1847,6 +1847,51 @@ class UnifiedBot:
                             logging.warning(f"[EXECUTE] ⚠️ Close order returned False (Attempt {attempt+1}/{max_retries})")
                     except Exception as e:
                         logging.error(f"[EXECUTE] ⚠️ Close order error (Attempt {attempt+1}/{max_retries}): {e}")
+                        time.sleep(1)
+
+            # [FIX] Compounding Persistence: Save trade to storage
+            if getattr(self, 'trade_storage', None) and self.position:
+                try:
+                    pnl_usd = 0
+                    pnl_pct = 0
+                    
+                    # Calculate PnL locally if not provided
+                    if self.position.entry_price > 0:
+                        if direction == 'Long':
+                            pnl_pct = (price - self.position.entry_price) / self.position.entry_price * 100
+                        else:
+                            pnl_pct = (self.position.entry_price - price) / self.position.entry_price * 100
+                        
+                        # Apply leverage to PnL % for absolute display (optional, depending on preference)
+                        # Here we usually store ROE (Return on Equity)? Or raw price move?
+                        # Let's align with storage expectation. Usually Capital * Leverage * (Move / Entry)
+                        
+                        margin_used = (self.exchange.capital / self.exchange.leverage) * self.exchange.leverage # Essentially size or capital
+                        # More accurately: Profit = Size * (PriceDiff)
+                        
+                        # Simplified PnL USD estimate (Exchange adapter does this better, but we need record)
+                        # We used 'self.exchange.capital' which is updated in adapter.
+                        # Let's trust adapter's capital update diff if possible, or estimate here.
+                        # For now, estimate based on size.
+                        size = self.position.size
+                        pnl_usd = size * abs(price - self.position.entry_price)
+                        if pnl_pct < 0: pnl_usd = -pnl_usd
+                    
+                    self.trade_storage.add_trade({
+                        'entry_time': self.position.entry_time.isoformat() if hasattr(self.position, 'entry_time') and self.position.entry_time else datetime.now().isoformat(),
+                        'exit_time': datetime.now().isoformat(),
+                        'direction': self.position.side,
+                        'entry_price': self.position.entry_price,
+                        'exit_price': price,
+                        'pnl_pct': pnl_pct,
+                        'pnl_usd': pnl_usd,
+                        'reason': reason
+                    }, immediate_flush=True)
+                    
+                    logging.info(f"[STORAGE] Trade saved: PnL=${pnl_usd:.2f} ({pnl_pct:.2f}%)")
+                    
+                except Exception as e:
+                    logging.error(f"[STORAGE] Failed to save trade: {e}")
                     
                     if attempt < max_retries - 1:
                         time.sleep(1) # 재시도 대기

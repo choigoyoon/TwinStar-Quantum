@@ -1,0 +1,172 @@
+{
+  "except_pass": [
+    {
+      "file": "base_exchange.py",
+      "line": 238,
+      "code": "except Exception:"
+    },
+    {
+      "file": "binance_exchange.py",
+      "line": 467,
+      "code": "except Exception:"
+    },
+    {
+      "file": "bingx_exchange.py",
+      "line": 435,
+      "code": "except Exception:"
+    },
+    {
+      "file": "bitget_exchange.py",
+      "line": 202,
+      "code": "except Exception:"
+    },
+    {
+      "file": "bitget_exchange.py",
+      "line": 448,
+      "code": "except Exception:"
+    },
+    {
+      "file": "bithumb_exchange.py",
+      "line": 472,
+      "code": "except Exception:"
+    },
+    {
+      "file": "ccxt_exchange.py",
+      "line": 362,
+      "code": "except Exception:"
+    },
+    {
+      "file": "okx_exchange.py",
+      "line": 439,
+      "code": "except Exception:"
+    },
+    {
+      "file": "upbit_exchange.py",
+      "line": 346,
+      "code": "except Exception:"
+    }
+  ],
+  "hardcoded": [],
+  "unsafe": [
+    {
+      "file": "bingx_exchange.py",
+      "line": 184,
+      "code": "self.exchange.cancel_order(order['id'], symbol)"
+    },
+    {
+      "file": "bitget_exchange.py",
+      "line": 201,
+      "code": "self.exchange.cancel_order(order['id'], symbol)"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 113,
+      "code": "if result['retCode'] != 0:"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 114,
+      "code": "logging.error(f\"Kline error: {result['retMsg']}\")"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 117,
+      "code": "data = result['result']['list']"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 136,
+      "code": "return float(result['result']['list'][0]['lastPrice'])"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 186,
+      "code": "if result['retCode'] == 0:"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 203,
+      "code": "logging.error(f\"Order error: {result['retMsg']} (Code: {result['retCode']})\")"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 243,
+      "code": "if result['retCode'] == 0:"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 249,
+      "code": "logging.error(f\"SL update error: {result['retMsg']}\")"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 271,
+      "code": "if result['retCode'] == 0:"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 285,
+      "code": "logging.error(f\"Close error: {result['retMsg']}\")"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 321,
+      "code": "if result['retCode'] == 0:"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 335,
+      "code": "logging.error(f\"Add position error: {result['retMsg']}\")"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 499,
+      "code": "if result['retCode'] != 0:"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 500,
+      "code": "logging.error(f\"Trade history error: {result['retMsg']}\")"
+    },
+    {
+      "file": "bybit_exchange.py",
+      "line": 504,
+      "code": "for t in result['result']['list']:"
+    },
+    {
+      "file": "ccxt_exchange.py",
+      "line": 361,
+      "code": "self.ccxt_exchange.cancel_order(order['id'], symbol)"
+    },
+    {
+      "file": "okx_exchange.py",
+      "line": 184,
+      "code": "self.exchange.cancel_order(order['id'], symbol)"
+    },
+    {
+      "file": "upbit_exchange.py",
+      "line": 133,
+      "code": "order_id = str(result['uuid'])"
+    },
+    {
+      "file": "upbit_exchange.py",
+      "line": 218,
+      "code": "order_id = str(result['uuid'])"
+    },
+    {
+      "file": "ws_handler.py",
+      "line": 303,
+      "code": "for k in data['data']:"
+    },
+    {
+      "file": "ws_handler.py",
+      "line": 322,
+      "code": "for k in data['data']:"
+    },
+    {
+      "file": "ws_handler.py",
+      "line": 329,
+      "code": "k = data['data']"
+    }
+  ]
+}

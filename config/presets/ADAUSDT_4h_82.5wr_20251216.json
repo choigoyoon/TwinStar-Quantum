@@ -1,0 +1,34 @@
+{
+    "_meta": {
+        "symbol": "ADAUSDT",
+        "exchange": "bybit",
+        "timeframe": "4h",
+        "entry_tf": "30m",
+        "created": "2025-12-16 18:00:35",
+        "candles": 166458,
+        "period_start": "1616053500",
+        "period_end": "1765864800",
+        "name": "ADAUSDT_4h_82.5wr_20251216",
+        "updated": "2025-12-16 18:00:35"
+    },
+    "_result": {
+        "trades": 337,
+        "win_rate": 82.5,
+        "total_return": 1400.7,
+        "mdd": -14.4,
+        "sharpe": 16.37
+    },
+    "params": {
+        "trend_interval": "4h",
+        "filter_tf": "6h",
+        "entry_tf": "30m",
+        "leverage": 3,
+        "direction": "Both",
+        "max_mdd": 20.0,
+        "atr_mult": 1.5,
+        "trail_start_r": 1.0,
+        "trail_dist_r": 0.1,
+        "pullback_rsi_long": 35,
+        "pullback_rsi_short": 65
+    }
+}

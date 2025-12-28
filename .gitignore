@@ -21,5 +21,13 @@ _backup*/
 *.bak
 
 # Temp
-*.tmp
-temp/
+
+# Data & Cache
+*.db
+*.sqlite
+data/cache/
+*.parquet
+
+# Executables
+*.exe
+keys.dat*

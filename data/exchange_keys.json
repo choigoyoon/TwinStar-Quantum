@@ -1,0 +1,9 @@
+{
+  "bybit": {
+    "name": "bybit",
+    "api_key": "9ASHpPHIkRTP9ADD7S",
+    "api_secret": "U6Cx8BIjTZ1GkIlOJIUb1psU5QTYvA9exKuB",
+    "testnet": false,
+    "passphrase": ""
+  }
+}

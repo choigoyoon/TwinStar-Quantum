@@ -1,0 +1,18 @@
+﻿============================================================
+py : Traceback (most recent call last):
+위치 줄:1 문자:1
++ py -c "exec(open('deep_check.py', encodi
+ng='utf-8').read())" 2>&1 | O ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (Traceback (most recent call last)  
+  ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+  File "<string>", line 1, in <module>
+  File "<string>", line 7, in <module>
+UnicodeEncodeError: 'cp949' codec can't en
+code character '\U0001f50d' in position 0:
+ illegal multibyte sequence

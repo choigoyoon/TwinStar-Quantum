@@ -1,0 +1,1064 @@
+======================================================================
+TwinStar Quantum Code Quality Report (v1.4.4 Audit)
+======================================================================
+
+[1] except: pass — 128 issues
+[2] Hardcoded Paths — 129 issues
+[3] Unsafe Direct Access — 749 issues
+
+--------------------------------------------------
+SAMPLES (10 per category)
+--------------------------------------------------
+
+### EXCEPT_PASS ###
+  analyze_hotfixes.py L31: except:
+  apply_logging_fix.py L13: print("except Exception: pass → logging 변환")
+  apply_logging_fix.py L40: # except Exception: pass 패턴 찾아서 변환
+  apply_logging_fix.py L41: # 패턴: except Exception:\n            pass (capture indent)
+  apply_logging_fix.py L43: pattern = r'(except\s+Exception\s*(?:as\s+\w+)?:\s*\n)(\s+)pass'
+  bot_status.py L61: except:
+  check_hardcoded.py L24: except:
+  check_parquet.py L10: except:
+  check_risky_targeted.py L22: if line.strip() == "except:" or "except: pass" in line:
+  diagnose_all_crash.py L51: except:
+
+### HARDCODED_PATH ###
+  analyze_binance_adapter.py L4: base = Path(r'C:\매매전략')
+  analyze_entry_failure.py L8: base = Path(r'C:\매매전략')
+  analyze_entry_flow.py L8: base = Path(r'C:\매매전략')
+  analyze_hotfixes.py L9: base = Path(r'C:\매매전략')
+  analyze_signal_duplication.py L8: base = Path(r'C:\매매전략')
+  analyze_sniper.py L4: sniper_path = r'C:\매매전략\core\multi_sniper.py'
+  analyze_ws_handler.py L4: base = Path(r'C:\매매전략')
+  append_binance_ws.py L4: binance_file = Path(r'C:\매매전략\exchanges\binance_exchange.py')
+  apply_hotfixes.py L9: base = Path(r'C:\매매전략')
+  apply_logging_fix.py L5: base = Path(r'C:\매매전략')
+
+### UNSAFE_GET ###
+  diagnose_all_crash.py L45: # 4. response['key'] - KeyError
+  diagnose_get_safety.py L94: # response['key'] or result['key'] 패턴
+  diagnose_init_order.py L62: for ln, desc in order[:30]:
+  system_doctor.py L72: result['status'] = 'SKIP'
+  system_doctor.py L73: result['message'] = '서버 시간 확인 불가 (오프라인?)'
+  system_doctor.py L93: result['status'] = 'FIXED'
+  system_doctor.py L94: result['message'] = f'시간 오프셋 {offset/1000:.1f}초 자동 보정됨'
+  system_doctor.py L96: result['status'] = 'WARNING'
+  system_doctor.py L97: result['message'] = f'시간 동기화 필요: {offset/1000:.1f}초 차이'
+  system_doctor.py L100: result['status'] = 'WARNING'
+
+--------------------------------------------------
+FULL LISTING
+--------------------------------------------------
+
+### EXCEPT_PASS ###
+  analyze_hotfixes.py L31: except:
+  apply_logging_fix.py L13: print("except Exception: pass → logging 변환")
+  apply_logging_fix.py L40: # except Exception: pass 패턴 찾아서 변환
+  apply_logging_fix.py L41: # 패턴: except Exception:\n            pass (capture indent)
+  apply_logging_fix.py L43: pattern = r'(except\s+Exception\s*(?:as\s+\w+)?:\s*\n)(\s+)pass'
+  bot_status.py L61: except:
+  check_hardcoded.py L24: except:
+  check_parquet.py L10: except:
+  check_risky_targeted.py L22: if line.strip() == "except:" or "except: pass" in line:
+  diagnose_all_crash.py L51: except:
+  diagnose_all_issues.py L28: except: pass
+  diagnose_all_issues.py L42: except: pass
+  diagnose_all_issues.py L54: except: pass
+  diagnose_all_issues.py L56: # 4. except: pass (에러 무시)
+  diagnose_all_issues.py L57: print("\n[4] except: pass (에러 삼킴)")
+  diagnose_all_issues.py L61: # Simple regex for except followed immediately by pass, potentially on next line
+  diagnose_all_issues.py L62: if re.search(r'except.*:\s*(\n\s*)?pass', code):
+  diagnose_all_issues.py L63: matches = re.findall(r'except.*:\s*(\n\s*)?pass', code)
+  diagnose_all_issues.py L66: except: pass
+  diagnose_all_issues.py L83: except: pass
+  diagnose_all_issues.py L93: except: pass
+  diagnose_all_issues.py L103: except: pass
+  diagnose_df_patterns.py L47: except:
+  diagnose_get_safety.py L37: except:
+  diagnose_get_safety.py L102: except:
+  find_more.py L19: except:
+  full_param_check.py L107: except:
+  full_param_check.py L116: except:
+  scan_risky_patterns.py L11: "except: pass",
+  system_doctor.py L159: except:
+  system_doctor.py L301: except:
+  trading_safety.py L55: except:
+  trading_safety.py L79: except:
+  verify_all_exchanges.py L22: except:
+  verify_complete.py L86: except:
+  verify_except.py L1: # verify_except.py - except:pass 상세 분석
+  verify_except.py L7: print("except:pass 상세 분석 (핵심 파일)")
+  verify_except.py L59: print("\nOK 핵심 로직에 위험한 except:pass 없음")
+  verify_korean.py L26: except:
+  verify_ultra.py L23: except: pass
+  verify_ultra.py L25: # 2. except: pass
+  verify_ultra.py L26: print("\n[2] 예외 삼킴 (except + pass)")
+  verify_ultra.py L37: except: pass
+  verify_ultra.py L76: except: pass
+  .venv\Lib\site-packages\pip\_internal\utils\retry.py L21: surpassed, the last exception raised is reraised.
+  .venv\Lib\site-packages\pip\_vendor\packaging\licenses\__init__.py L108: # Take a final pass to check for unknown licenses/exceptions.
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L194: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L199: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L230: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L236: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L277: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L283: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L329: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L335: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L435: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L440: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L494: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L506: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L538: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L550: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L691: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L711: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L726: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L741: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L770: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L785: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L961: except JsonSchemaValueException: pass
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L964: except JsonSchemaValueException: pass
+  core\multi_sniper.py L637: except:
+  core\unified_bot.py L2676: except: pass
+  GUI\data_manager.py L364: except: pass
+  GUI\optimization_widget.py L845: except:
+  storage\trade_storage.py L155: except:
+  _backup_2025\analyze_usage.py L39: except:
+  _backup_2025\analyze_usage.py L59: except:
+  _backup_2025\bot_bybit_live.py L32: except: pass
+  _backup_2025\bot_bybit_real.py L43: except: pass
+  _backup_2025\bot_bybit_real.py L58: except: pass
+  _backup_2025\bot_bybit_real.py L82: except: pass
+  _backup_2025\bot_master.py L64: except:
+  _backup_2025\bot_master.py L74: except:
+  _backup_2025\bot_master.py L140: except:
+  _backup_2025\bot_master.py L149: except:
+  _backup_2025\bot_monitor.py L29: except:
+  _backup_2025\bot_monitor.py L40: except:
+  _backup_2025\bot_monitor.py L51: except:
+  _backup_2025\bot_monitor.py L63: except:
+  _backup_2025\build_secure_dist.py L126: except:
+  _backup_2025\crypto_payment.py L183: # except:
+  _backup_2025\deep_check.py L18: except:
+  _backup_2025\license_client.py L171: except:
+  _backup_2025\license_client.py L183: except:
+  _backup_2025\limit_fill_fast.py L60: except:
+  _backup_2025\system_health.py L159: except:
+  _backup_2025\trc20_payment.py L52: except:
+  _backup_2025\trc20_payment.py L71: except:
+  _backup_2025\verify_tf_mapping.py L21: except:
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\utils\retry.py L21: surpassed, the last exception raised is reraised.
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\packaging\licenses\__init__.py L108: # Take a final pass to check for unknown licenses/exceptions.
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L194: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L199: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L230: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L236: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L277: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L283: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L329: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L335: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L435: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L440: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L494: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L506: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L538: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L550: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L691: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L711: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L726: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L741: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L770: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L785: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L961: except JsonSchemaValueException: pass
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L964: except JsonSchemaValueException: pass
+  _backup_2025\archive_root\analyze_true_failures.py L147: except: pass
+  _backup_2025\archive_root\deep_failure_context.py L158: except: pass
+  _backup_2025\archive_root\double_bottom_advanced_test.py L157: except: pass
+  _backup_2025\archive_root\get_lighter_info.py L24: except:
+  _backup_2025\exchanges\bingx_exchange.py L177: except:
+  _backup_2025\exchanges\bitget_exchange.py L177: except:
+  _backup_2025\exchanges\okx_exchange.py L185: except:
+
+### HARDCODED_PATH ###
+  analyze_binance_adapter.py L4: base = Path(r'C:\매매전략')
+  analyze_entry_failure.py L8: base = Path(r'C:\매매전략')
+  analyze_entry_flow.py L8: base = Path(r'C:\매매전략')
+  analyze_hotfixes.py L9: base = Path(r'C:\매매전략')
+  analyze_signal_duplication.py L8: base = Path(r'C:\매매전략')
+  analyze_sniper.py L4: sniper_path = r'C:\매매전략\core\multi_sniper.py'
+  analyze_ws_handler.py L4: base = Path(r'C:\매매전략')
+  append_binance_ws.py L4: binance_file = Path(r'C:\매매전략\exchanges\binance_exchange.py')
+  apply_hotfixes.py L9: base = Path(r'C:\매매전략')
+  apply_logging_fix.py L5: base = Path(r'C:\매매전략')
+  check_atr_sl.py L4: path = r'C:\매매전략\core\unified_bot.py'
+  check_atr_sl.py L18: path2 = r'C:\매매전략\core\strategy_core.py'
+  check_critical_logic.py L4: base = r"C:\매매전략"
+  check_date_issue.py L5: path = r'C:\매매전략\core\strategy_core.py'
+  check_date_issue.py L16: path2 = r'C:\매매전략\GUI\backtest_widget.py'
+  check_multichain.py L4: base_path = r'C:\매매전략'
+  check_risky_targeted.py L5: r"C:\매매전략\utils\bot_data_utils.py",
+  check_risky_targeted.py L6: r"C:\매매전략\exchanges\bingx_exchange.py",
+  check_risky_targeted.py L7: r"C:\매매전략\exchanges\okx_exchange.py",
+  check_sl_mechanism.py L4: path = r'C:\매매전략\core\unified_bot.py'
+  check_sl_mechanism.py L29: path2 = r'C:\매매전략\exchanges\bybit_exchange.py'
+  check_ws_candle.py L4: path = r'C:\매매전략\core\unified_bot.py'
+  check_ws_candle.py L14: path2 = r'C:\매매전략\exchanges\ws_handler.py'
+  check_ws_run_sync.py L5: ws = Path(r'C:\매매전략\exchanges\ws_handler.py')
+  deploy_verify.py L5: base = Path(r'C:\매매전략')
+  diagnose_110043.py L6: base = Path(r'C:\매매전략')
+  diagnose_all_crash.py L7: base = Path(r'C:\매매전략')
+  diagnose_all_issues.py L8: base = Path(r'C:\매매전략')
+  diagnose_all_issues.py L73: if 'C:\\' in code or 'C:/' in code:
+  diagnose_all_issues.py L76: if 'C:\\' in line or 'C:/' in line:
+  diagnose_critical.py L7: base = Path(r'C:\매매전략')
+  diagnose_df_patterns.py L7: base = Path(r'C:\매매전략')
+  diagnose_entry_error.py L3: bot = Path(r'C:\매매전략\core\unified_bot.py')
+  diagnose_exchanges.py L7: base = Path(r'C:\매매전략\exchanges')
+  diagnose_get_safety.py L7: base = Path(r'C:\매매전략')
+  diagnose_hedge.py L5: base = Path(r'C:\매매전략\exchanges')
+  diagnose_init_order.py L7: bot = Path(r'C:\매매전략\core\unified_bot.py')
+  diagnose_kline_error.py L3: bot = Path(r'C:\매매전략\core\unified_bot.py')
+  diagnose_leverage.py L6: base = Path(r'C:\매매전략\exchanges')
+  diagnose_logic.py L4: bot = Path(r'C:\매매전략\core\unified_bot.py')
+  diagnose_modules_signal.py L7: base = Path(r'C:\매매전략')
+  diagnose_signal_error.py L6: bot = Path(r'C:\매매전략\core\unified_bot.py')
+  diagnose_updater.py L9: base = Path(r'C:\매매전략')
+  diagnose_updater_v2.py L7: base = Path(r'C:\매매전략')
+  diagnose_v130_final.py L8: base = Path(r'C:\매매전략')
+  diagnose_v130_preflight.py L7: base = Path(r'C:\매매전략')
+  diagnose_v130_release_check.py L9: base = Path(r'C:\매매전략')
+  diagnose_ws_error.py L4: base = Path(r'C:\매매전략')
+  execute_phase_2_3.py L4: base = Path(r'C:\매매전략')
+  find_df_errors.py L3: path = r"C:\매매전략\core"
+  fix_critical_issues.py L9: base = Path(r'C:\매매전략')
+  fix_syntax_errors.py L5: okx_path = Path(r'C:\매매전략\exchanges\okx_exchange.py')
+  fix_syntax_errors.py L44: bingx_path = Path(r'C:\매매전략\exchanges\bingx_exchange.py')
+  full_system_verify.py L10: base = Path(r'C:\매매전략')
+  inspect_binance_ws.py L4: base = Path(r'C:\매매전략')
+  read_log.py L4: log_path = r'C:\매매전략\logs\bot_log.log'
+  restore_ws_methods.py L138: restore_exchange(r'C:\매매전략\exchanges\okx_exchange.py', 'Okx', 'okx', 'OkxExchange =')
+  restore_ws_methods.py L141: restore_exchange(r'C:\매매전략\exchanges\bingx_exchange.py', 'Bingx', 'bingx', 'BingxExchange =') # Attempt with likely prefix
+  scan_risky_patterns.py L4: base = r"C:\매매전략"
+  standardize_binance_time.py L4: binance_file = Path(r'C:\매매전략\exchanges\binance_exchange.py')
+  system_audit.py L13: base = Path(r'C:\매매전략')
+  system_audit.py L15: cache = Path(r'C:\TwinStar Quantum\data\cache')
+  system_audit.py L16: logs = Path(r'C:\TwinStar Quantum\logs')
+  verify_ast.py L5: base = Path(r'C:\매매전략')
+  verify_before_release.py L6: base = Path(r'C:\매매전략')
+  verify_build.py L6: base = Path(r'C:\매매전략')
+  verify_build_readiness.py L8: base = Path(r'C:\매매전략')
+  verify_calculations.py L5: base_path = r'C:\매매전략'
+  verify_complete.py L6: base_path = r'C:\매매전략'
+  verify_complete.py L82: if 'C:\\\\twinstar' in content or 'C:/twinstar' in content:
+  verify_critical_fix.py L9: base = Path(r'C:\매매전략')
+  verify_data_collection.py L9: base = Path(r'C:\매매전략')
+  verify_deep.py L5: base_path = r'C:\매매전략'
+  verify_distrust.py L8: base = Path(r'C:\매매전략')
+  verify_downloader_user.py L5: path = r'C:\매매전략\utils\data_downloader.py'
+  verify_entry_clean.py L8: base = Path(r'C:\매매전략')
+  verify_except.py L4: base = Path(r'C:\매매전략')
+  verify_final_4_issues.py L8: base = Path(r'C:\매매전략')
+  verify_flow.py L5: base_path = r'C:\매매전략'
+  verify_flow_trace.py L6: base = Path(r'C:\매매전략')
+  verify_full_ast.py L5: base = Path(r'C:\매매전략')
+  verify_full_logic_inference.py L4: base = Path(r'C:\매매전략')
+  verify_global_ws_time.py L5: base = Path(r'C:\매매전략')
+  verify_import.py L6: base = Path(r'C:\매매전략')
+  verify_init.py L8: base = Path(r'C:\매매전략')
+  verify_logic.py L6: base_path = r'C:\매매전략'
+  verify_logic_checklist.py L8: base = Path(r'C:\매매전략')
+  verify_logic_comprehensive.py L8: base = Path(r'C:\매매전략')
+  verify_multi.py L6: sys.path.insert(0, r'C:\매매전략')
+  verify_multi_en.py L4: sys.path.insert(0, r'C:\매매전략')
+  verify_order_logic_consistency.py L4: base = Path(r'C:\매매전략')
+  verify_patch.py L4: path = r"C:\매매전략\core\unified_bot.py"
+  verify_patch.py L36: ws_path = r"C:\매매전략\exchanges\ws_handler.py"
+  verify_patch_full.py L9: base = Path(r'C:\매매전략')
+  verify_slippage_logic.py L8: base = Path(r'C:\매매전략')
+  verify_spec.py L3: sys.path.insert(0, r'C:\매매전략')
+  verify_spec.py L16: path = os.path.join(r'C:\매매전략', f)
+  verify_time_ws_candle.py L9: base = Path(r'C:\매매전략')
+  verify_ultra.py L6: base = Path(r'C:\매매전략')
+  verify_v123_full.py L4: base_core = r"C:\매매전략\core"
+  verify_v123_full.py L5: base_exchanges = r"C:\매매전략\exchanges"
+  verify_v132.py L8: base = Path(r'C:\매매전략')
+  verify_v133.py L6: base = Path(r'C:\매매전략')
+  verify_v136.py L5: base = Path(r'C:\매매전략')
+  verify_v138.py L5: base = Path(r'C:\매매전략')
+  verify_v140.py L5: base = Path(r'C:\매매전략')
+  verify_ws_and_entry.py L10: sys.path.insert(0, r'C:\매매전략')
+  verify_ws_implementation.py L4: base = Path(r'C:\매매전략')
+  verify_ws_plan.py L5: base = Path(r'C:\매매전략')
+  verify_ws_save.py L4: path = r"C:\매매전략\core\unified_bot.py"
+  verify_ws_save.py L23: ws_path = r"C:\매매전략\exchanges\ws_handler.py"
+  verify_ws_save.py L25: ws_path = r"C:\매매전략\core\ws_handler.py"
+  verify_ws_signal_entry.py L8: base = Path(r'C:\매매전략')
+  verify_zero.py L7: base_path = r'C:\매매전략'
+  .venv\Lib\site-packages\pip\_vendor\pkg_resources\__init__.py L1786: >>> vrp(r'C:\\foo/bar.txt')
+  .venv\Lib\site-packages\pkg_resources\__init__.py L1536: >>> vrp(r'C:\\foo/bar.txt')
+  .venv\Lib\site-packages\pkg_resources\_vendor\appdirs.py L124: Vista:      (Fail! "C:\ProgramData" is a hidden *system* directory on Vista.)
+  .venv\Lib\site-packages\pkg_resources\_vendor\appdirs.py L230: Vista:      (Fail! "C:\ProgramData" is a hidden *system* directory on Vista.)
+  .venv\Lib\site-packages\setuptools\msvc.py L651: "C:\ProgramData\Microsoft\VisualStudio\Packages\_Instances".
+  .venv\Lib\site-packages\setuptools\msvc.py L660: r'C:\ProgramData\Microsoft\VisualStudio\Packages\_Instances'
+  _backup_2025\auto_test.py L17: BASE_DIR = r"C:\매매전략"
+  _backup_2025\deep_verify.py L10: BASE_DIR = r"C:\매매전략"
+  _backup_2025\strict_test.py L12: BASE_DIR = r"C:\매매전략"
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pkg_resources\__init__.py L1786: >>> vrp(r'C:\\foo/bar.txt')
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\__init__.py L1536: >>> vrp(r'C:\\foo/bar.txt')
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\appdirs.py L124: Vista:      (Fail! "C:\ProgramData" is a hidden *system* directory on Vista.)
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\appdirs.py L230: Vista:      (Fail! "C:\ProgramData" is a hidden *system* directory on Vista.)
+  _backup_2025\.venv\Lib\site-packages\setuptools\msvc.py L651: "C:\ProgramData\Microsoft\VisualStudio\Packages\_Instances".
+  _backup_2025\.venv\Lib\site-packages\setuptools\msvc.py L660: r'C:\ProgramData\Microsoft\VisualStudio\Packages\_Instances'
+
+### UNSAFE_GET ###
+  diagnose_all_crash.py L45: # 4. response['key'] - KeyError
+  diagnose_get_safety.py L94: # response['key'] or result['key'] 패턴
+  diagnose_init_order.py L62: for ln, desc in order[:30]:
+  system_doctor.py L72: result['status'] = 'SKIP'
+  system_doctor.py L73: result['message'] = '서버 시간 확인 불가 (오프라인?)'
+  system_doctor.py L93: result['status'] = 'FIXED'
+  system_doctor.py L94: result['message'] = f'시간 오프셋 {offset/1000:.1f}초 자동 보정됨'
+  system_doctor.py L96: result['status'] = 'WARNING'
+  system_doctor.py L97: result['message'] = f'시간 동기화 필요: {offset/1000:.1f}초 차이'
+  system_doctor.py L100: result['status'] = 'WARNING'
+  system_doctor.py L101: result['message'] = f'시간 오프셋: {offset/1000:.1f}초'
+  system_doctor.py L103: result['status'] = 'OK'
+  system_doctor.py L104: result['message'] = f'시간 동기화 정상 (오프셋: {offset}ms)'
+  system_doctor.py L107: result['status'] = 'WARNING'
+  system_doctor.py L108: result['message'] = f'시간 점검 실패: {e}'
+  system_doctor.py L146: result['status'] = 'ERROR'
+  system_doctor.py L147: result['message'] = f'필수 패키지 누락: {", ".join(missing)}'
+  system_doctor.py L148: result['missing'] = missing
+  system_doctor.py L164: result['message'] += ' (EXE 재빌드 필요)'
+  system_doctor.py L166: result['message'] = '모든 패키지 정상'
+  system_doctor.py L209: result['created'] = created
+  system_doctor.py L210: result['message'] = f'설정 파일 생성: {", ".join(created)}'
+  system_doctor.py L213: result['message'] = '모든 설정 파일 존재'
+  system_doctor.py L237: result['exchanges'][name] = 'OK'
+  system_doctor.py L240: result['exchanges'][name] = 'ERROR'
+  system_doctor.py L243: result['exchanges'][name] = 'TIMEOUT'
+  system_doctor.py L247: result['status'] = 'ERROR'
+  system_doctor.py L248: result['message'] = '인터넷 연결 확인 필요'
+  system_doctor.py L251: result['status'] = 'WARNING'
+  system_doctor.py L252: result['message'] = f'{", ".join(failed)} 연결 불가'
+  system_doctor.py L255: result['message'] = '모든 거래소 연결 정상'
+  system_doctor.py L269: result['status'] = 'ERROR'
+  system_doctor.py L270: result['message'] = f'디스크 공간 부족: {free_gb:.1f}GB'
+  system_doctor.py L273: result['status'] = 'WARNING'
+  system_doctor.py L274: result['message'] = f'디스크 공간 주의: {free_gb:.1f}GB'
+  system_doctor.py L277: result['message'] = f'디스크 공간: {free_gb:.1f}GB'
+  system_doctor.py L279: result['status'] = 'SKIP'
+  system_doctor.py L280: result['message'] = '디스크 공간 확인 불가'
+  system_doctor.py L318: for name, check in result['results'].items():
+  system_doctor.py L323: if result['fixed']:
+  system_doctor.py L325: for fix in result['fixed']:
+  system_doctor.py L328: if result['warnings']:
+  system_doctor.py L330: for warn in result['warnings']:
+  system_doctor.py L333: print(f"\n📊 결과: {result['success']}/{result['total']} 정상")
+  trading_safety.py L140: result['warning'] = f"Daily loss warning: ${loss:.2f} / ${limit:.2f}"
+  trading_safety.py L144: result['warning'] = f"DAILY LOSS LIMIT REACHED: ${loss:.2f}"
+  trading_safety.py L147: result['allowed'] = False
+  trading_safety.py L148: result['stopped'] = True
+  trading_safety.py L232: if result['warning']:
+  trading_safety.py L233: print(f"  WARNING: {result['warning']}")
+  trading_safety.py L234: if result['stopped']:
+  .venv\Lib\site-packages\pip\_internal\commands\install.py L402: (r.metadata["name"], r.metadata["version"])
+  .venv\Lib\site-packages\pip\_internal\commands\show.py L104: dist.metadata["Name"] or "UNKNOWN"
+  .venv\Lib\site-packages\pip\_internal\metadata\base.py L573: metadata["Requires-Dist"] = dep
+  .venv\Lib\site-packages\pip\_internal\metadata\base.py L576: metadata["Provides-Extra"] = extra
+  .venv\Lib\site-packages\pip\_internal\metadata\_json.py L81: result[key] = value
+  .venv\Lib\site-packages\pip\_internal\metadata\_json.py L85: result["description"] = payload
+  .venv\Lib\site-packages\pip\_internal\models\link.py L182: ret = result.scheme + ret[4:]  # Restore original scheme.
+  .venv\Lib\site-packages\pip\_internal\network\session.py L121: if data["implementation"]["name"] == "CPython":
+  .venv\Lib\site-packages\pip\_internal\network\session.py L122: data["implementation"]["version"] = platform.python_version()
+  .venv\Lib\site-packages\pip\_internal\network\session.py L123: elif data["implementation"]["name"] == "PyPy":
+  .venv\Lib\site-packages\pip\_internal\network\session.py L127: data["implementation"]["version"] = ".".join(
+  .venv\Lib\site-packages\pip\_internal\network\session.py L130: elif data["implementation"]["name"] == "Jython":
+  .venv\Lib\site-packages\pip\_internal\network\session.py L132: data["implementation"]["version"] = platform.python_version()
+  .venv\Lib\site-packages\pip\_internal\network\session.py L133: elif data["implementation"]["name"] == "IronPython":
+  .venv\Lib\site-packages\pip\_internal\network\session.py L135: data["implementation"]["version"] = platform.python_version()
+  .venv\Lib\site-packages\pip\_internal\network\session.py L156: data["distro"] = distro_infos
+  .venv\Lib\site-packages\pip\_internal\network\session.py L159: data["distro"] = {"name": "macOS", "version": platform.mac_ver()[0]}
+  .venv\Lib\site-packages\pip\_internal\network\session.py L168: data["cpu"] = platform.machine()
+  .venv\Lib\site-packages\pip\_internal\network\session.py L173: data["openssl_version"] = ssl.OPENSSL_VERSION
+  .venv\Lib\site-packages\pip\_internal\network\session.py L177: data["setuptools_version"] = str(setuptools_dist.version)
+  .venv\Lib\site-packages\pip\_internal\network\session.py L192: data["rustc_version"] = rustc_output.split(b" ")[1].decode()
+  .venv\Lib\site-packages\pip\_internal\network\session.py L198: data["ci"] = True if looks_like_ci() else None
+  .venv\Lib\site-packages\pip\_internal\network\session.py L202: data["user_data"] = user_data
+  .venv\Lib\site-packages\pip\_internal\network\session.py L204: return "{data[installer][name]}/{data[installer][version]} {json}".format(
+  .venv\Lib\site-packages\pip\_internal\req\req_file.py L596: return data[len(bom) :].decode(encoding)
+  .venv\Lib\site-packages\pip\_internal\req\req_install.py L373: if isinstance(parse_version(self.metadata["Version"]), Version):
+  .venv\Lib\site-packages\pip\_internal\req\req_install.py L381: self.metadata["Name"],
+  .venv\Lib\site-packages\pip\_internal\req\req_install.py L383: self.metadata["Version"],
+  .venv\Lib\site-packages\pip\_internal\req\req_install.py L390: metadata_name = canonicalize_name(self.metadata["Name"])
+  .venv\Lib\site-packages\pip\_internal\req\req_install.py L572: version = self.metadata["version"]
+  .venv\Lib\site-packages\pip\_internal\req\req_install.py L702: archive_name = "{}-{}.zip".format(self.name, self.metadata["version"])
+  .venv\Lib\site-packages\pip\_internal\utils\wheel.py L99: version_text = wheel_data["Wheel-Version"]
+  .venv\Lib\site-packages\pip\_vendor\cachecontrol\serialize.py L50: data["vary"] = {}
+  .venv\Lib\site-packages\pip\_vendor\cachecontrol\serialize.py L58: data["vary"][header] = header_value
+  .venv\Lib\site-packages\pip\_vendor\cachecontrol\serialize.py L80: data = data[5:]
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L344: result[key] = d[key]
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L385: result[key] = entries = {}
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L1647: result[i] = item.decode('utf-8')
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L1695: result[k] = convert(o[k])
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L1833: result[key] = default
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L1839: result['repository'] = self.DEFAULT_REPOSITORY
+  .venv\Lib\site-packages\pip\_vendor\distlib\util.py L1840: elif (result['server'] != repository and result['repository'] != repository):
+  .venv\Lib\site-packages\pip\_vendor\msgpack\fallback.py L532: ret[key] = self._unpack(EX_CONSTRUCT)
+  .venv\Lib\site-packages\pip\_vendor\packaging\_elffile.py L105: if data[self._p_idx[0]] != 3:  # Not PT_INTERP.
+  .venv\Lib\site-packages\pip\_vendor\packaging\_elffile.py L107: self._f.seek(data[self._p_idx[1]])
+  .venv\Lib\site-packages\pip\_vendor\packaging\_elffile.py L108: return os.fsdecode(self._f.read(data[self._p_idx[2]])).strip("\0")
+  .venv\Lib\site-packages\pip\_vendor\pygments\lexer.py L927: info = cls._prof_data[-1].setdefault((state, rex), [0, 0.0])
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L107: lexer_cls = find_lexer_class(data[1])
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L111: 'name': format_link(data[1], lexer_cls.url),
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L113: 'aliases': ', '.join(data[2]),
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L114: 'class': f'{data[0]}.{classname}'
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L160: module = data[0]
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L180: if data[2]:
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L181: lexer_name = data[2][0]
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L194: ', '.join(data[2]) or 'None',
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L195: ', '.join(data[3]).replace('*', '\\*').replace('_', '\\') or 'None',
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L196: ', '.join(data[4]) or 'None',
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L220: module = data[0]
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L228: out.append(FMTERDOC % (heading, ', '.join(data[2]) or 'None',
+  .venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L229: ', '.join(data[3]).replace('*', '\\*') or 'None',
+  .venv\Lib\site-packages\pip\_vendor\pygments\lexers\__init__.py L301: return result[-1][1](**options)
+  .venv\Lib\site-packages\pip\_vendor\pyproject_hooks\_impl.py L410: return data["return_val"]
+  .venv\Lib\site-packages\pip\_vendor\requests\cookies.py L484: result["port_specified"] = bool(result["port"])
+  .venv\Lib\site-packages\pip\_vendor\requests\cookies.py L485: result["domain_specified"] = bool(result["domain"])
+  .venv\Lib\site-packages\pip\_vendor\requests\cookies.py L486: result["domain_initial_dot"] = result["domain"].startswith(".")
+  .venv\Lib\site-packages\pip\_vendor\requests\cookies.py L487: result["path_specified"] = bool(result["path"])
+  .venv\Lib\site-packages\pip\_vendor\requests\utils.py L422: result[item] = None
+  .venv\Lib\site-packages\pip\_vendor\requests\utils.py L427: result[name] = value
+  .venv\Lib\site-packages\pip\_vendor\requests\utils.py L954: sample = data[:4]
+  .venv\Lib\site-packages\pip\_vendor\rich\pretty.py L1006: data["foo"].append(data)  # type: ignore[attr-defined]
+  .venv\Lib\site-packages\pip\_vendor\urllib3\contrib\pyopenssl.py L366: data[total_sent : total_sent + SSL_WRITE_BLOCKSIZE]
+  .venv\Lib\site-packages\pip\_vendor\urllib3\contrib\securetransport.py L296: data = data[chunk_sent:]
+  .venv\Lib\site-packages\pip\_vendor\urllib3\contrib\securetransport.py L651: sent = self.send(data[total_sent : total_sent + SSL_WRITE_BLOCKSIZE])
+  .venv\Lib\site-packages\pkg_resources\_vendor\more_itertools\more.py L3053: ret[key].append(value)
+  .venv\Lib\site-packages\pkg_resources\_vendor\more_itertools\more.py L3057: ret[key] = reducefunc(value_list)
+  .venv\Lib\site-packages\pkg_resources\_vendor\more_itertools\more.py L3870: result[n - d] = i
+  .venv\Lib\site-packages\pkg_resources\_vendor\packaging\_manylinux.py L42: return result[0]
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L2006: print("Success" if result[0] else "Failed!")
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L2016: print("Success" if result[0] else "Failed!")
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L2994: ret[k] = v
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L3222: ret = ret[self.quoteCharLen : -self.endQuoteCharLen]
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L4586: del ret[:]
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L5492: print(result['shape'])
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\helpers.py L349: print(result['shape'])
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L52: test("result[0]")
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L53: test("result['month']")
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L62: result[0] -> '1999'
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L63: result['month'] -> '12'
+  .venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L557: user_info = user_data[1, ...]
+  .venv\Lib\site-packages\setuptools\config\expand.py L358: package_data[""] = package_data.pop("*")
+  .venv\Lib\site-packages\setuptools\config\setupcfg.py L331: result[key.strip()] = val.strip()
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L39: data__buildsystem = data["build-system"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L82: data__project = data["project"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L86: data__tool = data["tool"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L112: data__platforms = data["platforms"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L123: data__provides = data["provides"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L137: data__obsoletes = data["obsoletes"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L151: data__zipsafe = data["zip-safe"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L156: data__scriptfiles = data["script-files"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L167: data__eagerresources = data["eager-resources"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L178: data__packages = data["packages"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L204: data__packagedir = data["package-dir"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L245: data__packagedata = data["package-data"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L292: data__includepackagedata = data["include-package-data"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L297: data__excludepackagedata = data["exclude-package-data"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L344: data__namespacepackages = data["namespace-packages"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L358: data__pymodules = data["py-modules"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L372: data__datafiles = data["data-files"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L392: data__cmdclass = data["cmdclass"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L409: data__licensefiles = data["license-files"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L418: else: data["license-files"] = ['LICEN[CS]E*', ' COPYING*', ' NOTICE*', 'AUTHORS*']
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L421: data__dynamic = data["dynamic"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L531: data__file = data["file"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L568: data__attr = data["attr"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L583: data__find = data["find"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L641: data__global = data["global"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L663: data__name = data["name"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L671: data__version = data["version"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L679: data__description = data["description"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L684: data__readme = data["readme"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L746: data__requirespython = data["requires-python"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L754: data__license = data["license"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L790: data__authors = data["authors"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L800: data__maintainers = data["maintainers"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L810: data__keywords = data["keywords"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L821: data__classifiers = data["classifiers"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L835: data__urls = data["urls"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L854: data__scripts = data["scripts"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L897: data__optionaldependencies = data["optional-dependencies"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L930: data__dynamic = data["dynamic"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L951: data__dynamic = data["dynamic"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L1024: data__name = data["name"]
+  .venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L1029: data__email = data["email"]
+  .venv\Lib\site-packages\setuptools\_distutils\archive_util.py L41: return result[2]
+  .venv\Lib\site-packages\setuptools\_distutils\archive_util.py L54: return result[2]
+  .venv\Lib\site-packages\setuptools\_distutils\msvc9compiler.py L304: result[key] = removeDuplicates(value)
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L207: data['name'] = data['password'] = data['email'] = ''
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L208: data['confirm'] = None
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L209: while not data['name']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L210: data['name'] = input('Username: ')
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L211: while data['password'] != data['confirm']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L212: while not data['password']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L213: data['password'] = getpass.getpass('Password: ')
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L214: while not data['confirm']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L215: data['confirm'] = getpass.getpass(' Confirm: ')
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L216: if data['password'] != data['confirm']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L217: data['password'] = ''
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L218: data['confirm'] = None
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L220: while not data['email']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L221: data['email'] = input('   EMail: ')
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L230: data['email'] = ''
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L231: while not data['email']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L232: data['email'] = input('Your email address: ')
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L260: if data['provides'] or data['requires'] or data['obsoletes']:
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L261: data['metadata_version'] = '1.1'
+  .venv\Lib\site-packages\setuptools\_distutils\command\register.py L268: 'Registering {} to {}'.format(data['name'], self.repository), log.INFO
+  .venv\Lib\site-packages\setuptools\_distutils\command\upload.py L128: data['comment'] = ''
+  .venv\Lib\site-packages\setuptools\_distutils\command\upload.py L142: data['gpg_signature'] = (os.path.basename(filename) + ".asc", f.read())
+  .venv\Lib\site-packages\setuptools\_vendor\importlib_metadata\__init__.py L595: return self.metadata['Name']
+  .venv\Lib\site-packages\setuptools\_vendor\importlib_metadata\__init__.py L605: return self.metadata['Version']
+  .venv\Lib\site-packages\setuptools\_vendor\importlib_metadata\__init__.py L1034: pkg_to_dist[pkg].append(dist.metadata['Name'])
+  .venv\Lib\site-packages\setuptools\_vendor\more_itertools\more.py L2881: ret[key].append(value)
+  .venv\Lib\site-packages\setuptools\_vendor\more_itertools\more.py L2885: ret[key] = reducefunc(value_list)
+  .venv\Lib\site-packages\setuptools\_vendor\more_itertools\more.py L3668: result[n - d] = i
+  .venv\Lib\site-packages\setuptools\_vendor\packaging\_manylinux.py L42: return result[0]
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L2006: print("Success" if result[0] else "Failed!")
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L2016: print("Success" if result[0] else "Failed!")
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L2994: ret[k] = v
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L3222: ret = ret[self.quoteCharLen : -self.endQuoteCharLen]
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L4586: del ret[:]
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L5492: print(result['shape'])
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\helpers.py L349: print(result['shape'])
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L52: test("result[0]")
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L53: test("result['month']")
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L62: result[0] -> '1999'
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L63: result['month'] -> '12'
+  .venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L557: user_info = user_data[1, ...]
+  core\chart_matcher.py L245: result['data_sufficient'] = is_sufficient
+  core\chart_matcher.py L246: result['data_message'] = msg
+  core\chart_matcher.py L249: result['recommendation'] = "데이터 축적 후 재분석 필요"
+  core\chart_matcher.py L254: result['profile'] = profile
+  core\chart_matcher.py L258: result['top_matches'] = [
+  core\chart_matcher.py L269: result['best_match'] = {
+  core\chart_matcher.py L275: result['recommendation'] = f"✅ {best['symbol']} 프리셋 사용 권장"
+  core\chart_matcher.py L277: result['recommendation'] = f"⚠️ {best['symbol']} 프리셋 참고 (유사도 낮음)"
+  core\chart_matcher.py L279: result['recommendation'] = "❌ 자체 최적화 필요"
+  core\chart_matcher.py L281: result['recommendation'] = "❌ 유사 프리셋 없음, 자체 최적화 필요"
+  core\multi_backtest.py L263: print(f"Error: {result['error']}")
+  core\multi_backtest.py L265: s = result['summary']
+  core\multi_optimizer.py L315: 'trades': result['trades'],
+  core\multi_optimizer.py L316: 'win_rate': result['win_rate'],
+  core\multi_optimizer.py L317: 'total_pnl': result['total_pnl'],
+  core\multi_optimizer.py L318: 'mdd': result['mdd'],
+  core\multi_optimizer.py L319: 'pf': result['pf']
+  core\multi_optimizer.py L321: **result['params']
+  core\multi_optimizer.py L328: logging.info(f"[OPTIMIZER] ✅ Preset saved: {filename} (WR={result['win_rate']*100:.1f}%)")
+  core\multi_optimizer.py L416: logging.info(f"[OPTIMIZER] ✅ {task_name}: WR={result['win_rate']*100:.1f}%, {result['trades']} trades ({elapsed:.1f}s)")
+  core\multi_sniper.py L156: if data["retCode"] != 0:
+  core\multi_sniper.py L157: raise Exception(data["retMsg"])
+  core\multi_sniper.py L159: tickers = data["result"]["list"]
+  core\multi_sniper.py L439: candles = data['result']['list']
+  core\multi_sniper.py L636: preset_data['winrate'] = old_data['winrate']
+  core\multi_sniper.py L1018: pnl_pct = (real_pnl / pos["size"]) * 100 if pos["size"] > 0 else 0
+  core\multi_sniper.py L1265: self._on_binance_kline(data["data"])
+  core\multi_trader.py L328: } for c in data['result']['list']])
+  core\multi_trader.py L480: self._on_binance_kline(data["data"])
+  core\preset_health.py L146: result['realtime_wr'] = realtime_wr
+  core\preset_health.py L147: result['optimized_wr'] = optimized_wr
+  core\preset_health.py L148: result['trades'] = trades
+  core\preset_health.py L152: result['message'] = '데이터 부족'
+  core\preset_health.py L157: result['message'] = f'거래 수 부족 ({trades}/{self.MIN_TRADES_FOR_CHECK})'
+  core\preset_health.py L162: result['diff'] = diff
+  core\preset_health.py L166: result['status'] = self.STATUS_REOPTIMIZE
+  core\preset_health.py L167: result['message'] = f'재최적화 필요! (차이: {diff*100:.1f}%)'
+  core\preset_health.py L168: logging.warning(f"[HEALTH] 🔴 {preset_name}: {result['message']}")
+  core\preset_health.py L171: result['status'] = self.STATUS_PAUSED
+  core\preset_health.py L172: result['message'] = f'거래 일시 중지 (차이: {diff*100:.1f}%)'
+  core\preset_health.py L173: logging.warning(f"[HEALTH] 🟠 {preset_name}: {result['message']}")
+  core\preset_health.py L176: result['status'] = self.STATUS_WARNING
+  core\preset_health.py L177: result['message'] = f'성능 저하 경고 (차이: {diff*100:.1f}%)'
+  core\preset_health.py L178: logging.info(f"[HEALTH] 🟡 {preset_name}: {result['message']}")
+  core\preset_health.py L181: result['status'] = self.STATUS_ACTIVE
+  core\preset_health.py L182: result['message'] = '정상'
+  core\preset_health.py L203: data['_health'] = {
+  core\strategy_core.py L709: d = order['type']
+  core\strategy_core.py L905: result['new_extreme'] = current_high
+  core\strategy_core.py L907: if result['new_extreme'] >= trail_start:
+  core\strategy_core.py L910: result['mult_used'] = mult
+  core\strategy_core.py L912: new_sl = result['new_extreme'] - (trail_dist * mult)
+  core\strategy_core.py L914: result['new_sl'] = new_sl
+  core\strategy_core.py L918: result['sl_hit'] = True
+  core\strategy_core.py L923: result['new_extreme'] = current_low
+  core\strategy_core.py L925: if result['new_extreme'] <= trail_start:
+  core\strategy_core.py L928: result['mult_used'] = mult
+  core\strategy_core.py L930: new_sl = result['new_extreme'] + (trail_dist * mult)
+  core\strategy_core.py L932: result['new_sl'] = new_sl
+  core\strategy_core.py L936: result['sl_hit'] = True
+  core\unified_bot.py L101: server_time = int(data['result']['timeSecond'])
+  core\unified_bot.py L103: server_time = int(data['serverTime']) / 1000
+  core\unified_bot.py L105: server_time = int(data['data'][0]['ts']) / 1000
+  core\unified_bot.py L107: server_time = int(data['data']['serverTime']) / 1000
+  core\unified_bot.py L691: if data["ready"] and opt["ready"]:
+  core\unified_bot.py L695: if not data["ready"]:
+  core\unified_bot.py L696: msgs.append(f"📊 데이터 필요: {', '.join(data['missing'])}")
+  core\unified_bot.py L902: trades = result[0]
+  core\unified_bot.py L903: state = result[1] if len(result) > 1 else {}
+  core\unified_bot.py L1228: if result['sl_hit']:
+  core\unified_bot.py L1243: state['extreme_price'] = result['new_extreme']
+  core\unified_bot.py L1246: if result['new_sl']:
+  core\unified_bot.py L1247: if (direction == 'Long' and result['new_sl'] > current_sl) or \
+  core\unified_bot.py L1248: (direction == 'Short' and result['new_sl'] < current_sl):
+  core\unified_bot.py L1250: if self.exchange.update_stop_loss(result['new_sl']):
+  core\unified_bot.py L1251: state['current_sl'] = result['new_sl']
+  core\unified_bot.py L1252: logging.info(f"[LIVE] 📈 SL Updated (API): {result['new_sl']:.2f}")
+  core\unified_bot.py L1256: state['current_sl'] = result['new_sl']
+  core\unified_bot.py L1257: logging.info(f"[LIVE] 📈 SL Updated (DRY): {result['new_sl']:.2f}")
+  core\unified_bot.py L2948: if result['sl_hit']:
+  core\unified_bot.py L2953: self.position.extreme_price = result['new_extreme']
+  core\unified_bot.py L2956: if result['new_sl']:
+  core\unified_bot.py L2957: if self.exchange.update_stop_loss(result['new_sl']):
+  core\unified_bot.py L2958: self.position.stop_loss = result['new_sl']
+  core\unified_bot.py L2960: logging.info(f"📈 Trailing SL: {result['new_sl']:.2f} (RSI={rsi:.1f}, Mult={result['mult_used']})")
+  exchanges\bingx_exchange.py L184: self.exchange.cancel_order(order['id'], symbol)
+  exchanges\bitget_exchange.py L201: self.exchange.cancel_order(order['id'], symbol)
+  exchanges\bithumb_exchange.py L195: if result and result[0] == 'success':
+  exchanges\bithumb_exchange.py L196: order_id = str(result[2]) if len(result) > 2 else "True"
+  exchanges\bithumb_exchange.py L302: if result and (self.use_ccxt or result[0] == 'success'):
+  exchanges\bithumb_exchange.py L307: order_id = str(result[2])
+  exchanges\bybit_exchange.py L113: if result['retCode'] != 0:
+  exchanges\bybit_exchange.py L114: logging.error(f"Kline error: {result['retMsg']}")
+  exchanges\bybit_exchange.py L117: data = result['result']['list']
+  exchanges\bybit_exchange.py L136: return float(result['result']['list'][0]['lastPrice'])
+  exchanges\bybit_exchange.py L186: if result['retCode'] == 0:
+  exchanges\bybit_exchange.py L203: logging.error(f"Order error: {result['retMsg']} (Code: {result['retCode']})")
+  exchanges\bybit_exchange.py L243: if result['retCode'] == 0:
+  exchanges\bybit_exchange.py L249: logging.error(f"SL update error: {result['retMsg']}")
+  exchanges\bybit_exchange.py L271: if result['retCode'] == 0:
+  exchanges\bybit_exchange.py L285: logging.error(f"Close error: {result['retMsg']}")
+  exchanges\bybit_exchange.py L321: if result['retCode'] == 0:
+  exchanges\bybit_exchange.py L335: logging.error(f"Add position error: {result['retMsg']}")
+  exchanges\bybit_exchange.py L499: if result['retCode'] != 0:
+  exchanges\bybit_exchange.py L500: logging.error(f"Trade history error: {result['retMsg']}")
+  exchanges\bybit_exchange.py L504: for t in result['result']['list']:
+  exchanges\ccxt_exchange.py L361: self.ccxt_exchange.cancel_order(order['id'], symbol)
+  exchanges\exchange_manager.py L105: data[name] = {
+  exchanges\exchange_manager.py L362: return result[0] if isinstance(result, tuple) else result
+  exchanges\okx_exchange.py L184: self.exchange.cancel_order(order['id'], symbol)
+  exchanges\upbit_exchange.py L133: order_id = str(result['uuid'])
+  exchanges\upbit_exchange.py L218: order_id = str(result['uuid'])
+  exchanges\ws_handler.py L303: for k in data['data']:
+  exchanges\ws_handler.py L322: for k in data['data']:
+  exchanges\ws_handler.py L329: k = data['data']
+  GUI\capital_management_widget.py L168: margin = result['position_size'] / result['leverage']
+  GUI\capital_management_widget.py L170: self.lbl_pos_value.setText(f"$ {result['position_size']:,.2f}")
+  GUI\capital_management_widget.py L172: self.lbl_risk_amt.setText(f"$ {result['risk_amount']:,.2f} ({result['risk_percent']:.2f}%)")
+  GUI\capital_management_widget.py L173: self.lbl_leverage.setText(f"{result['leverage']} x")
+  GUI\capital_management_widget.py L174: self.lbl_qty.setText(f"{result['quantity']:.4f}")
+  GUI\data_manager.py L414: if all_data and data[0][0] == all_data[-1][0]:
+  GUI\data_manager.py L425: last_ts = data[-1][0]
+  GUI\data_manager.py L600: result['kept'].append(keep.name)
+  GUI\data_manager.py L605: result['deleted'] += 1
+  GUI\data_manager.py L649: print(f"\n🔍 중복 캐시: {dup_result['found']}개 그룹")
+  GUI\developer_mode_widget.py L321: self.debug_log.append(f"  Total Trades: {result['total_trades']}")
+  GUI\developer_mode_widget.py L322: self.debug_log.append(f"  Win Rate: {result['win_rate']:.1f}%")
+  GUI\developer_mode_widget.py L323: self.debug_log.append(f"  Total PnL: {result['total_pnl']:.2f}%")
+  GUI\developer_mode_widget.py L324: self.debug_log.append(f"  Max Drawdown: {result['max_drawdown']:.2f}%")
+  GUI\developer_mode_widget.py L325: self.debug_log.append(f"  Profit Factor: {result['profit_factor']:.2f}")
+  GUI\developer_mode_widget.py L333: self.result_table.setItem(0, 2, QTableWidgetItem(str(result['total_trades'])))
+  GUI\developer_mode_widget.py L334: self.result_table.setItem(0, 3, QTableWidgetItem(f"{result['win_rate']:.1f}%"))
+  GUI\developer_mode_widget.py L335: self.result_table.setItem(0, 4, QTableWidgetItem(f"{result['total_pnl']:.2f}%"))
+  GUI\developer_mode_widget.py L336: self.result_table.setItem(0, 5, QTableWidgetItem(f"{result['max_drawdown']:.2f}%"))
+  GUI\developer_mode_widget.py L337: self.result_table.setItem(0, 6, QTableWidgetItem(f"{result['profit_factor']:.2f}"))
+  GUI\glossary_popup.py L192: title = QLabel(f"<b>{term}</b> <span style='color:#888'>({data['full']})</span>")
+  GUI\glossary_popup.py L197: desc = QLabel(data[self.lang])
+  GUI\login_dialog.py L452: f"{result['message']}\n\n"
+  GUI\login_dialog.py L453: f"결제 ID: {result['payment_id']}\n"
+  GUI\login_dialog.py L454: f"상태: {result['status']}\n\n"
+  GUI\multi_system_widget.py L235: self.log_signal.new_log.emit(f"✅ {task} 완료: {result['win_rate']*100:.1f}%")
+  GUI\multi_system_widget.py L260: self.log_signal.new_log.emit(f"❌ 에러: {result['error']}")
+  GUI\multi_system_widget.py L263: s = result['summary']
+  GUI\multi_system_widget.py L273: self._update_bt_table(result['history'][-50:])
+  GUI\pc_license_dialog.py L682: addr = data['USDT']['address']
+  GUI\pc_license_dialog.py L683: net = data['USDT']['network']
+  GUI\staru_main.py L829: if check_result['fixed']:
+  GUI\staru_main.py L830: print("🔧 자동 수정 완료:", check_result['fixed'])
+  GUI\staru_main.py L832: if check_result['issues']:
+  GUI\staru_main.py L836: "\n".join(f"• {issue}" for issue in check_result['issues'])
+  GUI\strategy_interface.py L382: dummy_data['high'] = dummy_data['open'] + abs(np.random.randn(100) * 0.3)
+  GUI\strategy_interface.py L383: dummy_data['low'] = dummy_data['open'] - abs(np.random.randn(100) * 0.3)
+  GUI\strategy_interface.py L384: dummy_data['close'] = dummy_data['open'] + np.random.randn(100) * 0.2
+  GUI\symbol_cache.py L235: print(f"   업데이트: {data['updated_at']}")
+  GUI\symbol_cache.py L236: print(f"   심볼 수: {data['count']}")
+  storage\secure_storage.py L184: key_data['passphrase'] = passphrase
+  strategies\parameter_optimizer.py L201: if result['total_trades'] < 10:
+  strategies\parameter_optimizer.py L206: result['total_pnl'] * 0.3 +          # 수익률 30%
+  strategies\parameter_optimizer.py L207: result['win_rate'] * 0.2 +            # 승률 20%
+  strategies\parameter_optimizer.py L208: result['profit_factor'] * 10 * 0.2 +  # PF 20%
+  strategies\parameter_optimizer.py L209: (100 - result['max_drawdown']) * 0.2 + # MDD 역수 20%
+  strategies\parameter_optimizer.py L210: min(result['total_trades'], 100) * 0.1  # 거래 수 10%
+  strategies\parameter_optimizer.py L291: total_trades=bt_result['total_trades'],
+  strategies\parameter_optimizer.py L293: win_rate=bt_result['win_rate'],
+  strategies\parameter_optimizer.py L294: total_pnl=bt_result['total_pnl'],
+  strategies\parameter_optimizer.py L295: max_drawdown=bt_result['max_drawdown'],
+  strategies\parameter_optimizer.py L296: profit_factor=bt_result['profit_factor'],
+  tools\minimal_test.py L11: result["cwd"] = os.getcwd()
+  tools\minimal_test.py L14: result["pandas"] = "ok"
+  tools\minimal_test.py L18: result["data_rows"] = len(df)
+  tools\minimal_test.py L20: result["status"] = "success"
+  tools\minimal_test.py L22: result["status"] = "error"
+  tools\minimal_test.py L23: result["error"] = str(e)
+  tools\minimal_test.py L25: result["trace"] = traceback.format_exc()
+  tools\run_comparison.py L27: result["steps"].append("   Imports OK")
+  tools\run_comparison.py L30: result["steps"].append("2. Load data")
+  tools\run_comparison.py L43: result["steps"].append(f"   Data loaded: {len(df)} rows")
+  tools\run_comparison.py L48: result["steps"].append(f"   Test range: {test_start} ~ {test_end}")
+  tools\run_comparison.py L51: result["steps"].append("3. Run backtest")
+  tools\run_comparison.py L67: result["steps"].append(f"   1H data: {len(df_1h)} rows")
+  tools\run_comparison.py L90: result["backtest"]["count"] = len(bt_trades)
+  tools\run_comparison.py L93: result["backtest"]["winrate"] = result["backtest"]["wins"] / len(bt_trades) * 100 if bt_trades else 0
+  tools\run_comparison.py L94: result["steps"].append(f"   Backtest: {len(bt_trades)} trades")
+  tools\run_comparison.py L97: result["steps"].append("4. Run simulator")
+  tools\run_comparison.py L104: result["simulator"]["count"] = len(sim_trades)
+  tools\run_comparison.py L105: result["simulator"]["wins"] = len([t for t in sim_trades if t['pnl'] > 0])
+  tools\run_comparison.py L106: result["simulator"]["pnl"] = sum(t['pnl'] for t in sim_trades)
+  tools\run_comparison.py L107: result["simulator"]["winrate"] = result["simulator"]["wins"] / len(sim_trades) * 100 if sim_trades else 0
+  tools\run_comparison.py L108: result["steps"].append(f"   Simulator: {len(sim_trades)} trades")
+  tools\run_comparison.py L111: result["steps"].append("5. Compare results")
+  tools\run_comparison.py L112: bt_count = result["backtest"]["count"]
+  tools\run_comparison.py L113: sim_count = result["simulator"]["count"]
+  tools\run_comparison.py L115: result["comparison"]["bt_count"] = bt_count
+  tools\run_comparison.py L116: result["comparison"]["sim_count"] = sim_count
+  tools\run_comparison.py L117: result["comparison"]["count_diff"] = abs(bt_count - sim_count)
+  tools\run_comparison.py L118: result["comparison"]["count_diff_pct"] = abs(bt_count - sim_count) / max(bt_count, 1) * 100
+  tools\run_comparison.py L119: result["comparison"]["pnl_diff"] = abs(result["backtest"]["pnl"] - result["simulator"]["pnl"])
+  tools\run_comparison.py L120: result["comparison"]["winrate_diff"] = abs(result["backtest"]["winrate"] - result["simulator"]["winrate"])
+  tools\run_comparison.py L122: if result["comparison"]["count_diff_pct"] < 10:
+  tools\run_comparison.py L123: result["comparison"]["verdict"] = "MATCH (차이 < 10%)"
+  tools\run_comparison.py L124: elif result["comparison"]["count_diff_pct"] < 25:
+  tools\run_comparison.py L125: result["comparison"]["verdict"] = "PARTIAL (차이 10-25%)"
+  tools\run_comparison.py L127: result["comparison"]["verdict"] = "MISMATCH (차이 > 25%)"
+  tools\run_comparison.py L129: result["status"] = "success"
+  tools\run_comparison.py L132: result["status"] = "error"
+  tools\run_comparison.py L133: result["error"] = str(e)
+  tools\run_comparison.py L134: result["traceback"] = traceback.format_exc()
+  utils\preset_manager.py L117: data['_meta']['created'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  utils\preset_manager.py L127: data['_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  utils\preset_manager.py L197: result = data['params'].copy()
+  utils\preset_manager.py L210: flat.update(data[section])
+  utils\preset_storage.py L128: 'created_at': preset_data['created_at']
+  _backup_2025\analyze_mtf_timing.py L137: pct_fast = result['fast_first'] / result['total'] * 100 if result['total'] > 0 else 0
+  _backup_2025\analyze_mtf_timing.py L138: pct_slow = result['slow_first'] / result['total'] * 100 if result['total'] > 0 else 0
+  _backup_2025\analyze_mtf_timing.py L139: print(f"{fast:10} {slow:10} {pct_fast:9.1f}% {pct_slow:9.1f}% {result['simultaneous']:10} {result['avg_diff']:10.1f}")
+  _backup_2025\app.py L22: btc_data['timestamp'] = pd.to_datetime(btc_data['timestamp'])
+  _backup_2025\app.py L38: ticker = data["result"]["list"][0]
+  _backup_2025\app.py L70: candles = data["result"]["list"]
+  _backup_2025\bot_bybit.py L75: if order['price'] == 'MARKET':
+  _backup_2025\bot_bybit.py L79: if order['type'] == 'Long' and highs[i] >= order['price']:
+  _backup_2025\bot_bybit.py L80: ep = order['price']
+  _backup_2025\bot_bybit.py L82: elif order['type'] == 'Short' and lows[i] <= order['price']:
+  _backup_2025\bot_bybit.py L83: ep = order['price']
+  _backup_2025\bot_bybit.py L87: d = order['type']
+  _backup_2025\check_api_keys.py L39: masked_secret = secret[:4] + "..." + secret[-4:] if len(secret) > 8 else "***"
+  _backup_2025\close_position.py L15: size = float(pos['size'])
+  _backup_2025\close_position.py L18: side = "Sell" if pos['side'] == "Buy" else "Buy"
+  _backup_2025\close_position.py L20: pidx = 1 if pos['side'] == "Buy" else 2
+  _backup_2025\close_position.py L22: print(f"🚨 Closing {pos['side']} Position ({size} BTC)...")
+  _backup_2025\debug_env.py L25: print(f"  → 첫 5글자: {api_secret[:5]}...")
+  _backup_2025\exchange_bithumb.py L141: 'balance': data['total'],
+  _backup_2025\exchange_bithumb.py L142: 'available': data['free']
+  _backup_2025\exchange_upbit.py L142: 'balance': data['total'],
+  _backup_2025\exchange_upbit.py L143: 'available': data['free']
+  _backup_2025\license_client.py L78: data['hardware_id'] = hardware_id
+  _backup_2025\monitor_state.py L29: 'symbol': pos['symbol'],
+  _backup_2025\monitor_state.py L30: 'side': pos['side'],
+  _backup_2025\monitor_state.py L31: 'size': pos['size'],
+  _backup_2025\real_connection_test.py L51: api_data[ex_name] = cfg
+  _backup_2025\signal_scanner.py L58: if response['retCode'] != 0:
+  _backup_2025\signal_scanner.py L59: print(f"API Error: {response['retMsg']}")
+  _backup_2025\signal_scanner.py L62: data = response['result']['list']
+  _backup_2025\signal_scanner.py L215: if (pos['type'] == 'long' and current_price <= pos['sl']) or \
+  _backup_2025\signal_scanner.py L216: (pos['type'] == 'short' and current_price >= pos['sl']):
+  _backup_2025\signal_scanner.py L233: if pos['status'] == 'open':
+  _backup_2025\signal_scanner.py L234: if (pos['type'] == 'long' and current_price >= pos['tp1']) or \
+  _backup_2025\signal_scanner.py L235: (pos['type'] == 'short' and current_price <= pos['tp1']):
+  _backup_2025\signal_scanner.py L237: win_msg = f"💰 1차 익절(반익) 달성! ({pos['type']})"
+  _backup_2025\signal_scanner.py L254: pos['highest_price'] = current_price
+  _backup_2025\signal_scanner.py L256: pos['lowest_price'] = current_price
+  _backup_2025\signal_scanner.py L261: if pos['status'] == 'half_closed':
+  _backup_2025\signal_scanner.py L266: pos['highest_price'] = current_price
+  _backup_2025\signal_scanner.py L268: trailing_sl = pos['highest_price'] - (atr * 0.5)
+  _backup_2025\signal_scanner.py L269: if trailing_sl > pos['sl']:
+  _backup_2025\signal_scanner.py L270: pos['sl'] = trailing_sl
+  _backup_2025\signal_scanner.py L272: if current_price <= pos['sl']:
+  _backup_2025\signal_scanner.py L273: msg = f"💰 2차 익절(트레일링) 완료! ({pos['type']} @ {current_price})"
+  _backup_2025\signal_scanner.py L280: elif pos['type'] == 'short':
+  _backup_2025\signal_scanner.py L281: if current_price < pos['lowest_price']:
+  _backup_2025\signal_scanner.py L282: pos['lowest_price'] = current_price
+  _backup_2025\signal_scanner.py L284: trailing_sl = pos['lowest_price'] + (atr * 0.5)
+  _backup_2025\signal_scanner.py L285: if trailing_sl < pos['sl']:
+  _backup_2025\signal_scanner.py L286: pos['sl'] = trailing_sl
+  _backup_2025\signal_scanner.py L288: if current_price >= pos['sl']:
+  _backup_2025\signal_scanner.py L289: msg = f"💰 2차 익절(트레일링) 완료! ({pos['type']} @ {current_price})"
+  _backup_2025\strategy_1h.py L201: if order['price'] == 'MARKET':
+  _backup_2025\strategy_1h.py L205: if order['type'] == 'Long' and highs[i] >= order['price']:
+  _backup_2025\strategy_1h.py L206: ep = order['price']
+  _backup_2025\strategy_1h.py L208: elif order['type'] == 'Short' and lows[i] <= order['price']:
+  _backup_2025\strategy_1h.py L209: ep = order['price']
+  _backup_2025\strategy_1h.py L213: d = order['type']
+  _backup_2025\test_dashboard_balance.py L27: print(f"   secret: {secret[:4]}... (len={len(secret) if secret else 0})")
+  _backup_2025\trc20_payment.py L300: print(f"  Email: {result['email']}")
+  _backup_2025\trc20_payment.py L301: print(f"  Deposit to: {result['deposit_address']}")
+  _backup_2025\trc20_payment.py L302: print(f"  Memo: {result['memo']}")
+  _backup_2025\verify_functions.py L144: result["functions"].add(node.name)
+  _backup_2025\verify_functions.py L156: result["signals"].add(target.id)
+  _backup_2025\verify_functions.py L157: result["classes"][node.name] = methods
+  _backup_2025\verify_functions.py L163: result["variables"].add(target.id)
+  _backup_2025\verify_functions.py L167: result["has_argparse"] = True
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\commands\install.py L402: (r.metadata["name"], r.metadata["version"])
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\commands\show.py L104: dist.metadata["Name"] or "UNKNOWN"
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\metadata\base.py L573: metadata["Requires-Dist"] = dep
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\metadata\base.py L576: metadata["Provides-Extra"] = extra
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\metadata\_json.py L81: result[key] = value
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\metadata\_json.py L85: result["description"] = payload
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\models\link.py L182: ret = result.scheme + ret[4:]  # Restore original scheme.
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L121: if data["implementation"]["name"] == "CPython":
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L122: data["implementation"]["version"] = platform.python_version()
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L123: elif data["implementation"]["name"] == "PyPy":
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L127: data["implementation"]["version"] = ".".join(
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L130: elif data["implementation"]["name"] == "Jython":
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L132: data["implementation"]["version"] = platform.python_version()
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L133: elif data["implementation"]["name"] == "IronPython":
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L135: data["implementation"]["version"] = platform.python_version()
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L156: data["distro"] = distro_infos
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L159: data["distro"] = {"name": "macOS", "version": platform.mac_ver()[0]}
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L168: data["cpu"] = platform.machine()
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L173: data["openssl_version"] = ssl.OPENSSL_VERSION
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L177: data["setuptools_version"] = str(setuptools_dist.version)
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L192: data["rustc_version"] = rustc_output.split(b" ")[1].decode()
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L198: data["ci"] = True if looks_like_ci() else None
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L202: data["user_data"] = user_data
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\network\session.py L204: return "{data[installer][name]}/{data[installer][version]} {json}".format(
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_file.py L596: return data[len(bom) :].decode(encoding)
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_install.py L373: if isinstance(parse_version(self.metadata["Version"]), Version):
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_install.py L381: self.metadata["Name"],
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_install.py L383: self.metadata["Version"],
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_install.py L390: metadata_name = canonicalize_name(self.metadata["Name"])
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_install.py L572: version = self.metadata["version"]
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\req\req_install.py L702: archive_name = "{}-{}.zip".format(self.name, self.metadata["version"])
+  _backup_2025\.venv\Lib\site-packages\pip\_internal\utils\wheel.py L99: version_text = wheel_data["Wheel-Version"]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\cachecontrol\serialize.py L50: data["vary"] = {}
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\cachecontrol\serialize.py L58: data["vary"][header] = header_value
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\cachecontrol\serialize.py L80: data = data[5:]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L344: result[key] = d[key]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L385: result[key] = entries = {}
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L1647: result[i] = item.decode('utf-8')
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L1695: result[k] = convert(o[k])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L1833: result[key] = default
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L1839: result['repository'] = self.DEFAULT_REPOSITORY
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\distlib\util.py L1840: elif (result['server'] != repository and result['repository'] != repository):
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\msgpack\fallback.py L532: ret[key] = self._unpack(EX_CONSTRUCT)
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\packaging\_elffile.py L105: if data[self._p_idx[0]] != 3:  # Not PT_INTERP.
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\packaging\_elffile.py L107: self._f.seek(data[self._p_idx[1]])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\packaging\_elffile.py L108: return os.fsdecode(self._f.read(data[self._p_idx[2]])).strip("\0")
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\lexer.py L927: info = cls._prof_data[-1].setdefault((state, rex), [0, 0.0])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L107: lexer_cls = find_lexer_class(data[1])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L111: 'name': format_link(data[1], lexer_cls.url),
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L113: 'aliases': ', '.join(data[2]),
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L114: 'class': f'{data[0]}.{classname}'
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L160: module = data[0]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L180: if data[2]:
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L181: lexer_name = data[2][0]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L194: ', '.join(data[2]) or 'None',
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L195: ', '.join(data[3]).replace('*', '\\*').replace('_', '\\') or 'None',
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L196: ', '.join(data[4]) or 'None',
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L220: module = data[0]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L228: out.append(FMTERDOC % (heading, ', '.join(data[2]) or 'None',
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\sphinxext.py L229: ', '.join(data[3]).replace('*', '\\*') or 'None',
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pygments\lexers\__init__.py L301: return result[-1][1](**options)
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\pyproject_hooks\_impl.py L410: return data["return_val"]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\cookies.py L484: result["port_specified"] = bool(result["port"])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\cookies.py L485: result["domain_specified"] = bool(result["domain"])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\cookies.py L486: result["domain_initial_dot"] = result["domain"].startswith(".")
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\cookies.py L487: result["path_specified"] = bool(result["path"])
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\utils.py L422: result[item] = None
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\utils.py L427: result[name] = value
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\requests\utils.py L954: sample = data[:4]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\rich\pretty.py L1006: data["foo"].append(data)  # type: ignore[attr-defined]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\urllib3\contrib\pyopenssl.py L366: data[total_sent : total_sent + SSL_WRITE_BLOCKSIZE]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\urllib3\contrib\securetransport.py L296: data = data[chunk_sent:]
+  _backup_2025\.venv\Lib\site-packages\pip\_vendor\urllib3\contrib\securetransport.py L651: sent = self.send(data[total_sent : total_sent + SSL_WRITE_BLOCKSIZE])
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\more_itertools\more.py L3053: ret[key].append(value)
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\more_itertools\more.py L3057: ret[key] = reducefunc(value_list)
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\more_itertools\more.py L3870: result[n - d] = i
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\packaging\_manylinux.py L42: return result[0]
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L2006: print("Success" if result[0] else "Failed!")
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L2016: print("Success" if result[0] else "Failed!")
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L2994: ret[k] = v
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L3222: ret = ret[self.quoteCharLen : -self.endQuoteCharLen]
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L4586: del ret[:]
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\core.py L5492: print(result['shape'])
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\helpers.py L349: print(result['shape'])
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L52: test("result[0]")
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L53: test("result['month']")
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L62: result[0] -> '1999'
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L63: result['month'] -> '12'
+  _backup_2025\.venv\Lib\site-packages\pkg_resources\_vendor\pyparsing\results.py L557: user_info = user_data[1, ...]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\expand.py L358: package_data[""] = package_data.pop("*")
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\setupcfg.py L331: result[key.strip()] = val.strip()
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L39: data__buildsystem = data["build-system"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L82: data__project = data["project"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L86: data__tool = data["tool"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L112: data__platforms = data["platforms"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L123: data__provides = data["provides"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L137: data__obsoletes = data["obsoletes"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L151: data__zipsafe = data["zip-safe"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L156: data__scriptfiles = data["script-files"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L167: data__eagerresources = data["eager-resources"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L178: data__packages = data["packages"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L204: data__packagedir = data["package-dir"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L245: data__packagedata = data["package-data"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L292: data__includepackagedata = data["include-package-data"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L297: data__excludepackagedata = data["exclude-package-data"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L344: data__namespacepackages = data["namespace-packages"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L358: data__pymodules = data["py-modules"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L372: data__datafiles = data["data-files"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L392: data__cmdclass = data["cmdclass"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L409: data__licensefiles = data["license-files"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L418: else: data["license-files"] = ['LICEN[CS]E*', ' COPYING*', ' NOTICE*', 'AUTHORS*']
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L421: data__dynamic = data["dynamic"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L531: data__file = data["file"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L568: data__attr = data["attr"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L583: data__find = data["find"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L641: data__global = data["global"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L663: data__name = data["name"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L671: data__version = data["version"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L679: data__description = data["description"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L684: data__readme = data["readme"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L746: data__requirespython = data["requires-python"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L754: data__license = data["license"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L790: data__authors = data["authors"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L800: data__maintainers = data["maintainers"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L810: data__keywords = data["keywords"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L821: data__classifiers = data["classifiers"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L835: data__urls = data["urls"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L854: data__scripts = data["scripts"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L897: data__optionaldependencies = data["optional-dependencies"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L930: data__dynamic = data["dynamic"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L951: data__dynamic = data["dynamic"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L1024: data__name = data["name"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\config\_validate_pyproject\fastjsonschema_validations.py L1029: data__email = data["email"]
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\archive_util.py L41: return result[2]
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\archive_util.py L54: return result[2]
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\msvc9compiler.py L304: result[key] = removeDuplicates(value)
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L207: data['name'] = data['password'] = data['email'] = ''
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L208: data['confirm'] = None
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L209: while not data['name']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L210: data['name'] = input('Username: ')
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L211: while data['password'] != data['confirm']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L212: while not data['password']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L213: data['password'] = getpass.getpass('Password: ')
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L214: while not data['confirm']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L215: data['confirm'] = getpass.getpass(' Confirm: ')
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L216: if data['password'] != data['confirm']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L217: data['password'] = ''
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L218: data['confirm'] = None
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L220: while not data['email']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L221: data['email'] = input('   EMail: ')
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L230: data['email'] = ''
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L231: while not data['email']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L232: data['email'] = input('Your email address: ')
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L260: if data['provides'] or data['requires'] or data['obsoletes']:
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L261: data['metadata_version'] = '1.1'
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\register.py L268: 'Registering {} to {}'.format(data['name'], self.repository), log.INFO
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\upload.py L128: data['comment'] = ''
+  _backup_2025\.venv\Lib\site-packages\setuptools\_distutils\command\upload.py L142: data['gpg_signature'] = (os.path.basename(filename) + ".asc", f.read())
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\importlib_metadata\__init__.py L595: return self.metadata['Name']
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\importlib_metadata\__init__.py L605: return self.metadata['Version']
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\importlib_metadata\__init__.py L1034: pkg_to_dist[pkg].append(dist.metadata['Name'])
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\more_itertools\more.py L2881: ret[key].append(value)
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\more_itertools\more.py L2885: ret[key] = reducefunc(value_list)
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\more_itertools\more.py L3668: result[n - d] = i
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\packaging\_manylinux.py L42: return result[0]
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L2006: print("Success" if result[0] else "Failed!")
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L2016: print("Success" if result[0] else "Failed!")
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L2994: ret[k] = v
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L3222: ret = ret[self.quoteCharLen : -self.endQuoteCharLen]
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L4586: del ret[:]
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\core.py L5492: print(result['shape'])
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\helpers.py L349: print(result['shape'])
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L52: test("result[0]")
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L53: test("result['month']")
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L62: result[0] -> '1999'
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L63: result['month'] -> '12'
+  _backup_2025\.venv\Lib\site-packages\setuptools\_vendor\pyparsing\results.py L557: user_info = user_data[1, ...]
+  _backup_2025\archive_root\adaptive_strategy_analyzer.py L87: if trend_data['close'] > trend_data['ema200']:
+  _backup_2025\archive_root\all_pattern_analyzer.py L298: output.append(f"{pattern_type:<25} {data['total']:<8} {data['tested']:<8} "
+  _backup_2025\archive_root\all_pattern_analyzer.py L299: f"{data['success']:<10} {data['rate']:<8.1f}% {data['avg_gain']:<10.2f}%")
+  _backup_2025\archive_root\analyze_nowcast_results.py L181: 'win_rate': (year_data['net_pnl'] > 0).sum() / len(year_data) * 100,
+  _backup_2025\archive_root\analyze_nowcast_results.py L182: 'total_pnl': year_data['net_pnl'].sum(),
+  _backup_2025\archive_root\analyze_nowcast_results.py L183: 'avg_pnl': year_data['net_pnl'].mean()
+  _backup_2025\archive_root\bot_bybit_backup_162403.py L75: if order['price'] == 'MARKET':
+  _backup_2025\archive_root\bot_bybit_backup_162403.py L79: if order['type'] == 'Long' and highs[i] >= order['price']:
+  _backup_2025\archive_root\bot_bybit_backup_162403.py L80: ep = order['price']
+  _backup_2025\archive_root\bot_bybit_backup_162403.py L82: elif order['type'] == 'Short' and lows[i] <= order['price']:
+  _backup_2025\archive_root\bot_bybit_backup_162403.py L83: ep = order['price']
+  _backup_2025\archive_root\bot_bybit_backup_162403.py L87: d = order['type']
+  _backup_2025\archive_root\check_lighter_markets.py L26: if 'result' in data and data['result']:
+  _backup_2025\archive_root\check_lighter_markets.py L27: print(f"\n총 {len(data['result'])}개 마켓 발견\n")
+  _backup_2025\archive_root\check_lighter_markets.py L30: for i, m in enumerate(data['result'][:20]):  # 처음 20개만
+  _backup_2025\archive_root\check_position.py L21: print(f"Side: {pos['side']}")
+  _backup_2025\archive_root\check_position.py L22: print(f"Size: {pos['size']}")
+  _backup_2025\archive_root\check_position.py L27: print(f"미실현 손익%: {pos['unrealisedPnl']}%")
+  _backup_2025\archive_root\double_bottom_context_analyzer.py L193: breakout = future_data[future_data['high'] > neckline]
+  _backup_2025\archive_root\double_bottom_context_analyzer.py L197: max_price = future_data['high'].max()
+  _backup_2025\archive_root\final_causal_strategy.py L229: if curr_high >= order['price']:
+  _backup_2025\archive_root\final_causal_strategy.py L238: direction = order['type']
+  _backup_2025\archive_root\get_lighter_info.py L19: for m in data['result']:
+  _backup_2025\archive_root\get_lighter_info_final.py L23: res = data['result']
+  _backup_2025\archive_root\optimize_exit.py L66: d = order['type']
+  _backup_2025\archive_root\pattern_success_analyzer.py L123: breakout = future_data[future_data['high'] > neckline]
+  _backup_2025\archive_root\pattern_success_analyzer.py L128: 'max_reached': future_data['high'].max(),
+  _backup_2025\archive_root\pattern_success_analyzer.py L133: max_price = future_data['high'].max()
+  _backup_2025\archive_root\pattern_success_analyzer.py L164: breakdown = future_data[future_data['low'] < neckline]
+  _backup_2025\archive_root\pattern_success_analyzer.py L172: min_price = future_data['low'].min()
+  _backup_2025\archive_root\simulate_hybrid_sl.py L95: if curr_high >= order['price']:
+  _backup_2025\archive_root\simulate_hybrid_sl.py L104: direction = order['type']
+  _backup_2025\archive_root\simulate_hybrid_sl.py L116: if order['pattern_type'] == 'Triangle':
+  _backup_2025\archive_root\simulate_hybrid_sl.py L117: p_sl = order['pattern']['L2']['price'] if direction == 'Long' else order['pattern']['H2']['price']
+  _backup_2025\archive_root\simulate_hybrid_sl.py L119: p_sl = order['pattern']['P2']['price']
+  _backup_2025\archive_root\simulate_tight_sl.py L98: if curr_high >= order['price']:
+  _backup_2025\archive_root\simulate_tight_sl.py L107: direction = order['type']
+  _backup_2025\archive_root\simulate_tight_sl.py L111: if order['pattern_type'] == 'Triangle':
+  _backup_2025\archive_root\simulate_tight_sl.py L112: sl_price = order['pattern']['L2']['price'] * 0.998 if direction == 'Long' else order['pattern']['H2']['price'] * 1.002
+  _backup_2025\archive_root\simulate_tight_sl.py L114: sl_price = order['pattern']['P2']['price'] * (0.998 if direction == 'Long' else 1.002)
+  _backup_2025\archive_root\strategy_c_failure_analysis.py L82: if result and result['outcome'] == 'loss':
+  _backup_2025\archive_root\test_bybit_detailed.py L16: print(f"2. Secret: {api_secret[:10]}... (길이: {len(api_secret)})\n")
+  _backup_2025\archive_root\test_bybit_kline.py L20: first_row = data[0]
+  _backup_2025\archive_root\test_hybrid_strategy.py L340: print(f"수익: {result['hybrid_profit']:.2f}배")
+  _backup_2025\archive_root\test_hybrid_strategy.py L341: print(f"승률: {result['hybrid_winrate']:.1f}%")
+  _backup_2025\archive_root\test_hybrid_strategy.py L342: print(f"MDD: {result['hybrid_mdd']:.2f}%")
+  _backup_2025\archive_root\test_hybrid_strategy.py L343: print(f"거래: 15m {result['trades_15m']}회 + 5m {result['trades_5m']}회")
+  _backup_2025\archive_root\ultra_conservative_strategy.py L206: if filter_level >= 4 and not (0.4 <= bb_pos[i] <= 0.8):
+  _backup_2025\archive_root\ultra_conservative_strategy.py L286: if filter_level >= 4 and not (0.2 <= bb_pos[i] <= 0.6):
+  _backup_2025\archive_root\user_provided_analysis.py L163: 'win_rate': (year_data['net_pnl'] > 0).sum() / len(year_data) * 100,
+  _backup_2025\archive_root\user_provided_analysis.py L164: 'total_pnl': year_data['net_pnl'].sum(),
+  _backup_2025\archive_root\user_provided_analysis.py L165: 'avg_pnl': year_data['net_pnl'].mean()
+  _backup_2025\archive_root\verify_lookahead_bias.py L82: realtime_ema20 = historical_data['close'].ewm(span=20, adjust=False).mean().iloc[-1]
+  _backup_2025\archive_root\verify_lookahead_bias.py L270: print(f"총 거래: {result['trades']}회")
+  _backup_2025\archive_root\verify_lookahead_bias.py L271: print(f"승률: {result['win_rate']:.1f}%")
+  _backup_2025\archive_root\verify_lookahead_bias.py L272: print(f"수익: {result['profit']:.1f}배")
+  _backup_2025\archive_root\verify_lookahead_bias.py L273: print(f"MDD: {result['mdd']:.2f}%")
+  _backup_2025\archive_root\verify_lookahead_bias.py L274: print(f"\n위반 사항: {len(result['violations'])}건")
+  _backup_2025\archive_root\verify_lookahead_bias.py L276: if len(result['violations']) > 0:
+  _backup_2025\archive_root\verify_lookahead_bias.py L278: for v in result['violations'][:5]:  # 처음 5개만
+  _backup_2025\exchanges\bingx_exchange.py L176: self.exchange.cancel_order(order['id'], symbol)
+  _backup_2025\exchanges\bitget_exchange.py L176: self.exchange.cancel_order(order['id'], symbol)
+  _backup_2025\exchanges\bithumb_exchange.py L184: if result and result[0] == 'success':
+  _backup_2025\exchanges\okx_exchange.py L184: self.exchange.cancel_order(order['id'], symbol)
+

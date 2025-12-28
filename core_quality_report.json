@@ -1,0 +1,517 @@
+{
+  "except_pass": [
+    {
+      "file": "crypto_payment.py",
+      "line": 66,
+      "code": "except Exception:"
+    },
+    {
+      "file": "dual_track_trader.py",
+      "line": 179,
+      "code": "except Exception:"
+    },
+    {
+      "file": "license_guard.py",
+      "line": 160,
+      "code": "except requests.RequestException:"
+    },
+    {
+      "file": "license_guard.py",
+      "line": 261,
+      "code": "except requests.RequestException:"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 198,
+      "code": "except ImportError:"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 637,
+      "code": "except:"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 878,
+      "code": "except Exception:"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 1159,
+      "code": "except Exception:"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 1217,
+      "code": "except Exception:"
+    },
+    {
+      "file": "multi_trader.py",
+      "line": 449,
+      "code": "except Exception:"
+    },
+    {
+      "file": "multi_trader.py",
+      "line": 850,
+      "code": "except Exception:"
+    },
+    {
+      "file": "multi_trader.py",
+      "line": 1011,
+      "code": "except (json.JSONDecodeError, IOError):"
+    },
+    {
+      "file": "multi_trader.py",
+      "line": 1148,
+      "code": "except Exception:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2347,
+      "code": "except Exception:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2676,
+      "code": "except: pass"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 3395,
+      "code": "except ImportError:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 3545,
+      "code": "except queue.Empty:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 3701,
+      "code": "except (IOError, OSError):"
+    },
+    {
+      "file": "updater.py",
+      "line": 43,
+      "code": "except Exception:"
+    }
+  ],
+  "hardcoded": [],
+  "unsafe": [
+    {
+      "file": "chart_matcher.py",
+      "line": 245,
+      "code": "result['data_sufficient'] = is_sufficient"
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 246,
+      "code": "result['data_message'] = msg"
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 249,
+      "code": "result['recommendation'] = \"데이터 축적 후 재분석 필요\""
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 254,
+      "code": "result['profile'] = profile"
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 258,
+      "code": "result['top_matches'] = ["
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 269,
+      "code": "result['best_match'] = {"
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 275,
+      "code": "result['recommendation'] = f\"✅ {best['symbol']} 프리셋 사용 권장\""
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 277,
+      "code": "result['recommendation'] = f\"⚠️ {best['symbol']} 프리셋 참고 (유사도 낮음)\""
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 279,
+      "code": "result['recommendation'] = \"❌ 자체 최적화 필요\""
+    },
+    {
+      "file": "chart_matcher.py",
+      "line": 281,
+      "code": "result['recommendation'] = \"❌ 유사 프리셋 없음, 자체 최적화 필요\""
+    },
+    {
+      "file": "multi_backtest.py",
+      "line": 263,
+      "code": "print(f\"Error: {result['error']}\")"
+    },
+    {
+      "file": "multi_backtest.py",
+      "line": 265,
+      "code": "s = result['summary']"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 315,
+      "code": "'trades': result['trades'],"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 316,
+      "code": "'win_rate': result['win_rate'],"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 317,
+      "code": "'total_pnl': result['total_pnl'],"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 318,
+      "code": "'mdd': result['mdd'],"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 319,
+      "code": "'pf': result['pf']"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 321,
+      "code": "**result['params']"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 328,
+      "code": "logging.info(f\"[OPTIMIZER] ✅ Preset saved: {filename} (WR={result['win_rate']*100:.1f}%)\")"
+    },
+    {
+      "file": "multi_optimizer.py",
+      "line": 416,
+      "code": "logging.info(f\"[OPTIMIZER] ✅ {task_name}: WR={result['win_rate']*100:.1f}%, {result['trades']} trades ({elapsed:.1f}s)\")"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 156,
+      "code": "if data[\"retCode\"] != 0:"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 157,
+      "code": "raise Exception(data[\"retMsg\"])"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 159,
+      "code": "tickers = data[\"result\"][\"list\"]"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 439,
+      "code": "candles = data['result']['list']"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 636,
+      "code": "preset_data['winrate'] = old_data['winrate']"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 1018,
+      "code": "pnl_pct = (real_pnl / pos[\"size\"]) * 100 if pos[\"size\"] > 0 else 0"
+    },
+    {
+      "file": "multi_sniper.py",
+      "line": 1265,
+      "code": "self._on_binance_kline(data[\"data\"])"
+    },
+    {
+      "file": "multi_trader.py",
+      "line": 328,
+      "code": "} for c in data['result']['list']])"
+    },
+    {
+      "file": "multi_trader.py",
+      "line": 480,
+      "code": "self._on_binance_kline(data[\"data\"])"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 146,
+      "code": "result['realtime_wr'] = realtime_wr"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 147,
+      "code": "result['optimized_wr'] = optimized_wr"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 148,
+      "code": "result['trades'] = trades"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 152,
+      "code": "result['message'] = '데이터 부족'"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 157,
+      "code": "result['message'] = f'거래 수 부족 ({trades}/{self.MIN_TRADES_FOR_CHECK})'"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 162,
+      "code": "result['diff'] = diff"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 166,
+      "code": "result['status'] = self.STATUS_REOPTIMIZE"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 167,
+      "code": "result['message'] = f'재최적화 필요! (차이: {diff*100:.1f}%)'"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 168,
+      "code": "logging.warning(f\"[HEALTH] 🔴 {preset_name}: {result['message']}\")"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 171,
+      "code": "result['status'] = self.STATUS_PAUSED"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 172,
+      "code": "result['message'] = f'거래 일시 중지 (차이: {diff*100:.1f}%)'"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 173,
+      "code": "logging.warning(f\"[HEALTH] 🟠 {preset_name}: {result['message']}\")"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 176,
+      "code": "result['status'] = self.STATUS_WARNING"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 177,
+      "code": "result['message'] = f'성능 저하 경고 (차이: {diff*100:.1f}%)'"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 178,
+      "code": "logging.info(f\"[HEALTH] 🟡 {preset_name}: {result['message']}\")"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 181,
+      "code": "result['status'] = self.STATUS_ACTIVE"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 182,
+      "code": "result['message'] = '정상'"
+    },
+    {
+      "file": "preset_health.py",
+      "line": 203,
+      "code": "data['_health'] = {"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 709,
+      "code": "d = order['type']"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 905,
+      "code": "result['new_extreme'] = current_high"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 907,
+      "code": "if result['new_extreme'] >= trail_start:"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 910,
+      "code": "result['mult_used'] = mult"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 912,
+      "code": "new_sl = result['new_extreme'] - (trail_dist * mult)"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 914,
+      "code": "result['new_sl'] = new_sl"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 918,
+      "code": "result['sl_hit'] = True"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 923,
+      "code": "result['new_extreme'] = current_low"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 925,
+      "code": "if result['new_extreme'] <= trail_start:"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 928,
+      "code": "result['mult_used'] = mult"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 930,
+      "code": "new_sl = result['new_extreme'] + (trail_dist * mult)"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 932,
+      "code": "result['new_sl'] = new_sl"
+    },
+    {
+      "file": "strategy_core.py",
+      "line": 936,
+      "code": "result['sl_hit'] = True"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 101,
+      "code": "server_time = int(data['result']['timeSecond'])"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 103,
+      "code": "server_time = int(data['serverTime']) / 1000"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 105,
+      "code": "server_time = int(data['data'][0]['ts']) / 1000"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 107,
+      "code": "server_time = int(data['data']['serverTime']) / 1000"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 691,
+      "code": "if data[\"ready\"] and opt[\"ready\"]:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 695,
+      "code": "if not data[\"ready\"]:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 696,
+      "code": "msgs.append(f\"📊 데이터 필요: {', '.join(data['missing'])}\")"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1228,
+      "code": "if result['sl_hit']:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1243,
+      "code": "state['extreme_price'] = result['new_extreme']"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1246,
+      "code": "if result['new_sl']:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1247,
+      "code": "if (direction == 'Long' and result['new_sl'] > current_sl) or \\"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1248,
+      "code": "(direction == 'Short' and result['new_sl'] < current_sl):"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1250,
+      "code": "if self.exchange.update_stop_loss(result['new_sl']):"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1251,
+      "code": "state['current_sl'] = result['new_sl']"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1252,
+      "code": "logging.info(f\"[LIVE] 📈 SL Updated (API): {result['new_sl']:.2f}\")"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1256,
+      "code": "state['current_sl'] = result['new_sl']"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 1257,
+      "code": "logging.info(f\"[LIVE] 📈 SL Updated (DRY): {result['new_sl']:.2f}\")"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2948,
+      "code": "if result['sl_hit']:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2953,
+      "code": "self.position.extreme_price = result['new_extreme']"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2956,
+      "code": "if result['new_sl']:"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2957,
+      "code": "if self.exchange.update_stop_loss(result['new_sl']):"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2958,
+      "code": "self.position.stop_loss = result['new_sl']"
+    },
+    {
+      "file": "unified_bot.py",
+      "line": 2960,
+      "code": "logging.info(f\"📈 Trailing SL: {result['new_sl']:.2f} (RSI={rsi:.1f}, Mult={result['mult_used']})\")"
+    }
+  ]
+}

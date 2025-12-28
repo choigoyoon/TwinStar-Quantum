@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>문제 해결 - TwinStar Quantum</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <a href="../ko/troubleshooting.html" class="active">🇰🇷 한국어</a>
+        <a href="../en/troubleshooting.html">🇺🇸 English</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔧 문제 해결</h1>
+            <nav>
+                <a href="index.html">← 메인으로</a>
+                <a href="user_guide.html">이전: 사용 가이드</a>
+                <a href="strategy.html">다음: 전략 설명 →</a>
+            </nav>
+        </div>
+
+        <!-- API 오류 -->
+        <div class="section">
+            <h2>🔐 API 관련 오류</h2>
+
+            <!-- Binance -2015 -->
+            <div class="card">
+                <h3>Binance -2015 에러</h3>
+                <div class="error">
+                    "Invalid API-key, IP, or permissions for action"
+                </div>
+
+                <h4>원인</h4>
+                <p>API 권한 또는 IP 설정 문제</p>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li><a href="https://www.binance.com/en/my/settings/api-management" target="_blank">Binance API
+                            관리</a> 페이지 접속</li>
+                    <li><strong>Enable Futures</strong> 권한이 활성화되어 있는지 확인</li>
+                    <li>IP Access Restrictions 확인:
+                        <ul>
+                            <li><code>Unrestricted</code> 선택, 또는</li>
+                            <li>본인 IP 정확히 등록</li>
+                        </ul>
+                    </li>
+                    <li>Testnet 키와 Production 키 구분 확인</li>
+                    <li>API 키를 새로 발급받아 다시 시도</li>
+                </ol>
+            </div>
+
+            <!-- OKX/Bitget 인증 실패 -->
+            <div class="card">
+                <h3>OKX/Bitget 인증 실패</h3>
+                <div class="error">
+                    "Authentication failed" 또는 "Invalid passphrase"
+                </div>
+
+                <h4>원인</h4>
+                <p>Passphrase 누락 또는 오타</p>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li>API 생성 시 입력한 Passphrase를 정확히 입력</li>
+                    <li><strong>대소문자 구분</strong> 확인</li>
+                    <li>Settings 탭에서 Passphrase 필드가 있는지 확인</li>
+                    <li>Passphrase 분실 시 → API 키 재발급</li>
+                </ol>
+            </div>
+
+            <!-- 한국 거래소 잔고 0 -->
+            <div class="card">
+                <h3>한국 거래소 잔고 0</h3>
+                <div class="error">
+                    "Balance: 0 KRW"
+                </div>
+
+                <h4>원인</h4>
+                <p>KRW 잔고 없음 또는 현물 전용 거래소</p>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li>거래소에 KRW 잔고가 있는지 확인</li>
+                    <li>업비트/빗썸은 <strong>현물만 지원</strong> (선물 거래 불가)</li>
+                    <li>선물 거래는 Bybit, Binance, OKX 등 이용</li>
+                </ol>
+
+                <div class="warning">
+                    업비트/빗썸에서는 레버리지가 작동하지 않습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- 데이터 오류 -->
+        <div class="section">
+            <h2>📊 데이터 관련 오류</h2>
+
+            <div class="card">
+                <h3>parquet not found</h3>
+                <div class="error">
+                    "15m parquet not found" 또는 "No data available"
+                </div>
+
+                <h4>원인</h4>
+                <p>해당 심볼의 데이터가 다운로드되지 않음</p>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li><strong>Data</strong> 탭 클릭</li>
+                    <li>거래소와 심볼 선택</li>
+                    <li><strong>Download</strong> 버튼 클릭</li>
+                    <li>다운로드 완료까지 대기</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>[Crypto] 반복 출력</h3>
+                <div class="warning">
+                    "[Crypto] API 키 복호화 로드 완료" 메시지가 여러 번 출력됨
+                </div>
+
+                <h4>원인</h4>
+                <p>불필요한 반복 로드 (기능에는 영향 없음)</p>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li>프로그램 재시작</li>
+                    <li>지속될 경우 다음 버전에서 수정 예정</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- 봇 오류 -->
+        <div class="section">
+            <h2>🤖 봇 관련 문제</h2>
+
+            <div class="card">
+                <h3>진입이 안 됨</h3>
+                <div class="info">
+                    "[STATUS] No Position | Pending=0"
+                </div>
+
+                <h4>이것은 오류가 아닙니다!</h4>
+                <p>진입 조건이 충족되지 않아 대기 중인 상태입니다.</p>
+
+                <h4>확인 방법</h4>
+                <ol class="steps">
+                    <li>Bot Log에서 <code>[PREDICT]</code> 섹션 확인</li>
+                    <li>패턴 / RSI / MTF 조건 확인</li>
+                    <li>조건이 미충족이면 대기가 <strong>정상</strong>입니다</li>
+                </ol>
+
+                <div class="success">
+                    시장 조건에 맞지 않으면 거래하지 않는 것이 올바른 동작입니다.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>[PREDICT] 로그가 안 나옴</h3>
+                <div class="error">
+                    진입 예측 로그가 표시되지 않음
+                </div>
+
+                <h4>원인</h4>
+                <p>히스토리 데이터 부족</p>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li><strong>Data</strong> 탭에서 데이터 다운로드</li>
+                    <li>봇 정지 후 재시작</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>SL이 작동 안 함</h3>
+                <div class="error">
+                    스탑로스가 체결되지 않음
+                </div>
+
+                <h4>원인</h4>
+                <ul>
+                    <li>거래소 API 지연</li>
+                    <li>급격한 가격 변동 (슬리피지)</li>
+                    <li>네트워크 문제</li>
+                </ul>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li>거래소에서 직접 포지션 확인</li>
+                    <li>필요시 수동으로 청산</li>
+                    <li>네트워크 연결 상태 확인</li>
+                </ol>
+
+                <div class="warning">
+                    프로그램이 종료되면 SL이 작동하지 않을 수 있습니다. 봇 실행 중에는 프로그램을 닫지 마세요.
+                </div>
+            </div>
+        </div>
+
+        <!-- 프로그램 오류 -->
+        <div class="section">
+            <h2>💻 프로그램 오류</h2>
+
+            <div class="card">
+                <h3>프로그램이 실행되지 않음</h3>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li>Windows Defender 또는 백신 프로그램에서 예외 추가</li>
+                    <li>관리자 권한으로 실행</li>
+                    <li>설치 폴더 권한 확인 (<code>C:\TwinStar</code>)</li>
+                    <li>재설치</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h3>화면이 깨짐 / 글자가 안 보임</h3>
+
+                <h4>해결 방법</h4>
+                <ol class="steps">
+                    <li>Windows 디스플레이 설정에서 배율 100% 확인</li>
+                    <li>프로그램 호환성 설정에서 DPI 스케일링 무시</li>
+                    <li>그래픽 드라이버 업데이트</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="section">
+            <h2>❓ 자주 묻는 질문</h2>
+
+            <div class="card">
+                <h3>Q: 프로그램을 종료해도 봇이 계속 작동하나요?</h3>
+                <p><strong>A: 아니요.</strong> 프로그램을 종료하면 봇도 함께 종료됩니다. 열린 포지션은 거래소에 남아있으므로 수동으로 관리해야 합니다.</p>
+            </div>
+
+            <div class="card">
+                <h3>Q: 여러 심볼을 동시에 거래할 수 있나요?</h3>
+                <p><strong>A: 네.</strong> 여러 봇을 동시에 실행할 수 있습니다. 단, 라이선스에 따라 최대 포지션 수가 제한될 수 있습니다.</p>
+            </div>
+
+            <div class="card">
+                <h3>Q: 백테스트와 실매매 결과가 다른 이유는?</h3>
+                <p><strong>A:</strong> 슬리피지, 수수료, 실시간 가격 변동 등으로 인해 차이가 발생할 수 있습니다. 이는 모든 트레이딩 시스템에서 공통적인 현상입니다.</p>
+            </div>
+
+            <div class="card">
+                <h3>Q: API 키가 유출되면 어떻게 하나요?</h3>
+                <p><strong>A:</strong> 즉시 거래소에서 해당 API 키를 삭제하고 새로 발급받으세요. 출금 권한이 없다면 자산 손실 위험은 낮습니다.</p>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="user_guide.html">← 이전: 사용 가이드</a>
+            <a href="strategy.html">다음: 전략 설명 →</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 TwinStar Quantum. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

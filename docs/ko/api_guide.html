@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 키 생성 가이드 - TwinStar Quantum</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <a href="../ko/api_guide.html" class="active">🇰🇷 한국어</a>
+        <a href="../en/api_guide.html">🇺🇸 English</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔑 API 키 생성 가이드</h1>
+            <nav>
+                <a href="index.html">← 메인으로</a>
+                <a href="user_guide.html">다음: 사용 가이드 →</a>
+            </nav>
+        </div>
+
+        <div class="info">
+            API 키는 프로그램이 거래소에 접근하기 위한 인증 정보입니다. 각 거래소별로 발급 방법이 다르니 아래 가이드를 따라주세요.
+        </div>
+
+        <!-- Bybit -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bybit">🟠 Bybit</span>
+                <h3>Bybit API 키 발급</h3>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://www.bybit.com" target="_blank">Bybit 웹사이트</a>에 로그인
+                    </li>
+                    <li>프로필 아이콘 클릭 → <strong>API Management</strong> 선택</li>
+                    <li><strong>Create New Key</strong> 클릭 → <strong>API Transaction</strong> 선택</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ Read-Write</li>
+                            <li>✅ Contract - Order</li>
+                            <li>✅ Contract - Position</li>
+                        </ul>
+                    </li>
+                    <li>IP 제한: 본인 IP 입력 또는 <code>No IP restriction</code> 선택</li>
+                    <li>2FA 인증 후 <strong>API Key</strong>와 <strong>Secret Key</strong> 복사</li>
+                </ol>
+
+                <div class="success">Passphrase 불필요</div>
+            </div>
+        </div>
+
+        <!-- Binance -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-binance">🟡 Binance Futures</span>
+                <h3>Binance API 키 발급</h3>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://www.binance.com" target="_blank">Binance 웹사이트</a>에 로그인
+                    </li>
+                    <li>프로필 → <strong>API Management</strong></li>
+                    <li><strong>Create API</strong> → <strong>System generated</strong> 선택</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ Enable Reading</li>
+                            <li>✅ Enable Futures</li>
+                            <li>✅ Enable Spot & Margin Trading</li>
+                        </ul>
+                    </li>
+                    <li>IP Access: <code>Unrestricted</code> 또는 본인 IP 등록</li>
+                    <li><strong>API Key</strong>와 <strong>Secret Key</strong> 복사</li>
+                </ol>
+
+                <div class="warning">
+                    <strong>-2015 에러 발생 시:</strong><br>
+                    1. Enable Futures 권한 확인<br>
+                    2. IP Whitelist 설정 확인<br>
+                    3. Testnet/Production 키 구분 확인
+                </div>
+            </div>
+        </div>
+
+        <!-- OKX -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-okx">⚫ OKX</span>
+                <h3>OKX API 키 발급</h3>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://www.okx.com" target="_blank">OKX 웹사이트</a>에 로그인
+                    </li>
+                    <li>프로필 → <strong>API</strong></li>
+                    <li><strong>Create V5 API Key</strong> 클릭</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ Trade</li>
+                        </ul>
+                    </li>
+                    <li><strong>Passphrase 입력</strong> (필수! 기억해두세요)</li>
+                    <li><strong>API Key</strong>, <strong>Secret Key</strong>, <strong>Passphrase</strong> 모두 복사</li>
+                </ol>
+
+                <div class="error">
+                    Passphrase를 분실하면 API 키를 재발급해야 합니다!
+                </div>
+            </div>
+        </div>
+
+        <!-- Bitget -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bitget">🔵 Bitget</span>
+                <h3>Bitget API 키 발급</h3>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://www.bitget.com" target="_blank">Bitget 웹사이트</a>에 로그인
+                    </li>
+                    <li>프로필 → <strong>API Management</strong></li>
+                    <li><strong>Create API</strong> 클릭</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ Futures Trade</li>
+                        </ul>
+                    </li>
+                    <li><strong>Passphrase 입력</strong> (필수!)</li>
+                    <li><strong>API Key</strong>, <strong>Secret Key</strong>, <strong>Passphrase</strong> 복사</li>
+                </ol>
+
+                <div class="warning">
+                    OKX와 마찬가지로 Passphrase가 필수입니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- BingX -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bingx">🟢 BingX</span>
+                <h3>BingX API 키 발급</h3>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://www.bingx.com" target="_blank">BingX 웹사이트</a>에 로그인
+                    </li>
+                    <li>프로필 → <strong>API Management</strong></li>
+                    <li><strong>Create API</strong> 클릭</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ Futures</li>
+                        </ul>
+                    </li>
+                    <li><strong>API Key</strong>와 <strong>Secret Key</strong> 복사</li>
+                </ol>
+
+                <div class="success">Passphrase 불필요</div>
+            </div>
+        </div>
+
+        <!-- Upbit -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-upbit">🟣 업비트 (Upbit)</span>
+                <h3>업비트 API 키 발급</h3>
+
+                <div class="warning">
+                    <strong>현물 거래만 지원!</strong> 선물 거래는 지원하지 않습니다.
+                </div>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://upbit.com" target="_blank">업비트 웹사이트</a>에 로그인
+                    </li>
+                    <li>마이페이지 → <strong>Open API 관리</strong></li>
+                    <li><strong>Open API Key 발급</strong> 클릭</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ 자산조회</li>
+                            <li>✅ 주문조회</li>
+                            <li>✅ <strong>주문하기</strong> (필수!)</li>
+                        </ul>
+                    </li>
+                    <li><strong>IP 등록 필수</strong> - 본인 IP 입력</li>
+                    <li><strong>Access Key</strong>와 <strong>Secret Key</strong> 복사</li>
+                </ol>
+
+                <div class="info">
+                    프로그램에서는 Access Key → API Key, Secret Key → Secret으로 입력하세요.
+                </div>
+            </div>
+        </div>
+
+        <!-- Bithumb -->
+        <div class="section">
+            <div class="card">
+                <span class="exchange-badge badge-bithumb">🟤 빗썸 (Bithumb)</span>
+                <h3>빗썸 API 키 발급</h3>
+
+                <div class="warning">
+                    <strong>현물 거래만 지원!</strong> 선물 거래는 지원하지 않습니다.
+                </div>
+
+                <ol class="steps">
+                    <li>
+                        <a href="https://www.bithumb.com" target="_blank">빗썸 웹사이트</a>에 로그인
+                    </li>
+                    <li>마이페이지 → <strong>API 관리</strong></li>
+                    <li><strong>API Key 생성</strong> 클릭</li>
+                    <li>
+                        권한 설정:
+                        <ul>
+                            <li>✅ 조회</li>
+                            <li>✅ 거래</li>
+                            <li>❌ 출금 - <strong>해제 권장</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>API Key</strong>와 <strong>Secret Key</strong> 복사</li>
+                </ol>
+
+                <div class="error">
+                    보안을 위해 출금 권한은 반드시 해제하세요!
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Table -->
+        <div class="section">
+            <h2>📋 거래소별 요약</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>거래소</th>
+                        <th>Passphrase</th>
+                        <th>IP 등록</th>
+                        <th>선물 지원</th>
+                        <th>통화</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Bybit</td>
+                        <td>❌ 불필요</td>
+                        <td>선택</td>
+                        <td>✅ O</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>Binance</td>
+                        <td>❌ 불필요</td>
+                        <td>선택</td>
+                        <td>✅ O</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>OKX</td>
+                        <td>✅ 필수</td>
+                        <td>선택</td>
+                        <td>✅ O</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>Bitget</td>
+                        <td>✅ 필수</td>
+                        <td>선택</td>
+                        <td>✅ O</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>BingX</td>
+                        <td>❌ 불필요</td>
+                        <td>선택</td>
+                        <td>✅ O</td>
+                        <td>USDT</td>
+                    </tr>
+                    <tr>
+                        <td>업비트</td>
+                        <td>❌ 불필요</td>
+                        <td>✅ 필수</td>
+                        <td>❌ X</td>
+                        <td>KRW</td>
+                    </tr>
+                    <tr>
+                        <td>빗썸</td>
+                        <td>❌ 불필요</td>
+                        <td>선택</td>
+                        <td>❌ X</td>
+                        <td>KRW</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="index.html">← 메인으로</a>
+            <a href="user_guide.html">다음: 사용 가이드 →</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 TwinStar Quantum. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

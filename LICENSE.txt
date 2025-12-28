@@ -1,0 +1,11 @@
+TwinStar Quantum
+End User License Agreement
+
+Copyright (c) 2025 TwinStar Trading
+
+1. 본 소프트웨어는 개인적인 매매 목적으로만 사용해야 합니다.
+2. 본 소프트웨어의 재배포 및 상업적 이용을 금지합니다.
+3. 본 소프트웨어 사용으로 인한 금전적 손실에 대해 개발자는 책임을 지지 않습니다.
+4. 트레이딩에는 항상 원금 손실의 위험이 따릅니다.
+
+TwinStar Quantum을 사용함으로써 귀하는 위 약관에 동의하는 것으로 간주됩니다.

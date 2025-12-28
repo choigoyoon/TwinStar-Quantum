@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전략 설명 - TwinStar Quantum</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="lang-switch">
+        <a href="../ko/strategy.html" class="active">🇰🇷 한국어</a>
+        <a href="../en/strategy.html">🇺🇸 English</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 전략 설명</h1>
+            <nav>
+                <a href="index.html">← 메인으로</a>
+                <a href="troubleshooting.html">이전: 문제 해결</a>
+            </nav>
+        </div>
+
+        <!-- 개요 -->
+        <div class="section">
+            <h2>🎯 Alpha-X7 전략 개요</h2>
+            <div class="card">
+                <p>Alpha-X7은 <strong>W/M 패턴</strong>을 기반으로 한 추세 추종 전략입니다.</p>
+
+                <h4>핵심 특징</h4>
+                <ul>
+                    <li>📈 <strong>W 패턴 (이중 바닥)</strong>: Long 진입 신호</li>
+                    <li>📉 <strong>M 패턴 (이중 천장)</strong>: Short 진입 신호</li>
+                    <li>🔍 <strong>RSI 필터</strong>: 과매수/과매도 확인</li>
+                    <li>🌐 <strong>MTF (Multi-Timeframe)</strong>: 상위 타임프레임 추세 정렬</li>
+                    <li>🎚️ <strong>ATR 기반 SL/TP</strong>: 변동성 반영 손익 설정</li>
+                    <li>🔄 <strong>트레일링 스탑</strong>: 수익 보호</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 진입 조건 -->
+        <div class="section">
+            <h2>🟢 진입 조건</h2>
+
+            <div class="card">
+                <h3>Long 진입 (매수)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>조건</th>
+                            <th>기준</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>패턴</td>
+                            <td>W 패턴 (이중 바닥) 감지</td>
+                        </tr>
+                        <tr>
+                            <td>RSI</td>
+                            <td>&lt; 35 (과매도 상태)</td>
+                        </tr>
+                        <tr>
+                            <td>MTF 추세</td>
+                            <td>상위 TF에서 상승 추세</td>
+                        </tr>
+                        <tr>
+                            <td>유효시간</td>
+                            <td>패턴 감지 후 설정 시간 내</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="success">
+                    모든 조건이 충족되면 다음 봉 시가에 진입합니다.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Short 진입 (매도)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>조건</th>
+                            <th>기준</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>패턴</td>
+                            <td>M 패턴 (이중 천장) 감지</td>
+                        </tr>
+                        <tr>
+                            <td>RSI</td>
+                            <td>&gt; 65 (과매수 상태)</td>
+                        </tr>
+                        <tr>
+                            <td>MTF 추세</td>
+                            <td>상위 TF에서 하락 추세</td>
+                        </tr>
+                        <tr>
+                            <td>유효시간</td>
+                            <td>패턴 감지 후 설정 시간 내</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 패턴 설명 -->
+        <div class="section">
+            <h2>📐 W/M 패턴 설명</h2>
+
+            <div class="card">
+                <h3>W 패턴 (이중 바닥)</h3>
+                <pre><code>
+         /\
+        /  \    /
+       /    \  /
+      /      \/
+     L1      L2
+</code></pre>
+                <p><strong>L1</strong>: 첫 번째 저점</p>
+                <p><strong>L2</strong>: 두 번째 저점 (L1과 비슷하거나 약간 높음)</p>
+                <p>→ L2 이후 상승 반전 예상 → <strong>Long 진입</strong></p>
+            </div>
+
+            <div class="card">
+                <h3>M 패턴 (이중 천장)</h3>
+                <pre><code>
+      H1      H2
+     /  \    /  \
+    /    \  /    \
+   /      \/      \
+</code></pre>
+                <p><strong>H1</strong>: 첫 번째 고점</p>
+                <p><strong>H2</strong>: 두 번째 고점 (H1과 비슷하거나 약간 낮음)</p>
+                <p>→ H2 이후 하락 반전 예상 → <strong>Short 진입</strong></p>
+            </div>
+        </div>
+
+        <!-- 파라미터 -->
+        <div class="section">
+            <h2>⚙️ 파라미터 설명</h2>
+
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>파라미터</th>
+                            <th>설명</th>
+                            <th>기본값</th>
+                            <th>범위</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>filter_tf</code></td>
+                            <td>추세 필터 타임프레임</td>
+                            <td>4h</td>
+                            <td>2h, 4h, D</td>
+                        </tr>
+                        <tr>
+                            <td><code>atr_mult</code></td>
+                            <td>SL 거리 (ATR 배수)</td>
+                            <td>1.25</td>
+                            <td>1.0 ~ 2.0</td>
+                        </tr>
+                        <tr>
+                            <td><code>trail_start_r</code></td>
+                            <td>트레일링 시작점 (R 배수)</td>
+                            <td>1.0</td>
+                            <td>0.5 ~ 2.0</td>
+                        </tr>
+                        <tr>
+                            <td><code>trail_dist_r</code></td>
+                            <td>트레일링 거리 (R 배수)</td>
+                            <td>0.2</td>
+                            <td>0.1 ~ 0.5</td>
+                        </tr>
+                        <tr>
+                            <td><code>entry_validity_hours</code></td>
+                            <td>시그널 유효시간</td>
+                            <td>6</td>
+                            <td>4 ~ 48</td>
+                        </tr>
+                        <tr>
+                            <td><code>pattern_tolerance</code></td>
+                            <td>패턴 허용 오차</td>
+                            <td>5%</td>
+                            <td>3% ~ 10%</td>
+                        </tr>
+                        <tr>
+                            <td><code>rsi_period</code></td>
+                            <td>RSI 계산 기간</td>
+                            <td>21</td>
+                            <td>14 ~ 28</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 트레일링 스탑 -->
+        <div class="section">
+            <h2>🔄 트레일링 스탑</h2>
+
+            <div class="card">
+                <h4>작동 원리</h4>
+                <ol class="steps">
+                    <li>진입 후 가격이 유리한 방향으로 이동</li>
+                    <li><code>trail_start_r</code> × Risk 만큼 이익 발생 시 트레일링 시작</li>
+                    <li>이후 가격이 계속 유리하면 SL이 따라 이동</li>
+                    <li>가격이 <code>trail_dist_r</code> × Risk 만큼 되돌아오면 청산</li>
+                </ol>
+
+                <h4>예시</h4>
+                <pre><code>진입가: $100
+SL: $95 (Risk = $5)
+trail_start_r = 1.0
+trail_dist_r = 0.2
+
+가격이 $105로 상승 (1R 이익)
+→ 트레일링 시작
+→ 새 SL = $104 (최고점 - 0.2R)
+
+가격이 $108로 상승
+→ 새 SL = $107
+
+가격이 $107로 하락
+→ SL 도달, 청산 (이익 $7)</code></pre>
+            </div>
+        </div>
+
+        <!-- 리스크 관리 -->
+        <div class="section">
+            <h2">⚠️ 리스크 관리</h2>
+
+                <div class="card">
+                    <h4>권장 설정</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>항목</th>
+                                <th>권장값</th>
+                                <th>비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>레버리지</td>
+                                <td>3 ~ 10x</td>
+                                <td>높을수록 위험</td>
+                            </tr>
+                            <tr>
+                                <td>포지션당 자본</td>
+                                <td>전체의 5~10%</td>
+                                <td>분산 투자</td>
+                            </tr>
+                            <tr>
+                                <td>일일 최대 손실</td>
+                                <td>5% 이하</td>
+                                <td>손절 후 휴식</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="error">
+                        과도한 레버리지는 청산 위험을 높입니다. 항상 감당 가능한 금액만 투자하세요.
+                    </div>
+                </div>
+        </div>
+
+        <!-- 백테스트 해석 -->
+        <div class="section">
+            <h2>📈 백테스트 결과 해석</h2>
+
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>지표</th>
+                            <th>좋음</th>
+                            <th>보통</th>
+                            <th>나쁨</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>승률</td>
+                            <td>&gt; 60%</td>
+                            <td>50-60%</td>
+                            <td>&lt; 50%</td>
+                        </tr>
+                        <tr>
+                            <td>MDD</td>
+                            <td>&lt; 15%</td>
+                            <td>15-25%</td>
+                            <td>&gt; 25%</td>
+                        </tr>
+                        <tr>
+                            <td>Profit Factor</td>
+                            <td>&gt; 2.0</td>
+                            <td>1.5-2.0</td>
+                            <td>&lt; 1.5</td>
+                        </tr>
+                        <tr>
+                            <td>Sharpe Ratio</td>
+                            <td>&gt; 2.0</td>
+                            <td>1.0-2.0</td>
+                            <td>&lt; 1.0</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="warning">
+                    백테스트 결과는 과거 데이터 기반이며, 미래 수익을 보장하지 않습니다.
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="troubleshooting.html">← 이전: 문제 해결</a>
+            <a href="index.html">메인으로 →</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 TwinStar Quantum. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

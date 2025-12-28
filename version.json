@@ -1,12 +1,11 @@
 {
-  "version": "1.4.8",
-  "latest_version": "1.4.8",
+  "version": "1.4.9",
+  "latest_version": "1.4.9",
   "release_date": "2025-12-28",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.8/TwinStar_Quantum_Setup_v1.4.8.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.9/TwinStar_Quantum_Setup_v1.4.9.exe",
   "changelog": [
+    "Fix: Pandas FutureWarning 해결 ('H' deprecated → 'h' 변경)",
     "Fix: RSI NaN 오류 해결 (즉시 계산 로직 추가)",
-    "Fix: Bybit enable_server_time 파라미터 완전 제거",
-    "Fix: 업그레이드 다이얼로그 지갑주소 3중 Fallback 적용",
-    "Feature: 통합 진입 엔진 도입 (예측-집행 100% 일치)"
+    "Fix: Bybit enable_server_time 파라미터 완전 제거"
   ]
 }

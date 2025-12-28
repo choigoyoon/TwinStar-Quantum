@@ -292,9 +292,10 @@ except ImportError:
 
 
 # TF 리샘플링 규칙 (pandas 호환)
+# TF 리샘플링 규칙 (pandas 호환)
 TF_RESAMPLE_FIX = {
     '15m': '15min', '30m': '30min', 
-    '1h': '1H', '2h': '2H', '4h': '4H',
+    '1h': '1h', '2h': '2h', '4h': '4h',
     '1d': '1D', '1w': '1W'
 }
 

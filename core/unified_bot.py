@@ -3068,7 +3068,7 @@ class UnifiedBot:
     
     def _check_4h_trend(self, signal_type: str) -> bool:
         """
-        추세 방향 확인 (동적 TF 사용)
+        추세 방향 확인 (Core 로직 사용)
         - Long: Trend TF 가격 > EMA20 (상승 추세)
         - Short: Trend TF 가격 < EMA20 (하락 추세)
         """
@@ -3076,27 +3076,24 @@ class UnifiedBot:
             return True
         
         try:
-            sig_exchange = self._get_signal_exchange()
-            df_trend = sig_exchange.get_klines(self.tf_config['trend'], 30)  # 동적 Trend TF
+            # [FIX] Core의 중앙화된 필터 로직 사용 (100% 일치 보장)
+            df_pattern = self.indicator_cache.get('df_pattern')
+            if df_pattern is None or len(df_pattern) < 50:
+                # 데이터가 없으면 새로 가져옴
+                sig_exchange = self._get_signal_exchange()
+                df_pattern = sig_exchange.get_klines(self.tf_config.get('pattern', '60'), 200)
             
-            if df_trend is None or len(df_trend) < 20:
-                logging.warning(f"Trend TF ({self.tf_config['trend']}) data not available, skipping filter")
-                return True
-            
-            # EMA20 계산
-            df_trend['ema20'] = df_trend['close'].ewm(span=20, adjust=False).mean()
-            
-            current_price = float(df_trend.iloc[-1]['close'])
-            ema20 = float(df_trend.iloc[-1]['ema20'])
-            
-            trend = 'up' if current_price > ema20 else 'down'
+            if df_pattern is None:
+                return True # 안전장치
+                
+            trend = self.strategy.get_filter_trend(df_pattern, filter_tf=self.FILTER_TF)
             
             if signal_type == 'Long' and trend != 'up':
-                logging.info(f"⏸️ Trend Filter: Long blocked (trend={trend}, price={current_price:.0f}, EMA={ema20:.0f})")
+                logging.info(f"⏸️ Trend Filter: Long blocked (trend={trend})")
                 return False
             
             if signal_type == 'Short' and trend != 'down':
-                logging.info(f"⏸️ Trend Filter: Short blocked (trend={trend}, price={current_price:.0f}, EMA={ema20:.0f})")
+                logging.info(f"⏸️ Trend Filter: Short blocked (trend={trend})")
                 return False
             
             logging.info(f"✅ Trend OK: {signal_type} in {trend} trend")

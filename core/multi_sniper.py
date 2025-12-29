@@ -59,6 +59,10 @@ class MultiCoinSniper:
         self.coins: Dict[str, CoinState] = {}
         self.logger = logging.getLogger("MultiSniper")
         
+        # [NEW] AlphaX7 전략 코어 엔진 연동
+        from core.strategy_core import AlphaX7Core
+        self.strategy = AlphaX7Core()
+        
         # [NEW] 거래소별 제한 적용
         self.WS_MAX = self.WS_LIMITS.get(self.exchange, 50)
         self.SCAN_INTERVAL = self.SCAN_INTERVALS.get(self.exchange, 1.0)
@@ -797,7 +801,11 @@ class MultiCoinSniper:
                 "direction": signal["direction"],
                 "entry_price": float(candle["close"]),
                 "size": order_size,
-                "entry_time": datetime.utcnow().isoformat()
+                "entry_time": datetime.utcnow().isoformat(),
+                "sl_price": signal["sl_price"],
+                "tp_price": signal["tp_price"],
+                "extreme_price": float(candle["close"]), # Initial extreme = entry
+                "atr": signal.get('atr', 0)
             }
             
             self._notify(
@@ -846,15 +854,26 @@ class MultiCoinSniper:
             if pattern and pattern.get('detected'):
                 direction = pattern.get('direction', 'Long')
                 entry_price = float(candle.get('close', 0))
-                sl_price = pattern.get('sl_price', entry_price * 0.98)
-                tp_price = pattern.get('tp_price', entry_price * 1.02)
+                
+                # [FIX] ATR 기반 SL 계산 (Centralized)
+                atr = core.calculate_atr(df_recent, period=params.get('atr_period', 14))
+                atr_mult = params.get('atr_mult', params.get('atr_multiplier', 1.5))
+                
+                if direction == 'Long':
+                    sl_price = entry_price - (atr * atr_mult)
+                else:
+                    sl_price = entry_price + (atr * atr_mult)
+                
+                # [FIX] 고정 TP 제거 (Trailing Stop에 위임)
+                tp_price = None 
                 
                 return {
                     'direction': direction,
                     'entry_price': entry_price,
                     'sl_price': sl_price,
                     'tp_price': tp_price,
-                    'pattern_type': pattern.get('type', 'unknown')
+                    'pattern_type': pattern.get('type', 'unknown'),
+                    'atr': atr
                 }
             
             return None
@@ -882,8 +901,9 @@ class MultiCoinSniper:
             entry_price = signal.get('entry_price', 1)
             qty = round(size / entry_price, 4)
             
-            # Wrapper 사용
-            sl_price = signal.get('stop_loss', 0)
+            # [FIX] 변수명 일치 (sl_price)
+            sl_price = signal.get('sl_price', 0)
+            tp_price = signal.get('tp_price', 0)
             
             if hasattr(self.exchange_client, 'symbol'):
                 self.exchange_client.symbol = symbol
@@ -891,7 +911,8 @@ class MultiCoinSniper:
             success = self.exchange_client.place_market_order(
                 side=signal['direction'],
                 size=qty,
-                stop_loss=sl_price
+                stop_loss=sl_price,
+                take_profit=tp_price
             )
             
             if success:
@@ -924,48 +945,70 @@ class MultiCoinSniper:
             self._execute_exit(exchange, symbol, candle, reason)
     
     def _check_exit_condition(self, symbol: str, candle: dict, pos: dict, params: dict) -> tuple:
-        """청산 조건 체크 (strategy_core 연동)"""
+        """청산 조건 체크 (AlphaX7Core 중앙 로직 연동)"""
         try:
+            from core.strategy_core import AlphaX7Core
+            
             entry_price = pos.get('entry_price', 0)
             direction = pos.get('direction', 'Long')
             current_price = float(candle.get('close', 0))
+            current_high = float(candle.get('high', current_price))
+            current_low = float(candle.get('low', current_price))
             
             if entry_price == 0 or current_price == 0:
                 return False, ""
             
-            # PnL 계산
-            if direction == 'Long':
-                pnl_pct = (current_price - entry_price) / entry_price * 100
-            else:
-                pnl_pct = (entry_price - current_price) / entry_price * 100
+            # 1. RSI 계산 (15m 데이터 기반)
+            current_rsi = 50.0
+            try:
+                import pandas as pd
+                cache_path = os.path.join(Paths.CACHE, f"{self.exchange}_{symbol.lower()}_15m.parquet")
+                if os.path.exists(cache_path):
+                    df_15m = pd.read_parquet(cache_path)
+                    if len(df_15m) >= 20:
+                        current_rsi = self.strategy.calculate_rsi(df_15m['close'].values, period=14)
+            except Exception: pass
+
+            # 2. Risk 계산 (entry - initial_sl)
+            initial_sl = pos.get('sl_price', 0)
+            risk = abs(entry_price - initial_sl)
+            if risk == 0: risk = entry_price * 0.02 # Fallback
             
-            # ATR 기반 SL/TP
-            atr_mult = params.get('atr_multiplier', 1.25)
-            trail_start = params.get('trail_start', 0.8)
-            trail_dist = params.get('trail_dist', 0.2)
+            # 3. 중앙화된 실시간 관리 로직 호출
+            result = self.strategy.manage_position_realtime(
+                position_side=direction,
+                entry_price=entry_price,
+                current_sl=pos.get('sl_price', initial_sl),
+                extreme_price=pos.get('extreme_price', entry_price),
+                current_high=current_high,
+                current_low=current_low,
+                current_rsi=current_rsi,
+                trail_start_r=params.get('trail_start_r', params.get('trail_start', 0.8)),
+                trail_dist_r=params.get('trail_dist_r', params.get('trail_dist', 0.5)),
+                risk=risk,
+                pullback_rsi_long=params.get('pullback_rsi_long', 40),
+                pullback_rsi_short=params.get('pullback_rsi_short', 60)
+            )
             
-            # SL 체크 (ATR의 1배)
-            sl_pct = atr_mult * 1.0
-            if pnl_pct < -sl_pct:
-                return True, f"SL ({pnl_pct:.2f}%)"
+            # 4. 상태 업데이트 (극값, SL 갱신)
+            pos['extreme_price'] = result['new_extreme']
+            if result['new_sl']:
+                new_sl_val = result['new_sl']
+                if (direction == 'Long' and new_sl_val > pos.get('sl_price', 0)) or \
+                   (direction == 'Short' and new_sl_val < pos.get('sl_price', 999999)):
+                    pos['sl_price'] = new_sl_val
+                    # [NEW] 거래소 SL 업데이트 시도
+                    if hasattr(self.exchange_client, 'update_stop_loss'):
+                        try:
+                            self.exchange_client.update_stop_loss(new_sl_val, symbol=symbol)
+                            self.logger.info(f"📈 {symbol} SL Updated: {new_sl_val:.2f}")
+                        except Exception as e:
+                            self.logger.debug(f"SL Update Error: {e}")
             
-            # TP 체크 (ATR의 2배)
-            tp_pct = atr_mult * 2.0
-            if pnl_pct > tp_pct:
-                return True, f"TP ({pnl_pct:.2f}%)"
-            
-            # 트레일링 스탑 (목표 도달 후)
-            if pnl_pct > trail_start * atr_mult:
-                # 고점 대비 하락 시 청산
-                high = float(candle.get('high', current_price))
-                if direction == 'Long':
-                    drawdown = (high - current_price) / high * 100
-                else:
-                    low = float(candle.get('low', current_price))
-                    drawdown = (current_price - low) / low * 100
-                
-                if drawdown > trail_dist * atr_mult:
-                    return True, f"Trail ({pnl_pct:.2f}%)"
+            # 5. 결과 반환
+            if result['sl_hit']:
+                pnl = (current_price - entry_price) / entry_price * 100 if direction == 'Long' else (entry_price - current_price) / entry_price * 100
+                return True, f"SL/Trailing Hit ({pnl:.2f}%)"
             
             return False, ""
             

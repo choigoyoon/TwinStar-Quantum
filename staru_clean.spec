@@ -13,19 +13,20 @@ a = Analysis(
     pathex=[PROJECT_ROOT],
     binaries=[],
     datas=[
-        # GUI 리소스만 (py 파일은 자동 수집됨)
+        # GUI 리소스
         ('GUI/assets', 'GUI/assets'),
         
-        # 설정 템플릿
+        # 설정 및 프리셋
         ('config/presets', 'config/presets'),
         ('api_key_config_template.json', '.'),
-        ('GUI/styles.qss', 'GUI'),  # [ADD] 스타일 파일
+        ('GUI/styles.qss', 'GUI'),
         
         # 다국어 파일
-        ('locales/*.json', 'locales'),
+        ('locales', 'locales'),
         
         # 버전 파일
         ('version.txt', '.'),
+        ('version.json', '.'),
     ],
     hiddenimports=[
         'GUI',
@@ -304,6 +305,18 @@ a = Analysis(
         'utils.preset_manager',
         'utils.new_coin_detector',
         'exchanges.exchange_manager',
+        # 누락된 모듈 대거 추가 (check_spec_full.py 기반)
+        'GUI.debug_dashboard',
+        'GUI.debug_import_gui',
+        'GUI.test_history_widget',
+        'GUI.verify_all_modules',
+        'core.chart_matcher',
+        'utils.chart_profiler',
+        'utils.data_downloader',
+        'utils.preset_storage',
+        'sqlalchemy',
+        'orjson',
+        'sqlalchemy.sql.default_comparator', # sqlalchemy 필수 서브모듈
     ],
     hookspath=[],
     hooksconfig={},

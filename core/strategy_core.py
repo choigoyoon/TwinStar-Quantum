@@ -18,18 +18,18 @@ try:
     if not getattr(sys, 'frozen', False):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'GUI'))
     from constants import DEFAULT_PARAMS, get_params
-    # JSON 설정 로드 (없으면 DEFAULT_PARAMS 사용)
     ACTIVE_PARAMS = get_params()
 except ImportError:
+    # [SYNC] run_backtest 함수의 실제 기본값과 통일 - 2024.12.30
     DEFAULT_PARAMS = {
-        'atr_mult': 1.25, 
-        'trail_start_r': 0.8, 
-        'trail_dist_r': 0.5, 
-        'rsi_period': 14, 
-        'pattern_tolerance': 0.05,
-        'entry_validity_hours': 48.0,
-        'pullback_rsi_long': 40,
-        'pullback_rsi_short': 60
+        'atr_mult': 1.5,  # [SYNC] run_backtest L497
+        'trail_start_r': 0.8,  # [SYNC] run_backtest L499
+        'trail_dist_r': 0.5,  # [SYNC] run_backtest L501
+        'rsi_period': 14,  # [SYNC] run_backtest L517
+        'pattern_tolerance': 0.03,  # [SYNC] run_backtest L503
+        'entry_validity_hours': 48.0,  # [SYNC] run_backtest L505
+        'pullback_rsi_long': 40,  # [SYNC] run_backtest L507
+        'pullback_rsi_short': 60  # [SYNC] run_backtest L511
     }
     ACTIVE_PARAMS = DEFAULT_PARAMS
 

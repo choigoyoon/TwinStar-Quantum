@@ -438,5 +438,36 @@ class BingXExchange(BaseExchange):
             logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 
+    # ========== [NEW] 매매 히스토리 API ==========
+    
+    def get_trade_history(self, limit: int = 50) -> list:
+        """API로 청산된 거래 히스토리 조회 (CCXT)"""
+        try:
+            if not self.exchange:
+                return super().get_trade_history(limit)
+            
+            symbol = self._convert_symbol(self.symbol)
+            raw_trades = self.exchange.fetch_my_trades(symbol, limit=limit)
+            
+            trades = []
+            for t in raw_trades:
+                trades.append({
+                    'symbol': self.symbol,
+                    'side': t.get('side', '').upper(),
+                    'qty': float(t.get('amount', 0)),
+                    'entry_price': float(t.get('price', 0)),
+                    'exit_price': float(t.get('price', 0)),
+                    'pnl': float(t.get('info', {}).get('realizedPnl', 0)),
+                    'created_time': str(t.get('timestamp', '')),
+                    'updated_time': str(t.get('timestamp', ''))
+                })
+            
+            logging.info(f"[BingX] Trade history loaded: {len(trades)} trades")
+            return trades
+            
+        except Exception as e:
+            logging.warning(f"[BingX] Trade history error: {e}")
+            return super().get_trade_history(limit)
+
 
 BingxExchange = BingXExchange

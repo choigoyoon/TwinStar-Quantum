@@ -1,11 +1,12 @@
 {
-  "version": "1.5.0",
-  "latest_version": "1.4.9",
-  "release_date": "2025-12-28",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.4.9/TwinStar_Quantum_Setup_v1.4.9.exe",
+  "version": "1.5.1",
+  "latest_version": "1.5.1",
+  "release_date": "2025-12-29",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.1/TwinStar_Quantum_Setup_v1.5.1.exe",
   "changelog": [
-    "Fix: Pandas FutureWarning 해결 ('H' deprecated → 'h' 변경)",
-    "Fix: RSI NaN 오류 해결 (즉시 계산 로직 추가)",
-    "Fix: Bybit enable_server_time 파라미터 완전 제거"
+    "v1.5.1: 거래 내역 기반 복리 자동 적용 (Trade History Compounding)",
+    "v1.5.1: 포지션 심볼 체크 누락 버그 수정",
+    "v1.5.1: Upbit/Bithumb 데이터 수집 200개 제한 해결",
+    "v1.5.1: 12월 BTC 매매 내역 API 연동 및 검증 완료"
   ]
 }

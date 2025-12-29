@@ -190,6 +190,16 @@ except ImportError:
 from core.strategy_core import AlphaX7Core, TradeSignal
 from utils.preset_manager import load_strategy_params
 
+# [NEW v1.5.3] Trade History for Recording & Compounding
+try:
+    from storage.trade_history import get_trade_history, TradeRecord
+    HAS_TRADE_HISTORY = True
+except ImportError:
+    HAS_TRADE_HISTORY = False
+    def get_trade_history():
+        return None
+    TradeRecord = None
+
 # License Guard
 try:
     from core.license_guard import get_license_guard
@@ -621,6 +631,185 @@ class UnifiedBot:
         self._data_monitor_interval = 300  # 5분마다 갭 체크
 
     
+    # ========== [NEW v1.5.3] Trade Recording & Compounding ==========
+    
+    def _record_trade(self, exit_price: float, reason: str = "UNKNOWN"):
+        """Record completed trade to database for compounding calculation"""
+        try:
+            if not HAS_TRADE_HISTORY or not hasattr(self, 'bt_state'):
+                return
+            
+            # Get position info from bt_state
+            bt = self.bt_state
+            if not bt.get('position'):
+                logging.debug("[TRADE] No position in bt_state to record")
+                return
+            
+            side = bt.get('position', 'Long')
+            entry_price = bt.get('entry_price', exit_price)
+            entry_time = bt.get('entry_time', datetime.now().isoformat())
+            size = bt.get('size', 0)
+            
+            # Calculate P&L
+            if side == 'Long':
+                pnl_percent = (exit_price - entry_price) / entry_price * 100 if entry_price > 0 else 0
+            else:
+                pnl_percent = (entry_price - exit_price) / entry_price * 100 if entry_price > 0 else 0
+            
+            pnl_usdt = size * entry_price * (pnl_percent / 100) if entry_price > 0 else 0
+            
+            trade = TradeRecord(
+                symbol=self.symbol,
+                exchange=self.exchange.name if hasattr(self.exchange, 'name') else 'Unknown',
+                side=side.upper(),
+                entry_price=entry_price,
+                exit_price=exit_price,
+                quantity=size,
+                pnl=pnl_usdt,
+                pnl_percent=pnl_percent,
+                entry_time=str(entry_time),
+                exit_time=datetime.now().isoformat(),
+                reason=reason
+            )
+            get_trade_history().add_trade(trade)
+            logging.info(f"[TRADE] 📝 Recorded: {side} {self.symbol} @ {exit_price:.2f}, PnL={pnl_percent:+.2f}% (${pnl_usdt:+.2f}) [{reason}]")
+            
+        except Exception as e:
+            logging.warning(f"[TRADE] Recording failed: {e}")
+    
+    def _get_compound_seed(self) -> float:
+        """Calculate seed based on initial capital + cumulative P&L from trade history"""
+        try:
+            if not HAS_TRADE_HISTORY:
+                return getattr(self, 'initial_capital', 100)
+            
+            history = get_trade_history()
+            if not history:
+                return getattr(self, 'initial_capital', 100)
+            
+            # Get trades for this symbol/exchange
+            trades = history.get_trades(days=365, exchange=self.exchange.name.lower() if hasattr(self.exchange, 'name') else None)
+            symbol_trades = [t for t in trades if t.symbol == self.symbol]
+            
+            # Calculate cumulative P&L
+            cumulative_pnl = sum(t.pnl for t in symbol_trades)
+            
+            # Initial seed from config
+            initial_seed = getattr(self, 'initial_capital', 100)
+            
+            # Compounded seed
+            compound_seed = initial_seed + cumulative_pnl
+            
+            # Safety: Never go below 50% of initial
+            min_seed = initial_seed * 0.5
+            compound_seed = max(compound_seed, min_seed)
+            
+            if cumulative_pnl != 0:
+                logging.info(f"[COMPOUND] Initial=${initial_seed:.2f}, Cumulative P&L=${cumulative_pnl:+.2f}, Compound Seed=${compound_seed:.2f}")
+            
+            return compound_seed
+            
+        except Exception as e:
+            logging.warning(f"[COMPOUND] Fallback to base seed: {e}")
+            return getattr(self, 'initial_capital', 100)
+
+    def _import_api_trades(self, limit: int = 100):
+        """Import past trades from exchange API to trades.db (avoids duplicates)"""
+        try:
+            if not HAS_TRADE_HISTORY:
+                logging.info("[IMPORT] TradeHistory module not available")
+                return 0
+            
+            # Check if exchange has get_trade_history method
+            if not hasattr(self.exchange, 'get_trade_history'):
+                logging.info(f"[IMPORT] {self.exchange.name} does not support get_trade_history")
+                return 0
+            
+            # Fetch from API
+            api_trades = self.exchange.get_trade_history(limit=limit)
+            if not api_trades:
+                logging.info("[IMPORT] No trades found in API")
+                return 0
+            
+            history = get_trade_history()
+            existing_trades = history.get_trades(days=365)
+            
+            # Create lookup set for duplicate detection (exit_time + symbol + side)
+            existing_keys = set()
+            for t in existing_trades:
+                key = f"{t.exit_time[:19]}_{t.symbol}_{t.side}"
+                existing_keys.add(key)
+            
+            imported = 0
+            for api_t in api_trades:
+                # Parse API trade data
+                symbol = api_t.get('symbol', self.symbol)
+                side = api_t.get('side', 'Long').upper()
+                if side == 'BUY': side = 'LONG'
+                elif side == 'SELL': side = 'SHORT'
+                
+                entry_price = float(api_t.get('entry_price', api_t.get('avgEntryPrice', 0)))
+                exit_price = float(api_t.get('exit_price', api_t.get('avgExitPrice', 0)))
+                qty = float(api_t.get('qty', api_t.get('quantity', 0)))
+                pnl = float(api_t.get('pnl', api_t.get('closedPnl', 0)))
+                
+                # Parse times
+                created = api_t.get('created_time', api_t.get('createdTime', ''))
+                updated = api_t.get('updated_time', api_t.get('updatedTime', created))
+                
+                # Convert timestamp to datetime string
+                if isinstance(created, (int, float)) or (isinstance(created, str) and created.isdigit()):
+                    from datetime import datetime as dt
+                    created = dt.fromtimestamp(int(created) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+                if isinstance(updated, (int, float)) or (isinstance(updated, str) and updated.isdigit()):
+                    from datetime import datetime as dt
+                    updated = dt.fromtimestamp(int(updated) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Check for duplicate
+                key = f"{str(updated)[:19]}_{symbol}_{side}"
+                if key in existing_keys:
+                    continue
+                
+                # Calculate pnl_percent if not provided
+                pnl_percent = 0
+                if entry_price > 0 and exit_price > 0:
+                    if side in ('LONG', 'BUY'):
+                        pnl_percent = (exit_price - entry_price) / entry_price * 100
+                    else:
+                        pnl_percent = (entry_price - exit_price) / entry_price * 100
+                
+                # Create TradeRecord
+                trade = TradeRecord(
+                    symbol=symbol,
+                    exchange=self.exchange.name.lower() if hasattr(self.exchange, 'name') else 'unknown',
+                    side=side,
+                    entry_price=entry_price,
+                    exit_price=exit_price,
+                    quantity=qty,
+                    pnl=pnl,
+                    pnl_percent=pnl_percent,
+                    entry_time=str(created),
+                    exit_time=str(updated),
+                    reason="API_IMPORT"
+                )
+                
+                history.add_trade(trade)
+                existing_keys.add(key)
+                imported += 1
+            
+            if imported > 0:
+                logging.info(f"[IMPORT] ✅ Imported {imported} trades from API to trades.db")
+            else:
+                logging.info(f"[IMPORT] No new trades to import (all {len(api_trades)} already exist)")
+            
+            return imported
+            
+        except Exception as e:
+            logging.warning(f"[IMPORT] API trade import failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+
     # ========== 데이터/최적화 검증 ==========
     
     def _check_data_exists(self) -> dict:
@@ -2260,7 +2449,14 @@ class UnifiedBot:
             has_changed = False
             
             if bot_has_pos and not exchange_has_pos:
-                # 봇은 있는데 거래소 없음 → 봇 상태 초기화
+                # 봇은 있는데 거래소 없음 → SL/TP 체결로 청산됨
+                # [NEW v1.5.3] 거래 기록 저장 (청산가는 마지막 가격 사용)
+                try:
+                    last_price = self.last_ws_price or (self.df_entry_full['close'].iloc[-1] if hasattr(self, 'df_entry_full') and self.df_entry_full is not None and len(self.df_entry_full) > 0 else 0)
+                    self._record_trade(exit_price=last_price, reason="SL_OR_TP")
+                except Exception as e:
+                    logging.debug(f"[SYNC] Trade record failed: {e}")
+                
                 logging.warning("[SYNC] 불일치: 봇만 포지션 → 초기화")
                 self.bt_state['position'] = None
                 self.bt_state['positions'] = []
@@ -3159,20 +3355,30 @@ class UnifiedBot:
                 return False
             
             # [FIX] 기존 포지션 존재 시 진입 차단 (중복 진입 방지)
+            # [FIX v1.5.2] 심볼 일치 확인 추가 - 다른 심볼 포지션은 무시
             if self.bt_state and self.bt_state.get('position'):
                 existing_pos = self.bt_state.get('position')
-                logging.warning(f"[ENTRY] 🚫 Already in position: {existing_pos} - skipping entry")
-                return False
+                existing_symbol = self.bt_state.get('symbol', '')
+                # 현재 봇의 심볼과 일치하는 경우에만 차단
+                if existing_symbol == self.symbol:
+                    logging.warning(f"[ENTRY] 🚫 Already in position: {existing_pos} ({existing_symbol}) - skipping entry")
+                    return False
+                else:
+                    logging.info(f"[ENTRY] ℹ️ Other symbol position exists: {existing_pos} ({existing_symbol}) - allowing entry for {self.symbol}")
             
             # 거래소에서도 포지션 체크 (이중 안전)
+            # [FIX v1.5.2] 해당 심볼만 필터링
             if hasattr(self.exchange, 'get_positions'):
                 try:
                     positions = self.exchange.get_positions()
-                    if positions and any(p.get('size', 0) > 0 for p in positions):
-                        logging.warning(f"[ENTRY] 🚫 Exchange has open position - skipping entry")
+                    # 현재 심볼의 포지션만 필터링
+                    my_symbol_positions = [p for p in positions if p.get('symbol', '').replace('/', '').replace(':', '').upper() == self.symbol.replace('/', '').replace(':', '').upper() and p.get('size', 0) > 0]
+                    if my_symbol_positions:
+                        logging.warning(f"[ENTRY] 🚫 Exchange has open position for {self.symbol} - skipping entry")
                         return False
                 except Exception as e:
                     logging.debug(f"[ENTRY] Position check failed: {e}")
+
 
             # [NEW] 라이선스 체크 (ADMIN Bypass)
             if not self._can_trade():
@@ -3247,8 +3453,11 @@ class UnifiedBot:
             # 리스크 % (기본 98% - 풀시드)
             risk_pct = 0.98 
             
-            # 복리 자본 사용
-            capital = self.exchange.capital
+            # [FIX v1.5.3] 복리 자본 사용 - 누적 P&L 기반 동적 시드
+            if getattr(self, 'use_compounding', True) and HAS_TRADE_HISTORY:
+                capital = self._get_compound_seed()
+            else:
+                capital = getattr(self, 'initial_capital', self.exchange.capital)
             order_value = capital * risk_pct * leverage
             
             # 최소 주문 크기 체크 (100 USDT)
@@ -3433,6 +3642,9 @@ class UnifiedBot:
             if self.notifier: self.notifier.notify_error("Exchange connection failed!")
             return
 
+        
+        # [NEW v1.5.3] API 거래내역 import (복리 계산용)
+        self._import_api_trades(limit=100)
         
         # [NEW] 복리 자본 초기화 (API 히스토리 기반)
 

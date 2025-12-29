@@ -483,3 +483,34 @@ class BinanceExchange(BaseExchange):
         except Exception as e:
             logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
+
+    # ========== [NEW] 매매 히스토리 API ==========
+    
+    def get_trade_history(self, limit: int = 50) -> list:
+        """API로 청산된 거래 히스토리 조회 (Binance Futures)"""
+        try:
+            if not self.client:
+                return super().get_trade_history(limit)
+            
+            # Binance Futures: get_account_trades
+            trades_raw = self.client.futures_account_trades(symbol=self.symbol, limit=limit)
+            
+            trades = []
+            for t in trades_raw:
+                trades.append({
+                    'symbol': t['symbol'],
+                    'side': t['side'],  # BUY/SELL
+                    'qty': float(t['qty']),
+                    'entry_price': float(t['price']),
+                    'exit_price': float(t['price']),
+                    'pnl': float(t.get('realizedPnl', 0)),
+                    'created_time': str(t['time']),
+                    'updated_time': str(t['time'])
+                })
+            
+            logging.info(f"[Binance] Trade history loaded: {len(trades)} trades")
+            return trades
+            
+        except Exception as e:
+            logging.warning(f"[Binance] Trade history error: {e}")
+            return super().get_trade_history(limit)

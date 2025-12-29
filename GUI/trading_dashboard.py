@@ -211,6 +211,20 @@ class CoinRow(QWidget):
         self.status_label.setToolTip("⚪ 대기 중 / 🟢 실행 중")
         layout.addWidget(self.status_label)
         
+        # [NEW] 로그/상태 텍스트 (사용자 요청 반영: 실시간 현황/로그)
+        self.message_label = QLabel("-")
+        self.message_label.setStyleSheet("color: #a0a0a0; font-size: 11px;")
+        self.message_label.setFixedWidth(150) # 적절한 너비
+        self.message_label.setToolTip("최근 봇 로그/상태")
+        layout.addWidget(self.message_label)
+        
+        # [NEW] 로그/상태 텍스트 (사용자 요청 반영: 실시간 현황/로그)
+        self.message_label = QLabel("-")
+        self.message_label.setStyleSheet("color: #a0a0a0; font-size: 11px;")
+        self.message_label.setFixedWidth(150) # 적절한 너비
+        self.message_label.setToolTip("최근 봇 로그/상태")
+        layout.addWidget(self.message_label)
+        
         # 반응형 stretch
         layout.addStretch()
         
@@ -1983,7 +1997,42 @@ class TradingDashboard(QWidget):
                         # Case C: No Position
                         self.position_table.update_position(symbol=symbol, mode="Wait", status="WAIT")
                         self.pos_status_widget.remove_position(symbol)
+
+                    # [NEW] CoinRow에 상태/로그 업데이트
+                    # self.coin_rows 리스트에서 해당 심볼/거래소의 row 찾기
+                    target_row = None
+                    for r in self.coin_rows:
+                        if r.exchange_combo.currentText().lower() == exchange and r.symbol_combo.currentText() == symbol:
+                            target_row = r
+                            break
+                    
+                    if target_row:
+                        # 봇 인스턴스에서 최근 로그 가져오기 (없으면 상태라도)
+                        bot_instance = bot_info.get('bot')
                         
+                        # 기본 상태 메시지
+                        status_msg = "-"
+                        state_color = "#a0a0a0"
+                        
+                        # 포지션 있으면 강조
+                        if real_pos or (bt_state and bt_state.get('position')):
+                             pnl_val = 0
+                             if real_pos: # 이미 위에서 계산됨 (로컬 변수 pnl 활용 불가하면 다시 계산)
+                                 pass 
+                             status_msg = f"In Position"
+                             state_color = "#4CAF50"
+                        else:
+                             status_msg = "Scanning..."
+                        
+                        # UnifiedBot에 last_log 속성이 있다면 우선 사용
+                        if bot_instance and hasattr(bot_instance, 'last_log_message'):
+                            status_msg = str(bot_instance.last_log_message)
+                            # 로그 내용에 따라 색상 변경? (옵션)
+                        
+                        target_row.message_label.setText(status_msg[:25]) # 너무 길면 잘림 방지
+                        target_row.message_label.setToolTip(status_msg)
+                        target_row.message_label.setStyleSheet(f"color: {state_color}; font-size: 11px;")
+
                 except Exception as e:
                     # print(f"State sync error {symbol}: {e}")
                     pass

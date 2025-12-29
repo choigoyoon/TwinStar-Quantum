@@ -31,8 +31,8 @@
         "pattern_tolerance": 0.04,
         "entry_validity_hours": 12.0,
         "rsi_period": 14,
-        "pullback_rsi_long": 45,
-        "pullback_rsi_short": 55,
+        "pullback_rsi_long": 40,
+        "pullback_rsi_short": 60,
         "atr_period": 14,
         "max_adds": 1
     }

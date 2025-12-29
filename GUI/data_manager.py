@@ -297,6 +297,95 @@ class DataManager:
         'bingx': 1000,
     }
 
+    def _fetch_upbit_pyupbit(self, symbol: str, timeframe: str, since: int = None, limit: int = 1000, progress_callback=None) -> List:
+        """Pyupbit를 사용한 Upbit 데이터 수집 (Pagination 지원)"""
+        try:
+            import pyupbit
+            import time
+            from datetime import datetime, timedelta
+            
+            # 1. Interval 변환
+            # pyupbit: minute1, minute3, ..., day, week, month
+            tf_map = {
+                '1m': 'minute1', '3m': 'minute3', '5m': 'minute5', 
+                '15m': 'minute15', '30m': 'minute30', '1h': 'minute60',
+                '4h': 'minute240', '1d': 'day', '1w': 'week'
+            }
+            interval = tf_map.get(timeframe, 'minute60')
+            
+            # 2. Symbol 변환 (BTC/KRW -> KRW-BTC)
+            if '/' in symbol:
+                coin, base = symbol.split('/')
+                symbol = f"{base}-{coin}"
+            
+            all_df = pd.DataFrame()
+            to_date = datetime.now()
+            
+            fetched_count = 0
+            
+            print(f"📥 [Upbit-Pyupbit] {symbol} {interval} 수집 시작 (Target: {limit})")
+            
+            # 3. Backward Loop
+            while fetched_count < limit:
+                # 한 번에 200개 (Upbit API 제한)
+                count = min(200, limit - fetched_count)
+                
+                df = pyupbit.get_ohlcv(symbol, interval=interval, to=to_date, count=count)
+                
+                if df is None or df.empty:
+                    break
+                    
+                # index(datetime)를 컬럼으로
+                df = df.reset_index().rename(columns={'index': 'timestamp'})
+                
+                # timestamp를 ms int로 변환
+                df['timestamp'] = df['timestamp'].astype(np.int64) // 10**6
+                
+                # since 필터링
+                if since:
+                    df = df[df['timestamp'] >= since]
+                    if df.empty:
+                        # 요청한 since보다 다 이전 데이터만 남으면 종료
+                        break
+                
+                # 병합
+                all_df = pd.concat([df, all_df]) # 뒤에서부터 가져오므로 앞에 붙임? 아니, 중복 제거 후 정렬이 나음. 
+                # 일단 그냥 모으고 나중에 정리. 하지만 to_date 갱신을 위해 가장 과거 데이터 필요.
+                
+                fetched_count += len(df)
+                if progress_callback:
+                    progress_callback(fetched_count)
+                
+                # 커서 갱신 (가장 과거 시간)
+                first_ts = df.iloc[0]['timestamp']
+                to_date = datetime.fromtimestamp(first_ts / 1000) - timedelta(seconds=1) # 1초 전
+                
+                # since보다 더 과거로 갔으면 종료
+                if since and first_ts < since:
+                    break
+                
+                time.sleep(0.1) # Rate Limit 준수
+            
+            if all_df.empty:
+                return []
+                
+            # 정리
+            all_df = all_df.drop_duplicates(subset=['timestamp']).sort_values('timestamp')
+            
+            # 리스트 변환 [[ts, o, h, l, c, v], ...]
+            # pyupbit 컬럼: open, high, low, close, volume, value(거래대금)
+            result = all_df[['timestamp', 'open', 'high', 'low', 'close', 'volume']].values.tolist()
+            
+            print(f"✅ [Upbit-Pyupbit] 수집 완료: {len(result)}개")
+            return result
+            
+        except ImportError:
+            print("❌ pyupbit not installed")
+            return []
+        except Exception as e:
+            print(f"❌ [Upbit-Pyupbit] Error: {e}")
+            return []
+
     def _fetch_ohlcv(self, symbol: str, timeframe: str, exchange: str,
                      since: int = None, limit: int = 1000,
                      progress_callback=None) -> List:
@@ -324,6 +413,13 @@ class DataManager:
                 except Exception as e:
                     print(f"⚠️ [HYBRID] Redirection failed: {e}")
 
+                except Exception as e:
+                    print(f"⚠️ [HYBRID] Redirection failed: {e}")
+
+            # [NEW] Upbit 전용 처리 (Pyupbit + Pagination)
+            if exchange_id == 'upbit':
+                return self._fetch_upbit_pyupbit(symbol, timeframe, since, limit, progress_callback)
+            
             # [FIX] KRW 거래소 체크
             is_krw_exchange = exchange_id in ['bithumb', 'upbit']
             

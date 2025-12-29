@@ -28,8 +28,8 @@ except ImportError:
         'rsi_period': 14, 
         'pattern_tolerance': 0.05,
         'entry_validity_hours': 48.0,
-        'pullback_rsi_long': 45,
-        'pullback_rsi_short': 55
+        'pullback_rsi_long': 40,
+        'pullback_rsi_short': 60
     }
     ACTIVE_PARAMS = DEFAULT_PARAMS
 

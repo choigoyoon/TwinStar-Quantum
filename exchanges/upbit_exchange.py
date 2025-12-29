@@ -347,3 +347,42 @@ class UpbitExchange(BaseExchange):
             logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 
+    # ========== [NEW] 매매 히스토리 API ==========
+    
+    def get_trade_history(self, limit: int = 50) -> list:
+        """API로 청산된 거래 히스토리 조회 (Upbit)"""
+        try:
+            if not self.upbit:
+                return super().get_trade_history(limit)
+            
+            # Upbit: get_order 로 체결 내역 조회
+            import pyupbit
+            orders = pyupbit.get_order(self.symbol, state='done', limit=limit)
+            
+            if not orders:
+                return super().get_trade_history(limit)
+            
+            trades = []
+            for o in orders:
+                side = 'BUY' if o.get('side') == 'bid' else 'SELL'
+                price = float(o.get('price', 0)) or float(o.get('avg_price', 0))
+                volume = float(o.get('volume', 0))
+                
+                trades.append({
+                    'symbol': self.symbol,
+                    'side': side,
+                    'qty': volume,
+                    'entry_price': price,
+                    'exit_price': price,
+                    'pnl': 0,  # Upbit doesn't provide PnL directly
+                    'created_time': str(o.get('created_at', '')),
+                    'updated_time': str(o.get('created_at', ''))
+                })
+            
+            logging.info(f"[Upbit] Trade history loaded: {len(trades)} trades")
+            return trades
+            
+        except Exception as e:
+            logging.warning(f"[Upbit] Trade history error: {e}")
+            return super().get_trade_history(limit)
+

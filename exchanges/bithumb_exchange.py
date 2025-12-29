@@ -473,3 +473,34 @@ class BithumbExchange(BaseExchange):
             logging.debug(f"WS close ignored: {e}")
         return int(time.time() * 1000)
 
+    # ========== [NEW] 매매 히스토리 API ==========
+    
+    def get_trade_history(self, limit: int = 50) -> list:
+        """API로 청산된 거래 히스토리 조회 (Bithumb/CCXT)"""
+        try:
+            if not self.exchange:
+                return super().get_trade_history(limit)
+            
+            symbol = self._convert_symbol(self.symbol)
+            raw_trades = self.exchange.fetch_my_trades(symbol, limit=limit)
+            
+            trades = []
+            for t in raw_trades:
+                trades.append({
+                    'symbol': self.symbol,
+                    'side': t.get('side', '').upper(),
+                    'qty': float(t.get('amount', 0)),
+                    'entry_price': float(t.get('price', 0)),
+                    'exit_price': float(t.get('price', 0)),
+                    'pnl': 0,  # Spot doesn't have realized PnL
+                    'created_time': str(t.get('timestamp', '')),
+                    'updated_time': str(t.get('timestamp', ''))
+                })
+            
+            logging.info(f"[Bithumb] Trade history loaded: {len(trades)} trades")
+            return trades
+            
+        except Exception as e:
+            logging.warning(f"[Bithumb] Trade history error: {e}")
+            return super().get_trade_history(limit)
+

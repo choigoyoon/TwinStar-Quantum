@@ -1483,7 +1483,7 @@ class TradingDashboard(QWidget):
                 'symbol': row.symbol_combo.currentText(),
                 'preset': row.preset_combo.currentText(),
                 'leverage': row.leverage_spin.value(),
-                'amount': row.amount_spin.value(),
+                'amount': row.seed_spin.value(),
                 'is_active': row.start_btn.text() == "⏹ 중지"
             }
             state['rows'].append(row_data)
@@ -1548,11 +1548,11 @@ class TradingDashboard(QWidget):
             
             # Params
             row.leverage_spin.setValue(int(data.get('leverage', 10)))
-            row.amount_spin.setValue(float(data.get('amount', 100)))
+            row.seed_spin.setValue(int(data.get('amount', 100)))
             
             # Auto Start
             if data.get('is_active', False):
-                QTimer.singleShot(1500, lambda: row._toggle_start() if row.start_btn.text() != "⏹ 중지" else None)
+                QTimer.singleShot(1500, lambda: row._on_start() if row.start_btn.text() != "⏹ 중지" else None)
                 
         except Exception as e:
             print(f"Row restore error: {e}")

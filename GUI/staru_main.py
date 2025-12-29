@@ -166,7 +166,7 @@ class StarUWindow(QMainWindow):
     def __init__(self, user_tier='admin'):
         super().__init__()
         self.user_tier = user_tier
-        self.setWindowTitle(f"🌟 TwinStar Quantum v{self.VERSION} - Your Universe of Trading")
+        self.setWindowTitle(t("TwinStar Quantum v1.5.3 - Advanced Algorithm Trading System"))
         
         # 작업표시줄 아이콘 설정
         from PyQt5.QtGui import QIcon

@@ -316,7 +316,7 @@ class MultiTrader:
             if gap_hours > 0.5:
                 limit = min(int(gap_hours * 4) + 10, 500)
                 
-                if self.exchange == 'bybit':
+                if self.exchange.lower() == 'bybit':
                     url = "https://api.bybit.com/v5/market/kline"
                     params = {'category': 'linear', 'symbol': symbol, 'interval': '15', 'limit': limit}
                     data = requests.get(url, params=params, timeout=10).json()
@@ -500,7 +500,7 @@ class MultiTrader:
             return
         
         try:
-            if self.exchange == "bybit" and self.ws:
+            if self.exchange.lower() == "bybit" and self.ws:
                 self.ws.kline_stream(
                     interval=self._convert_tf(self.timeframe),
                     symbol=symbol,

@@ -102,11 +102,11 @@ class WebSocketHandler:
     def get_subscribe_message(self) -> dict:
         """거래소별 구독 메시지 생성"""
         
-        if self.exchange == 'bybit':
+        if self.exchange.lower() == 'bybit':
             iv = self.INTERVAL_MAP['bybit'].get(self.interval, '15')
             return {"op": "subscribe", "args": [f"kline.{iv}.{self.symbol}"]}
             
-        elif self.exchange == 'binance':
+        elif self.exchange.lower() == 'binance':
             symbol_lower = self.symbol.lower()
             return {
                 "method": "SUBSCRIBE",
@@ -114,7 +114,7 @@ class WebSocketHandler:
                 "id": int(time.time())
             }
             
-        elif self.exchange == 'upbit':
+        elif self.exchange.lower() == 'upbit':
             # Upbit Request: [{"ticket":"UNIQUE_TICKET"}, {"type":"ticker","codes":["KRW-BTC"]}]
             # Note: Upbit WS doesn't support kline directly mostly, usually use ticker/trade for price
             # But we can emulate or use their undocumented candle types if available, 
@@ -128,7 +128,7 @@ class WebSocketHandler:
                 {"type": "ticker", "codes": [self.symbol]}
             ]
             
-        elif self.exchange == 'bithumb':
+        elif self.exchange.lower() == 'bithumb':
             # {"type":"ticker", "symbols": ["BTC_KRW"], "tickTypes": ["30M"]}
             # Bithumb WS symbols are like "BTC_KRW"
             sym = self.symbol.replace('-', '_').replace('/', '_')
@@ -138,7 +138,7 @@ class WebSocketHandler:
                 "tickTypes": [self.interval.upper()] # 30M, 1H, 12H, 24H, MID
             }
             
-        elif self.exchange == 'okx':
+        elif self.exchange.lower() == 'okx':
             # Channel: candle15m
             iv = self.INTERVAL_MAP['okx'].get(self.interval, '15m')
             inst_id = self.symbol.replace('/', '-').replace('USDT', '-USDT-SWAP') # Futures convention
@@ -150,7 +150,7 @@ class WebSocketHandler:
                 "args": [{"channel": f"candle{iv}", "instId": inst_id}]
             }
             
-        elif self.exchange == 'bitget':
+        elif self.exchange.lower() == 'bitget':
             iv = self.INTERVAL_MAP['bitget'].get(self.interval, '15m')
             return {
                 "op": "subscribe",
@@ -161,7 +161,7 @@ class WebSocketHandler:
                 }]
             }
             
-        elif self.exchange == 'bingx':
+        elif self.exchange.lower() == 'bingx':
             # {"id":"id1","reqType":"sub","dataType":"BTC-USDT@kline_15m"}
             return {
                 "id": str(int(time.time())),
@@ -202,7 +202,7 @@ class WebSocketHandler:
                     
                     # Send Subscribe
                     msg = self.get_subscribe_message()
-                    if self.exchange == 'upbit':
+                    if self.exchange.lower() == 'upbit':
                         await ws.send(json.dumps(msg)) # Upbit expects list
                     else:
                         await ws.send(json.dumps(msg))
@@ -232,13 +232,13 @@ class WebSocketHandler:
                 if '401' in str(data.get('code', '')) or 'Unauthorized' in str(data.get('msg', '')):
                      if self.on_error: self.on_error("401 Unauthorized")
             
-            if self.exchange == 'bybit': await self._parse_bybit(data)
-            elif self.exchange == 'binance': await self._parse_binance(data)
-            elif self.exchange == 'upbit': await self._parse_upbit(data)
-            elif self.exchange == 'bithumb': await self._parse_bithumb(data)
-            elif self.exchange == 'okx': await self._parse_okx(data)
-            elif self.exchange == 'bitget': await self._parse_bitget(data)
-            elif self.exchange == 'bingx': await self._parse_bingx(data)
+            if self.exchange.lower() == 'bybit': await self._parse_bybit(data)
+            elif self.exchange.lower() == 'binance': await self._parse_binance(data)
+            elif self.exchange.lower() == 'upbit': await self._parse_upbit(data)
+            elif self.exchange.lower() == 'bithumb': await self._parse_bithumb(data)
+            elif self.exchange.lower() == 'okx': await self._parse_okx(data)
+            elif self.exchange.lower() == 'bitget': await self._parse_bitget(data)
+            elif self.exchange.lower() == 'bingx': await self._parse_bingx(data)
             
         except Exception as e:
             logging.error(f"[WS] Parse error ({self.exchange}): {e}")

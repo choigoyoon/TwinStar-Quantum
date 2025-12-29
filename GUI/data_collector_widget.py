@@ -16,6 +16,27 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
+
+class ScannerWorker(QThread):
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def __init__(self, func, *args, **kwargs):
+        super().__init__()
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        try:
+            result = self.func(*self.args, **self.kwargs)
+            if result is None:
+                result = []
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class DownloadThread(QThread):
     """데이터 다운로드 스레드"""
     progress = pyqtSignal(int, str)  # percent, message
@@ -447,50 +468,59 @@ class DataCollectorWidget(QWidget):
             self.symbol_list.item(i).setCheckState(Qt.Unchecked)
     
     def _select_top10(self):
-        """거래량 기준 Top 10 선택"""
+        """거래량 기준 Top 10 선택 (Async)"""
         exchange = self.exchange_combo.currentText().lower()
         
-        # Top 10 버튼 찾기 (sender 사용)
         sender = self.sender()
-        if sender:
+        original_text = ""
+        if isinstance(sender, QPushButton):
             sender.setEnabled(False)
             original_text = sender.text()
             sender.setText("⏳ 조회중...")
         
-        try:
-            self.log_text.append(f"🔍 {exchange} 거래량 Top 10 조회 중...")
-            
-            top10 = self._get_top10_by_volume(exchange)
+        self.log_text.append(f"🔍 {exchange} 거래량 Top 10 조회 중...")
+        
+        # 워커 생성
+        self.worker = ScannerWorker(self._get_top10_by_volume, exchange)
+        
+        def on_success(top10):
+            if isinstance(sender, QPushButton):
+                sender.setEnabled(True)
+                sender.setText(original_text)
             
             if not top10:
-                raise Exception("거래량 데이터 없음")
-            
+                self.log_text.append("❌ 거래량 데이터 없음")
+                self.status_label.setText("조회 실패")
+                return
+                
             self.log_text.append(f"📊 거래량 Top 10: {', '.join(top10[:5])}...")
             
-            # 체크박스 전체 해제 후 Top 10만 선택
             for i in range(self.symbol_list.count()):
                 item = self.symbol_list.item(i)
-                symbol = item.text()
-                item.setCheckState(Qt.Checked if symbol in top10 else Qt.Unchecked)
+                item.setCheckState(Qt.Checked if item.text() in top10 else Qt.Unchecked)
             
             self.status_label.setText(f"✅ 거래량 Top 10 선택됨")
             self.log_text.append(f"✅ Top 10 선택 완료!")
             
-        except Exception as e:
-            self.log_text.append(f"❌ Top 10 조회 실패: {e}")
-            # 폴백: 기본 상위 10개
-            self._select_none()
-            for i in range(min(10, self.symbol_list.count())):
-                self.symbol_list.item(i).setCheckState(Qt.Checked)
-            self.status_label.setText("⚠️ 기본 Top 10 선택됨 (API 오류)")
-        
-        finally:
-            if sender:
+            # 참조 해제
+            self.worker.deleteLater()
+            self.worker = None
+
+        def on_error(err):
+            if isinstance(sender, QPushButton):
                 sender.setEnabled(True)
-                sender.setText(original_text if 'original_text' in dir() else "Top 10")
+                sender.setText(original_text)
+            self.log_text.append(f"❌ Top 10 조회 실패: {err}")
+            self.worker.deleteLater()
+            self.worker = None
+            
+        self.worker.finished.connect(on_success)
+        self.worker.error.connect(on_error)
+        self.worker.start()
     
     def _get_top10_by_volume(self, exchange: str) -> list:
         """거래소별 24시간 거래량 Top 10 조회"""
+        exchange = exchange.lower()
         if exchange == "bybit":
             return self._get_bybit_top10()
         elif exchange == "binance":
@@ -602,38 +632,46 @@ class DataCollectorWidget(QWidget):
         return [t["symbol"].replace("_UMCBL", "").replace("USDT", "") + "USDT" for t in sorted_pairs[:10]]
     
     def _select_top_n(self, n: int):
-        """거래량 기준 Top N 선택"""
+        """거래량 기준 Top N 선택 (Async)"""
         exchange = self.exchange_combo.currentText().lower()
         
-        try:
-            self.log_text.append(f"🔍 {exchange} 거래량 Top {n} 조회 중...")
-            
-            # 거래량 상위 전체 가져오기
-            top_symbols = self._get_top_by_volume(exchange, n)
-            
+        self.log_text.append(f"🔍 {exchange} 거래량 Top {n} 조회 중...")
+        
+        # 워커 생성
+        self.worker = ScannerWorker(self._get_top_by_volume, exchange, n)
+        
+        def on_success(top_symbols):
             if not top_symbols:
-                raise Exception("거래량 데이터 없음")
-            
+                self.log_text.append("❌ 거래량 데이터 없음")
+                return
+
             self.log_text.append(f"📊 거래량 Top {n}: {len(top_symbols)}개")
             
-            # 체크박스 설정
             for i in range(self.symbol_list.count()):
                 item = self.symbol_list.item(i)
-                symbol = item.text()
-                item.setCheckState(Qt.Checked if symbol in top_symbols else Qt.Unchecked)
+                item.setCheckState(Qt.Checked if item.text() in top_symbols else Qt.Unchecked)
             
             self.status_label.setText(f"✅ 거래량 Top {n} 선택됨")
             self.log_text.append(f"✅ Top {n} 선택 완료!")
-            
-        except Exception as e:
-            self.log_text.append(f"❌ Top {n} 조회 실패: {e}")
+            self.worker.deleteLater()
+            self.worker = None
+
+        def on_error(err):
+            self.log_text.append(f"❌ Top {n} 조회 실패: {err}")
             self.status_label.setText(f"⚠️ Top {n} 조회 실패")
+            self.worker.deleteLater()
+            self.worker = None
+
+        self.worker.finished.connect(on_success)
+        self.worker.error.connect(on_error)
+        self.worker.start()
     
     def _get_top_by_volume(self, exchange: str, n: int = 100) -> list:
         """거래량 상위 N개 조회"""
         import requests
         
         try:
+            exchange = exchange.lower()
             if exchange == 'bybit':
                 url = "https://api.bybit.com/v5/market/tickers?category=linear"
                 resp = requests.get(url, timeout=10)
@@ -688,14 +726,14 @@ class DataCollectorWidget(QWidget):
             self.log_text.append(f"❌ 신규 상장 조회 실패: {e}")
     
     def _select_top_gainers(self):
-        """24시간 상승률 상위 코인 선택"""
+        """24시간 상승률 상위 코인 선택 (Async)"""
         exchange = self.exchange_combo.currentText().lower()
+        self.log_text.append(f"📈 {exchange} 급등 코인 조회 중...")
         
-        try:
-            self.log_text.append(f"📈 {exchange} 급등 코인 조회 중...")
-            
-            gainers = self._get_price_change_top(exchange, ascending=False)
-            
+        # 워커 수정 (ascending=False -> 급등)
+        self.worker = ScannerWorker(self._get_price_change_top, exchange, ascending=False)
+        
+        def on_success(gainers):
             if gainers:
                 for i in range(self.symbol_list.count()):
                     item = self.symbol_list.item(i)
@@ -705,18 +743,27 @@ class DataCollectorWidget(QWidget):
                 self.log_text.append(f"✅ 급등 코인: {', '.join(gainers[:5])}...")
             else:
                 self.log_text.append("⚠️ 급등 코인 데이터 없음")
-        except Exception as e:
-            self.log_text.append(f"❌ 급등 코인 조회 실패: {e}")
+            self.worker.deleteLater()
+            self.worker = None
+
+        def on_error(err):
+            self.log_text.append(f"❌ 급등 코인 조회 실패: {err}")
+            self.worker.deleteLater()
+            self.worker = None
+
+        self.worker.finished.connect(on_success)
+        self.worker.error.connect(on_error)
+        self.worker.start()
     
     def _select_top_losers(self):
-        """24시간 하락률 상위 코인 선택"""
+        """24시간 하락률 상위 코인 선택 (Async)"""
         exchange = self.exchange_combo.currentText().lower()
+        self.log_text.append(f"📉 {exchange} 급락 코인 조회 중...")
         
-        try:
-            self.log_text.append(f"📉 {exchange} 급락 코인 조회 중...")
-            
-            losers = self._get_price_change_top(exchange, ascending=True)
-            
+        # 워커 수정 (ascending=True -> 급락)
+        self.worker = ScannerWorker(self._get_price_change_top, exchange, ascending=True)
+        
+        def on_success(losers):
             if losers:
                 for i in range(self.symbol_list.count()):
                     item = self.symbol_list.item(i)
@@ -726,14 +773,24 @@ class DataCollectorWidget(QWidget):
                 self.log_text.append(f"✅ 급락 코인: {', '.join(losers[:5])}...")
             else:
                 self.log_text.append("⚠️ 급락 코인 데이터 없음")
-        except Exception as e:
-            self.log_text.append(f"❌ 급락 코인 조회 실패: {e}")
+            self.worker.deleteLater()
+            self.worker = None
+
+        def on_error(err):
+            self.log_text.append(f"❌ 급락 코인 조회 실패: {err}")
+            self.worker.deleteLater()
+            self.worker = None
+
+        self.worker.finished.connect(on_success)
+        self.worker.error.connect(on_error)
+        self.worker.start()
     
     def _get_price_change_top(self, exchange: str, ascending: bool = False, n: int = 20) -> list:
         """가격 변동률 상위/하위 코인 조회"""
         import requests
         
         try:
+            exchange = exchange.lower()
             if exchange == 'bybit':
                 url = "https://api.bybit.com/v5/market/tickers?category=linear"
                 resp = requests.get(url, timeout=10)

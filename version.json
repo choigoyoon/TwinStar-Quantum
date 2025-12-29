@@ -1,12 +1,13 @@
 {
-  "version": "1.5.1",
-  "latest_version": "1.5.1",
+  "version": "1.5.2",
+  "latest_version": "1.5.2",
   "release_date": "2025-12-29",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.1/TwinStar_Quantum_Setup_v1.5.1.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.2/TwinStar_Quantum_Setup_v1.5.2.exe",
   "changelog": [
-    "v1.5.1: 거래 내역 기반 복리 자동 적용 (Trade History Compounding)",
-    "v1.5.1: 포지션 심볼 체크 누락 버그 수정",
-    "v1.5.1: Upbit/Bithumb 데이터 수집 200개 제한 해결",
-    "v1.5.1: 12월 BTC 매매 내역 API 연동 및 검증 완료"
+    "v1.5.2: 대시보드 잔고/포지션 조회 백그라운드 처리로 UI 프리징 해결",
+    "v1.5.2: core.exchange_manager 임포트 오류 수정 (대시보드 안정화)",
+    "v1.5.2: 실시간 진입가(avgPrice) 반영 및 수익률(PnL) 실시간 동기화 강화",
+    "v1.5.2: 진입 슬리피지(Slippage) 체크 및 포지션 보유 중 예측 로그 가시성 개선",
+    "v1.5.2: BingX 거래소 포지션/잔고 조회 지원 추가"
   ]
 }

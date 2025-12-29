@@ -33,6 +33,10 @@ class BybitExchange(BaseExchange):
         self.session = None
         self.hedge_mode = False
         self.time_offset = 0
+        
+        # [FIX] Bybit 심볼 형식 정규화 (BTC/USDT -> BTCUSDT)
+        self.symbol = self.symbol.replace('/', '').replace('-', '').upper()
+
     
     def connect(self) -> bool:
         """API 연결"""
@@ -131,6 +135,8 @@ class BybitExchange(BaseExchange):
     def get_current_price(self) -> float:
         """현재 가격"""
         try:
+            # [FIX] API 호출 추가
+            result = self.session.get_tickers(category="linear", symbol=self.symbol)
             res_list = result.get('result', {}).get('list', [])
             if res_list:
                 return float(res_list[0].get('lastPrice', 0))
@@ -138,6 +144,7 @@ class BybitExchange(BaseExchange):
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
             return 0
+
     
     def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
         """시장가 주문"""

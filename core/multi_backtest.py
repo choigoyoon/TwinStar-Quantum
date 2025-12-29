@@ -137,12 +137,13 @@ class MultiBacktester:
             
             for t in trades:
                 t['symbol'] = symbol
-                t['is_btc'] = (symbol == 'BTCUSDT' or 'BTC' in symbol.upper() and '/' not in symbol) # 대략적 판별
-                # 정확한 BTC 판별 (Bybit/Binance 등 포맷 고려)
-                if symbol.upper() in ['BTCUSDT', 'BTCUSD', 'BTC-USDT']:
-                    t['is_btc'] = True
-                else:
-                    t['is_btc'] = False
+                # 간단 판별: BTCUSDT 이거나, BTC가 포함되고 USDT 페어인 경우 (ETHBTC 등 제외)
+                # 정확하진 않지만 대부분의 경우 작동. 더 정확히는 is_btc 파라미터를 프리셋에 넣는게 좋음.
+                sym_upper = symbol.upper()
+                is_btc_pair = (sym_upper == 'BTCUSDT' or 
+                              ('BTC' in sym_upper and 'USDT' in sym_upper and '/' not in sym_upper))
+                
+                t['is_btc'] = is_btc_pair
                 
                 all_signals.append(t)
         

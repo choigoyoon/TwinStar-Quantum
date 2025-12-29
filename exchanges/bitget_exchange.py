@@ -37,6 +37,10 @@ class BitgetExchange(BaseExchange):
         self.exchange = None
         self.time_offset = 0
         self.hedge_mode = False
+        
+        # [FIX] Bitget 심볼 형식 정규화 - 내부 저장은 BTCUSDT, _convert_symbol에서 BTC/USDT:USDT로 변환
+        self.symbol = self.symbol.replace('/', '').replace('-', '').replace(':USDT', '').upper()
+
     
     def connect(self) -> bool:
         """API 연결"""
@@ -162,7 +166,24 @@ class BitgetExchange(BaseExchange):
                             params=sl_params
                         )
                         except Exception as sl_err:
-                            logging.warning(f"SL order failed: {sl_err}")
+                            # 🔴 CRITICAL: SL 실패 시 즉시 청산
+                            logging.error(f"[Bitget] ❌ SL Setting FAILED! Closing position immediately: {sl_err}")
+                            try:
+                                close_params = {'reduceOnly': True}
+                                if self.hedge_mode:
+                                    close_params['posSide'] = 'long' if side == 'Long' else 'short'
+                                self.exchange.create_order(
+                                    symbol=symbol,
+                                    type='market',
+                                    side=sl_side,
+                                    amount=size,
+                                    params=close_params
+                                )
+                                logging.warning("[Bitget] ⚠️ Emergency Close Done.")
+                            except Exception as close_err:
+                                logging.critical(f"[Bitget] 🚨 EMERGENCY CLOSE FAILED! CHECK BITGET APP: {close_err}")
+                            return False
+
                     
                     order_id = str(order.get('id', ''))
                     self.position = Position(

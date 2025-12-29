@@ -288,6 +288,51 @@ class ExchangeManager:
         except Exception as e:
             print(f"❌ {exchange_name} 연결 테스트 실패: {e}")
             return False
+
+    def get_positions(self, exchange_name: str) -> list:
+        """거래소의 열린 포지션 목록 조회 (모든 어댑터 공통 규격)"""
+        try:
+            ex = self.get_exchange(exchange_name)
+            if not ex: return []
+            
+            # 1. 어댑터 자체 get_positions가 있으면 우선 사용
+            if hasattr(ex, 'get_positions'):
+                pos_list = ex.get_positions()
+                if pos_list:
+                    normalized = []
+                    for p in pos_list:
+                        normalized.append({
+                            'symbol': p.get('symbol', ''),
+                            'side': p.get('side', 'Unknown'),
+                            'size': float(p.get('size', 0)),
+                            'entry': float(p.get('entry_price', p.get('entry', 0))),
+                            'exchange': exchange_name
+                        })
+                    return normalized
+            
+            # 2. CCXT 기반 포지션 조회 (범용)
+            if hasattr(ex, 'fetch_positions'):
+                try:
+                    raw_pos = ex.fetch_positions()
+                    normalized = []
+                    for p in raw_pos:
+                        size = float(p.get('contracts', 0) or p.get('size', 0))
+                        if size > 0:
+                            normalized.append({
+                                'symbol': p.get('symbol', ''),
+                                'side': p.get('side', 'Unknown'),
+                                'size': size,
+                                'entry': float(p.get('entryPrice', 0)),
+                                'exchange': exchange_name
+                            })
+                    return normalized
+                except Exception as e:
+                    logging.debug(f"[{exchange_name}] fetch_positions failed: {e}")
+
+            return []
+        except Exception as e:
+            logging.error(f"[{exchange_name}] get_positions error: {e}")
+            return []
     
     def get_balance(self, exchange_name: str, currency: str = "USDT") -> float:
         """잔고 조회"""

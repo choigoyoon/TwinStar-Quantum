@@ -38,6 +38,7 @@ class Position:
             'symbol': self.symbol,
             'side': self.side,
             'entry': self.entry_price,
+            'entry_price': self.entry_price, # [v1.5.2] Dashboard Compatibility
             'size': self.size,
             'sl': self.stop_loss,
             'initial_sl': self.initial_sl,

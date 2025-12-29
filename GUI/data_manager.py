@@ -58,6 +58,29 @@ class DataManager:
         """ExchangeManager 연결"""
         self.exchange_manager = exchange_manager
     
+    @property
+    def _index_path(self) -> Path:
+        """인덱스 파일 경로"""
+        return self.cache_dir / "cache_index.json"
+
+    def _load_index(self) -> Dict:
+        """인덱스 로드 (실패 시 빈 딕셔너리)"""
+        try:
+            if self._index_path.exists():
+                with open(self._index_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"⚠️ Index load failed: {e}")
+        return {}
+
+    def _save_index(self, index_data: Dict):
+        """인덱스 저장"""
+        try:
+            with open(self._index_path, 'w', encoding='utf-8') as f:
+                json.dump(index_data, f, indent=2)
+        except Exception as e:
+            print(f"⚠️ Index save failed: {e}")
+    
     # 타임프레임 → pandas 리샘플 규칙
     TF_TO_PANDAS = {
         '1m': '1T', '3m': '3T', '5m': '5T', '15m': '15T', '30m': '30T',
@@ -546,7 +569,12 @@ class DataManager:
         # 1. Parquet 파일 확인
         if cache_path.exists():
             try:
-                return pd.read_parquet(cache_path)
+                df = pd.read_parquet(cache_path)
+                # [FIX] Timestamp 형식이 datetime인 경우 int64(ms)로 정규화
+                if 'timestamp' in df.columns:
+                    if pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+                        df['timestamp'] = df['timestamp'].astype(np.int64) // 10**6
+                return df
             except Exception as e:
                 print(f"⚠️ Parquet 로드 실패: {e}")
         
@@ -619,8 +647,13 @@ class DataManager:
             # Parquet 파일에서 timestamp 컬럼만 읽어서 메타데이터 추출
             df = pd.read_parquet(db_path, columns=['timestamp'])
             if not df.empty:
-                min_ts = df['timestamp'].min()
-                max_ts = df['timestamp'].max()
+                # [FIX] Timestamp 형식이 datetime인 경우 int64(ms)로 변환하여 계산
+                ts_col = df['timestamp']
+                if pd.api.types.is_datetime64_any_dtype(ts_col):
+                    ts_col = ts_col.astype(np.int64) // 10**6
+                
+                min_ts = int(ts_col.min())
+                max_ts = int(ts_col.max())
                 count = len(df)
                 return min_ts, max_ts, count
             return None, None, 0
@@ -629,36 +662,99 @@ class DataManager:
             return None, None, 0
 
     def get_cache_list(self) -> List[CacheInfo]:
-        """캐시된 데이터 목록 (최적화됨)"""
+        """캐시된 데이터 목록 (인덱싱 시스템 적용 v1.6.0)"""
         cache_list = []
+        index = self._load_index()
+        dirty = False
+        
+        # 현재 존재하는 Parquet 파일 스캔
+        current_files = set()
         
         for db_file in self.cache_dir.glob("*.parquet"):
+            current_files.add(db_file.name)
+            
             try:
-                parts = db_file.stem.split('_')
-                if len(parts) >= 3:
-                    exchange = parts[0]
-                    symbol = parts[1].upper()
-                    timeframe = parts[-1]
+                # 파일 상태 확인
+                stat = db_file.stat()
+                mtime = stat.st_mtime
+                size = stat.st_size
+                
+                # 너무 작은 파일 스킵
+                if size < 1024:
+                    continue
+                
+                filename = db_file.name
+                
+                # 인덱스 유효성 검사 (파일명 있고, 수정시간/크기 일치)
+                use_index = False
+                if filename in index:
+                    cached = index[filename]
+                    if cached.get('mtime') == mtime and cached.get('size') == size:
+                        use_index = True
+                
+                if use_index:
+                    # 인덱스 데이터 사용
+                    cached = index[filename]
+                    # datetime 복원
+                    s_date = datetime.fromtimestamp(cached['start_ts'])
+                    e_date = datetime.fromtimestamp(cached['end_ts'])
                     
-                    # 파일 크기가 너무 작으면(0바이트 등) 스킵
-                    if db_file.stat().st_size < 1024:
-                        continue
+                    cache_list.append(CacheInfo(
+                        symbol=cached['symbol'],
+                        timeframe=cached['timeframe'],
+                        exchange=cached['exchange'],
+                        start_date=s_date,
+                        end_date=e_date,
+                        candle_count=cached['count'],
+                        file_size=size
+                    ))
+                else:
+                    # 메타데이터 직접 읽기 (Costly I/O)
+                    parts = db_file.stem.split('_')
+                    if len(parts) >= 3:
+                        exchange = parts[0]
+                        symbol = parts[1].upper()
+                        timeframe = parts[-1]
                         
-                    # 최적화: 전체 로드 대신 메타데이터만 조회
-                    min_ts, max_ts, count = self._get_db_metadata(db_file)
-                    
-                    if count > 0 and min_ts and max_ts:
-                        cache_list.append(CacheInfo(
-                            symbol=symbol,
-                            timeframe=timeframe,
-                            exchange=exchange,
-                            start_date=datetime.utcfromtimestamp(min_ts / 1000),
-                            end_date=datetime.utcfromtimestamp(max_ts / 1000),
-                            candle_count=count,
-                            file_size=db_file.stat().st_size
-                        ))
-            except Exception:
+                        min_ts, max_ts, count = self._get_db_metadata(db_file)
+                        
+                        if count > 0 and min_ts and max_ts:
+                            # 인덱스 업데이트
+                            index[filename] = {
+                                'symbol': symbol,
+                                'timeframe': timeframe,
+                                'exchange': exchange,
+                                'count': count,
+                                'start_ts': min_ts / 1000, # ms -> sec (for datetime) -> Wait, CacheInfo takes datetime object.
+                                                           # let's store timestamp (sec) in index to be safe/standard
+                                'end_ts': max_ts / 1000,
+                                'mtime': mtime,
+                                'size': size
+                            }
+                            dirty = True
+                            
+                            cache_list.append(CacheInfo(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                exchange=exchange,
+                                start_date=datetime.utcfromtimestamp(min_ts / 1000),
+                                end_date=datetime.utcfromtimestamp(max_ts / 1000),
+                                candle_count=count,
+                                file_size=size
+                            ))
+            except Exception as e:
+                # print(f"Error processing {db_file.name}: {e}")
                 continue
+                
+        # 존재하지 않는 파일 인덱스에서 제거
+        for filename in list(index.keys()):
+            if filename not in current_files:
+                del index[filename]
+                dirty = True
+        
+        # 변경사항 저장
+        if dirty:
+            self._save_index(index)
         
         return cache_list
     

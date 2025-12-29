@@ -49,7 +49,7 @@ try:
     except ImportError:
         # Fallback check for core/exchange_manager.py if moved
         try:
-            from core.exchange_manager import ExchangeManager
+            from exchanges.exchange_manager import ExchangeManager
         except ImportError:
              # Just skipping checking ExchangeManager if not found to avoid blocking if the user structure is different
              # But the user script explicitly asked for it. I will keep the original check behavior mostly, 

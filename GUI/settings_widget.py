@@ -76,6 +76,58 @@ except ImportError:
 import webbrowser
 
 
+
+class ConnectionWorker(QThread):
+    finished = pyqtSignal(bool, str, object)  # success, msg, balance_data
+
+    def __init__(self, exchange_name, api_key, secret, testnet):
+        super().__init__()
+        self.exchange_name = exchange_name
+        self.api_key = api_key
+        self.secret = secret
+        self.testnet = testnet
+
+    def run(self):
+        try:
+            # Exchange Manager의 connect_exchange 호출
+            result = connect_exchange(
+                self.exchange_name,
+                self.api_key,
+                self.secret,
+                self.testnet
+            )
+            
+            # 결과 처리 (Tuple or Bool)
+            if isinstance(result, tuple):
+                success, error_msg = result
+                if not error_msg and not success:
+                    error_msg = "Connection failed (unknown error)"
+            else:
+                success = bool(result)
+                error_msg = "Return type error" if not success else ""
+
+            balance_data = None
+            if success:
+                # 연결 성공 시 잔고 조회까지 백그라운드에서 수행
+                exchange = get_exchange(self.exchange_name)
+                if exchange:
+                    if self.exchange_name in ["upbit", "bithumb"]:
+                        balance_data = {"KRW": float(exchange.get_balance("KRW") or 0)}
+                    else:
+                        bal = exchange.fetch_balance()
+                        usdt = 0.0
+                        if 'USDT' in bal and isinstance(bal['USDT'], dict):
+                            usdt = float(bal['USDT'].get('total') or bal['USDT'].get('free') or 0)
+                        elif 'total' in bal and isinstance(bal['total'], dict):
+                            usdt = float(bal['total'].get('USDT') or 0)
+                        balance_data = {"USDT": usdt}
+
+            self.finished.emit(success, error_msg, balance_data)
+
+        except Exception as e:
+            self.finished.emit(False, str(e), None)
+
+
 class TelegramCard(QFrame):
     """Telegram notification settings card"""
     
@@ -402,8 +454,9 @@ class ExchangeCard(QFrame):
                 config[key] = widget.value()
         return config
     
+
     def _test_connection(self):
-        """Test connection"""
+        """Test connection (Async)"""
         config = self.get_config()
         
         api_key = config.get('api_key') or config.get('private_key')
@@ -412,50 +465,53 @@ class ExchangeCard(QFrame):
         if not api_key:
             QMessageBox.warning(self, t("common.error"), "Enter API key")
             return
-        
-        try:
-            result = connect_exchange(
-                self.exchange_name,
-                api_key,
-                secret,
-                config.get('testnet', False)
-            )
             
-            # Handle both old (bool) and new (tuple) return types
-            if isinstance(result, tuple):
-                success, error_msg = result
-                if not error_msg and not success:
-                    error_msg = "Connection failed (no details)"
-            else:
-                success = bool(result)
-                error_msg = "Return type error (not tuple)"
+        # UI 잠금 및 상태 표시
+        btn = self.sender()
+        if isinstance(btn, QPushButton):
+            btn.setEnabled(False)
+            original_text = btn.text()
+            btn.setText("Connecting...")
+            
+        self.status_label.setText("연결 시도 중...")
+        self.status_label.setStyleSheet("color: orange;")
+        
+        # 워커 생성 및 시작
+        self.worker = ConnectionWorker(
+            self.exchange_name,
+            api_key,
+            secret,
+            config.get('testnet', False)
+        )
+        
+        def on_finished(success, error_msg, balance_data):
+            if isinstance(btn, QPushButton):
+                btn.setEnabled(True)
+                btn.setText(original_text)
             
             if success:
-                exchange = get_exchange(self.exchange_name)
+                msg = f"{self.exchange_name.upper()} connected!"
+                if balance_data:
+                    if "KRW" in balance_data:
+                        msg += f"\n\nKRW Balance: {balance_data['KRW']:,.0f}"
+                    elif "USDT" in balance_data:
+                        msg += f"\n\nUSDT Balance: ${balance_data['USDT']:,.2f}"
                 
-                # Check balance - 한국 거래소는 네이티브 메서드 사용
-                if self.exchange_name in ["upbit", "bithumb"]:
-                    krw = float(exchange.get_balance("KRW") or 0)
-                    QMessageBox.information(self, "Connection Success",
-                        f"{self.exchange_name.upper()} connected!\n\nKRW Balance: {krw:,.0f}")
-                else:
-                    balance = exchange.fetch_balance()
-                    usdt = 0.0
-                    if 'USDT' in balance and isinstance(balance['USDT'], dict):
-                        usdt = float(balance['USDT'].get('total') or balance['USDT'].get('free') or 0)
-                    elif 'total' in balance and isinstance(balance['total'], dict):
-                        usdt = float(balance['total'].get('USDT') or 0)
-                    QMessageBox.information(self, "Connection Success",
-                        f"{self.exchange_name.upper()} connected!\n\nUSDT Balance: ${usdt:,.2f}")
-                
+                QMessageBox.information(self, "Connection Success", msg)
                 self.status_label.setText("연결됨")
                 self.status_label.setStyleSheet("color: #26a69a;")
             else:
                 QMessageBox.warning(self, "Connection Failed", 
                     f"Check API keys\n\nError: {error_msg}")
+                self.status_label.setText("연결 실패")
+                self.status_label.setStyleSheet("color: #ef5350;")
                 
-        except Exception as e:
-            QMessageBox.critical(self, "Connection Error", f"Test failed:\n{e}")
+            # 워커 정리
+            self.worker.deleteLater()
+            self.worker = None
+
+        self.worker.finished.connect(on_finished)
+        self.worker.start()
     
     def _show_api_guide(self):
         """API guide - 거래소별 상세 가이드"""
@@ -628,7 +684,7 @@ class SettingsWidget(QWidget):
             # Bybit은 "기준" 표시, 등록된 거래소는 ✓ 표시
             is_registered = exchange in self.config and self.config[exchange].get('api_key')
             
-            if exchange == 'bybit':
+            if exchange.lower() == 'bybit':
                 label = f"{info.get('icon', '')} BYBIT (Primary)"
             else:
                 label = f"{info.get('icon', '')} {exchange.upper()}"
@@ -637,7 +693,7 @@ class SettingsWidget(QWidget):
                 label = f"✓ {label}"
             
             btn = QCheckBox(label)
-            btn.setStyleSheet(f"color: {'#26a69a' if is_registered else '#787b86'}; font-weight: {'bold' if exchange == 'bybit' else 'normal'};")
+            btn.setStyleSheet(f"color: {'#26a69a' if is_registered else '#787b86'}; font-weight: {'bold' if exchange.lower() == 'bybit' else 'normal'};")
             btn.toggled.connect(lambda checked, ex=exchange: self._toggle_exchange(ex, checked))
             exchange_layout.addWidget(btn)
             self.exchange_toggles[exchange] = btn

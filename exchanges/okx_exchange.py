@@ -37,6 +37,10 @@ class OKXExchange(BaseExchange):
         self.testnet = config.get('testnet', False)
         self.exchange = None
         self.time_offset = 0
+        
+        # [FIX] OKX 심볼 형식 정규화 - 내부 저장은 BTCUSDT, _convert_symbol에서 BTC/USDT:USDT로 변환
+        self.symbol = self.symbol.replace('/', '').replace('-', '').replace(':USDT', '').upper()
+
     
     def connect(self) -> bool:
         """API 연결"""
@@ -145,7 +149,21 @@ class OKXExchange(BaseExchange):
                             }
                         )
                         except Exception as sl_err:
-                            logging.warning(f"SL order failed: {sl_err}")
+                            # 🔴 CRITICAL: SL 실패 시 즉시 청산
+                            logging.error(f"[OKX] ❌ SL Setting FAILED! Closing position immediately: {sl_err}")
+                            try:
+                                self.exchange.create_order(
+                                    symbol=symbol,
+                                    type='market',
+                                    side=sl_side,
+                                    amount=size,
+                                    params={'posSide': pos_side, 'reduceOnly': True}
+                                )
+                                logging.warning("[OKX] ⚠️ Emergency Close Done.")
+                            except Exception as close_err:
+                                logging.critical(f"[OKX] 🚨 EMERGENCY CLOSE FAILED! CHECK OKX APP: {close_err}")
+                            return False
+
                     
                     order_id = str(order.get('id', ''))
                     self.position = Position(

@@ -19,7 +19,8 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
     QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView,
     QTextEdit, QMessageBox, QScrollArea, QFrame, QSplitter,
-    QProgressDialog, QTabWidget  # [NEW] QTabWidget added
+    QProgressDialog, QTabWidget, QWidget,
+    QHBoxLayout, QVBoxLayout, QGridLayout, QProgressBar, QAbstractItemView # [FIX] Added missing widgets
 )
 from GUI.dashboard_widgets import ExternalPositionTable, TradeHistoryTable, EquityCurveWidget  # [NEW] Import new widgets
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
@@ -1136,6 +1137,9 @@ class TradingDashboard(QWidget):
             return 1
     
     def _init_ui(self):
+        # [NEW] 상태 복구 예약
+        QTimer.singleShot(500, self.load_state)
+        
         # 최소 창 크기 설정
         self.setMinimumWidth(1000)  # [FIX] Wider for split view
         self.setMinimumHeight(600)
@@ -1161,6 +1165,13 @@ class TradingDashboard(QWidget):
         self.balance_label.setStyleSheet("color: #4CAF50;")
         header.addWidget(self.balance_label)
         
+        # [NEW] 거래소 포지션 카운터
+        self.position_count_label = QLabel("📊 포지션: 조회중...")
+        self.position_count_label.setFont(QFont("Arial", 11))
+        self.position_count_label.setStyleSheet("color: #888; margin-left: 15px;")
+        self.position_count_label.setToolTip("거래소에 열린 포지션 현황")
+        header.addWidget(self.position_count_label)
+        
         header.addStretch()
         
         refresh_btn = QPushButton("🔄")
@@ -1169,6 +1180,7 @@ class TradingDashboard(QWidget):
         refresh_btn.setStyleSheet("background: #2b2b2b; border-radius: 4px;")
         refresh_btn.clicked.connect(self._refresh_balance)
         header.addWidget(refresh_btn)
+
         
         main_layout.addLayout(header)
         
@@ -1428,8 +1440,105 @@ class TradingDashboard(QWidget):
             self.single_status.setText(text)
         else:
             self.single_status.setText("🔄 실행 중인 봇 없음")
+    
+    # ----------------------------------------------------------------------
+    # [NEW] Persistence (State Save/Load)
+    # ----------------------------------------------------------------------
+    def save_state(self):
+        """현재 대시보드 상태 저장"""
+        if getattr(self, 'is_loading', False):
+            return
 
-    def _add_coin_row(self):
+        state = {
+            'rows': []
+        }
+        
+        for row in self.coin_rows:
+            row_data = {
+                'exchange': row.exchange_combo.currentText(),
+                'symbol': row.symbol_combo.currentText(),
+                'preset': row.preset_combo.currentText(),
+                'leverage': row.leverage_spin.value(),
+                'amount': row.amount_spin.value(),
+                'is_active': row.start_btn.text() == "⏹ 중지"
+            }
+            state['rows'].append(row_data)
+        
+        try:
+            config_dir = Path("config")
+            config_dir.mkdir(exist_ok=True)
+            with open(config_dir / "dashboard_state.json", 'w', encoding='utf-8') as f:
+                json.dump(state, f, indent=2)
+        except Exception as e:
+            print(f"⚠️ Failed to save dashboard state: {e}")
+
+    def load_state(self):
+        """대시보드 상태 복구"""
+        config_path = Path("config/dashboard_state.json")
+        if not config_path.exists():
+            return
+            
+        try:
+            self.is_loading = True
+            with open(config_path, 'r', encoding='utf-8') as f:
+                state = json.load(f)
+            
+            rows_data = state.get('rows', [])
+            if not rows_data:
+                return
+
+            # 기존 행 제거 (기본 1개 제외하고)
+            while len(self.coin_rows) > 1:
+                self._on_row_remove(self.coin_rows[-1])
+            
+            # 첫 번째 행 설정
+            if len(self.coin_rows) == 1:
+                self._restore_row(self.coin_rows[0], rows_data[0])
+            
+            # 추가 행 생성
+            for i in range(1, len(rows_data)):
+                self._add_coin_row() 
+                self._restore_row(self.coin_rows[-1], rows_data[i])
+            
+            print(f"♻️ Restored {len(rows_data)} sessions")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to load state: {e}")
+        finally:
+            self.is_loading = False
+
+    def _restore_row(self, row: CoinRow, data: dict):
+        try:
+            # Exchange
+            idx = row.exchange_combo.findText(data.get('exchange', 'bybit'))
+            if idx >= 0: row.exchange_combo.setCurrentIndex(idx)
+            
+            # Symbol
+            row._on_exchange_changed(row.exchange_combo.currentText()) 
+            idx = row.symbol_combo.findText(data.get('symbol', 'BTCUSDT'))
+            if idx >= 0: row.symbol_combo.setCurrentIndex(idx)
+            
+            # Preset
+            idx = row.preset_combo.findText(data.get('preset', 'Default'))
+            if idx >= 0: row.preset_combo.setCurrentIndex(idx)
+            
+            # Params
+            row.leverage_spin.setValue(int(data.get('leverage', 10)))
+            row.amount_spin.setValue(float(data.get('amount', 100)))
+            
+            # Auto Start
+            if data.get('is_active', False):
+                QTimer.singleShot(1500, lambda: row._toggle_start() if row.start_btn.text() != "⏹ 중지" else None)
+                
+        except Exception as e:
+            print(f"Row restore error: {e}")
+
+    def closeEvent(self, event):
+        self.save_state()
+        super().closeEvent(event)
+    
+
+
         """새 코인 행 추가"""
         # [FIX] 티어별 동적 제한
         max_coins = self._get_max_coins()
@@ -1914,9 +2023,11 @@ class TradingDashboard(QWidget):
             # 봇이 하나도 없으면 테이블 초기화
             if self.position_table.rowCount() > 0:
                 self.position_table.setRowCount(0)
-            if self.pos_status_widget.cards:
+            # [FIX] hasattr 체크 추가
+            if hasattr(self, 'pos_status_widget') and hasattr(self.pos_status_widget, 'cards') and self.pos_status_widget.cards:
                 self.pos_status_widget.clear_all()
             return
+
             
         import json
         from paths import Paths
@@ -1939,22 +2050,20 @@ class TradingDashboard(QWidget):
                         continue
                         
                     # [FIX] Real Position Priority Logic
-                    real_pos = state.get('position')
-                    bt_state = state.get('bt_state', {})
-                    
-                    if real_pos:
-                        # Case A: Real API Position
-                        side = real_pos.get('side', 'Unknown')
-                        entry = float(real_pos.get('entry_price', 0))
+                        # [FIX] entry와 entry_price 혼용 지원 및 current_price 우선순위
+                        entry = float(real_pos.get('entry', real_pos.get('entry_price', 0)))
                         size = float(real_pos.get('size', 0))
                         
-                        # Current price (fallback to extreme/internal)
-                        current_price = bt_state.get('extreme_price', entry) 
+                        # Real-time price from state (if available)
+                        current_price = state.get('current_price')
+                        if current_price is None:
+                            current_price = bt_state.get('extreme_price', entry)
+                        
                         current_sl = bt_state.get('current_sl', 0)
                         if current_price == 0: current_price = entry
                         
                         if entry > 0:
-                            if side.lower() == 'long':
+                            if side.lower() == 'long' or side.lower() == 'buy':
                                 pnl = (current_price - entry) / entry * 100
                             else:
                                 pnl = (entry - current_price) / entry * 100
@@ -1974,11 +2083,13 @@ class TradingDashboard(QWidget):
                     elif bt_state and bt_state.get('position'):
                         # Case B: Internal State Only
                         position = bt_state.get('position')
-                        entry = bt_state.get('positions', [{}])[0].get('entry', 0) if bt_state.get('positions') else 0
+                        entry = bt_state.get('positions', [{}])[0].get('entry', bt_state.get('positions', [{}])[0].get('entry_price', 0)) if bt_state.get('positions') else 0
                         current_sl = bt_state.get('current_sl', 0)
-                        extreme = bt_state.get('extreme_price', entry)
                         
-                        current_price = extreme
+                        current_price = state.get('current_price')
+                        if current_price is None:
+                            current_price = bt_state.get('extreme_price', entry)
+                        
                         if entry > 0:
                             pnl = ((current_price - entry) / entry * 100) if position == 'Long' else ((entry - current_price) / entry * 100)
                         else:
@@ -2036,6 +2147,36 @@ class TradingDashboard(QWidget):
                 except Exception as e:
                     # print(f"State sync error {symbol}: {e}")
                     pass
+
+    def _check_global_risk(self):
+        """글로벌 리스크 체크 (5초마다)"""
+        try:
+            # 리스크 헤더 업데이트
+            if not hasattr(self, 'risk_header') or not self.risk_header:
+                return
+            
+            # 현재 봇들의 PnL 합산
+            total_pnl = 0.0
+            total_margin = 0.0
+            
+            for bot_key, bot_info in self.running_bots.items():
+                bot_instance = bot_info.get('bot')
+                if bot_instance and hasattr(bot_instance, 'backtest_state'):
+                    bt_state = bot_instance.backtest_state
+                    if bt_state:
+                        total_pnl += bt_state.get('pnl', 0)
+            
+            # UI 업데이트
+            if hasattr(self, 'risk_header') and self.risk_header:
+                self.risk_header.update_status(
+                    margin_pct=0,  # TODO: 실제 마진 사용률
+                    pnl_usd=total_pnl,
+                    pnl_pct=0,
+                    mdd=0,
+                    streak=0
+                )
+        except Exception:
+            pass  # 조용히 실패
 
     def _refresh_external_data(self):
         """외부 거래소 포지션 및 히스토리 조회 (Refresh)"""
@@ -2142,42 +2283,6 @@ class TradingDashboard(QWidget):
             return None
         return None
 
-                    
-                    # PnL 계산 (대략적)
-                    current_price = extreme  # 실제로는 WebSocket에서 받아야 함
-                    if entry > 0:
-                        pnl = ((current_price - entry) / entry * 100) if position == 'Long' else ((entry - current_price) / entry * 100)
-                    else:
-                        pnl = 0
-                    
-                    self.position_table.update_position(
-                        symbol=symbol,
-                        mode="Single",
-                        status=position,  # Long/Short
-                        entry=entry,
-                        current=extreme,
-                        pnl=pnl
-                    )
-                    
-                    # [NEW] PositionStatusWidget 동기화
-                    self.pos_status_widget.add_position(
-                        symbol=symbol,
-                        side=position.upper(),
-                        entry_price=entry,
-                        current_price=extreme,
-                        stop_loss=current_sl,
-                        size=bt_state.get('positions', [{}])[0].get('size', 0) if bt_state.get('positions') else 0
-                    )
-                else:
-                    # 포지션 없음
-                    self.position_table.update_position(
-                        symbol=symbol,
-                        mode="Single",
-                        status="WAIT"
-                    )
-                    self.pos_status_widget.remove_position(symbol)
-        except Exception as e:
-            pass  # 조용히 실패 (UI 타이머이므로)
     
     def _apply_license_limits(self):
         """라이선스에 따른 UI 제한 - ADMIN/PREMIUM 권한 보장"""
@@ -2345,27 +2450,152 @@ class TradingDashboard(QWidget):
             self._sniper = None
             self._log("✅ MultiSniper 종료됨")
     
-    def _refresh_balance(self):
-            for exchange_name in ['bybit', 'binance', 'okx', 'bitget']:
-                # ExchangeManager를 통해 안전하게 잔고 조회
+    def _refresh_balance_sync_internal(self):
+        """실제 잔고 조회 로직 (별도 스레드에서 실행)"""
+        try:
+            # [FIX] core -> exchanges
+            from exchanges.exchange_manager import get_exchange_manager
+            em = get_exchange_manager()
+            
+            total_usd = 0
+            connected_found = False
+            
+            # BingX 추가 확인
+            for name in ['bybit', 'binance', 'okx', 'bitget', 'bingx', 'upbit', 'bithumb']:
                 try:
-                    # 먼저 연결 객체 확인 (설정 및 연결 상태 체크)
-                    ex = em.get_exchange(exchange_name)
-                    if ex:
-                        balance = em.get_balance(exchange_name)
-                        self._log(f"💰 {exchange_name.upper()}: ${balance:,.2f} USDT")
-                        # [FIX] UI 업데이트 추가
-                        self.balance_label.setText(f"${balance:,.2f}")
+                    bal = em.get_balance(name)
+                    if bal > 0:
+                        total_usd += bal
                         connected_found = True
-                        break # 첫 번째 연결된 거래소만 표시 (UI 공간 절약)
                 except Exception:
                     continue
-
-            if not connected_found:
-                self._log("⚠️ 연결된 거래소 없음")
-                self.balance_label.setText("$0.00")
+            return (connected_found, total_usd)
         except Exception as e:
-            self._log(f"❌ 잔고 조회 오류: {e}")
+            print(f"Balance Refresh Internal Error: {e}")
+            return (False, 0)
+
+    def _refresh_balance(self):
+        """잔고 새로고침 (백그라운드 스레드)"""
+        try:
+            self.balance_label.setText("💰 조회중...")
+            self.balance_label.setStyleSheet("color: #888;")
+            self._log("🔄 거래소 데이터(잔고/포지션) 동기화 중...")
+            
+            # [NEW] 워커 스레드 생성 (인라인 정의)
+            from PyQt5.QtCore import QThread, pyqtSignal, QObject
+            
+            class BalanceWorker(QObject):
+                finished = pyqtSignal(bool, float)
+                def run(self, parent):
+                    res = parent._refresh_balance_sync_internal()
+                    self.finished.emit(res[0], res[1])
+
+            self._bal_thread = QThread()
+            self._bal_worker = BalanceWorker()
+            self._bal_worker.moveToThread(self._bal_thread)
+            
+            self._bal_thread.started.connect(lambda: self._bal_worker.run(self))
+            self._bal_worker.finished.connect(self._handle_balance_update)
+            self._bal_worker.finished.connect(self._bal_thread.quit)
+            self._bal_worker.finished.connect(self._bal_worker.deleteLater)
+            self._bal_thread.finished.connect(self._bal_thread.deleteLater)
+            
+            self._bal_thread.start()
+            
+        except Exception as e:
+            self._log(f"❌ 잔고 조회 시작 오류: {e}")
+
+    def _handle_balance_update(self, success, total_usd):
+        """잔고 조회 완료 핸들러"""
+        if success:
+            self.balance_label.setText(f"${total_usd:,.2f}")
+            self.balance_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+            self._log(f"✅ 총 자산 동기화 완료: ${total_usd:,.2f}")
+        else:
+            self.balance_label.setText("$0.00")
+            self._log("⚠️ 연결된 거래소 잔고가 없거나 조회에 실패했습니다.")
+        
+        # 포지션 카운트 별도 업데이트
+        self._update_position_count()
+    
+    def _update_position_count(self):
+        """거래소 열린 포지션 개수 및 심볼 조회 (백그라운드 스레드 사용)"""
+        try:
+            self.position_count_label.setText("📊 포지션: 조회중...")
+            self.position_count_label.setStyleSheet("color: #888; margin-left: 15px;")
+            
+            from PyQt5.QtCore import QThread, pyqtSignal, QObject
+            
+            class PositionWorker(QObject):
+                finished = pyqtSignal(list)
+                error = pyqtSignal(str)
+                
+                def run(self):
+                    try:
+                        # [FIX] core -> exchanges
+                        from exchanges.exchange_manager import get_exchange_manager
+                        em = get_exchange_manager()
+                        
+                        all_positions = []
+                        # BingX 포함 순회
+                        for exchange_name in ['bybit', 'binance', 'okx', 'bitget', 'bingx']:
+                            try:
+                                ex = em.get_exchange(exchange_name)
+                                if not ex: continue
+                                
+                                # ExchangeManager의 get_positions 사용 (없으면 어댑터 직접 호출)
+                                positions = []
+                                if hasattr(em, 'get_positions'):
+                                    positions = em.get_positions(exchange_name)
+                                elif hasattr(ex, 'get_positions'):
+                                    positions = ex.get_positions()
+                                
+                                if positions:
+                                    for pos in positions:
+                                        symbol = pos.get('symbol', 'Unknown')
+                                        size = pos.get('size', 0)
+                                        if size > 0:
+                                            clean_symbol = symbol.replace('/', '').replace(':USDT', '').replace('-USDT-SWAP', '').upper()
+                                            if clean_symbol not in [p['symbol'] for p in all_positions]:
+                                                all_positions.append({
+                                                    'symbol': clean_symbol,
+                                                    'exchange': exchange_name
+                                                })
+                            except Exception:
+                                continue
+                        self.finished.emit(all_positions)
+                    except Exception as e:
+                        self.error.emit(str(e))
+
+            self._pos_thread = QThread()
+            self._pos_worker = PositionWorker()
+            self._pos_worker.moveToThread(self._pos_thread)
+            
+            self._pos_thread.started.connect(self._pos_worker.run)
+            self._pos_worker.finished.connect(self._handle_position_update)
+            self._pos_worker.finished.connect(self._pos_thread.quit)
+            self._pos_worker.finished.connect(self._pos_worker.deleteLater)
+            self._pos_thread.finished.connect(self._pos_thread.deleteLater)
+            
+            self._pos_thread.start()
+            
+        except Exception as e:
+            self.position_count_label.setText("📊 포지션: 오류")
+            print(f"[Position Count] Start Error: {e}")
+
+    def _handle_position_update(self, all_positions):
+        """백그라운드 작업 완료 후 UI 업데이트"""
+        if all_positions:
+            count = len(all_positions)
+            symbols = ', '.join([p['symbol'] for p in all_positions[:5]])
+            if count > 5:
+                symbols += f" +{count - 5}"
+            self.position_count_label.setText(f"📊 포지션: {count}개 ({symbols})")
+            self.position_count_label.setStyleSheet("color: #FFA500; margin-left: 15px; font-weight: bold;")
+        else:
+            self.position_count_label.setText("📊 포지션: 없음")
+            self.position_count_label.setStyleSheet("color: #888; margin-left: 15px;")
+
     
     def _log(self, message: str):
         """로그 메시지 추가 (안전 체크)"""

@@ -498,10 +498,12 @@ class UnifiedBot:
         self.last_day = datetime.now().day
         
         self.exchange = exchange
+        self.symbol = exchange.symbol  # [FIX] 직접 속성으로도 저장 (AttributeError 방지)
         self.use_binance_signal = use_binance_signal
         self.signal_exchange = None  # 바이낸스 신호용 (필요시 생성)
         self.position = None
         self.notifier = None # 텔레그램 알림
+
         
         # [NEW] 연속 백테스트 상태 (run_backtest와 동일한 구조)
         self.bt_state = {
@@ -566,8 +568,9 @@ class UnifiedBot:
                 
                 # 복리 자본 계산 및 적용
                 if self.use_compounding:
-                    self.exchange.capital = self.initial_capital + stats['total_pnl_usd']
-                    logging.info(f"💰 Capital 복원: ${self.initial_capital:.2f} → ${self.exchange.capital:.2f}")
+                    if self.exchange:
+                        self.exchange.capital = self.initial_capital + stats['total_pnl_usd']
+                    logging.info(f"💰 Capital 복원: ${self.initial_capital:.2f} → ${(self.exchange.capital if self.exchange else 0):.2f}")
 
         # [NEW] 데이터 보호를 위한 Lock
         self._data_lock = threading.Lock()
@@ -602,8 +605,8 @@ class UnifiedBot:
         self.df_entry_full = None  # 전체 15m 데이터
         
         # [NEW] 캐시 파일 경로
-        exchange_name = self.exchange.name.lower() if hasattr(self.exchange, 'name') else 'bybit'
-        symbol_clean = self.exchange.symbol.lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
+        exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower() if hasattr(self.exchange, 'name') else 'bybit'
+        symbol_clean = (self.exchange.symbol if self.exchange else 'Unknown').lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
         from paths import Paths
         self.state_cache_path = os.path.join(Paths.CACHE, f"{exchange_name}_{symbol_clean}_state.json")
         
@@ -660,7 +663,7 @@ class UnifiedBot:
             
             trade = TradeRecord(
                 symbol=self.symbol,
-                exchange=self.exchange.name if hasattr(self.exchange, 'name') else 'Unknown',
+                exchange=(self.exchange.name if self.exchange else 'Unknown') if hasattr(self.exchange, 'name') else 'Unknown',
                 side=side.upper(),
                 entry_price=entry_price,
                 exit_price=exit_price,
@@ -680,24 +683,38 @@ class UnifiedBot:
     def _get_compound_seed(self) -> float:
         """Calculate seed based on initial capital + cumulative P&L from trade history"""
         try:
-            if not HAS_TRADE_HISTORY:
-                return getattr(self, 'initial_capital', 100)
-            
-            history = get_trade_history()
-            if not history:
-                return getattr(self, 'initial_capital', 100)
-            
-            # Get trades for this symbol/exchange
-            trades = history.get_trades(days=365, exchange=self.exchange.name.lower() if hasattr(self.exchange, 'name') else None)
-            symbol_trades = [t for t in trades if t.symbol == self.symbol]
-            
-            # Calculate cumulative P&L
-            cumulative_pnl = sum(t.pnl for t in symbol_trades)
-            
-            # Initial seed from config
+            # 기본 자본 및 모듈 확인
             initial_seed = getattr(self, 'initial_capital', 100)
+            cumulative_pnl = 0.0
             
-            # Compounded seed
+            # 1. JSON 기반 새 저장소 (trade_storage) 데이터 합산
+            if hasattr(self, 'trade_storage') and self.trade_storage:
+                try:
+                    stats = self.trade_storage.get_stats()
+                    cumulative_pnl += stats.get('total_pnl_usd', 0.0)
+                except Exception as e:
+                    logging.warning(f"[COMPOUND] JSON stats failed: {e}")
+
+            # 2. SQLite 기반 옛 저장소 (trade_history) 데이터 합산
+            if HAS_TRADE_HISTORY:
+                try:
+                    history = get_trade_history()
+                    if history:
+                        # 심볼 정규화 (BTC/USDT:USDT -> BTCUSDT)
+                        target_symbol = self.symbol.replace('/', '').replace(':', '').upper()
+                        target_exch = (self.exchange.name if self.exchange else 'Unknown').lower() if hasattr(self.exchange, 'name') else None
+                        
+                        trades = history.get_trades(days=365, exchange=target_exch)
+                        symbol_trades = [t for t in trades if t.symbol.replace('/', '').replace(':', '').upper() == target_symbol]
+                        
+                        history_pnl = sum(t.pnl for t in symbol_trades)
+                        # [주의] JSON과 SQLite에 중복된 거래가 있을 수 있으나, 
+                        # 현재 필드는 독립적으로 운영되므로 일단 합산 (향후 UUID 기반 중복 제거 권장)
+                        cumulative_pnl += history_pnl
+                except Exception as e:
+                    logging.warning(f"[COMPOUND] History stats failed: {e}")
+            
+            # 자본금 합산
             compound_seed = initial_seed + cumulative_pnl
             
             # Safety: Never go below 50% of initial
@@ -705,7 +722,7 @@ class UnifiedBot:
             compound_seed = max(compound_seed, min_seed)
             
             if cumulative_pnl != 0:
-                logging.info(f"[COMPOUND] Initial=${initial_seed:.2f}, Cumulative P&L=${cumulative_pnl:+.2f}, Compound Seed=${compound_seed:.2f}")
+                logging.info(f"[COMPOUND] {self.symbol} Seed: ${initial_seed:.2f} + PnL:${cumulative_pnl:+.2f} = ${compound_seed:.2f}")
             
             return compound_seed
             
@@ -722,7 +739,7 @@ class UnifiedBot:
             
             # Check if exchange has get_trade_history method
             if not hasattr(self.exchange, 'get_trade_history'):
-                logging.info(f"[IMPORT] {self.exchange.name} does not support get_trade_history")
+                logging.info(f"[IMPORT] {(self.exchange.name if self.exchange else 'Unknown')} does not support get_trade_history")
                 return 0
             
             # Fetch from API
@@ -781,7 +798,7 @@ class UnifiedBot:
                 # Create TradeRecord
                 trade = TradeRecord(
                     symbol=symbol,
-                    exchange=self.exchange.name.lower() if hasattr(self.exchange, 'name') else 'unknown',
+                    exchange=(self.exchange.name if self.exchange else 'Unknown').lower() if hasattr(self.exchange, 'name') else 'unknown',
                     side=side,
                     entry_price=entry_price,
                     exit_price=exit_price,
@@ -817,8 +834,8 @@ class UnifiedBot:
         from paths import Paths
         import os
         
-        exchange_name = self.exchange.name.lower() if hasattr(self.exchange, 'name') else 'bybit'
-        symbol_clean = self.exchange.symbol.lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
+        exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower() if hasattr(self.exchange, 'name') else 'bybit'
+        symbol_clean = (self.exchange.symbol if self.exchange else 'Unknown').lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
         
         required = {
             "15m": os.path.join(Paths.CACHE, f"{exchange_name}_{symbol_clean}_15m.parquet"),
@@ -850,8 +867,8 @@ class UnifiedBot:
         from paths import Paths
         import os
         
-        exchange_name = self.exchange.name.lower() if hasattr(self.exchange, 'name') else 'bybit'
-        symbol_clean = self.exchange.symbol.lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
+        exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower() if hasattr(self.exchange, 'name') else 'bybit'
+        symbol_clean = (self.exchange.symbol if self.exchange else 'Unknown').lower().replace('/', '').replace('-', '') if hasattr(self.exchange, 'symbol') else 'btcusdt'
         
         # 최적화 프리셋 경로
         preset_path = os.path.join(Paths.PRESETS, f"{exchange_name}_{symbol_clean}_optimized.json")
@@ -943,8 +960,8 @@ class UnifiedBot:
             from paths import Paths
             
             cache_dir = Path(Paths.CACHE)
-            exchange_name = self.exchange.name.lower()
-            symbol_clean = self.exchange.symbol.lower().replace('/', '')
+            exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower()
+            symbol_clean = (self.exchange.symbol if self.exchange else 'Unknown').lower().replace('/', '')
             
             # 1. 원본 15m 데이터 로드
             entry_file = cache_dir / f"{exchange_name}_{symbol_clean}_15m.parquet"
@@ -1484,7 +1501,11 @@ class UnifiedBot:
         direction = 'Long' if direction_code == 'LONG' else 'Short'
         
         # 펜딩 중인 신호 중 해당 방향이 있는지 확인
-        matching_signal = next((s for s in state['pending'] if s['type'].capitalize() == direction), None)
+        # [FIX] Safe Access for Signal Object or Dict
+        matching_signal = next((
+            s for s in state.get('pending', []) 
+            if (s.get('type', '') if isinstance(s, dict) else getattr(s, 'type', '')).capitalize() == direction
+        ), None)
         if not matching_signal:
             return None
 
@@ -1524,14 +1545,17 @@ class UnifiedBot:
         state['add_count'] = 0
         state['pending'] = []  # 진입 후 pending 클리어
         
-        logging.info(f"[LIVE] 🟢 ENTRY: {direction_code} @ {entry_price:.2f}, SL={sl:.2f}, Pattern={matching_signal.get('pattern', 'W/M')}")
+        # [FIX] Safe Access for Signal Object or Dict
+        pattern_name = matching_signal.get('pattern', 'W/M') if isinstance(matching_signal, dict) else getattr(matching_signal, 'pattern', 'W/M')
+
+        logging.info(f"[LIVE] 🟢 ENTRY: {direction_code} @ {entry_price:.2f}, SL={sl:.2f}, Pattern={pattern_name}")
         
         return {
             'action': 'ENTRY',
             'direction': direction,
             'price': entry_price,
             'sl': sl,
-            'pattern': matching_signal.get('pattern', 'W/M')
+            'pattern': pattern_name
         }
 
     def _get_current_trading_conditions(self) -> dict:
@@ -1813,7 +1837,7 @@ class UnifiedBot:
                     # [FIX] String timestamp safety (try float convert for ms)
                     try:
                         ts = pd.to_datetime(float(ts_raw), unit='ms')
-                    except:
+                    except Exception as e:
                         ts = pd.to_datetime(ts_raw)
                 
                 # [FIX] 1.5. 갭 체크 (WS 수신 시에만 호출됨 - _on_candle_close에서 별도 호출해도 됨)
@@ -1901,15 +1925,19 @@ class UnifiedBot:
             cache_dir = Path(Paths.CACHE)
             cache_dir.mkdir(parents=True, exist_ok=True)
             
-            exchange_name = self.exchange.name.lower()
-            symbol_clean = self.exchange.symbol.lower().replace('/', '')
+            exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower()
+            symbol_clean = (self.exchange.symbol if self.exchange else 'Unknown').lower().replace('/', '')
             entry_file = cache_dir / f"{exchange_name}_{symbol_clean}_15m.parquet"
             
             if self.df_entry_full is not None and len(self.df_entry_full) > 0:
                 save_df = self.df_entry_full.copy()
                 if 'timestamp' in save_df.columns:
-                    save_df['timestamp'] = pd.to_datetime(save_df['timestamp'])
-                save_df.to_parquet(entry_file, index=False)
+                    # [FIX] DataManager와의 호환성을 위해 int64(ms) 형식으로 저장
+                    if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
+                        save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
+                    elif not pd.api.types.is_numeric_dtype(save_df['timestamp']):
+                        save_df['timestamp'] = pd.to_datetime(save_df['timestamp']).astype(np.int64) // 10**6
+                
                 save_df.to_parquet(entry_file, index=False)
                 
                 # [NEW] Duplicate save logic merged from realtime (Bithumb/Upbit sync)
@@ -1939,8 +1967,8 @@ class UnifiedBot:
             from paths import Paths
             
             cache_dir = Path(Paths.CACHE)
-            exchange_name = self.exchange.name.lower()
-            symbol_raw = self.exchange.symbol
+            exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower()
+            symbol_raw = (self.exchange.symbol if self.exchange else 'Unknown')
             symbol_clean = symbol_raw.lower().replace('/', '').replace(':', '')
             
             # 1. 대상 캔들 리스트 생성
@@ -1993,7 +2021,7 @@ class UnifiedBot:
             # trade_log에 기록
             capital = getattr(self.exchange, 'capital', 100)
             leverage = getattr(self.exchange, 'leverage', 1)
-            trade_logger.info(f"[TRADE] {direction.upper()}_ENTRY | {self.exchange.symbol} | Price={price:.2f} | SL={sl:.2f} | Capital=${capital:.2f} | Lev={leverage}x")
+            trade_logger.info(f"[TRADE] {direction.upper()}_ENTRY | {(self.exchange.symbol if self.exchange else 'Unknown')} | Price={price:.2f} | SL={sl:.2f} | Capital=${capital:.2f} | Lev={leverage}x")
             
             # Signal 객체 생성
             signal = Signal(
@@ -2047,19 +2075,19 @@ class UnifiedBot:
                     # Calculate PnL locally if not provided
                     if self.position.entry_price > 0:
                         if direction == 'Long':
-                            pnl_pct = (price - self.position.entry_price) / self.position.entry_price * 100
+                            pnl_pct = (price - self.position.entry_price) / self.position.entry_price * (self.exchange.leverage if self.exchange else 1) * 100
                         else:
-                            pnl_pct = (self.position.entry_price - price) / self.position.entry_price * 100
+                            pnl_pct = (self.position.entry_price - price) / self.position.entry_price * (self.exchange.leverage if self.exchange else 1) * 100
                         
                         # Apply leverage to PnL % for absolute display (optional, depending on preference)
                         # Here we usually store ROE (Return on Equity)? Or raw price move?
                         # Let's align with storage expectation. Usually Capital * Leverage * (Move / Entry)
                         
-                        margin_used = (self.exchange.capital / self.exchange.leverage) * self.exchange.leverage # Essentially size or capital
+                        margin_used = ((self.exchange.capital if self.exchange else 0) / (self.exchange.leverage if self.exchange else 1)) * (self.exchange.leverage if self.exchange else 1) # Essentially size or capital
                         # More accurately: Profit = Size * (PriceDiff)
                         
                         # Simplified PnL USD estimate (Exchange adapter does this better, but we need record)
-                        # We used 'self.exchange.capital' which is updated in adapter.
+                        # We used '(self.exchange.capital if self.exchange else 0)' which is updated in adapter.
                         # Let's trust adapter's capital update diff if possible, or estimate here.
                         # For now, estimate based on size.
                         size = self.position.size
@@ -2097,13 +2125,15 @@ class UnifiedBot:
             # trade_log에 기록 (PnL 계산 포함)
             if self.position:
                 entry = self.position.entry_price
-                if self.position.side == 'Long':
-                    pnl_pct = (price - entry) / entry * 100
-                else:
-                    pnl_pct = (entry - price) / entry * 100
-                    
                 leverage = getattr(self.exchange, 'leverage', 1)
-                pnl_pct_leveraged = pnl_pct * leverage
+                
+                if self.position.side == 'Long':
+                    pnl_pct = (price - entry) / entry * leverage * 100
+                else:
+                    pnl_pct = (entry - price) / entry * leverage * 100
+                    
+                # [FIX] pnl_pct가 이미 레버리지가 포함된 ROE이므로 추가 곱셈 방지
+                pnl_pct_leveraged = pnl_pct 
                 capital = getattr(self.exchange, 'capital', 100)
                 profit_usd = capital * (pnl_pct_leveraged / 100)
                 new_balance = capital + profit_usd
@@ -2114,7 +2144,7 @@ class UnifiedBot:
                 # [CRITICAL] 거래 기록 저장 (복리 계산 및 대시보드 표시용)
                 self.save_trade_history({
                     'time': datetime.now().isoformat(),
-                    'symbol': self.exchange.symbol,
+                    'symbol': (self.exchange.symbol if self.exchange else 'Unknown'),
                     'side': self.position.side,
                     'entry': entry,
                     'exit': price,
@@ -2123,7 +2153,7 @@ class UnifiedBot:
                     'pnl_usd': profit_usd,
                     'pnl_pct': pnl_pct_leveraged,
                     'be_triggered': getattr(self.position, 'be_triggered', False),
-                    'exchange': self.exchange.name,
+                    'exchange': (self.exchange.name if self.exchange else 'Unknown'),
                     'order_id': order_id,
                     'reason': reason
                 })
@@ -2138,25 +2168,34 @@ class UnifiedBot:
                         if self.notifier:
                             self.notifier.notify_error(f"🛑 일일 손실 한도 도달!\n현재 손실: {current_daily_dd:.2f}%\n봇이 자동으로 매매를 중단합니다.")
                 
-                trade_logger.info(f"[TRADE] {direction.upper()}_EXIT | {self.exchange.symbol} | Entry={entry:.2f} | Exit={price:.2f} | PnL={pnl_pct_leveraged:+.2f}% | Profit=${profit_usd:+.2f} | Balance=${new_balance:.2f} | ID={order_id}")
+                trade_logger.info(f"[TRADE] {direction.upper()}_EXIT | {(self.exchange.symbol if self.exchange else 'Unknown')} | Entry={entry:.2f} | Exit={price:.2f} | PnL={pnl_pct_leveraged:+.2f}% | Profit=${profit_usd:+.2f} | Balance=${new_balance:.2f} | ID={order_id}")
 
                 # [GUI] 일반 청산 로그
-                self._log_trade_to_gui({
-                    'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'symbol': self.exchange.symbol,
-                    'side': direction, # Position side
-                    'entry_price': entry,
-                    'exit_price': price,
-                    'pnl': profit_usd,
-                    'pnl_pct': pnl_pct_leveraged,
-                    'action': 'EXIT',
-                    'reason': reason,
-                    'exchange': self.exchange.name
-                })
+                if self.exchange:
+                    self._log_trade_to_gui({
+                        'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'symbol': self.exchange.symbol,
+                        'side': direction, # Position side
+                        'entry_price': entry,
+                        'exit_price': price,
+                        'pnl': profit_usd,
+                        'pnl_pct': pnl_pct_leveraged,
+                        'action': 'EXIT',
+                        'reason': reason,
+                        'exchange': self.exchange.name
+                    })
             
-            # 상태 정리
+            # [FIX] 상태 정리 (BT 상태 동기화 포함)
             self.position = None
             self.exchange.position = None
+            if self.bt_state:
+                self.bt_state['position'] = None
+                self.bt_state['positions'] = []
+            
+            # [FIX] 매매 종료 후 실시간 자본금 갱신
+            if self.use_compounding:
+                self.update_capital_for_compounding()
+            
             self.save_state()
             
             # 텔레그램 알림
@@ -2206,7 +2245,7 @@ class UnifiedBot:
             price = pred.get('current_price', 0)
             
             # 로그 생성
-            symbol = self.exchange.symbol
+            symbol = (self.exchange.symbol if self.exchange else 'Unknown')
             entry_tf = self.strategy_params.get('entry_tf', '15m')
             
             logging.info(f"[PREDICT] ━━━ 진입 조건 체크 ━━━")
@@ -2217,9 +2256,13 @@ class UnifiedBot:
             logging.info(f"[PREDICT] └─ 유효: {c['validity']['desc']}")
             
             if pred['ready']:
-                direction = pred['direction']
-                logging.info(f"[PREDICT] 🟢 봉 마감 시 {direction} 진입 예정")
-                logging.info(f"[PREDICT] └─ 현재가: ${price:,.0f}")
+                # 이미 포지션 있는지 재확인 (로그 명확화)
+                if self.position or (self.bt_state and self.bt_state.get('position')):
+                    logging.info(f"[PREDICT] 🔵 이미 포지션 보유 중 ({symbol})")
+                else:
+                    direction = pred['direction']
+                    logging.info(f"[PREDICT] 🟢 봉 마감 시 {direction} 진입 예정")
+                    logging.info(f"[PREDICT] └─ 현재가: ${price:,.0f}")
             else:
                 logging.info(f"[PREDICT] ⚪ 진입 조건 미충족")
                 
@@ -2439,7 +2482,7 @@ class UnifiedBot:
             # [FIX] Hedge Mode: 같은 심볼에 Long/Short 둘 다 있을 수 있음
             my_positions = []
             for pos in positions:
-                if pos.get('symbol') == self.exchange.symbol:
+                if pos.get('symbol') == (self.exchange.symbol if self.exchange else 'Unknown'):
                     my_positions.append(pos)
             
             # 3. 봇 상태와 비교 (하나라도 size > 0이면 거래소에 포지션 있음)
@@ -2454,6 +2497,10 @@ class UnifiedBot:
                 try:
                     last_price = self.last_ws_price or (self.df_entry_full['close'].iloc[-1] if hasattr(self, 'df_entry_full') and self.df_entry_full is not None and len(self.df_entry_full) > 0 else 0)
                     self._record_trade(exit_price=last_price, reason="SL_OR_TP")
+                    
+                    # [FIX] 동기화 시 거래 기록 후 자본금 즉시 갱신
+                    if self.use_compounding:
+                        self.update_capital_for_compounding()
                 except Exception as e:
                     logging.debug(f"[SYNC] Trade record failed: {e}")
                 
@@ -2487,7 +2534,7 @@ class UnifiedBot:
                         msg = f"[SYNC] ⚠️ 외부 포지션 감지 ({side} @ {entry}, ID: {exchange_order_id}). 봇이 관리하지 않는 주문이며 무시됩니다."
                         logging.warning(msg)
                         if self.notifier:
-                            self.notifier.notify_error(f"⚠️ 외부 포지션 감지 ({self.exchange.symbol}): ID {exchange_order_id} 주문은 봇 관리 대상에서 제외됩니다.")
+                            self.notifier.notify_error(f"⚠️ 외부 포지션 감지 ({(self.exchange.symbol if self.exchange else 'Unknown')}): ID {exchange_order_id} 주문은 봇 관리 대상에서 제외됩니다.")
                         return True
                     
                     # 봇 상태와 방향이 다르면 업데이트
@@ -2508,7 +2555,7 @@ class UnifiedBot:
                         has_changed = True
                         
                     # self.position 객체가 없으면 생성 (봇 엔진용)
-                    if self.position is None or self.position.side != side:
+                    if (self.position is None or self.position.side != side) and self.exchange:
                         self.position = Position(
                             symbol=self.exchange.symbol,
                             side=side,
@@ -2756,6 +2803,16 @@ class UnifiedBot:
             # 5분마다 가격 로그
             logging.info(f"[WS] 💰 Price: ${price:,.2f}")
             self._last_price_log = now
+            
+        # [v1.5.2] 포지션 보유 중인 경우 주기적으로 상태 저장 (대시보드 실시간 업데이트용)
+        if self.position or (self.bt_state and self.bt_state.get('position')):
+            if not hasattr(self, '_last_state_save_time'):
+                self._last_state_save_time = 0
+            
+            # 10초마다 저장
+            if time.time() - self._last_state_save_time > 10:
+                self.save_state()
+                self._last_state_save_time = time.time()
     
     # Duplicate method removed
     
@@ -2826,7 +2883,8 @@ class UnifiedBot:
                 if state and state.get('position'):
                     self.position = Position.from_dict(state['position'])
                     self.exchange.position = self.position
-                    self.exchange.capital = state.get('capital', self.exchange.amount_usd)
+                    if self.exchange:
+                        self.exchange.capital = state.get('capital', self.exchange.amount_usd)
                     # [NEW] bt_state 복구
                     if state.get('bt_state'):
                         self.bt_state.update(state['bt_state'])
@@ -2840,7 +2898,8 @@ class UnifiedBot:
                 if state.get('position'):
                     self.position = Position.from_dict(state['position'])
                     self.exchange.position = self.position
-                    self.exchange.capital = state.get('capital', self.exchange.amount_usd)
+                    if self.exchange:
+                        self.exchange.capital = state.get('capital', self.exchange.amount_usd)
                     # [NEW] bt_state 복구
                     if state.get('bt_state'):
                         self.bt_state.update(state['bt_state'])
@@ -2853,8 +2912,10 @@ class UnifiedBot:
         try:
             state = {
                 'position': self.position.to_dict() if self.position else None,
-                'capital': self.exchange.capital,
-                'exchange': self.exchange.name,
+                'capital': (self.exchange.capital if self.exchange else 0),
+                'exchange': (self.exchange.name if self.exchange else 'Unknown'),
+                'symbol': self.symbol,
+                'current_price': self.last_ws_price if self.last_ws_price else 0, # [v1.5.2] Dashboard PnL
                 'timestamp': datetime.now().isoformat(),
                 # [NEW] bt_state도 저장 (재시작 시 복구용)
                 'bt_state': {
@@ -2918,11 +2979,11 @@ class UnifiedBot:
         """신호 감지용 거래소 반환 (바이낸스 모드면 바이낸스, 아니면 매매 거래소)"""
         # [NEW] 빗썸-업비트 하이브리드 리다이렉션
         # 빗썸 매매더라도 데이터(신호)는 업비트에서 가져옴
-        if self.exchange.name.lower() == 'bithumb' and not self.use_binance_signal:
+        if (self.exchange.name if self.exchange else 'Unknown').lower() == 'bithumb' and not self.use_binance_signal:
             try:
                 from constants import COMMON_KRW_SYMBOLS
                 # 심볼에서 코인 추출
-                symbol = self.exchange.symbol
+                symbol = (self.exchange.symbol if self.exchange else 'Unknown')
                 coin = symbol.split('/')[0].replace('KRW', '').replace('-', '').upper()
                 
                 if coin in COMMON_KRW_SYMBOLS:
@@ -2943,7 +3004,7 @@ class UnifiedBot:
         if not self.use_binance_signal:
             return self.exchange
         
-        if self.exchange.name.lower() == 'binance':
+        if (self.exchange.name if self.exchange else 'Unknown').lower() == 'binance':
             return self.exchange
         
         # 바이낸스 신호 거래소 생성 (API 키 없이 데이터만)
@@ -2951,7 +3012,7 @@ class UnifiedBot:
             try:
                 if CCXTExchange:
                     self.signal_exchange = CCXTExchange('binance', {
-                        'symbol': self.exchange.symbol,
+                        'symbol': (self.exchange.symbol if self.exchange else 'Unknown'),
                         'api_key': '',
                         'api_secret': ''
                     })
@@ -2971,7 +3032,7 @@ class UnifiedBot:
         if not self.use_binance_signal:
             return True
         
-        if self.exchange.name.lower() == 'binance':
+        if (self.exchange.name if self.exchange else 'Unknown').lower() == 'binance':
             return True
         
         trade_price = self.exchange.get_current_price()
@@ -2981,10 +3042,10 @@ class UnifiedBot:
         diff_pct = abs(trade_price - signal_price) / signal_price
         
         if diff_pct > self.MAX_PRICE_DIFF_PCT:
-            logging.warning(f"⚠️ Price mismatch! Binance: {signal_price:.2f}, {self.exchange.name}: {trade_price:.2f} (diff: {diff_pct*100:.2f}%)")
+            logging.warning(f"⚠️ Price mismatch! Binance: {signal_price:.2f}, {(self.exchange.name if self.exchange else 'Unknown')}: {trade_price:.2f} (diff: {diff_pct*100:.2f}%)")
             return False
         
-        logging.info(f"✅ Price verified: Binance={signal_price:.2f}, {self.exchange.name}={trade_price:.2f} (diff: {diff_pct*100:.3f}%)")
+        logging.info(f"✅ Price verified: Binance={signal_price:.2f}, {(self.exchange.name if self.exchange else 'Unknown')}={trade_price:.2f} (diff: {diff_pct*100:.3f}%)")
         return True
     
     def _check_4h_trend(self, signal_type: str) -> bool:
@@ -3181,7 +3242,7 @@ class UnifiedBot:
                 if should_add:
                     logging.info(f"📊 Pullback Entry Triggered: RSI={rsi:.1f}")
                     # 추가 진입 실행 (기존 포지션 크기의 100%)
-                    add_size = self.exchange.capital * 1.0 * self.exchange.leverage / current_price
+                    add_size = (self.exchange.capital if self.exchange else 0) * 1.0 * (self.exchange.leverage if self.exchange else 1) / current_price
                     result_order = self.exchange.add_position(self.position.side, add_size)
                     if result_order:
                         self.position.add_count = getattr(self.position, 'add_count', 0) + 1
@@ -3215,18 +3276,19 @@ class UnifiedBot:
             stats = self.trade_storage.get_stats()
             total_pnl = stats.get('total_pnl_usd', 0)
             
-            old_capital = self.exchange.capital
+            old_capital = (self.exchange.capital if self.exchange else 0)
             new_capital = self.initial_capital + total_pnl
             
             # 자본금이 변했을 때만 로그 출력
             if abs(new_capital - old_capital) > 0.01:
-                self.exchange.capital = new_capital
+                if self.exchange:
+                    self.exchange.capital = new_capital
                 logging.info(f"💰 Capital Updated (Bot History): ${old_capital:.2f} → ${new_capital:.2f}")
                 logging.info(f"   Based on {stats['total_trades']} trades, Total PnL: ${total_pnl:.2f}")
         except Exception as e:
             # [이슈#3 수정] 복리 계산 실패 시 상세 로그 및 폴백
             logging.error(f"[COMPOUNDING] ❌ Capital update failed: {e}")
-            logging.error(f"[COMPOUNDING] Fallback: Keeping current capital ${self.exchange.capital:.2f}")
+            logging.error(f"[COMPOUNDING] Fallback: Keeping current capital ${(self.exchange.capital if self.exchange else 0):.2f}")
             import traceback
             logging.debug(traceback.format_exc())
     
@@ -3235,28 +3297,29 @@ class UnifiedBot:
         entry = self.position.entry_price
         side = self.position.side
         
+        leverage = (self.exchange.leverage if self.exchange else 1)
         if side == 'Long':
-            pnl_pct = (exit_price - entry) / entry * 100
+            pnl_pct = (exit_price - entry) / entry * leverage * 100
         else:
-            pnl_pct = (entry - exit_price) / entry * 100
+            pnl_pct = (entry - exit_price) / entry * leverage * 100
         
-        # [FIX] 실제 주문 금액 기준 PnL 계산
-        position_value = self.position.size * entry
-        pnl_usd = position_value * (pnl_pct / 100)
+        # [FIX] ROE 기반 손익 계산 (capital * ROE)
+        pnl_usd = (self.exchange.capital if self.exchange else 0) * (pnl_pct / 100)
         
         # capital 업데이트
-        self.exchange.capital += pnl_usd
+        if self.exchange:
+            self.exchange.capital += pnl_usd
         
-        logging.info(f"🔴 SL HIT: PnL {pnl_pct:.2f}% (${pnl_usd:.2f}) | Capital: ${self.exchange.capital:.2f}")
+        logging.info(f"🔴 SL HIT: PnL {pnl_pct:.2f}% (${pnl_usd:.2f}) | Capital: ${(self.exchange.capital if self.exchange else 0):.2f}")
         
         # [TRADE_LOG] 기록
         order_id = getattr(self.position, 'order_id', '') if self.position else ''
-        trade_logger.info(f"[TRADE] SL_EXIT | {self.exchange.symbol} | Entry={entry:.2f} | Exit={exit_price:.2f} | PnL={pnl_pct:+.2f}% | Profit=${pnl_usd:+.2f} | ID={order_id}")
+        trade_logger.info(f"[TRADE] SL_EXIT | {(self.exchange.symbol if self.exchange else 'Unknown')} | Entry={entry:.2f} | Exit={exit_price:.2f} | PnL={pnl_pct:+.2f}% | Profit=${pnl_usd:+.2f} | ID={order_id}")
         
         # [CRITICAL] 거래 기록 저장 (복리 계산용)
         self.save_trade_history({
             'time': datetime.now().isoformat(),
-            'symbol': self.exchange.symbol,
+            'symbol': (self.exchange.symbol if self.exchange else 'Unknown'),
             'side': side,
             'entry': entry,
             'exit': exit_price,
@@ -3265,14 +3328,14 @@ class UnifiedBot:
             'pnl_usd': pnl_usd,
             'pnl_pct': pnl_pct,
             'be_triggered': getattr(self.position, 'be_triggered', False),
-            'exchange': self.exchange.name,
+            'exchange': (self.exchange.name if self.exchange else 'Unknown'),
             'order_id': getattr(self.position, 'order_id', '') if self.position else ''
         })
         
         # [GUI] SL 청산 로그
         self._log_trade_to_gui({
             'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'symbol': self.exchange.symbol,
+            'symbol': (self.exchange.symbol if self.exchange else 'Unknown'),
             'side': side,
             'entry_price': entry,
             'exit_price': exit_price,
@@ -3280,7 +3343,7 @@ class UnifiedBot:
             'pnl_pct': pnl_pct,
             'action': 'EXIT',
             'reason': 'SL_HIT',
-            'exchange': self.exchange.name
+            'exchange': (self.exchange.name if self.exchange else 'Unknown')
         })
         
         # [NEW] 즉시 복리 자본 업데이트
@@ -3288,13 +3351,19 @@ class UnifiedBot:
         
         self.position = None
         self.exchange.position = None
+        
+        # [FIX] 백테스트 상태 동기화 (SL 히트 시 초기화)
+        if self.bt_state:
+            self.bt_state['position'] = None
+            self.bt_state['positions'] = []
+            
         self.save_state()
         
         # 텔레그램 청산 알림
 
         if self.notifier:
             self.notifier.notify_exit(
-                self.exchange.name, self.exchange.symbol,
+                (self.exchange.name if self.exchange else 'Unknown'), (self.exchange.symbol if self.exchange else 'Unknown'),
                 side, pnl_pct, pnl_usd, exit_price
             )
         
@@ -3319,7 +3388,7 @@ class UnifiedBot:
                 
             current_price = action.get('price', self.exchange.get_current_price())
             # 추가 진입 수량 계산 (기존 자본 기준)
-            add_size = self.exchange.capital * 1.0 * self.exchange.leverage / current_price
+            add_size = (self.exchange.capital if self.exchange else 0) * 1.0 * (self.exchange.leverage if self.exchange else 1) / current_price
             
             logging.info(f"📊 [WS] Pullback Add Triggered: {self.position.side} @ {current_price:.2f}")
             
@@ -3411,6 +3480,17 @@ class UnifiedBot:
             if signal is None:
                 logging.warning("[ENTRY] No signal provided")
                 return False
+
+            # [v1.5.2] Slippage Check (기본 1%)
+            max_slippage = self.exchange.preset_params.get('max_slippage', 0.01)
+            current_p = self._get_price_safe()
+            signal_p = getattr(signal, 'price', current_p) # 시그널 발생 당시 가격이 있으면 비교
+            
+            if current_p and signal_p:
+                diff_pct = abs(current_p - signal_p) / signal_p
+                if diff_pct > max_slippage:
+                    logging.warning(f"[ENTRY] 🚫 Slippage too high: {diff_pct:.2%} > {max_slippage:.2%} - Entry skipped")
+                    return False
             
             # [HOTFIX] 현물 거래소 숏 차단 (Upbit, Bithumb)
             if isinstance(signal, dict):
@@ -3447,9 +3527,9 @@ class UnifiedBot:
                 # 잔고 체크 실패해도 진행 (거래소마다 로직 다를 수 있음)
 
             # 3. 주문 크기 계산
-            symbol = self.exchange.symbol
+            symbol = (self.exchange.symbol if self.exchange else 'Unknown')
             # 프리셋 레버리지 우선, 없으면 exchange 레버리지
-            leverage = self.exchange.preset_params.get('leverage', self.exchange.leverage)
+            leverage = self.exchange.preset_params.get('leverage', (self.exchange.leverage if self.exchange else 1))
             # 리스크 % (기본 98% - 풀시드)
             risk_pct = 0.98 
             
@@ -3457,7 +3537,7 @@ class UnifiedBot:
             if getattr(self, 'use_compounding', True) and HAS_TRADE_HISTORY:
                 capital = self._get_compound_seed()
             else:
-                capital = getattr(self, 'initial_capital', self.exchange.capital)
+                capital = getattr(self, 'initial_capital', (self.exchange.capital if self.exchange else 0))
             order_value = capital * risk_pct * leverage
             
             # 최소 주문 크기 체크 (100 USDT)
@@ -3583,13 +3663,13 @@ class UnifiedBot:
                     'price': price,
                     'size': qty,
                     'action': 'ENTRY',
-                    'exchange': self.exchange.name
+                    'exchange': (self.exchange.name if self.exchange else 'Unknown')
                 })
                 
                 # 텔레그램 알림
                 if self.notifier:
                     self.notifier.notify_entry(
-                        self.exchange.name, symbol, side, price, qty, signal.stop_loss, signal.pattern
+                        (self.exchange.name if self.exchange else 'Unknown'), symbol, side, price, qty, signal.stop_loss, signal.pattern
                     )
                 return True
             else:
@@ -3608,13 +3688,13 @@ class UnifiedBot:
     def run(self):
         """메인 루프"""
 
-        logging.info(f"Starting {self.exchange.name} Bot...")
+        logging.info(f"Starting {(self.exchange.name if self.exchange else 'Unknown')} Bot...")
         
         # 1. 봇 상태 업데이트
 
         try:
             from bot_status import update_bot_running, update_bot_stopped, update_bot_state, update_position, clear_position
-            update_bot_running(self.exchange.name, self.exchange.symbol, "Alpha-X7 Final")
+            update_bot_running((self.exchange.name if self.exchange else 'Unknown'), (self.exchange.symbol if self.exchange else 'Unknown'), "Alpha-X7 Final")
         except ImportError as e:
             logging.debug(f"Bot status modules not found: {e}")
 
@@ -3624,7 +3704,7 @@ class UnifiedBot:
         try:
             from telegram_notifier import TelegramNotifier
             self.notifier = TelegramNotifier()
-            self.notifier.notify_bot_status("시작", self.exchange.name, self.exchange.symbol)
+            self.notifier.notify_bot_status("시작", (self.exchange.name if self.exchange else 'Unknown'), (self.exchange.symbol if self.exchange else 'Unknown'))
         except ImportError:
             self.notifier = None
         
@@ -3791,9 +3871,9 @@ class UnifiedBot:
                         entry = self.position.entry_price
                         sl = self.position.stop_loss
                         if self.position.side == 'Long':
-                            pnl_pct = (price - entry) / entry * 100 if price > 0 else 0
+                            pnl_pct = (price - entry) / entry * (self.exchange.leverage if self.exchange else 1) * 100 if price > 0 else 0
                         else:
-                            pnl_pct = (entry - price) / entry * 100 if price > 0 else 0
+                            pnl_pct = (entry - price) / entry * (self.exchange.leverage if self.exchange else 1) * 100 if price > 0 else 0
                         
                         logging.info(f"[STATUS] 📊 {self.position.side} | Entry=${entry:,.0f} | Now=${price:,.0f} | SL=${sl:,.0f} | PnL={pnl_pct:+.2f}%")
                     else:
@@ -3812,12 +3892,13 @@ class UnifiedBot:
                         current_price = self.last_ws_price if self.last_ws_price else self.exchange.get_current_price()
                         if current_price > 0:
                             entry = self.position.entry_price
+                            leverage = (self.exchange.leverage if self.exchange else 1)
                             if self.position.side == 'Long':
-                                pnl_pct = (current_price - entry) / entry * 100
+                                pnl_pct = (current_price - entry) / entry * leverage * 100
                             else:
-                                pnl_pct = (entry - current_price) / entry * 100
+                                pnl_pct = (entry - current_price) / entry * leverage * 100
                             
-                            pnl_usd = self.exchange.capital * self.exchange.leverage * (pnl_pct / 100)
+                            pnl_usd = (self.exchange.capital if self.exchange else 0) * (pnl_pct / 100)
                             
                             update_position(
                                 self.position.side, entry, current_price,
@@ -3894,8 +3975,8 @@ class UnifiedBot:
                 try:
                     status_data = {
                         'running': True,
-                        'exchange': self.exchange.name,
-                        'symbol': self.exchange.symbol,
+                        'exchange': (self.exchange.name if self.exchange else 'Unknown'),
+                        'symbol': (self.exchange.symbol if self.exchange else 'Unknown'),
                         'current_price': self.last_ws_price if self.last_ws_price else 0,
                         'timestamp': datetime.now().isoformat(),
                         'pnl_pct': 0,
@@ -3907,12 +3988,13 @@ class UnifiedBot:
                         entry = self.position.entry_price
                         current = self.last_ws_price if self.last_ws_price else self.exchange.get_current_price()
                         if current > 0:
+                            leverage = (self.exchange.leverage if self.exchange else 1)
                             if self.position.side == 'Long':
-                                pnl_pct = (current - entry) / entry * 100
+                                pnl_pct = (current - entry) / entry * leverage * 100
                             else:
-                                pnl_pct = (entry - current) / entry * 100
+                                pnl_pct = (entry - current) / entry * leverage * 100
                             status_data['pnl_pct'] = pnl_pct
-                            status_data['pnl_usd'] = self.exchange.capital * self.exchange.leverage * (pnl_pct / 100)
+                            status_data['pnl_usd'] = (self.exchange.capital if self.exchange else 0) * (pnl_pct / 100)
                             status_data['position'] = self.position.side
                             status_data['entry_price'] = entry
                     

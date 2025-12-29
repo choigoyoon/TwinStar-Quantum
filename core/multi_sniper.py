@@ -430,7 +430,7 @@ class MultiCoinSniper:
                 # REST API로 수집 (거래소별)
                 limit = min(int(gap_hours * 4) + 10, 500)
                 
-                if self.exchange == 'bybit':
+                if self.exchange.lower() == 'bybit':
                     url = "https://api.bybit.com/v5/market/kline"
                     params = {'category': 'linear', 'symbol': symbol, 'interval': '15', 'limit': limit}
                     response = requests.get(url, params=params, timeout=10)
@@ -454,7 +454,7 @@ class MultiCoinSniper:
                             df.to_parquet(filepath, index=False)
                             self.logger.info(f"[{symbol}] 갭 채우기 완료: {len(df_new)}개")
                 
-                elif self.exchange == 'binance':
+                elif self.exchange.lower() == 'binance':
                     url = "https://fapi.binance.com/fapi/v1/klines"
                     params = {'symbol': symbol, 'interval': '15m', 'limit': limit}
                     response = requests.get(url, params=params, timeout=10)

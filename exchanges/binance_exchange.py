@@ -34,6 +34,10 @@ class BinanceExchange(BaseExchange):
         self.client = None
         self.authenticated = False
         self.hedge_mode = False
+        
+        # [FIX] Binance 심볼 형식 정규화 (BTC/USDT -> BTCUSDT)
+        self.symbol = self.symbol.replace('/', '').replace('-', '').upper()
+
     
     def connect(self) -> bool:
         """API 연결 (SecureStorage 연동)"""

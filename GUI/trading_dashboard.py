@@ -1380,6 +1380,30 @@ class TradingDashboard(QWidget):
         
         self.multi_tab_layout.addWidget(self.multi_explorer)
 
+    def _add_coin_row(self):
+        """코인 행 추가"""
+        # 라이선스 제한 체크
+        max_coins = self._get_max_coins()
+        if len(self.coin_rows) >= max_coins:
+            QMessageBox.warning(self, "제한", f"현재 티어 최대 {max_coins}개 코인만 지원됩니다.")
+            return
+        
+        row = CoinRow(self.row_counter, self)
+        row.start_clicked.connect(self._on_row_start)
+        row.stop_clicked.connect(self._on_row_stop)
+        row.remove_clicked.connect(self._on_row_remove)
+        
+        self.rows_layout.addWidget(row)
+        self.coin_rows.append(row)
+        self.row_counter += 1
+        
+        # 추가 버튼 비활성화 체크
+        if len(self.coin_rows) >= max_coins:
+            self.add_btn.setEnabled(False)
+        
+        # 상태 저장
+        self.save_state()
+
     def _on_single_toggled(self, checked): pass # Deprecated
     def _on_multi_toggled(self, checked): pass # Deprecated
     def _init_single_trading(self): pass # Deprecated

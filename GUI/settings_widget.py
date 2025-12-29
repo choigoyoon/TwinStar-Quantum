@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QLineEdit, QSpinBox, QCheckBox, QComboBox,
     QGridLayout, QMessageBox, QFrame, QScrollArea
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread
 from PyQt5.QtGui import QFont
 
 # Path setup

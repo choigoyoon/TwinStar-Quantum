@@ -229,8 +229,30 @@ class AlphaX7Core:
             return None
         
         ema20 = df_mtf['close'].ewm(span=20, adjust=False).mean()
-        last_close = df_mtf['close'].iloc[-1]  # 현재 진행 중인 캔들 사용
-        last_ema = ema20.iloc[-1]
+        
+        # [FIX] 봉마감 전 허위 트렌드 감지 방지 (마지막 진행 중인 캔들이 아닌 확정된 봉 사용)
+        from datetime import datetime
+        now_utc = datetime.utcnow()
+        last_candle_time = df_mtf.index[-1]
+        
+        # TF 문자열을 분 단위로 변환 (예: '4h' -> 240)
+        def tf_to_min(tf_str):
+            tf_str = tf_str.lower()
+            if 'h' in tf_str: return int(tf_str.replace('h', '')) * 60
+            if 'd' in tf_str: return 1440
+            if 'w' in tf_str: return 10080
+            return 240
+            
+        is_last_candle_closed = (now_utc - last_candle_time.to_pydatetime()).total_seconds() >= (tf_to_min(mtf) * 60)
+        
+        if is_last_candle_closed:
+            last_close = df_mtf['close'].iloc[-1]
+            last_ema = ema20.iloc[-1]
+        else:
+            # 진행 중인 봉이므로 이전 봉의 EMA/Close 사용 (백테스트와 동기화)
+            if len(df_mtf) < 22: return None
+            last_close = df_mtf['close'].iloc[-2]
+            last_ema = ema20.iloc[-2]
         
         return 'up' if last_close > last_ema else 'down'
     

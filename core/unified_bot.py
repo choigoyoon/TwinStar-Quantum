@@ -2290,8 +2290,25 @@ class UnifiedBot:
             tolerance = self.PATTERN_TOLERANCE
             validity_hours = self.ENTRY_VALIDITY_HOURS
             
-            # 모든 시그널 추출
-            all_signals = self.strategy._extract_all_signals(df_pattern, tolerance, validity_hours)
+            # [FIX] 1H 봉마감 전 허위 신호 방지 (마지막 진행 중인 캔들 제외)
+            from datetime import datetime
+            now_utc = datetime.utcnow()
+            last_candle_time = pd.Timestamp(df_pattern.iloc[-1]['timestamp'])
+            
+            # 1H TF 기준 (다른 TF도 고려 가능하게 general하게 처리)
+            pattern_tf_min = int(self.tf_config.get('pattern', '60'))
+            is_candle_closed = (now_utc - last_candle_time.to_pydatetime()).total_seconds() >= (pattern_tf_min * 60)
+            
+            if not is_candle_closed:
+                # 아직 진행 중인 봉이면 이전 확정된 봉들만 사용
+                # [NOTE] _extract_all_signals 내부에서 confirmed_time을 iloc[i]로 잡으므로, 
+                # 마지막 봉이 i가 되면 봉 진행 중에 시그널이 뜰 수 있음.
+                df_for_detection = df_pattern.iloc[:-1]
+            else:
+                df_for_detection = df_pattern
+                
+            # 모든 시그널 추출 (확정된 봉 기준)
+            all_signals = self.strategy._extract_all_signals(df_for_detection, tolerance, validity_hours)
             
             # 마지막 체크 시간 이후 새 시그널만 추가
             new_count = 0

@@ -297,7 +297,7 @@ except ImportError:
         '15min': '15min', '15m': '15min', '30min': '30min', '30m': '30min',
         '1h': '1h', '1H': '1h', '4h': '4h', '4H': '4h', '1d': '1D', '1D': '1D', '1w': '1W', '1W': '1W'
     }
-    DEFAULT_PARAMS = {'atr_mult': 1.25, 'slippage': 0.0005, 'fee': 0.00055}
+    DEFAULT_PARAMS = {'atr_mult': 1.5, 'slippage': 0.0005, 'fee': 0.00055}  # [SYNC] 1.25 → 1.5
     shared_resample = None
 
 
@@ -391,14 +391,15 @@ class UnifiedBot:
     }
     
     # 전략 파라미터 기본값 (JSON에서 오버라이드)
-    DEFAULT_PATTERN_TOLERANCE = 0.05
-    DEFAULT_ENTRY_VALIDITY_HOURS = 4.0
-    DEFAULT_ATR_MULT = 1.25  # [FIX] DEFAULT_PARAMS와 통일 (1.5 → 1.25)
-    DEFAULT_TRAIL_START_R = 1.0
-    DEFAULT_TRAIL_DIST_R = 0.2
-    DEFAULT_RSI_PERIOD = 14  # [FIX] 21 → 14 (Standard)
-    DEFAULT_PULLBACK_RSI_LONG = 45  # [FIX] 40 → 45 (Relaxed)
-    DEFAULT_PULLBACK_RSI_SHORT = 55  # [FIX] 60 → 55 (Relaxed)
+    # [SYNC] 백테스트(strategy_core.py)와 동일한 값으로 동기화 - 2024.12.30
+    DEFAULT_PATTERN_TOLERANCE = 0.03  # [SYNC] 0.05 → 0.03 (백테스트 기준)
+    DEFAULT_ENTRY_VALIDITY_HOURS = 48.0  # [SYNC] 4.0 → 48.0 (백테스트 기준 - 중요!)
+    DEFAULT_ATR_MULT = 1.5  # [SYNC] 1.25 → 1.5 (백테스트 기준)
+    DEFAULT_TRAIL_START_R = 0.8  # [SYNC] 1.0 → 0.8 (백테스트 기준)
+    DEFAULT_TRAIL_DIST_R = 0.5  # [SYNC] 0.2 → 0.5 (백테스트 기준)
+    DEFAULT_RSI_PERIOD = 14  # 동일
+    DEFAULT_PULLBACK_RSI_LONG = 40  # [SYNC] 45 → 40 (백테스트 기준)
+    DEFAULT_PULLBACK_RSI_SHORT = 60  # [SYNC] 55 → 60 (백테스트 기준)
     DEFAULT_MAX_ADDS = 1
     DEFAULT_ENABLE_PULLBACK = True  # 불타기 ON/OFF
     

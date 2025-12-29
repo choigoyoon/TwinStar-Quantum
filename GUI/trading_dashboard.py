@@ -1113,6 +1113,14 @@ class TradingDashboard(QWidget):
         self._risk_timer = QTimer(self)
         self._risk_timer.timeout.connect(self._check_global_risk)
         self._risk_timer.start(5000) 
+        
+        # [NEW] 포지션 조회 타이머 (30초마다)
+        self._position_refresh_timer = QTimer(self)
+        self._position_refresh_timer.timeout.connect(self._update_position_count)
+        self._position_refresh_timer.start(30000)  # 30초마다
+        
+        # [NEW] 초기 잔고/포지션 조회 (1초 후)
+        QTimer.singleShot(1000, self._refresh_balance) 
     
     def _get_max_coins(self) -> int:
         """티어별 최대 코인 수 반환"""

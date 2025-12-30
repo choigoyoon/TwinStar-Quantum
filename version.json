@@ -1,13 +1,13 @@
 {
-  "version": "1.5.6",
-  "latest_version": "1.5.6",
+  "version": "1.5.7",
+  "latest_version": "1.5.7",
   "release_date": "2025-12-30",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.6/TwinStar_Quantum_Setup_v1.5.6.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.7/TwinStar_Quantum_Setup_v1.5.7.exe",
   "changelog": [
+    "v1.5.7: 로그 콘솔(cmd) 복구 및 좌측 패널 상시 노출",
     "v1.5.6: 시드 오버 방지 로직 (잔고 체크 및 자동 조정)",
-    "v1.5.6: 데이터 수집 1000개 제한 버그 수정 (전체 히스토리 수집)",
-    "v1.5.6: 대시보드 상하 레이아웃 개편 (박스 형태 및 접기 지원)",
-    "v1.5.6: USDT/KRW 잔고 분리 표시",
-    "v1.5.6: 거래소 호환성 및 안정성 강화"
+    "v1.5.6: 데이터 수집 1000개 제한 버그 수정",
+    "v1.5.6: 대시보드 박스 형태 레이아웃 개편",
+    "v1.5.6: USDT/KRW 잔고 분리 표시"
   ]
 }

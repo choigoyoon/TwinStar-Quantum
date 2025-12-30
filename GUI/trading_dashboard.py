@@ -1201,9 +1201,9 @@ class TradingDashboard(QWidget):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(8)
         
-        # [상단] 싱글 트레이딩 박스
+        # [1] 싱글 트레이딩 박스
         self.single_group = QGroupBox("📌 싱글 트레이딩")
-        self.single_group.setCheckable(True) # [FIX] 접기/펼치기 지원
+        self.single_group.setCheckable(True)
         self.single_group.setChecked(True)
         self.single_group.setStyleSheet("""
             QGroupBox {
@@ -1214,40 +1214,63 @@ class TradingDashboard(QWidget):
                 color: #4CAF50;
                 font-weight: bold;
             }
-            QGroupBox::title { 
-                subcontrol-origin: margin; 
-                left: 10px; 
-                padding: 0 5px; 
-            }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
         """)
         self.single_tab_layout = QVBoxLayout(self.single_group)
         self._init_single_trading_content()
         self.single_group.toggled.connect(self._on_single_toggled)
         left_layout.addWidget(self.single_group, stretch=4)
         
-        # [하단] 멀티 탐색기 박스
+        # [2] 로그 콘솔 박스 (cmd) - [NEW] 좌측 중앙 상시 노출
+        self.log_group = QGroupBox("📜 Log Console (cmd)")
+        self.log_group.setCheckable(True)
+        self.log_group.setChecked(True)
+        self.log_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #2bc9ff;
+                border-radius: 5px;
+                margin-top: 5px;
+                padding-top: 10px;
+                color: #2bc9ff;
+                font-weight: bold;
+            }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
+        """)
+        log_layout = QVBoxLayout(self.log_group)
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet("""
+            QTextEdit {
+                background: #1e222d; 
+                color: #cfcfcf; 
+                border: none; 
+                font-family: 'Consolas', 'Monospace'; 
+                font-size: 11px;
+                padding: 2px;
+            }
+        """)
+        log_layout.addWidget(self.log_text)
+        left_layout.addWidget(self.log_group, stretch=3)
+        
+        # [3] 멀티 탐색기 박스
         self.multi_group = QGroupBox("🔍 멀티 탐색기")
-        self.multi_group.setCheckable(True) # [FIX] 접기/펼치기 지원
+        self.multi_group.setCheckable(True)
         self.multi_group.setChecked(True)
         self.multi_group.setStyleSheet("""
             QGroupBox {
                 border: 1px solid #9C27B0;
                 border-radius: 5px;
-                margin-top: 10px;
+                margin-top: 5px;
                 padding-top: 10px;
                 color: #9C27B0;
                 font-weight: bold;
             }
-            QGroupBox::title { 
-                subcontrol-origin: margin; 
-                left: 10px; 
-                padding: 0 5px; 
-            }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
         """)
         self.multi_tab_layout = QVBoxLayout(self.multi_group)
         self._init_multi_explorer_content()
         self.multi_group.toggled.connect(self._on_multi_toggled)
-        left_layout.addWidget(self.multi_group, stretch=6)
+        left_layout.addWidget(self.multi_group, stretch=5)
         
         self.main_splitter.addWidget(left_widget)
         
@@ -1256,28 +1279,26 @@ class TradingDashboard(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Splitter Vertical (Top: Managed, Bottom: Results/Logs)
+        # Splitter Vertical (Top: Managed, Bottom: Results)
         self.right_splitter = QSplitter(Qt.Vertical)
         self.right_splitter.setHandleWidth(2)
         
-        # Top: Active Bot Monitor (Visual Feedback)
+        # Top: Active Bot Status
         managed_group = QGroupBox("📊 Active Bot Status (실시간 실행 현황)")
         managed_group.setStyleSheet("QGroupBox { border: 1px solid #4CAF50; border-radius: 5px; margin-top: 10px; font-weight: bold; color: #4CAF50; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }")
         managed_layout = QVBoxLayout(managed_group)
-        managed_layout.setContentsMargins(5, 15, 5, 5) # Compact margins
+        managed_layout.setContentsMargins(5, 15, 5, 5)
         
-        # Cards
         self.pos_status_widget = PositionStatusWidget()
         self.pos_status_widget.setFixedHeight(120) 
         managed_layout.addWidget(self.pos_status_widget)
         
-        # Table
-        self.position_table = PositionTable() # Existing class
+        self.position_table = PositionTable()
         managed_layout.addWidget(self.position_table)
         
         self.right_splitter.addWidget(managed_group)
         
-        # Bottom: Results & History
+        # Bottom: Results & History (No Logs here)
         self.result_tabs = QTabWidget()
         self.result_tabs.setStyleSheet("""
             QTabWidget::pane { border: 1px solid #444; border-radius: 4px; }
@@ -1289,16 +1310,6 @@ class TradingDashboard(QWidget):
         ext_widget = QWidget()
         ext_layout = QVBoxLayout(ext_widget)
         ext_layout.setContentsMargins(5, 5, 5, 5)
-        
-        ext_header = QHBoxLayout()
-        ext_header.addWidget(QLabel("🌐 Other Positions (외부/수동)"))
-        ext_header.addStretch()
-        refresh_ext_btn = QPushButton("🔄 Refresh")
-        refresh_ext_btn.setStyleSheet("background: #444; color: white; border: none; padding: 4px 8px; border-radius: 3px;")
-        refresh_ext_btn.clicked.connect(self._refresh_external_data)
-        ext_header.addWidget(refresh_ext_btn)
-        ext_layout.addLayout(ext_header)
-        
         self.external_table = ExternalPositionTable()
         ext_layout.addWidget(self.external_table)
         self.result_tabs.addTab(ext_widget, "🌐 Other Pos")
@@ -1311,37 +1322,16 @@ class TradingDashboard(QWidget):
         hist_layout.addWidget(self.history_table)
         self.result_tabs.addTab(hist_widget, "📜 History")
         
-        # Tab 3: Logs
-        log_widget = QWidget()
-        log_layout = QVBoxLayout(log_widget)
-        log_layout.setContentsMargins(0, 0, 0, 0) # Remove margins for log to fill
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        # Consistent styling with other Inputs/Tables
-        self.log_text.setStyleSheet("""
-            QTextEdit {
-                background: #1e222d; 
-                color: #cfcfcf; 
-                border: none; 
-                font-family: 'Consolas', 'Monospace'; 
-                font-size: 12px;
-                padding: 5px;
-            }
-        """)
-        log_layout.addWidget(self.log_text)
-        self.result_tabs.addTab(log_widget, "📋 Logs")
-        
         self.right_splitter.addWidget(self.result_tabs)
         
         # Set Splitter Ratios
-        self.right_splitter.setStretchFactor(0, 4) # Managed
-        self.right_splitter.setStretchFactor(1, 6) # Tabs
+        self.right_splitter.setStretchFactor(0, 5) # Managed
+        self.right_splitter.setStretchFactor(1, 5) # History
         
         right_layout.addWidget(self.right_splitter)
         self.main_splitter.addWidget(right_widget)
         
-        # Set Main Splitter Ratios (Left: List, Right: Monitoring)
-        # [REFINED] Give more space to monitoring panel (60:40)
+        # Set Main Splitter Ratios
         self.main_splitter.setStretchFactor(0, 6) # Left (60%)
         self.main_splitter.setStretchFactor(1, 4) # Right (40%)
         

@@ -799,7 +799,7 @@ def main():
     app.setFont(font)
     
     print("\n" + "=" * 60)
-    print("🌟 TwinStar Quantum v1.5.6 시작")
+    print("🌟 TwinStar Quantum v1.5.7 시작")
     print("=" * 60 + "\n")
     
     # 캐시 자동 삭제 (개발 환경 전용)

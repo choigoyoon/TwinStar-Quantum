@@ -341,21 +341,22 @@ class ExchangeManager:
             return 0
         
         try:
-            # 한국 거래소는 네이티브 메서드 사용 (KRW 반환)
-            if exchange_name.lower() in ('upbit', 'bithumb'):
-                return float(exchange.get_balance("KRW") or 0)
-            else:
-                balance = exchange.fetch_balance()
-                # Robust parsing matching SettingsWidget logic
-                val = 0.0
-                if currency in balance and isinstance(balance[currency], dict):
-                    val = float(balance[currency].get('total') or balance[currency].get('free') or 0)
-                elif 'total' in balance and isinstance(balance['total'], dict):
-                    val = float(balance['total'].get(currency) or 0)
-                elif 'free' in balance and isinstance(balance['free'], dict):
-                    val = float(balance['free'].get(currency) or 0)
-                
-                return val
+            # [NEW] 통화 통합 시스템: 모든 거래소에서 get_quote_balance() 사용
+            if hasattr(exchange, 'get_quote_balance'):
+                return exchange.get_quote_balance()
+            
+            # Fallback: 기존 로직 (ccxt 기반)
+            balance = exchange.fetch_balance()
+            from utils.helpers import safe_float
+            val = 0.0
+            if currency in balance and isinstance(balance[currency], dict):
+                val = safe_float(balance[currency].get('total') or balance[currency].get('free'))
+            elif 'total' in balance and isinstance(balance['total'], dict):
+                val = safe_float(balance['total'].get(currency))
+            elif 'free' in balance and isinstance(balance['free'], dict):
+                val = safe_float(balance['free'].get(currency))
+            
+            return val
         except Exception as e:
             print(f"잔고 조회 실패: {e}")
             return 0

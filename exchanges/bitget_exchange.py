@@ -328,14 +328,16 @@ class BitgetExchange(BaseExchange):
             return False
     
     def get_balance(self) -> float:
-        """잔고 조회"""
+        """잔고 조회 (USDT-M 선물 계정)"""
         if self.exchange is None:
             return 0
         try:
-            balance = self.exchange.fetch_balance()
-            return float(balance.get('USDT', {}).get('free', 0))
+            from utils.helpers import safe_float
+            # [FIX] USDT-M 선물 계정 지갑 명시적 조회
+            balance = self.exchange.fetch_balance(params={'productType': 'USDT-FUTURES'})
+            return safe_float(balance.get('USDT', {}).get('free', 0))
         except Exception as e:
-            logging.error(f"Balance error: {e}")
+            logging.error(f"[Bitget] Balance error: {e}")
             return 0
 
     def sync_time(self) -> bool:

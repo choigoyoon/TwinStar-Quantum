@@ -106,6 +106,10 @@ class BaseExchange(ABC):
         self.direction = config.get('direction', 'Both')  # [NEW] 방향 설정
         self.position: Optional[Position] = None
         self.capital = self.amount_usd
+        
+        # [NEW] 통화 통합 시스템 - 서브클래스에서 override
+        self.quote_currency = 'USDT'  # 기준 통화 (USDT / KRW)
+        self.market_type = 'futures'   # 시장 유형 (futures / spot)
     
     @property
     @abstractmethod
@@ -169,6 +173,41 @@ class BaseExchange(ABC):
         pass
     
     # ========== 공통 메서드 ==========
+    
+    def get_quote_balance(self) -> float:
+        """기준 통화 잔고 조회 (USDT 또는 KRW)
+        
+        Returns:
+            float: 기준 통화 잔고 (safe_float 적용)
+        """
+        try:
+            from utils.helpers import safe_float
+            return safe_float(self.get_balance())
+        except Exception:
+            return 0.0
+    
+    def get_symbol_format(self, base: str = 'BTC') -> str:
+        """거래소별 심볼 포맷 반환
+        
+        Args:
+            base: 기준 코인 (BTC, ETH 등)
+            
+        Returns:
+            str: 거래소별 심볼 포맷 (BTC-KRW, BTCUSDT 등)
+        """
+        if self.market_type == 'spot':
+            return f"{base}-{self.quote_currency}"  # 현물: BTC-KRW
+        else:
+            return f"{base}{self.quote_currency}"   # 선물: BTCUSDT
+    
+    def is_spot_exchange(self) -> bool:
+        """현물 거래소 여부"""
+        return self.market_type == 'spot'
+    
+    def is_krw_exchange(self) -> bool:
+        """KRW 거래소 여부"""
+        return self.quote_currency == 'KRW'
+
     
     def get_swings(self, df: pd.DataFrame, length: int = 3) -> tuple:
         """스윙 고/저점 계산 (공통 로직)"""

@@ -210,8 +210,11 @@ except ImportError:
         return None
 
 # 로깅 설정 (GUI 스레드에서도 작동하도록 명시적 핸들러 추가)
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8')
+if sys.platform == 'win32' and sys.stdout is not None:
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
 
 # [NEW] TimedRotatingFileHandler import
 from logging.handlers import TimedRotatingFileHandler
@@ -510,6 +513,7 @@ class UnifiedBot:
         self.bt_state = {
             'position': None,
             'positions': [],
+            'pending': [],
             'current_sl': 0,
             'extreme_price': 0,
             'last_time': None
@@ -1919,7 +1923,7 @@ class UnifiedBot:
                 traceback.print_exc()
 
     def _save_to_parquet(self):
-        """현재 데이터를 Parquet으로 저장"""
+        """현재 데이터를 Parquet으로 저장 (15m, 1h 모두 지원)"""
         try:
             from pathlib import Path
             from paths import Paths
@@ -1927,85 +1931,55 @@ class UnifiedBot:
             cache_dir.mkdir(parents=True, exist_ok=True)
             
             exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower()
-            symbol_clean = (self.exchange.symbol if self.exchange else 'Unknown').lower().replace('/', '')
-            entry_file = cache_dir / f"{exchange_name}_{symbol_clean}_15m.parquet"
-            
-            if self.df_entry_full is not None and len(self.df_entry_full) > 0:
-                save_df = self.df_entry_full.copy()
-                if 'timestamp' in save_df.columns:
-                    # [FIX] DataManager와의 호환성을 위해 int64(ms) 형식으로 저장
-                    if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
-                        save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
-                    elif not pd.api.types.is_numeric_dtype(save_df['timestamp']):
-                        save_df['timestamp'] = pd.to_datetime(save_df['timestamp']).astype(np.int64) // 10**6
-                
-                save_df.to_parquet(entry_file, index=False)
-                
-                # [NEW] Duplicate save logic merged from realtime (Bithumb/Upbit sync)
-                if exchange_name == 'bithumb':
-                    try:
-                        from constants import COMMON_KRW_SYMBOLS
-                        import shutil
-                        coin = symbol_clean.upper().replace('KRW', '').replace('-', '') # simplified
-                        # Logic: Check if coin in common list (omitted for safety/speed, just copy if it looks like one)
-                        # Just copy to upbit filename
-                        upbit_filename = f"upbit_{symbol_clean}_{entry_tf}.parquet"
-                        upbit_path = cache_dir / upbit_filename
-                        shutil.copy(entry_file, upbit_path)
-                        logging.debug(f"[SAVE] Hybrid Sync to Upbit: {upbit_filename}")
-                    except Exception as e:
-                        logging.error(f"[SAVE] Hybrid Copy Error: {e}")
-
-                logging.info(f"[SAVE] Parquet saved: {len(save_df)} rows")
-        except Exception as e:
-            logging.error(f"[SAVE] Parquet failed: {e}")
-    
-    def _save_realtime_candle_to_parquet(self):
-        """[NEW] 빗썸-업비트 봉마감 즉시 Parquet 저장 (이중 저장 로직 포함)"""
-        try:
-            import shutil
-            from pathlib import Path
-            from paths import Paths
-            
-            cache_dir = Path(Paths.CACHE)
-            exchange_name = (self.exchange.name if self.exchange else 'Unknown').lower()
             symbol_raw = (self.exchange.symbol if self.exchange else 'Unknown')
             symbol_clean = symbol_raw.lower().replace('/', '').replace(':', '')
             
-            # 1. 대상 캔들 리스트 생성
-            save_targets = []
-            if self.df_entry_full is not None and not self.df_entry_full.empty:
-                save_targets.append((self.df_entry_full, '15m'))
-            if self.df_pattern_full is not None and not self.df_pattern_full.empty:
-                save_targets.append((self.df_pattern_full, '1h'))
+            # [FIX] 15분 데이터 저장
+            if self.df_entry_full is not None and len(self.df_entry_full) > 0:
+                entry_file = cache_dir / f"{exchange_name}_{symbol_clean}_15m.parquet"
+                save_df = self.df_entry_full.tail(1000).copy() # 최대 1000개 유지
                 
-            for df, tf in save_targets:
-                # 최근 1000개만 유지 (파일 크기 비대해지는 것 방지)
-                save_df = df.tail(1000).copy()
-                # [FIX] 중복 제거 및 정렬 (데이터 무결성)
-                save_df = save_df.drop_duplicates(subset='timestamp', keep='last')
-                save_df = save_df.sort_values('timestamp')
-                filename = f"{exchange_name}_{symbol_clean}_{tf}.parquet"
-                path = cache_dir / filename
+                # [FIX] Timestamp 처리 (DataManager/GUI 호환)
+                if 'timestamp' in save_df.columns:
+                    if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
+                        save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
                 
-                # 원본 저장
-                save_df.to_parquet(path, index=False)
+                save_df.to_parquet(entry_file, index=False)
                 
-                # [HYBRID] Bithumb -> Upbit 이중 저장 로직
+                # [HYBRID] Bithumb -> Upbit 복제
                 if exchange_name == 'bithumb':
                     try:
-                        from constants import COMMON_KRW_SYMBOLS
-                        coin = symbol_raw.split('/')[0].replace('KRW', '').replace('-', '').upper()
-                        if coin in COMMON_KRW_SYMBOLS:
-                            upbit_filename = f"upbit_{symbol_clean}_{tf}.parquet"
-                            upbit_path = cache_dir / upbit_filename
-                            shutil.copy(path, upbit_path)
-                            logging.debug(f"[SAVE] Hybrid Sync: {filename} -> {upbit_filename}")
+                        upbit_filename = f"upbit_{symbol_clean}_15m.parquet"
+                        upbit_path = cache_dir / upbit_filename
+                        import shutil
+                        shutil.copy(entry_file, upbit_path)
                     except Exception as e:
-                        logging.error(f"[SAVE] Hybrid Sync error: {e}")
-                        
+                        logging.debug(f"[SAVE] Hybrid Sync 15m failed: {e}")
+
+            # [NEW] 1시간 데이터 저장 (Pattern TF)
+            if self.df_pattern_full is not None and len(self.df_pattern_full) > 0:
+                pattern_file = cache_dir / f"{exchange_name}_{symbol_clean}_1h.parquet"
+                p_save_df = self.df_pattern_full.tail(300).copy() # 패턴 데이터는 300개면 충분
+                
+                if 'timestamp' in p_save_df.columns:
+                    if pd.api.types.is_datetime64_any_dtype(p_save_df['timestamp']):
+                        p_save_df['timestamp'] = p_save_df['timestamp'].astype(np.int64) // 10**6
+                
+                p_save_df.to_parquet(pattern_file, index=False)
+                
+                if exchange_name == 'bithumb':
+                    try:
+                        upbit_filename_1h = f"upbit_{symbol_clean}_1h.parquet"
+                        upbit_path_1h = cache_dir / upbit_filename_1h
+                        import shutil
+                        shutil.copy(pattern_file, upbit_path_1h)
+                    except Exception as e:
+                        logging.debug(f"[SAVE] Hybrid Sync 1h failed: {e}")
+
+            logging.debug(f"[SAVE] Parquet updated for {symbol_raw}")
         except Exception as e:
-            logging.error(f"[SAVE] Realtime parquet error: {e}")
+            logging.error(f"[SAVE] Parquet failed: {e}")
+    
 
     def _execute_live_entry(self, action: dict):
         """실매매 진입 실행 (연속 백테스트에서 호출)"""

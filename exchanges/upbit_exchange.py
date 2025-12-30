@@ -42,6 +42,11 @@ class UpbitExchange(BaseExchange):
     
     def __init__(self, config: dict):
         super().__init__(config)
+        
+        # [NEW] 통화 통합 시스템 - 현물/KRW 거래소
+        self.quote_currency = 'KRW'
+        self.market_type = 'spot'
+        
         self.api_key = config.get('api_key', '')
         self.api_secret = config.get('api_secret', '')
         self.upbit = None
@@ -74,35 +79,62 @@ class UpbitExchange(BaseExchange):
             logging.error(f"Upbit connect error: {e}")
             return False
     
-    def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
-        """캔들 데이터 조회"""
+    def get_klines(self, symbol=None, interval: str = '15m', limit: int = 500) -> list:
+        """
+        업비트 캔들 데이터 독립 조회 (페이지네이션 지원)
+        - 마스터 데이터 소스
+        - 상장 이후 전체 데이터 수집 가능
+        """
         try:
-            # interval 변환 (분 단위)
+            import pyupbit
+            
+            symbol = symbol or self.symbol  # 'KRW-BTC'
+            
             interval_map = {
-                '1': 'minute1', '5': 'minute5', '15': 'minute15',
-                '30': 'minute30', '60': 'minute60', '240': 'minute240',
-                '1440': 'day'
+                '1m': 'minute1', '3m': 'minute3', '5m': 'minute5',
+                '15m': 'minute15', '30m': 'minute30',
+                '60m': 'minute60', '1h': 'minute60',
+                '240m': 'minute240', '4h': 'minute240',
+                'day': 'day', '1d': 'day',
+                '1': 'minute1', '5': 'minute5', '15': 'minute15', 
+                '60': 'minute60', '240': 'minute240', '1440': 'day' # 호환성 유지
             }
+            interval_str = interval_map.get(interval, 'minute15')
             
-            interval_type = interval_map.get(interval, 'minute15')
+            all_candles = []
+            remaining = limit
+            to = None
             
-            if 'minute' in interval_type:
-                df = pyupbit.get_ohlcv(self.symbol, interval=interval_type, count=limit)
-            else:
-                df = pyupbit.get_ohlcv(self.symbol, interval='day', count=limit)
+            while remaining > 0:
+                count = min(remaining, 200)
+                df = pyupbit.get_ohlcv(symbol, interval=interval_str, count=count, to=to)
+                
+                if df is None or df.empty:
+                    break
+                
+                for idx, row in df.iterrows():
+                    all_candles.append({
+                        'timestamp': int(idx.timestamp() * 1000),
+                        'open': float(row['open']),
+                        'high': float(row['high']),
+                        'low': float(row['low']),
+                        'close': float(row['close']),
+                        'volume': float(row['volume'])
+                    })
+                
+                to = df.index[0]
+                remaining -= len(df)
+                
+                if len(df) < count:
+                    break
             
-            if df is None or len(df) == 0:
-                return None
-            
-            # 컬럼명 통일
-            df = df.reset_index()
-            df = df.rename(columns={'index': 'timestamp'})
-            
-            return df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+            all_candles.sort(key=lambda x: x['timestamp'])
+            logging.info(f"[Upbit] Loaded {len(all_candles)} candles (master)")
+            return all_candles
             
         except Exception as e:
-            logging.error(f"Kline fetch error: {e}")
-            return None
+            logging.error(f"[Upbit] get_klines error: {e}")
+            return []
     
     def get_current_price(self) -> float:
         """현재 가격"""

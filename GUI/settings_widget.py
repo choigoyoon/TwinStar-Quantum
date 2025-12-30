@@ -111,16 +111,37 @@ class ConnectionWorker(QThread):
                 # 연결 성공 시 잔고 조회까지 백그라운드에서 수행
                 exchange = get_exchange(self.exchange_name)
                 if exchange:
-                    if self.exchange_name in ["upbit", "bithumb"]:
-                        balance_data = {"KRW": float(exchange.get_balance("KRW") or 0)}
+                    from utils.helpers import safe_float
+                    
+                    # [FIX] 거래소 이름 기반 통화 결정 (pyupbit/pybithumb는 quote_currency 속성 없음)
+                    if self.exchange_name.lower() in ('upbit', 'bithumb'):
+                        quote = 'KRW'
                     else:
-                        bal = exchange.fetch_balance()
-                        usdt = 0.0
-                        if 'USDT' in bal and isinstance(bal['USDT'], dict):
-                            usdt = float(bal['USDT'].get('total') or bal['USDT'].get('free') or 0)
-                        elif 'total' in bal and isinstance(bal['total'], dict):
-                            usdt = float(bal['total'].get('USDT') or 0)
-                        balance_data = {"USDT": usdt}
+                        quote = getattr(exchange, 'quote_currency', 'USDT')
+                    
+                    # get_quote_balance 메서드가 있으면 사용, 없으면 폴백
+                    if hasattr(exchange, 'get_quote_balance'):
+                        balance = safe_float(exchange.get_quote_balance())
+                    elif hasattr(exchange, 'get_balance'):
+                        # pyupbit/pybithumb: get_balance("KRW")
+                        if self.exchange_name.lower() in ('upbit', 'bithumb'):
+                            balance = safe_float(exchange.get_balance("KRW"))
+                        else:
+                            balance = safe_float(exchange.get_balance())
+                    else:
+                        # ccxt 직접 사용 시 fetch_balance 호출
+                        try:
+                            bal = exchange.fetch_balance()
+                            if quote in bal and isinstance(bal[quote], dict):
+                                balance = safe_float(bal[quote].get('free', bal[quote].get('total', 0)))
+                            elif 'total' in bal and isinstance(bal['total'], dict):
+                                balance = safe_float(bal['total'].get(quote, 0))
+                            else:
+                                balance = 0.0
+                        except:
+                            balance = 0.0
+                    
+                    balance_data = {quote: balance}
 
             self.finished.emit(success, error_msg, balance_data)
 

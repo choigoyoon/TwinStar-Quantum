@@ -197,10 +197,12 @@ class OptimizationResult:
     params: Dict
     trades: int
     win_rate: float
-    total_return: float
-    max_drawdown: float
-    sharpe_ratio: float
-    profit_factor: float
+    total_return: float          # [DEPRECATED] use simple_return or compound_return
+    simple_return: float = 0.0   # [NEW] 단리 수익률
+    compound_return: float = 0.0 # [NEW] 복리 수익률
+    max_drawdown: float = 0.0
+    sharpe_ratio: float = 0.0
+    profit_factor: float = 0.0
     stability: str = "⚠️"        # [NEW] 3구간 안정성 지표
     strategy_type: str = ""      # [NEW] 전략 유형 (🔥공격, ⚖균형, 🛡보수 등)
 
@@ -519,6 +521,8 @@ class BacktestOptimizer:
                 trades=len(trades),
                 win_rate=metrics['win_rate'],
                 total_return=metrics['total_return'],
+                simple_return=metrics['simple_return'],
+                compound_return=metrics['compound_return'],
                 max_drawdown=metrics['max_drawdown'],
                 sharpe_ratio=metrics['sharpe_ratio'],
                 profit_factor=metrics['profit_factor'],

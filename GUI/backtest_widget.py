@@ -79,7 +79,7 @@ class BacktestWorker(QThread):
     error = pyqtSignal(str)
     progress = pyqtSignal(int)
     
-    def __init__(self, strategy, slippage, fee, leverage, strategy_params=None, use_pyramiding=False):
+    def __init__(self, strategy, slippage, fee, leverage, strategy_params=None, use_pyramiding=False, direction='Both'):
         super().__init__()
         self.strategy = strategy
         self.slippage = slippage
@@ -87,6 +87,7 @@ class BacktestWorker(QThread):
         self.leverage = leverage
         self.strategy_params = strategy_params or {}
         self.use_pyramiding = use_pyramiding
+        self.direction = direction
         
         self.trades_detail = []
         self.df_15m = None
@@ -167,7 +168,8 @@ class BacktestWorker(QThread):
                 rsi_period=params.get('rsi_period', 14),
                 atr_period=params.get('atr_period', 14),
                 filter_tf=params.get('filter_tf', '4h'),
-                enable_pullback=self.use_pyramiding
+                enable_pullback=self.use_pyramiding,
+                allowed_direction=self.direction  # [NEW] 방향성 필터링 전달
             )
             
             print(f"[BT] Result: {len(result) if result else 0} trades")
@@ -434,6 +436,13 @@ class BacktestWidget(QWidget):
         self.fee_spin.setSingleStep(0.005)
         self.fee_spin.setStyleSheet(spin_style)
         param_grid.addWidget(self.fee_spin, 0, col + 1)
+        
+        col += 2
+        param_grid.addWidget(self._make_label("방향:", lbl_style), 0, col)
+        self.direction_combo = QComboBox()
+        self.direction_combo.addItems(["Both", "Long", "Short"])
+        self.direction_combo.setStyleSheet("background: #2b2b2b; color: white; min-width: 80px; padding: 4px;")
+        param_grid.addWidget(self.direction_combo, 0, col + 1)
         
         # Row 1: Fixed parameter display
         param_items = [
@@ -996,7 +1005,8 @@ class BacktestWidget(QWidget):
             fee=0,                # [FIX] fee는 이미 합산됨
             leverage=leverage,
             strategy_params=strategy_params,
-            use_pyramiding=False  # [FIX] Pyramiding UI 제거에 따른 하드코딩
+            use_pyramiding=False,  # [FIX] Pyramiding UI 제거에 따른 하드코딩
+            direction=self.direction_combo.currentText()  # [NEW] 방향성 전달
         )
         self.worker.finished.connect(self._on_finished)
         self.worker.progress.connect(self._progress.setValue)

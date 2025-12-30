@@ -498,7 +498,7 @@ class AlphaX7Core:
                      pullback_rsi_long: int = None, pullback_rsi_short: int = None,
                      max_adds: int = None, filter_tf: str = '4h', rsi_period: int = None,
                      atr_period: int = None, enable_pullback: bool = False,
-                     return_state: bool = False):  # [NEW] return_state for live trading
+                     return_state: bool = False, allowed_direction: str = None):  # [NEW] allowed_direction for spot
         """
         백테스트 실행 (통합 로직)
         - detect_signal과 동일한 W/M 패턴 감지
@@ -688,7 +688,7 @@ class AlphaX7Core:
                             trades.append({
                                 'entry_time': pos['entry_time'], 'exit_time': t, 'type': 'Long',
                                 'entry': pos['entry'], 'exit': shared_sl,
-                                'pnl': pnl - (slippage * 2),
+                                'pnl': pnl - (slippage * 200),
                                 'is_addon': pos.get('is_addon', False),
                                 'entry_idx': pos.get('entry_idx', 0), 'exit_idx': i
                             })
@@ -710,7 +710,7 @@ class AlphaX7Core:
                             trades.append({
                                 'entry_time': pos['entry_time'], 'exit_time': t, 'type': 'Short',
                                 'entry': pos['entry'], 'exit': shared_sl,
-                                'pnl': pnl - (slippage * 2),
+                                'pnl': pnl - (slippage * 200),
                                 'is_addon': pos.get('is_addon', False),
                                 'entry_idx': pos.get('entry_idx', 0), 'exit_idx': i
                             })
@@ -730,7 +730,14 @@ class AlphaX7Core:
                 for order in pending:
                     d = order['type']
                     
-                    # [HOTFIX] 현물 시장 숏 차단
+                    # [NEW] allowed_direction 파라미터로 방향 필터링 (Spot: Long만, Futures: Long/Short/Both)
+                    if allowed_direction:
+                        if allowed_direction.lower() == 'long' and d == 'Short':
+                            continue
+                        if allowed_direction.lower() == 'short' and d == 'Long':
+                            continue
+                    
+                    # [HOTFIX] 현물 시장 숏 차단 (market_type 폴백)
                     if getattr(self, 'market_type', 'futures') == 'spot' and d == 'Short':
                         continue
                     

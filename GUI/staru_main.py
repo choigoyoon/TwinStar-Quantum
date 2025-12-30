@@ -161,12 +161,12 @@ TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "1.5.1"
+    VERSION = "1.5.4"
     
     def __init__(self, user_tier='admin'):
         super().__init__()
         self.user_tier = user_tier
-        self.setWindowTitle(t("TwinStar Quantum v1.5.3 - Advanced Algorithm Trading System"))
+        self.setWindowTitle(t("TwinStar Quantum - Advanced Algorithm Trading System"))
         
         # 작업표시줄 아이콘 설정
         from PyQt5.QtGui import QIcon
@@ -356,7 +356,7 @@ class StarUWindow(QMainWindow):
         header_layout.setContentsMargins(15, 5, 15, 5)
         
         # 로고/제목 (클릭 시 도움말)
-        title_label = QLabel(f"⭐ TwinStar Quantum v{self.VERSION}")
+        title_label = QLabel(f"⭐ TwinStar Quantum")
         title_label.setStyleSheet("color: #00d4ff; font-weight: bold; font-size: 13px;")
         title_label.setCursor(Qt.PointingHandCursor)
         title_label.setToolTip("클릭하여 도움말 보기")
@@ -420,7 +420,7 @@ class StarUWindow(QMainWindow):
             logging.debug(f"[UPDATER] 버전 확인 실패: {e}")
             update_ver = "1.2.6"
         
-        update_btn = QPushButton(f"🔄 v{update_ver}")
+        update_btn = QPushButton(f"🔄 업데이트")
         update_btn.setFixedWidth(80)
         update_btn.setToolTip("업데이트 확인")
         update_btn.setStyleSheet("""
@@ -491,7 +491,7 @@ class StarUWindow(QMainWindow):
             header_layout.addWidget(self.days_label)
             
             # 업그레이드 버튼
-            upgrade_btn = QPushButton("💳 업그레이드")
+            upgrade_btn = QPushButton("💳 라이센스")
             upgrade_btn.setStyleSheet("""
                 QPushButton { 
                     background: #7c4dff; color: white; border: none; 

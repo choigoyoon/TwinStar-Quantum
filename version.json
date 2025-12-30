@@ -1,12 +1,14 @@
 {
-  "version": "1.5.3",
-  "latest_version": "1.5.3",
+  "version": "1.5.4",
+  "latest_version": "1.5.4",
   "release_date": "2025-12-30",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.3/TwinStar_Quantum_v1.5.3.zip",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.4/TwinStar_Quantum_v1.5.4.zip",
   "changelog": [
-    "v1.5.3: AlphaX7Core 전략 로직 중앙화 (Single Source of Truth 확보)",
-    "v1.5.3: MultiCoinSniper ATR 기반 SL/TP 리팩토링 및 트레일링 스탑 동기화",
-    "v1.5.3: PyInstaller 빌드 스펙 최적화 및 누락 모듈(sqlalchemy, orjson 등) 추가",
-    "v1.5.3: 거래소 SL 업데이트 로직 강화 (실시간 Trailing Hit 반영)"
+    "v1.5.4: 최적화-백테스트 ROI 정합성 동기화 (Zero Drift 달성)",
+    "v1.5.4: 수수료 스케일 현실화 (slippage * 200 보정)",
+    "v1.5.4: 단리/복리 수익률 동시 표시 기능 추가",
+    "v1.5.4: 백테스트 방향성 필터 (Long/Short/Both) 추가",
+    "v1.5.4: 빌드 보안 강화 (민감 정보 유출 방지)",
+    "v1.5.4: hiddenimports 무결점 (sqlite3, dataclasses 등 추가)"
   ]
 }

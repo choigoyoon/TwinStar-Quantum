@@ -377,8 +377,9 @@ class OptimizationWidget(QWidget):
         # 결과 테이블
         self.result_table = QTableWidget()
         self.result_table.setColumnCount(11)
+        self.result_table.setColumnCount(12)
         self.result_table.setHorizontalHeaderLabels([
-            '유형', '필터TF', 'ATR', '승률', '수익률', 'MDD', 
+            '유형', '필터TF', 'ATR', '승률', '단리', '복리', 'MDD', 
             '배율', '방향', '샤프', '안정성', '적용'
         ])
         self.result_table.setRowCount(20)  # Top 20 고정
@@ -670,6 +671,17 @@ class OptimizationWidget(QWidget):
             else:  # Standard (default)
                 grid = generate_standard_grid(trend_tf, max_mdd)
                 mode_text = t("optimization.standard")
+            
+            # [FIX] 현물 거래소 제약 반영: Long만, 레버리지 1배
+            try:
+                from utils.symbol_converter import is_spot_exchange
+                exch = self.exchange_combo.currentText().lower()
+                if is_spot_exchange(exch):
+                    grid['direction'] = ['Long']
+                    grid['leverage'] = [1]
+                    mode_text += " (Long Only)"
+            except:
+                pass
             
             total, est_min = estimate_combinations(grid)
             # 코어 수에 따른 조정 (실제 체감 시간은 더 걸릴 수 있음)
@@ -1068,33 +1080,38 @@ class OptimizationWidget(QWidget):
             wr_item.setForeground(QColor("#4CAF50") if r.win_rate >= 60 else QColor("#FF9800"))
             self.result_table.setItem(row, 3, wr_item)
             
-            # 4. Return
-            ret_item = QTableWidgetItem(f"{r.total_return:+.1f}%")
-            ret_item.setForeground(QColor("#4CAF50") if r.total_return > 0 else QColor("#f44336"))
+            # 4. 단리 (Simple Return)
+            ret_item = QTableWidgetItem(f"{r.simple_return:+.1f}%")
+            ret_item.setForeground(QColor("#4CAF50") if r.simple_return > 0 else QColor("#f44336"))
             self.result_table.setItem(row, 4, ret_item)
             
-            # 5. MDD
+            # 5. 복리 (Compound Return)
+            comp_item = QTableWidgetItem(f"{r.compound_return:+.1f}%")
+            comp_item.setForeground(QColor("#4CAF50") if r.compound_return > 0 else QColor("#f44336"))
+            self.result_table.setItem(row, 5, comp_item)
+            
+            # 6. MDD
             mdd_val = r.max_drawdown
             mdd_item = QTableWidgetItem(f"-{mdd_val:.1f}%")
             mdd_item.setForeground(QColor("#f44336") if mdd_val > 15 else QColor("#FF9800"))
-            self.result_table.setItem(row, 5, mdd_item)
+            self.result_table.setItem(row, 6, mdd_item)
             
-            # 6. Leverage (그리드 설정 배율 - 정수형 표시)
+            # 7. Leverage (그리드 설정 배율 - 정수형 표시)
             lev = r.params.get('leverage', 1)
-            self.result_table.setItem(row, 6, QTableWidgetItem(f"{int(lev)}x"))
+            self.result_table.setItem(row, 7, QTableWidgetItem(f"{int(lev)}x"))
             
-            # 7. Direction (방향)
-            self.result_table.setItem(row, 7, QTableWidgetItem(str(r.params.get('direction', '-'))))
+            # 8. Direction (방향)
+            self.result_table.setItem(row, 8, QTableWidgetItem(str(r.params.get('direction', '-'))))
             
-            # 8. Sharpe
-            self.result_table.setItem(row, 8, QTableWidgetItem(f"{r.sharpe_ratio:.2f}"))
+            # 9. Sharpe
+            self.result_table.setItem(row, 9, QTableWidgetItem(f"{r.sharpe_ratio:.2f}"))
             
-            # 9. 안정성 (Stability)
+            # 10. 안정성 (Stability)
             stability_item = QTableWidgetItem(getattr(r, 'stability', '⚠️'))
             stability_item.setTextAlignment(Qt.AlignCenter)
-            self.result_table.setItem(row, 9, stability_item)
+            self.result_table.setItem(row, 10, stability_item)
             
-            # 10. Apply button
+            # 11. Apply button
             apply_btn = QPushButton(t("common.apply"))
             apply_btn.setStyleSheet("""
                 QPushButton {
@@ -1103,7 +1120,7 @@ class OptimizationWidget(QWidget):
                 QPushButton:hover { background: #1e88e5; }
             """)
             apply_btn.clicked.connect(lambda _, p=r.params, res=r: self._apply_settings(p, res))
-            self.result_table.setCellWidget(row, 10, apply_btn)
+            self.result_table.setCellWidget(row, 11, apply_btn)
         
         self.result_table.viewport().update()
     

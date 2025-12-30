@@ -1354,10 +1354,9 @@ class TradingDashboard(QWidget):
         scroll = QScrollArea()
         scroll.setWidget(self.rows_container)
         scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(50)   # [NEW] 최소 높이
-        scroll.setMaximumHeight(400)  # [FIX] 더 많은 코인 표시
+        scroll.setMinimumHeight(50)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-        settings_layout.addWidget(scroll)
+        settings_layout.addWidget(scroll, stretch=1)
         
         # 버튼 행
         btn_layout = QHBoxLayout()
@@ -1395,7 +1394,6 @@ class TradingDashboard(QWidget):
         
         settings_layout.addLayout(btn_layout)
         self.single_tab_layout.addWidget(self.single_settings)
-        self.single_tab_layout.addStretch()  # [FIX] 매매 리스트가 상단에 붙도록 정렬
 
     def _init_multi_explorer_content(self):
         """Multi Explorer Contents (Moved from GroupBox)"""

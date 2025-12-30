@@ -1,13 +1,12 @@
 {
-  "version": "1.5.7",
-  "latest_version": "1.5.7",
+  "version": "1.5.8",
+  "latest_version": "1.5.8",
   "release_date": "2025-12-30",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.7/TwinStar_Quantum_Setup_v1.5.7.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.8/TwinStar_Quantum_Setup_v1.5.8.exe",
   "changelog": [
+    "v1.5.8: 싱글 트레이딩 박스 내 불필요한 공백 제거 (Full Filling)",
     "v1.5.7: 로그 콘솔(cmd) 복구 및 좌측 패널 상시 노출",
-    "v1.5.6: 시드 오버 방지 로직 (잔고 체크 및 자동 조정)",
-    "v1.5.6: 데이터 수집 1000개 제한 버그 수정",
-    "v1.5.6: 대시보드 박스 형태 레이아웃 개편",
-    "v1.5.6: USDT/KRW 잔고 분리 표시"
+    "v1.5.6: 시드 오버 방지 및 데이터 수집 1000개 제한 해결",
+    "v1.5.6: 대시보드 박스 형태 레이아웃 전면 개편"
   ]
 }

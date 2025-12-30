@@ -2,12 +2,12 @@
 ; Run with Inno Setup Compiler
 
 #define MyAppName "TwinStar Quantum"
-#define MyAppVersion "1.5.5"
+#define MyAppVersion "1.5.6"
 #define MyAppPublisher "TwinStar"
 #define MyAppExeName "TwinStar_Quantum.exe"
 
 [Setup]
-AppId={{B5445C72-197F-4147-920C-60DBC24899B0}
+AppId={{B5445C72-197F-4147-920C-60DBC24899B0}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -44,7 +44,7 @@ var
   sUninstPath: String;
   sUninstString: String;
 begin
-  sUninstPath := ExpandConstant('Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B5445C72-197F-4147-920C-60DBC24899B0}_is1');
+  sUninstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B5445C72-197F-4147-920C-60DBC24899B0}_is1';
   sUninstString := '';
   if not RegQueryStringValue(HKLM, sUninstPath, 'UninstallString', sUninstString) then
     RegQueryStringValue(HKCU, sUninstPath, 'UninstallString', sUninstString);

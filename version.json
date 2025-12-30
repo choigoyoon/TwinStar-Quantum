@@ -1,13 +1,13 @@
 {
-  "version": "1.5.5",
-  "latest_version": "1.5.5",
+  "version": "1.5.6",
+  "latest_version": "1.5.6",
   "release_date": "2025-12-30",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.5/TwinStar_Quantum_Setup_v1.5.5.exe",
+  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.6/TwinStar_Quantum_Setup_v1.5.6.exe",
   "changelog": [
-    "v1.5.5: 데이터 수집기 UI 간소화 (날짜 선택 숨김, 상장일부터 자동)",
-    "v1.5.5: 1000개 캔들 제한 로직 제거 (전체 데이터 수집)",
-    "v1.5.5: 매매 탭 레이아웃 최적화 (상단 정렬, 컴팩트 UI)",
-    "v1.5.5: CoinRow 중복 위젯 버그 수정",
-    "v1.5.5: 64비트 빌드 호환성 확인"
+    "v1.5.6: 시드 오버 방지 로직 (잔고 체크 및 자동 조정)",
+    "v1.5.6: 데이터 수집 1000개 제한 버그 수정 (전체 히스토리 수집)",
+    "v1.5.6: 대시보드 상하 레이아웃 개편 (박스 형태 및 접기 지원)",
+    "v1.5.6: USDT/KRW 잔고 분리 표시",
+    "v1.5.6: 거래소 호환성 및 안정성 강화"
   ]
 }

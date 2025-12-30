@@ -1,15 +1,36 @@
 {
-    "_description": "Default Strategy Parameters",
-    "_updated": "2024-12-30 00:58:00",
-    "atr_mult": 1.5,
-    "trail_start_r": 0.8,
-    "trail_dist_r": 0.5,
-    "pattern_tolerance": 0.03,
-    "entry_validity_hours": 48.0,
-    "pullback_rsi_long": 40,
-    "pullback_rsi_short": 60,
-    "rsi_period": 14,
-    "max_adds": 1,
-    "trend_interval": "1h",
-    "entry_tf": "15min"
+    "_meta": {
+        "name": "Default",
+        "type": "preset",
+        "version": "2.0",
+        "created": "2025-12-30 17:11:27",
+        "updated": "2025-12-30 17:11:27"
+    },
+    "timeframes": {
+        "filter_tf": "4h",
+        "trend_interval": "1h",
+        "entry_tf": "15min"
+    },
+    "trading": {
+        "leverage": 3,
+        "direction": "Both"
+    },
+    "indicators": {
+        "rsi_period": 21,
+        "atr_mult": 1.25,
+        "pullback_rsi_long": 40,
+        "pullback_rsi_short": 60,
+        "pattern_tolerance": 0.05
+    },
+    "risk": {
+        "trail_start_r": 1.0,
+        "trail_dist_r": 0.2,
+        "max_adds": 1,
+        "entry_validity_hours": 4.0
+    },
+    "fixed": {
+        "slippage_pct": 0.05,
+        "fee_pct": 0.055
+    },
+    "results": {}
 }

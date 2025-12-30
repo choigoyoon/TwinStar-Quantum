@@ -406,10 +406,10 @@ class MultiOptimizer:
                 elapsed = time.time() - start_time
                 
                 if result:
-                    # 프리셋 저장
-                    if self._save_preset(symbol, tf, result):
-                        if f"{symbol}_{tf}" not in self._progress['saved_presets']:
-                            self._progress['saved_presets'].append(f"{symbol}_{tf}")
+                    # [FIX] Disable automatic preset saving to keep presets folder clean
+                    # if self._save_preset(symbol, tf, result):
+                    #     if f"{symbol}_{tf}" not in self._progress['saved_presets']:
+                    #         self._progress['saved_presets'].append(f"{symbol}_{tf}")
                     
                     if task_name not in self._progress['completed']:
                         self._progress['completed'].append(task_name)

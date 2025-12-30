@@ -393,7 +393,8 @@ class MultiCoinSniper:
                 df = pd.concat([df_existing, new_row])
                 df = df.drop_duplicates(subset='timestamp')
                 df = df.sort_values('timestamp')
-                df = df.tail(10000)  # 최근 1만개만 유지
+                # [FIX] Preserve full historical data. Do not use tail()
+                # df = df.tail(10000)  
             else:
                 df = new_row
             
@@ -642,10 +643,11 @@ class MultiCoinSniper:
                     self.logger.debug(f"Signal preset load failed: {e}")
             
             # JSON 저장
-            with open(preset_path, 'w', encoding='utf-8') as f:
-                json.dump(preset_data, f, indent=2, ensure_ascii=False)
+            # [FIX] Disable automatic signal preset generation to keep presets folder clean
+            # with open(preset_path, 'w', encoding='utf-8') as f:
+            #     json.dump(preset_data, f, indent=2, ensure_ascii=False)
             
-            self.logger.info(f"[PRESET] 저장됨: {filename}")
+            # self.logger.info(f"[PRESET] 저장됨: {filename}")
             
         except Exception as e:
             self.logger.error(f"[PRESET] {symbol} 저장 실패: {e}")

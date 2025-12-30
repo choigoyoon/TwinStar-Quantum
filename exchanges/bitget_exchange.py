@@ -339,6 +339,15 @@ class BitgetExchange(BaseExchange):
         except Exception as e:
             logging.error(f"[Bitget] Balance error: {e}")
             return 0
+            
+    def fetch_balance(self, params={}):
+        """CCXT 호환용 잔고 조회 (USDT-M 선물)"""
+        if self.exchange is None: return {"total": {"USDT": 0}}
+        try:
+            # get_balance를 재사용하여 안전하게 조회
+            return {"total": {"USDT": self.get_balance()}}
+        except Exception:
+            return {"total": {"USDT": 0}}
 
     def sync_time(self) -> bool:
         """Bitget 서버 시간 동기화"""

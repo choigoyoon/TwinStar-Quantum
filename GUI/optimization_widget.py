@@ -1220,18 +1220,20 @@ class OptimizationWidget(QWidget):
             from utils.preset_manager import get_preset_manager
             pm = get_preset_manager()
             
+            # [FIX] User Request: Disable automatic preset saving to avoid cluttering
             # 1. 메인 프리셋 저장 (최신성 유지)
-            pm.save_preset(main_name, preset_data)
+            # pm.save_preset(main_name, preset_data)
             
             # 2. 백업 프리셋 저장 (히스토리 보관)
-            pm.save_preset(backup_name, preset_data)
+            # pm.save_preset(backup_name, preset_data)
             
-            print(f"✅ Preset consolidated save: {main_name} & {backup_name}")
+            # print(f"✅ Preset consolidated save: {main_name} & {backup_name}")
+            pass
         except Exception as e:
-            print(f"❌ Preset manager save failed: {e}")
+            logging.error(f"❌ Preset manager save failed: {e}")
         
-        QMessageBox.information(self, "Saved", 
-            f"Preset saved:\n{main_name}.json\n\n"
+        QMessageBox.information(self, "Applied", 
+            f"Settings applied to dashboard.\n\n"
             f"TF: {trend_tf} -> {entry_tf}\n"
             f"WinRate: {win_rate}%\nReturn: {result_info.get('total_return', 0)}%")
         

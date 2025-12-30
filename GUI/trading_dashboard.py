@@ -111,8 +111,8 @@ class CoinRow(QWidget):
     
     def _init_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(2, 1, 2, 1)  # [COMPACT] 마진 축소
-        layout.setSpacing(3)  # [COMPACT] 간격 축소
+        layout.setContentsMargins(1, 0, 1, 0)  # [REFINED] Further reduced margins
+        layout.setSpacing(2)  # [REFINED] Further reduced spacing
         self.setFixedHeight(35)  # [COMPACT] 행 높이 고정
         
         # #번호
@@ -444,35 +444,7 @@ class MultiExplorer(QGroupBox):
         
         row1.addStretch()
         
-        # 시작/중지 버튼
-        self.start_btn = QPushButton("▶ 전체 스캔")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #00d26a, stop:1 #00a854);
-                color: white; font-weight: bold;
-                padding: 8px 20px; border-radius: 5px;
-            }
-            QPushButton:hover { background: #00a854; }
-        """)
-        self.start_btn.clicked.connect(self._toggle_scan)
-        row1.addWidget(self.start_btn)
-        
-        # [NEW] Sniper 버튼
-        self.sniper_btn = QPushButton("🎯 Sniper")
-        self.sniper_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #667eea, stop:1 #764ba2);
-                color: white; font-weight: bold;
-                padding: 8px 20px; border-radius: 5px;
-            }
-            QPushButton:hover { background: #764ba2; }
-        """)
-        self.sniper_btn.setToolTip("Top 100 코인 자동 스캔 및 매매 (Premium)")
-        self.sniper_btn.clicked.connect(self._toggle_sniper)
-        row1.addWidget(self.sniper_btn)
-        
+        # [REMOVE] row1 buttons moved to bottom
         layout.addLayout(row1)
         
         # Row 2: 진행 상태
@@ -540,6 +512,41 @@ class MultiExplorer(QGroupBox):
             }
         """)
         layout.addWidget(self.result_table)
+        
+        # [NEW] 버튼 행 하단 이동
+        bottom_btn_layout = QHBoxLayout()
+        bottom_btn_layout.addStretch()
+        
+        # 시작/중지 버튼
+        self.start_btn = QPushButton("▶ 전체 스캔")
+        self.start_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00d26a, stop:1 #00a854);
+                color: white; font-weight: bold;
+                padding: 8px 20px; border-radius: 5px;
+            }
+            QPushButton:hover { background: #00a854; }
+        """)
+        self.start_btn.clicked.connect(self._toggle_scan)
+        bottom_btn_layout.addWidget(self.start_btn)
+        
+        # [NEW] Sniper 버튼
+        self.sniper_btn = QPushButton("🎯 Sniper")
+        self.sniper_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #667eea, stop:1 #764ba2);
+                color: white; font-weight: bold;
+                padding: 8px 20px; border-radius: 5px;
+            }
+            QPushButton:hover { background: #764ba2; }
+        """)
+        self.sniper_btn.setToolTip("Top 100 코인 자동 스캔 및 매매 (Premium)")
+        self.sniper_btn.clicked.connect(self._toggle_sniper)
+        bottom_btn_layout.addWidget(self.sniper_btn)
+        
+        layout.addLayout(bottom_btn_layout)
     
     def _toggle_scan(self):
         """스캔 시작/중지 토글"""
@@ -998,10 +1005,7 @@ class PositionTable(QTableWidget):
                 break
 
 
-        self.main_splitter.setStretchFactor(0, 6) # Left (Controls)
-        self.main_splitter.setStretchFactor(1, 4) # Right (Monitoring)
-        
-        main_layout.addWidget(self.main_splitter)
+
         
 class RiskHeaderWidget(QFrame):
     """글로벌 리스크 현황 헤더"""
@@ -1018,6 +1022,7 @@ class RiskHeaderWidget(QFrame):
         self._init_ui()
         
     def _init_ui(self):
+        self.setFixedHeight(50)  # [NEW] 높이 고정
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 5, 10, 5)
         
@@ -1147,8 +1152,8 @@ class TradingDashboard(QWidget):
         self.setMinimumHeight(600)
         
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(5)   # [FIX] 간격 축소
+        main_layout.setContentsMargins(5, 5, 5, 5)  # [FIX] 마진 축소
         
         # [NEW] Global Risk Header
         self.risk_header = RiskHeaderWidget()
@@ -1190,32 +1195,60 @@ class TradingDashboard(QWidget):
         self.main_splitter = QSplitter(Qt.Horizontal)
         self.main_splitter.setHandleWidth(2)
         
-        # --- Left Panel (Controls) ---
+        # === Left Panel (Controls) - 탭 대신 상하 박스 ===
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
         
-        self.control_tabs = QTabWidget()
-        self.control_tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #444; border-radius: 4px; }
-            QTabBar::tab { background: #2b2b2b; color: #888; padding: 8px 20px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-            QTabBar::tab:selected { background: #3c3c3c; color: white; font-weight: bold; }
+        # [상단] 싱글 트레이딩 박스
+        self.single_group = QGroupBox("📌 싱글 트레이딩")
+        self.single_group.setCheckable(True) # [FIX] 접기/펼치기 지원
+        self.single_group.setChecked(True)
+        self.single_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #4CAF50;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                color: #4CAF50;
+                font-weight: bold;
+            }
+            QGroupBox::title { 
+                subcontrol-origin: margin; 
+                left: 10px; 
+                padding: 0 5px; 
+            }
         """)
-        
-        # Tab 1: Single Trading
-        self.single_tab = QWidget()
-        self.single_tab_layout = QVBoxLayout(self.single_tab)
-        # (Content moved from _init_single_trading)
+        self.single_tab_layout = QVBoxLayout(self.single_group)
         self._init_single_trading_content()
-        self.control_tabs.addTab(self.single_tab, "📌 개별 트레이딩 (Single)")
+        self.single_group.toggled.connect(self._on_single_toggled)
+        left_layout.addWidget(self.single_group, stretch=4)
         
-        # Tab 2: Multi Explorer
-        self.multi_tab = QWidget()
-        self.multi_tab_layout = QVBoxLayout(self.multi_tab)
+        # [하단] 멀티 탐색기 박스
+        self.multi_group = QGroupBox("🔍 멀티 탐색기")
+        self.multi_group.setCheckable(True) # [FIX] 접기/펼치기 지원
+        self.multi_group.setChecked(True)
+        self.multi_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #9C27B0;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                color: #9C27B0;
+                font-weight: bold;
+            }
+            QGroupBox::title { 
+                subcontrol-origin: margin; 
+                left: 10px; 
+                padding: 0 5px; 
+            }
+        """)
+        self.multi_tab_layout = QVBoxLayout(self.multi_group)
         self._init_multi_explorer_content()
-        self.control_tabs.addTab(self.multi_tab, "🔍 멀티 탐색기 (Multi)")
+        self.multi_group.toggled.connect(self._on_multi_toggled)
+        left_layout.addWidget(self.multi_group, stretch=6)
         
-        left_layout.addWidget(self.control_tabs)
         self.main_splitter.addWidget(left_widget)
         
         # --- Right Panel (Monitoring) ---
@@ -1307,9 +1340,10 @@ class TradingDashboard(QWidget):
         right_layout.addWidget(self.right_splitter)
         self.main_splitter.addWidget(right_widget)
         
-        # Set Main Splitter Ratios
-        self.main_splitter.setStretchFactor(0, 6) # Left (Controls)
-        self.main_splitter.setStretchFactor(1, 4) # Right (Monitoring)
+        # Set Main Splitter Ratios (Left: List, Right: Monitoring)
+        # [REFINED] Give more space to monitoring panel (60:40)
+        self.main_splitter.setStretchFactor(0, 6) # Left (60%)
+        self.main_splitter.setStretchFactor(1, 4) # Right (40%)
         
         main_layout.addWidget(self.main_splitter)
 
@@ -1331,7 +1365,7 @@ class TradingDashboard(QWidget):
         scroll.setWidget(self.rows_container)
         scroll.setWidgetResizable(True)
         scroll.setMinimumHeight(50)   # [NEW] 최소 높이
-        scroll.setMaximumHeight(150)  # [NEW] 최대 높이 (공간 절약)
+        scroll.setMaximumHeight(400)  # [FIX] 더 많은 코인 표시
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
         settings_layout.addWidget(scroll)
         
@@ -1371,6 +1405,7 @@ class TradingDashboard(QWidget):
         
         settings_layout.addLayout(btn_layout)
         self.single_tab_layout.addWidget(self.single_settings)
+        self.single_tab_layout.addStretch()  # [FIX] 매매 리스트가 상단에 붙도록 정렬
 
     def _init_multi_explorer_content(self):
         """Multi Explorer Contents (Moved from GroupBox)"""
@@ -1586,15 +1621,67 @@ class TradingDashboard(QWidget):
             self.rows_layout.removeWidget(row)
             row.deleteLater()
             self._log(f"코인 행 #{row.row_id} 삭제됨")
-    
+
     def _on_row_start(self, config: dict):
         """행에서 시작 클릭"""
         bot_key = f"{config['exchange']}_{config['symbol']}"
         
         if bot_key in self.running_bots:
+            from PyQt5.QtWidgets import QMessageBox
             QMessageBox.warning(self, "알림", f"{config['symbol']}은(는) 이미 실행 중입니다.")
             return
+    
+        # [NEW] 시드 오버 체크
+        exchange = config['exchange'].lower()
+        requested_seed = config['capital']
         
+        # KRW vs USDT 판별
+        is_krw = exchange in ['upbit', 'bithumb']
+        
+        try:
+            from exchanges.exchange_manager import get_exchange_manager
+            em = get_exchange_manager()
+            
+            currency = 'KRW' if is_krw else 'USDT'
+            available = em.get_balance(exchange, currency)
+            
+            if available <= 0:
+                QMessageBox.warning(
+                    self, "⚠️ 잔고 부족",
+                    f"{exchange.upper()} 잔고가 0이거나 조회할 수 없습니다.\n"
+                    f"API 키 설정을 확인해주세요."
+                )
+                return
+            
+            if requested_seed > available:
+                from PyQt5.QtWidgets import QMessageBox
+                reply = QMessageBox.warning(
+                    self, "⚠️ 잔고 초과",
+                    f"설정 시드: {currency} {requested_seed:,.0f}\n"
+                    f"가용 잔고: {currency} {available:,.0f}\n\n"
+                    f"가용 잔고의 90%({currency} {available * 0.9:,.0f})로 조정하여 진행할까요?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                
+                if reply == QMessageBox.Yes:
+                    # 시드 자동 조정
+                    adjusted = int(available * 0.9)
+                    config['capital'] = adjusted
+                    
+                    # UI 업데이트
+                    for row in self.coin_rows:
+                        if row.row_id == config.get('row_id'):
+                            row.seed_spin.setValue(adjusted)
+                            break
+                    
+                    self._log(f"💰 시드 자동 조정: {requested_seed} → {adjusted}")
+                else:
+                    return
+                    
+        except Exception as e:
+            self._log(f"⚠️ 잔고 체크 실패: {e}")
+            # 실패해도 진행 (사용자 책임)
+
         # 라이선스 체크
         if not self._check_license_limits():
             return
@@ -2459,28 +2546,37 @@ class TradingDashboard(QWidget):
             self._log("✅ MultiSniper 종료됨")
     
     def _refresh_balance_sync_internal(self):
-        """실제 잔고 조회 로직 (별도 스레드에서 실행)"""
+        """USDT + KRW 분리 조회"""
         try:
-            # [FIX] core -> exchanges
             from exchanges.exchange_manager import get_exchange_manager
             em = get_exchange_manager()
             
-            total_usd = 0
+            total_usdt = 0.0
+            total_krw = 0.0
             connected_found = False
             
-            # BingX 추가 확인
-            for name in ['bybit', 'binance', 'okx', 'bitget', 'bingx', 'upbit', 'bithumb']:
+            # USDT 거래소
+            for name in ['bybit', 'binance', 'okx', 'bitget', 'bingx']:
                 try:
-                    bal = em.get_balance(name)
+                    bal = em.get_balance(name, 'USDT')
                     if bal > 0:
-                        total_usd += bal
+                        total_usdt += bal
                         connected_found = True
-                except Exception:
-                    continue
-            return (connected_found, total_usd)
+                except: continue
+            
+            # KRW 거래소
+            for name in ['upbit', 'bithumb']:
+                try:
+                    bal = em.get_balance(name, 'KRW')
+                    if bal > 0:
+                        total_krw += bal
+                        connected_found = True
+                except: continue
+            
+            return (connected_found, total_usdt, total_krw)
         except Exception as e:
-            print(f"Balance Refresh Internal Error: {e}")
-            return (False, 0)
+            print(f"Balance Refresh Error: {e}")
+            return (False, 0, 0)
 
     def _refresh_balance(self):
         """잔고 새로고침 (백그라운드 스레드)"""
@@ -2493,10 +2589,10 @@ class TradingDashboard(QWidget):
             from PyQt5.QtCore import QThread, pyqtSignal, QObject
             
             class BalanceWorker(QObject):
-                finished = pyqtSignal(bool, float)
+                finished = pyqtSignal(bool, float, float)
                 def run(self, parent):
                     res = parent._refresh_balance_sync_internal()
-                    self.finished.emit(res[0], res[1])
+                    self.finished.emit(res[0], res[1], res[2])
 
             self._bal_thread = QThread()
             self._bal_worker = BalanceWorker()
@@ -2513,17 +2609,30 @@ class TradingDashboard(QWidget):
         except Exception as e:
             self._log(f"❌ 잔고 조회 시작 오류: {e}")
 
-    def _handle_balance_update(self, success, total_usd):
-        """잔고 조회 완료 핸들러"""
+    def _handle_balance_update(self, success, total_usdt, total_krw=0):
+        """잔고 표시 업데이트"""
         if success:
-            self.balance_label.setText(f"${total_usd:,.2f}")
+            # USD + KRW 분리 표시
+            display_parts = []
+            if total_usdt > 0:
+                display_parts.append(f"${total_usdt:,.2f}")
+            if total_krw > 0:
+                display_parts.append(f"₩{total_krw:,.0f}")
+            
+            if display_parts:
+                self.balance_label.setText(" | ".join(display_parts))
+            else:
+                self.balance_label.setText("$0.00")
+            
             self.balance_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
-            self._log(f"✅ 총 자산 동기화 완료: ${total_usd:,.2f}")
+            self._log(f"✅ 자산 동기화 완료: USDT ${total_usdt:,.2f} | KRW ₩{total_krw:,.0f}")
+            
+            # 내부 저장 (시드 체크용 등)
+            self._cached_usdt = total_usdt
+            self._cached_krw = total_krw
         else:
             self.balance_label.setText("$0.00")
-            self._log("⚠️ 연결된 거래소 잔고가 없거나 조회에 실패했습니다.")
         
-        # 포지션 카운트 별도 업데이트
         self._update_position_count()
     
     def _update_position_count(self):

@@ -192,16 +192,28 @@ class DataManager:
         # 1. 기존 캐시 확인
         existing_df = self._load_cache(cache_path)
         
-        # 2. 다운로드 범위 결정
-        if existing_df is not None and len(existing_df) > 0:
-            last_time = existing_df['timestamp'].max()
-            start_ts = int(last_time) + 1
-            print(f"📦 캐시 발견: {len(existing_df)}개, 이후 데이터 다운로드")
+        # [FIX] 캐시가 있더라도 사용자가 요청한 start_date가 더 과거라면 히스토리 채우기 수행
+        cache_start_ts = existing_df['timestamp'].min() if existing_df is not None and not existing_df.empty else None
+        
+        if start_date:
+            try:
+                req_start_ts = int(pd.Timestamp(start_date).timestamp() * 1000)
+            except: req_start_ts = None
         else:
-            if start_date:
-                start_ts = int(pd.Timestamp(start_date).timestamp() * 1000)
+            req_start_ts = None
+
+        if existing_df is not None and not existing_df.empty:
+            # 캐시가 있고, 요청한 시작일이 캐시 시작점보다 이후면: 최신 데이터만 업데이트
+            if req_start_ts is None or req_start_ts >= cache_start_ts:
+                last_time = existing_df['timestamp'].max()
+                start_ts = int(last_time) + 1
+                print(f"📦 캐시 업데이트: {len(existing_df)}개 이후부터 다운로드")
             else:
-                start_ts = None
+                # 요청한 시작일이 캐시보다 더 과거라면: 과거부터 전체 수집 (병합 로직이 중복 제거함)
+                start_ts = req_start_ts
+                print(f"📦 히스토리 채우기: 캐시 시작점({datetime.fromtimestamp(cache_start_ts/1000)})보다 과거인 {start_date}부터 수집 시작")
+        else:
+            start_ts = req_start_ts
             existing_df = pd.DataFrame()
         
         # 3. 새 데이터 다운로드
@@ -495,6 +507,10 @@ class DataManager:
             all_data = []
             fetched = 0
             
+            # [FIX] limit이 None일 경우 무한 수집을 위해 매우 큰 값으로 설정
+            if limit is None:
+                limit = 1000000 
+            
             # [FIX] 거래소별 맞춤형 배치 사이즈
             batch_size = self.EXCHANGE_LIMITS.get(exchange_id, 1000)
             # 요청한 limit보다 batch_size가 크면 조절
@@ -510,6 +526,9 @@ class DataManager:
                     # 남은 개수가 batch_size보다 작으면 조절
                     current_batch = min(batch_size, limit - fetched)
                     
+                    # [DEBUG] Readable timestamp
+                    readable_since = datetime.fromtimestamp(since/1000).strftime('%Y-%m-%d %H:%M')
+                    print(f"[DataManager] Batch {fetched//batch_size + 1}: {fetched:,}/{limit:,} candles (since={readable_since})")
                     data = ex.fetch_ohlcv(symbol, timeframe, since=since, limit=current_batch)
                     retry_count = 0
                 except Exception as e:
@@ -522,34 +541,41 @@ class DataManager:
                     continue
                 
                 if not data:
-                    # 데이터가 없는데 처음이면 최근 데이터로 재시도
+                    # [FIX] 데이터가 없는데 처음(fetched=0)인 경우에만 1회성 폴백 시도
                     if fetched == 0 and since is not None:
-                        print(f"ℹ️ {exchange_id}: 과거 데이터 없음, 최근부터 재시도")
-                        since = None
-                        continue
+                        # [CAUTION] 'since=None'은 거래소에 따라 최신 1000개만 반환하고 끝날 수 있음
+                        # 여기서는 log만 남기고 루프를 종료하거나, 다른 전략을 취해야 함
+                        print(f"ℹ️ {exchange_id}: {datetime.fromtimestamp(since/1000)} 이후 데이터 없음 (상장 전 또는 서버 제한)")
                     break
                 
-                # 중복 데이터 체크 (무한 루프 방지)
-                if all_data and data[0][0] == all_data[-1][0]:
-                    print("ℹ️ 중복 데이터 도착, 수집 종료")
+                # [FIX] CCXT 페이지네이션의 고질적인 중복 체크 개선
+                # 중복 데이터가 들어왔을 때 무한 루프 방지 & 실제 데이터만 추가
+                new_candles = []
+                for d in data:
+                    if not all_data or d[0] > all_data[-1][0]:
+                        new_candles.append(d)
+                
+                if not new_candles:
+                    print("ℹ️ 더 이상 새로운 데이터가 없습니다. (수집 종료)")
                     break
                     
-                all_data.extend(data)
-                fetched += len(data)
+                all_data.extend(new_candles)
+                fetched += len(new_candles)
                 
                 if progress_callback:
                     progress_callback(fetched)
                 
                 # 다음 배치를 위한 since 업데이트
-                last_ts = data[-1][0]
+                last_ts = all_data[-1][0]
                 
-                # 현재 시간에 도달했는지 체크
+                # 현재 시간에 도달했는지 체크 (10초 전까지 수집)
                 now_ts = int(time.time() * 1000)
-                if last_ts >= now_ts - 60000: # 1분 이내
+                if last_ts >= now_ts - 20000: # 20초 이내
+                    print("✅ 현재 시점에 도달했습니다.")
                     break
                     
                 since = last_ts + 1
-                time.sleep(0.3) # 부하 조절
+                time.sleep(0.1) # 속도 개선 (기존 0.3 -> 0.1)
             
             # 중복 제거 (혹시 모를 상황 대비)
             if all_data:

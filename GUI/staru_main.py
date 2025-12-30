@@ -161,7 +161,7 @@ TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "1.5.5"
+    VERSION = "v1.5.5"
     
     def __init__(self, user_tier='admin'):
         super().__init__()
@@ -367,7 +367,7 @@ class StarUWindow(QMainWindow):
         
         # ❓ 도움말 버튼
         help_btn = QPushButton("❓ 도움말")
-        help_btn.setMinimumWidth(80)
+        help_btn.setFixedWidth(80)  # [FIX] 크기 통일
         help_btn.setToolTip("사용설명서 및 가이드")
         help_btn.setStyleSheet("""
             QPushButton { 
@@ -382,7 +382,7 @@ class StarUWindow(QMainWindow):
         
         # 📖 용어집 버튼
         glossary_btn = QPushButton("📖 용어집")
-        glossary_btn.setMinimumWidth(75)
+        glossary_btn.setFixedWidth(80)  # [FIX] 크기 통일
         glossary_btn.setToolTip("용어집")
         glossary_btn.setStyleSheet("""
             QPushButton { 
@@ -397,7 +397,7 @@ class StarUWindow(QMainWindow):
         
         # 📱 텔레그램 버튼
         telegram_btn = QPushButton("📱 알림")
-        telegram_btn.setMinimumWidth(65)
+        telegram_btn.setFixedWidth(80)  # [FIX] 크기 통일
         telegram_btn.setToolTip("텔레그램 알림 설정")
         telegram_btn.setStyleSheet("""
             QPushButton { 
@@ -421,12 +421,12 @@ class StarUWindow(QMainWindow):
             update_ver = "1.2.6"
         
         update_btn = QPushButton(f"🔄 업데이트")
-        update_btn.setFixedWidth(80)
+        update_btn.setMinimumWidth(80)  # [FIX] 글자 크기에 맞춰지도록 조정
         update_btn.setToolTip("업데이트 확인")
         update_btn.setStyleSheet("""
             QPushButton { 
                 background: rgba(76, 175, 80, 0.2); color: #4CAF50; 
-                border: 1px solid #4CAF50; border-radius: 3px; padding: 3px 8px;
+                border: 1px solid #4CAF50; border-radius: 4px; padding: 4px 10px;
             }
             QPushButton:hover { background: rgba(76, 175, 80, 0.3); }
         """)
@@ -799,7 +799,7 @@ def main():
     app.setFont(font)
     
     print("\n" + "=" * 60)
-    print("🌟 TwinStar Quantum v1.5.2 시작")
+    print("🌟 TwinStar Quantum v1.5.6 시작")
     print("=" * 60 + "\n")
     
     # 캐시 자동 삭제 (개발 환경 전용)

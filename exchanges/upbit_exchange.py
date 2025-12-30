@@ -273,6 +273,28 @@ class UpbitExchange(BaseExchange):
         except Exception as e:
             logging.error(f"Balance error: {e}")
             return 0
+            
+    def fetch_balance(self) -> dict:
+        """CCXT 호환 잔고 조회 (전체 통화)"""
+        try:
+            if hasattr(self, 'upbit') and self.upbit:
+                balances = self.upbit.get_balances()
+                result = {'KRW': 0.0}
+                
+                for bal in balances:
+                    currency = bal.get('currency', '')
+                    available = float(bal.get('balance', 0))
+                    
+                    if currency == 'KRW':
+                        result['KRW'] = available
+                    else:
+                        result[currency] = available
+                
+                return result
+        except Exception as e:
+            logging.error(f"[Upbit] fetch_balance 오류: {e}")
+        
+        return {'KRW': self.get_balance()}
 
     def sync_time(self) -> bool:
         """Upbit 서버 시간 동기화 (로컬 시간 사용)"""

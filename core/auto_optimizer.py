@@ -231,10 +231,12 @@ class AutoOptimizer:
         os.makedirs(PRESET_DIR, exist_ok=True)
         filepath = os.path.join(PRESET_DIR, filename)
         
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(preset, f, indent=4, ensure_ascii=False)
+        # [FIX] Disable automatic preset saving to keep presets folder clean
+        # with open(filepath, 'w', encoding='utf-8') as f:
+        #     json.dump(preset, f, indent=4, ensure_ascii=False)
         
-        self.logger.info(f"[AUTO_OPT] 프리셋 저장: {filepath}")
+        # self.logger.info(f"[AUTO_OPT] 프리셋 저장: {filepath}")
+        pass
         return filepath
 
 

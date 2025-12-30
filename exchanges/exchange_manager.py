@@ -334,32 +334,91 @@ class ExchangeManager:
             logging.error(f"[{exchange_name}] get_positions error: {e}")
             return []
     
-    def get_balance(self, exchange_name: str, currency: str = "USDT") -> float:
-        """잔고 조회"""
-        exchange = self.get_exchange(exchange_name)
-        if not exchange:
-            return 0
+    def get_balance(self, exchange_name: str, currency: str = None) -> float:
+        """
+        거래소 잔고 조회
         
+        Args:
+            exchange_name: 거래소명
+            currency: 통화 (None=자동, 'USDT', 'KRW')
+        
+        Returns:
+            잔고 (float)
+        """
         try:
-            # [NEW] 통화 통합 시스템: 모든 거래소에서 get_quote_balance() 사용
-            if hasattr(exchange, 'get_quote_balance'):
-                return exchange.get_quote_balance()
+            ex = self.get_exchange(exchange_name)
+            if not ex:
+                return 0.0
             
-            # Fallback: 기존 로직 (ccxt 기반)
-            balance = exchange.fetch_balance()
+            # KRW 거래소 판별
+            is_krw = exchange_name.lower() in ['upbit', 'bithumb']
+            
+            # [NEW] 어댑터별 잔고 데이터 확보
+            if hasattr(ex, 'fetch_balance'):
+                balance_data = ex.fetch_balance()
+            elif hasattr(ex, 'get_balance'):
+                # fetch_balance가 없는 경우 get_balance 결과가 dict인지 확인
+                balance_data = ex.get_balance()
+            else:
+                return 0.0
+            
+            # 통화 자동 선택
+            if currency is None:
+                currency = 'KRW' if is_krw else 'USDT'
+            
+            # 잔고 추출 로직
             from utils.helpers import safe_float
-            val = 0.0
-            if currency in balance and isinstance(balance[currency], dict):
-                val = safe_float(balance[currency].get('total') or balance[currency].get('free'))
-            elif 'total' in balance and isinstance(balance['total'], dict):
-                val = safe_float(balance['total'].get(currency))
-            elif 'free' in balance and isinstance(balance['free'], dict):
-                val = safe_float(balance['free'].get(currency))
             
-            return val
+            if isinstance(balance_data, dict):
+                # 1. 'total' 또는 'free' 키가 있는 표준 ccxt 형식
+                if currency in balance_data:
+                    bal = balance_data[currency]
+                    if isinstance(bal, dict):
+                        return safe_float(bal.get('free', bal.get('total', 0)))
+                    return safe_float(bal)
+                
+                # 2. total 계층 확인
+                if 'total' in balance_data and isinstance(balance_data['total'], dict):
+                    return safe_float(balance_data['total'].get(currency, 0))
+                
+                # 3. free 계층 확인
+                if 'free' in balance_data and isinstance(balance_data['free'], dict):
+                    return safe_float(balance_data['free'].get(currency, 0))
+            
+            # 4. dict가 아니거나 찾는 통화가 없는 경우 raw 값 반환 시도
+            return safe_float(balance_data) if balance_data else 0.0
+            
         except Exception as e:
-            print(f"잔고 조회 실패: {e}")
-            return 0
+            logging.error(f"[ExchangeManager] {exchange_name} 잔고 조회 실패: {e}")
+            return 0.0
+
+    def get_all_balances(self) -> dict:
+        """모든 거래소 잔고 조회 (USDT + KRW 분리)"""
+        result = {'usdt': 0.0, 'krw': 0.0, 'details': {}}
+        
+        # 해외 선물 (USDT)
+        for name in ['bybit', 'binance', 'okx', 'bitget', 'bingx']:
+            try:
+                bal = self.get_balance(name, 'USDT')
+                if bal > 0:
+                    result['usdt'] += bal
+                    if name not in result['details']: result['details'][name] = {}
+                    result['details'][name]['USDT'] = bal
+            except:
+                pass
+        
+        # 국내 현물 (KRW)
+        for name in ['upbit', 'bithumb']:
+            try:
+                bal = self.get_balance(name, 'KRW')
+                if bal > 0:
+                    result['krw'] += bal
+                    if name not in result['details']: result['details'][name] = {}
+                    result['details'][name]['KRW'] = bal
+            except:
+                pass
+        
+        return result
     
     def disconnect(self, exchange_name: str):
         """연결 해제"""

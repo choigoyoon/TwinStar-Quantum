@@ -467,6 +467,19 @@ class BithumbExchange(BaseExchange):
         except Exception as e:
             logging.error(f"Balance error: {e}")
             return 0
+            
+    def fetch_balance(self) -> dict:
+        """CCXT 호환 잔고 조회"""
+        try:
+            if hasattr(self, 'bithumb') and self.bithumb:
+                # pybithumb.get_balance returns (total, locked, available)
+                balance = self.bithumb.get_balance('KRW')
+                krw_available = float(balance[2]) if balance and len(balance) > 2 else 0.0
+                return {'KRW': krw_available}
+        except Exception as e:
+            logging.error(f"[Bithumb] fetch_balance 오류: {e}")
+        
+        return {'KRW': self.get_balance()}
 
     def get_positions(self) -> list:
         """모든 보유 코인 조회 (현물 포지션으로 간주)"""

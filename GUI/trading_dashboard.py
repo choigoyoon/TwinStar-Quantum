@@ -111,8 +111,9 @@ class CoinRow(QWidget):
     
     def _init_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 2, 5, 2)
-        layout.setSpacing(5)
+        layout.setContentsMargins(2, 1, 2, 1)  # [COMPACT] 마진 축소
+        layout.setSpacing(3)  # [COMPACT] 간격 축소
+        self.setFixedHeight(35)  # [COMPACT] 행 높이 고정
         
         # #번호
         self.num_label = QLabel(f"#{self.row_id}")
@@ -211,13 +212,6 @@ class CoinRow(QWidget):
         self.status_label.setFixedWidth(20)
         self.status_label.setToolTip("⚪ 대기 중 / 🟢 실행 중")
         layout.addWidget(self.status_label)
-        
-        # [NEW] 로그/상태 텍스트 (사용자 요청 반영: 실시간 현황/로그)
-        self.message_label = QLabel("-")
-        self.message_label.setStyleSheet("color: #a0a0a0; font-size: 11px;")
-        self.message_label.setFixedWidth(150) # 적절한 너비
-        self.message_label.setToolTip("최근 봇 로그/상태")
-        layout.addWidget(self.message_label)
         
         # [NEW] 로그/상태 텍스트 (사용자 요청 반영: 실시간 현황/로그)
         self.message_label = QLabel("-")
@@ -1331,17 +1325,16 @@ class TradingDashboard(QWidget):
         self.rows_layout = QVBoxLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_layout.setSpacing(3)
+        self.rows_layout.setAlignment(Qt.AlignTop)  # [NEW] 상단 정렬
         
         scroll = QScrollArea()
         scroll.setWidget(self.rows_container)
         scroll.setWidgetResizable(True)
-        # scroll.setMaximumHeight(180) # Remove fixed height constraint
+        scroll.setMinimumHeight(50)   # [NEW] 최소 높이
+        scroll.setMaximumHeight(150)  # [NEW] 최대 높이 (공간 절약)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
         settings_layout.addWidget(scroll)
         
-        # 첫 번째 행
-        self._add_coin_row()
-
         # 버튼 행
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("+ 코인 추가")
@@ -1352,6 +1345,9 @@ class TradingDashboard(QWidget):
         """)
         self.add_btn.clicked.connect(self._add_coin_row)
         btn_layout.addWidget(self.add_btn)
+
+        # 첫 번째 행 (add_btn이 생성된 후 호출해야 AttributeError 방지 가능)
+        self._add_coin_row()
         
         btn_layout.addStretch()
         
@@ -1389,11 +1385,20 @@ class TradingDashboard(QWidget):
         self.multi_tab_layout.addWidget(self.multi_explorer)
 
     def _add_coin_row(self):
-        """코인 행 추가"""
-        # 라이선스 제한 체크
+        """코인 행 추가 (라이선스 제한 적용)"""
         max_coins = self._get_max_coins()
+        
         if len(self.coin_rows) >= max_coins:
-            QMessageBox.warning(self, "제한", f"현재 티어 최대 {max_coins}개 코인만 지원됩니다.")
+            from license_manager import get_license_manager
+            lm = get_license_manager()
+            tier = lm.get_tier()
+            
+            QMessageBox.warning(
+                self,
+                "⚠️ 코인 제한",
+                f"현재 티어({tier})에서는 최대 {max_coins}개 코인만 추가 가능합니다.\n\n"
+                f"더 많은 코인을 사용하려면 업그레이드가 필요합니다."
+            )
             return
         
         row = CoinRow(self.row_counter, self)
@@ -1405,8 +1410,8 @@ class TradingDashboard(QWidget):
         self.coin_rows.append(row)
         self.row_counter += 1
         
-        # 추가 버튼 비활성화 체크
-        if len(self.coin_rows) >= max_coins:
+        # 추가 버튼 비활성화 체크 (AttributeError 방지를 위해 hasattr 체크 추가)
+        if hasattr(self, 'add_btn') and len(self.coin_rows) >= max_coins:
             self.add_btn.setEnabled(False)
         
         # 상태 저장
@@ -1569,35 +1574,6 @@ class TradingDashboard(QWidget):
         self.save_state()
         super().closeEvent(event)
     
-
-
-        """새 코인 행 추가"""
-        # [FIX] 티어별 동적 제한
-        max_coins = self._get_max_coins()
-        
-        if len(self.coin_rows) >= max_coins:
-            from license_manager import get_license_manager
-            lm = get_license_manager()
-            tier = lm.get_tier()
-            
-            QMessageBox.warning(
-                self,
-                "⚠️ 코인 제한",
-                f"현재 티어({tier})에서는 최대 {max_coins}개 코인만 추가 가능합니다.\n\n"
-                f"더 많은 코인을 사용하려면 업그레이드가 필요합니다."
-            )
-            return
-        
-        row = CoinRow(self.row_counter, self)
-        row.start_clicked.connect(self._on_row_start)
-        row.stop_clicked.connect(self._on_row_stop)
-        row.remove_clicked.connect(self._on_row_remove)
-        
-        self.rows_layout.addWidget(row)
-        self.coin_rows.append(row)
-        self.row_counter += 1
-        
-        self._log(f"코인 행 #{row.row_id} 추가됨")
     
     def _on_row_remove(self, row: CoinRow):
         """행 삭제"""

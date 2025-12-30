@@ -17,6 +17,19 @@ from typing import Optional
 from .base_exchange import BaseExchange, Position
 
 try:
+    from utils.helpers import safe_float
+except ImportError:
+    def safe_float(value, default=0.0):
+        if value is None:
+            return default
+        if isinstance(value, dict):
+            return float(value.get('free', value.get('total', value.get('available', default))))
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+try:
     import pybithumb
 except ImportError:
     pybithumb = None
@@ -53,6 +66,11 @@ class BithumbExchange(BaseExchange):
     
     def __init__(self, config: dict):
         super().__init__(config)
+        
+        # [NEW] 통화 통합 시스템 - 현물/KRW 거래소
+        self.quote_currency = 'KRW'
+        self.market_type = 'spot'
+        
         self.api_key = config.get('api_key', '')
         self.api_secret = config.get('api_secret', '')
         self.bithumb = None
@@ -110,17 +128,131 @@ class BithumbExchange(BaseExchange):
             logging.error(f"Bithumb ccxt connect error: {e}")
             return False
     
-    def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
-        """캔들 데이터 조회"""
+    def get_klines(self, symbol=None, interval: str = '15m', limit: int = 500) -> list:
+        """
+        빗썸 캔들 데이터 조회
+        - 업비트 데이터를 마스터로 사용
+        - 빗썸 API는 실시간 보조용 (최대 3000개)
+        """
         try:
-            if self.use_ccxt:
-                return self._get_klines_ccxt(interval, limit)
-            else:
-                return self._get_klines_pybithumb(interval, limit)
-                
+            # 1) 먼저 업비트에서 가져오기 시도
+            upbit_symbol = self._convert_to_upbit_symbol(symbol)
+            
+            if upbit_symbol:
+                try:
+                    import pyupbit
+                    
+                    interval_map = {
+                        '1m': 'minute1', '3m': 'minute3', '5m': 'minute5',
+                        '15m': 'minute15', '30m': 'minute30',
+                        '60m': 'minute60', '1h': 'minute60',
+                        '240m': 'minute240', '4h': 'minute240',
+                        'day': 'day', '1d': 'day'
+                    }
+                    interval_str = interval_map.get(interval, 'minute15')
+                    
+                    all_candles = []
+                    remaining = limit
+                    to = None
+                    
+                    while remaining > 0:
+                        count = min(remaining, 200)
+                        df = pyupbit.get_ohlcv(upbit_symbol, interval=interval_str, count=count, to=to)
+                        
+                        if df is None or df.empty:
+                            break
+                        
+                        for idx, row in df.iterrows():
+                            all_candles.append({
+                                'timestamp': int(idx.timestamp() * 1000),
+                                'open': float(row['open']),
+                                'high': float(row['high']),
+                                'low': float(row['low']),
+                                'close': float(row['close']),
+                                'volume': float(row['volume'])
+                            })
+                        
+                        to = df.index[0]
+                        remaining -= len(df)
+                        
+                        if len(df) < count:
+                            break
+                    
+                    all_candles.sort(key=lambda x: x['timestamp'])
+                    logging.info(f"[Bithumb] Loaded {len(all_candles)} candles from Upbit (master)")
+                    return all_candles
+                    
+                except Exception as e:
+                    logging.warning(f"[Bithumb] Upbit fallback failed: {e}, using native API")
+            
+            # 2) 업비트 실패 시 빗썸 자체 API (최대 3000개)
+            return self._get_klines_native(symbol, interval, min(limit, 3000))
+            
         except Exception as e:
-            logging.error(f"Kline fetch error: {e}")
-            return None
+            logging.error(f"[Bithumb] get_klines error: {e}")
+            return []
+
+    def _convert_to_upbit_symbol(self, symbol):
+        """빗썸 심볼 → 업비트 심볼 변환"""
+        # BTC_KRW → KRW-BTC
+        if symbol is None:
+            symbol = self.symbol
+        
+        if '_KRW' in symbol:
+            base = symbol.replace('_KRW', '')
+            return f'KRW-{base}'
+        elif '_' in symbol:
+            base = symbol.split('_')[0]
+            return f'KRW-{base}'
+        else:
+            # If it's just 'BTC'
+            return f'KRW-{symbol}'
+
+    def _get_klines_native(self, symbol, interval, limit):
+        """빗썸 자체 API (백업용, 최대 3000개)"""
+        try:
+            import requests
+            symbol = symbol or self.symbol
+            
+            # interval conversion for bithumb API
+            interval_map = {
+                '1m': '1m', '3m': '3m', '5m': '5m', '15m': '15m', '30m': '30m',
+                '60m': '1h', '1h': '1h', '240m': '4h', '4h': '4h', 'day': '24h', '1d': '24h'
+            }
+            bithumb_interval = interval_map.get(interval, '15m')
+            
+            # Convert symbol to Bithumb format if needed (e.g. BTC_KRW)
+            if '-' in symbol:
+                symbol = symbol.replace('KRW-', '') + '_KRW'
+            elif '_' not in symbol:
+                symbol = f"{symbol}_KRW"
+
+            url = f'https://api.bithumb.com/public/candlestick/{symbol}/{bithumb_interval}'
+            response = requests.get(url, timeout=30)
+            data = response.json()
+            
+            if data.get('status') != '0000':
+                return []
+            
+            candles = data.get('data', [])[-limit:]
+            
+            result = []
+            for c in candles:
+                result.append({
+                    'timestamp': int(c[0]),
+                    'open': float(c[1]),
+                    'close': float(c[2]),
+                    'high': float(c[3]),
+                    'low': float(c[4]),
+                    'volume': float(c[5])
+                })
+            
+            logging.info(f"[Bithumb] Loaded {len(result)} candles (native, max 3000)")
+            return result
+            
+        except Exception as e:
+            logging.error(f"[Bithumb] native API error: {e}")
+            return []
     
     def _get_klines_pybithumb(self, interval: str, limit: int) -> Optional[pd.DataFrame]:
         """pybithumb로 캔들 조회"""
@@ -137,7 +269,7 @@ class BithumbExchange(BaseExchange):
         
         df = df.reset_index()
         df = df.rename(columns={'time': 'timestamp'})
-        df = df.tail(limit)
+        # df = df.tail(limit)  # [REMOVED] 전체 데이터 반환
         
         return df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
     
@@ -331,7 +463,7 @@ class BithumbExchange(BaseExchange):
                 balance = self.bithumb.fetch_balance()
                 return float(balance.get('KRW', {}).get('free', 0))
             else:
-                return float(self.bithumb.get_balance("KRW") or 0)
+                return safe_float(self.bithumb.get_balance("KRW"))
         except Exception as e:
             logging.error(f"Balance error: {e}")
             return 0
@@ -346,11 +478,12 @@ class BithumbExchange(BaseExchange):
                 balance = self.bithumb.fetch_balance()
                 # 0이 아닌 잔고들을 포지션으로 변환
                 for coin, data in balance.get('free', {}).items():
-                    if coin != 'KRW' and float(data) > 0:
+                    _data_val = safe_float(data)
+                    if coin != 'KRW' and _data_val > 0:
                         positions.append({
                             'symbol': f"{coin}_KRW",
                             'side': 'Buy',
-                            'size': float(data),
+                            'size': _data_val,
                             'entry_price': 0, # 현물은 진입가 추적이 어려움 (API 지원에 따라 다름)
                             'unrealized_pnl': 0,
                             'leverage': 1

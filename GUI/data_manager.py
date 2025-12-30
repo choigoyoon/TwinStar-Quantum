@@ -172,7 +172,7 @@ class DataManager:
     
     def download(self, symbol: str, timeframe: str, 
                  start_date: str = None, end_date: str = None,
-                 exchange: str = "bybit", limit: int = 1000,
+                 exchange: str = "bybit", limit: int = None,  # None = 전체 수집 (상장일부터)
                  progress_callback=None, processor=None) -> pd.DataFrame:
         """
         데이터 다운로드 및 캐시 저장

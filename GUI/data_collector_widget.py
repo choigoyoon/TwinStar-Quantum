@@ -314,22 +314,30 @@ class DataCollectorWidget(QWidget):
         # 기간 설정 (처음부터 현재까지)
         period_layout = QHBoxLayout()
         
-        period_layout.addWidget(QLabel("Start:"))
+        start_label = QLabel("Start:")
+        start_label.setVisible(False)  # [HIDDEN] 상장일부터 자동 수집
+        period_layout.addWidget(start_label)
         self.start_date = QDateEdit()
         # 2017년 1월 1일부터 (암호화폐 데이터 시작점)
         self.start_date.setDate(QDate(2017, 1, 1))
         self.start_date.setCalendarPopup(True)
+        self.start_date.setVisible(False)  # [HIDDEN] 상장일부터 자동 수집
         period_layout.addWidget(self.start_date)
         
-        period_layout.addWidget(QLabel("End:"))
+        end_label = QLabel("End:")
+        end_label.setVisible(False)  # [HIDDEN] 현재까지 자동 수집
+        period_layout.addWidget(end_label)
         self.end_date = QDateEdit()
         self.end_date.setDate(QDate.currentDate())
         self.end_date.setCalendarPopup(True)
+        self.end_date.setVisible(False)  # [HIDDEN] 현재까지 자동 수집
         period_layout.addWidget(self.end_date)
         
-        # [NEW] 상장일부터 체크박스
+        # [NEW] 상장일부터 체크박스 (기본 On, 숨김)
         self.since_listing_chk = QCheckBox("Since Listing (상장일부터)")
         self.since_listing_chk.setStyleSheet("color: white; font-weight: bold;")
+        self.since_listing_chk.setChecked(True)     # [NEW] 기본값 On
+        self.since_listing_chk.setVisible(False)    # [HIDDEN] UI에서 숨김
         self.since_listing_chk.toggled.connect(self._toggle_date_edit)
         period_layout.addWidget(self.since_listing_chk)
         

@@ -161,7 +161,7 @@ TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "1.5.4"
+    VERSION = "1.5.5"
     
     def __init__(self, user_tier='admin'):
         super().__init__()

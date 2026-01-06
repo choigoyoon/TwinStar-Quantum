@@ -11,6 +11,10 @@ import inspect
 
 from .common.strategy_interface import BaseStrategy, StrategyConfig
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class StrategyInfo:
@@ -59,89 +63,75 @@ class StrategyLoader:
         if auto_discover:
             self._auto_discover_strategies()
     
-    def _auto_discover_strategies(self):
+    def _auto_discover_strategies(self, reload_existing: bool = False):
         """strategies 폴더에서 모든 전략 자동 발견"""
         strategies_dir = os.path.dirname(os.path.abspath(__file__))
         
-        print(f"🔍 Scanning strategies folder: {strategies_dir}")
-        
         # 제외할 파일들
-        exclude_files = {
-            '__init__.py',
-            'strategy_loader.py',
-            'parameter_optimizer.py',
-        }
-        
-        # 제외할 폴더들
+        exclude_files = {'__init__.py', 'strategy_loader.py', 'parameter_optimizer.py'}
         exclude_dirs = {'__pycache__', 'common'}
         
         for filename in os.listdir(strategies_dir):
             filepath = os.path.join(strategies_dir, filename)
             
-            # 디렉토리 스킵
-            if os.path.isdir(filepath):
-                if filename not in exclude_dirs:
-                    # 서브폴더도 스캔 (선택적)
-                    pass
+            # 디렉토리 또는 .py 아닌 파일 제외
+            if os.path.isdir(filepath) or not filename.endswith('.py'):
                 continue
             
-            # .py 파일만
-            if not filename.endswith('.py'):
-                continue
-            
-            # 제외 파일 스킵
-            if filename in exclude_files:
+            # 제외 파일 제외
+            if filename in exclude_files or filename in exclude_dirs:
                 continue
             
             # 모듈 로드 시도
             try:
-                self._load_module(filepath, filename)
+                self._load_module(filepath, filename, reload_existing=reload_existing)
             except Exception as e:
-                print(f"  ⚠️ Failed to load {filename}: {e}")
+                logger.error(f"  ⚠️ Failed to process {filename}: {e}")
         
-        print(f"✅ Discovered {len(self._strategies)} strategies")
+        logger.info(f"✅ Discovered {len(self._strategies)} strategies")
     
-    def _load_module(self, filepath: str, filename: str):
+    def _load_module(self, filepath: str, filename: str, reload_existing: bool = False):
         """모듈에서 BaseStrategy 상속 클래스 찾기"""
         module_name = filename[:-3]  # .py 제거
+        module_key = f"strategies.{module_name}"
         
-        # 이미 로드됨
-        if module_name in self._loaded_modules:
+        # 이미 로드됨 & 리로드 요청 아님
+        if not reload_existing and module_name in self._loaded_modules:
             return
-        
-        # 모듈 동적 로드
-        spec = importlib.util.spec_from_file_location(
-            f"strategies.{module_name}",
-            filepath
-        )
-        
-        if spec is None or spec.loader is None:
-            return
-        
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[f"strategies.{module_name}"] = module
         
         try:
-            spec.loader.exec_module(module)
+            if reload_existing and module_key in sys.modules:
+                # 기존 모듈 리로드
+                module = sys.modules[module_key]
+                importlib.reload(module)
+                logger.debug(f"  🔄 Reloaded module: {module_name}")
+            else:
+                # 새 모듈 로드
+                spec = importlib.util.spec_from_file_location(module_key, filepath)
+                if spec is None or spec.loader is None:
+                    return
+                
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[module_key] = module
+                spec.loader.exec_module(module)
+                self._loaded_modules.append(module_name)
+                logger.debug(f"  📂 Loaded module: {module_name}")
         except Exception as e:
-            # 임포트 에러 무시 (의존성 문제 등)
+            logger.error(f"  ⚠️ Module load/reload error ({module_name}): {e}")
             return
-        
-        self._loaded_modules.append(module_name)
         
         # BaseStrategy 상속 클래스 찾기
         for name, obj in inspect.getmembers(module, inspect.isclass):
-            # BaseStrategy 자체는 제외
-            if obj is BaseStrategy:
-                continue
+            if obj is BaseStrategy: continue
             
             # BaseStrategy 상속 확인
             if issubclass(obj, BaseStrategy) and obj.__module__ == module.__name__:
                 try:
                     self.register_strategy(obj)
-                    print(f"  ✅ {name} → {obj().config.strategy_id}")
+                    logger.info(f"  ✅ {name} Registered (v{obj().config.version})")
                 except Exception as e:
-                    print(f"  ⚠️ {name}: {e}")
+                    logger.warning(f"  ⚠️ {name}: {e}")
+
     
     def list_all(self) -> List[str]:
         """모든 전략 ID 목록"""
@@ -175,11 +165,12 @@ class StrategyLoader:
         )
     
     def reload(self):
-        """전략 다시 로드"""
+        """전략 실시간 다시 로드 (핫로딩)"""
+        logger.info("♻️ Hot-reloading strategies...")
         self._strategies.clear()
         self._strategy_info.clear()
-        self._loaded_modules.clear()
-        self._auto_discover_strategies()
+        # _loaded_modules는 유지 (reload 시 importlib.reload 사용을 위해)
+        self._auto_discover_strategies(reload_existing=True)
 
 
 # 전역 로더 인스턴스
@@ -197,7 +188,7 @@ if __name__ == "__main__":
     # 테스트
     loader = StrategyLoader()
     
-    print("\n📋 Discovered Strategies:")
+    logger.info("\n📋 Discovered Strategies:")
     for sid in loader.list_all():
         info = loader.get_strategy_info(sid)
-        print(f"  - {sid}: {info.name} (v{info.version})")
+        logger.info(f"  - {sid}: {info.name} (v{info.version})")

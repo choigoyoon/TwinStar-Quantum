@@ -8,6 +8,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QFrame
 )
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 
@@ -262,4 +266,4 @@ if __name__ == "__main__":
     
     popup = MultiSessionPopup(test_summary)
     popup.exec_()
-    print(f"Result: {popup.get_result()}")
+    logger.info(f"Result: {popup.get_result()}")

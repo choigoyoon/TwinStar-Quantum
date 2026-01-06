@@ -3,7 +3,6 @@
 Binance 거래소 어댑터
 """
 
-import os
 import time
 import logging
 import pandas as pd
@@ -344,7 +343,7 @@ class BinanceExchange(BaseExchange):
             logging.error(f"[Binance] sync_time error: {e}")
             return False
     
-    def get_positions(self) -> list:
+    def get_positions(self) -> Optional[list]:
         """모든 열린 포지션 조회 (긴급청산용)"""
         try:
             positions_data = self.client.futures_position_information()
@@ -367,7 +366,7 @@ class BinanceExchange(BaseExchange):
             
         except Exception as e:
             logging.error(f"포지션 조회 에러: {e}")
-            return []
+            return None
     
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
@@ -518,3 +517,24 @@ class BinanceExchange(BaseExchange):
         except Exception as e:
             logging.warning(f"[Binance] Trade history error: {e}")
             return super().get_trade_history(limit)
+
+    def get_realized_pnl(self, limit: int = 100) -> float:
+        """누적 실현 손익 조회 (수수료 차감 후)"""
+        trades = self.get_trade_history(limit=limit)
+        total_pnl = sum(t.get('pnl', 0) for t in trades)
+        logging.info(f"[Binance] Realized PnL: ${total_pnl:.2f} from {len(trades)} records")
+        return total_pnl
+
+    def get_compounded_capital(self, initial_capital: float) -> float:
+        """복리 자본 조회 (초기 자본 + 누적 수익)"""
+        realized_pnl = self.get_realized_pnl()
+        compounded = initial_capital + realized_pnl
+        
+        # 최소 자본 보장 (초기의 10%)
+        min_capital = initial_capital * 0.1
+        if compounded < min_capital:
+            logging.warning(f"[Binance] Capital below minimum! Using {min_capital}")
+            return min_capital
+        
+        logging.info(f"[Binance] Compounded capital: ${initial_capital:.2f} + ${realized_pnl:.2f} = ${compounded:.2f}")
+        return compounded

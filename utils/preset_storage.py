@@ -9,8 +9,12 @@
 import os
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from pathlib import Path
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 class PresetStorage:
@@ -129,11 +133,11 @@ class PresetStorage:
             }
             self._save_index()
             
-            print(f"[PresetStorage] ✅ 저장: {key}")
+            logger.info(f"[PresetStorage] ✅ 저장: {key}")
             return True
             
         except Exception as e:
-            print(f"[PresetStorage] ❌ 저장 실패 ({symbol}_{tf}): {e}")
+            logger.info(f"[PresetStorage] ❌ 저장 실패 ({symbol}_{tf}): {e}")
             return False
     
     def load_preset(self, symbol: str, tf: str) -> Optional[Dict]:
@@ -147,7 +151,7 @@ class PresetStorage:
             with open(path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[PresetStorage] ❌ 로드 실패 ({symbol}_{tf}): {e}")
+            logger.info(f"[PresetStorage] ❌ 로드 실패 ({symbol}_{tf}): {e}")
             return None
     
     def update_live_stats(self, symbol: str, tf: str, 
@@ -199,7 +203,7 @@ class PresetStorage:
             return True
             
         except Exception as e:
-            print(f"[PresetStorage] ❌ 업데이트 실패: {e}")
+            logger.info(f"[PresetStorage] ❌ 업데이트 실패: {e}")
             return False
     
     def _check_health(self, preset: Dict) -> str:
@@ -284,7 +288,7 @@ class PresetStorage:
             
             return True
         except Exception as e:
-            print(f"[PresetStorage] ❌ 삭제 실패: {e}")
+            logger.info(f"[PresetStorage] ❌ 삭제 실패: {e}")
             return False
     
     def get_presets_by_status(self, status: str) -> List[Dict]:
@@ -319,7 +323,7 @@ if __name__ == "__main__":
     
     # 테스트 로드
     preset = storage.load_preset('BTCUSDT', '4h')
-    print("로드된 프리셋:", preset)
+    logger.info(f"로드된 프리셋: {preset}")
     
     # 통계
-    print("통계:", storage.get_stats_summary())
+    logger.info(f"통계: {storage.get_stats_summary()}")

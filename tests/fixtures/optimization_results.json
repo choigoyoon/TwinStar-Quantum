@@ -1,0 +1,37 @@
+{
+    "pass": {
+        "win_rate": 72.5,
+        "max_drawdown": 15.2,
+        "total_trades": 45,
+        "profit_factor": 1.8,
+        "params": {
+            "rsi_period": 14,
+            "atr_period": 14,
+            "ema_period": 10
+        }
+    },
+    "fail_win_rate": {
+        "win_rate": 69.9,
+        "max_drawdown": 15.0,
+        "total_trades": 50,
+        "profit_factor": 1.5
+    },
+    "fail_mdd": {
+        "win_rate": 75.0,
+        "max_drawdown": 20.1,
+        "total_trades": 50,
+        "profit_factor": 1.5
+    },
+    "fail_trades": {
+        "win_rate": 80.0,
+        "max_drawdown": 10.0,
+        "total_trades": 29,
+        "profit_factor": 2.0
+    },
+    "boundary_pass": {
+        "win_rate": 70.0,
+        "max_drawdown": 20.0,
+        "total_trades": 30,
+        "profit_factor": 1.0
+    }
+}

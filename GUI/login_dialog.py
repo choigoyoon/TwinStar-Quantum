@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QMessageBox, QFrame, QGridLayout, QComboBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QFont
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

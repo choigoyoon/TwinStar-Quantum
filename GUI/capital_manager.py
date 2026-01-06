@@ -1,7 +1,6 @@
 # capital_manager.py - 자금 관리자 스텁 모듈
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass

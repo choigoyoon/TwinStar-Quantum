@@ -5,8 +5,7 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QLineEdit, QCheckBox,
     QGroupBox, QComboBox, QMessageBox, QTimeEdit
 )
-from PyQt5.QtCore import Qt, QTime
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QTime
 
 from notification_manager import NotificationManager
 
@@ -262,7 +261,7 @@ class NotificationWidget(QWidget):
         self.txt_telegram_chat.setText(s.telegram_chat_id)
         
         self.chk_discord.setChecked(s.discord_enabled)
-        self.txt_discord_webhook.setText(s.discord_webhook_url)
+        self.txt_discord_webhook.setText(s.discord_webhook)
         
         self.chk_sound.setChecked(s.sound_enabled)
         
@@ -300,7 +299,7 @@ class NotificationWidget(QWidget):
     def _test_discord(self):
         """디스코드 테스트"""
         # 임시 설정
-        self.notification_manager.settings.discord_webhook_url = self.txt_discord_webhook.text()
+        self.notification_manager.settings.discord_webhook = self.txt_discord_webhook.text()
         
         success, message = self.notification_manager.test_discord()
         
@@ -317,7 +316,7 @@ class NotificationWidget(QWidget):
             telegram_chat_id=self.txt_telegram_chat.text(),
             
             discord_enabled=self.chk_discord.isChecked(),
-            discord_webhook_url=self.txt_discord_webhook.text(),
+            discord_webhook=self.txt_discord_webhook.text(),
             
             sound_enabled=self.chk_sound.isChecked(),
             

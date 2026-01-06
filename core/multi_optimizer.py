@@ -7,7 +7,6 @@ Multi Optimizer
 - 메모리 관리
 """
 
-import os
 import gc
 import json
 import logging
@@ -15,6 +14,10 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Callable
 from pathlib import Path
+
+# Logging
+from utils.logger import get_module_logger
+logger = get_module_logger(__name__)
 
 # DataManager import
 try:
@@ -469,10 +472,10 @@ if __name__ == '__main__':
     
     def on_progress(current, total, task, result):
         pct = current / total * 100
-        print(f"Progress: {pct:.1f}% ({current}/{total}) - {task}")
+        logger.info(f"Progress: {pct:.1f}% ({current}/{total}) - {task}")
     
     def on_complete(summary):
-        print(f"Complete! {summary}")
+        logger.info(f"Complete! {summary}")
     
     result = optimizer.run(
         symbols=test_symbols,
@@ -482,4 +485,4 @@ if __name__ == '__main__':
         on_complete=on_complete
     )
     
-    print(f"Result: {result}")
+    logger.info(f"Result: {result}")

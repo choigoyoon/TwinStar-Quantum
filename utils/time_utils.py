@@ -7,7 +7,10 @@
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 # ========== 시간대 상수 ==========
 UTC = timezone.utc
@@ -182,18 +185,18 @@ def format_iso(dt: datetime = None) -> str:
 
 # ========== 테스트 ==========
 if __name__ == "__main__":
-    print("=== Time Utils Test ===")
+    logger.info("=== Time Utils Test ===")
     
-    print(f"\nUTC Now: {get_utc_now()}")
-    print(f"KST Now: {get_kst_now()}")
+    logger.info(f"\nUTC Now: {get_utc_now()}")
+    logger.info(f"KST Now: {get_kst_now()}")
     
-    print(f"\nBybit Now: {get_exchange_now('bybit')}")
-    print(f"Upbit Now: {get_exchange_now('upbit')}")
+    logger.info(f"\nBybit Now: {get_exchange_now('bybit')}")
+    logger.info(f"Upbit Now: {get_exchange_now('upbit')}")
     
     # 시그널 유효성 테스트
     test_signal = get_utc_now() - timedelta(hours=3)
-    print(f"\n3시간 전 시그널 (4시간 유효): {is_signal_valid(test_signal, 4)}")
-    print(f"3시간 전 시그널 (2시간 유효): {is_signal_valid(test_signal, 2)}")
+    logger.info(f"\n3시간 전 시그널 (4시간 유효): {is_signal_valid(test_signal, 4)}")
+    logger.info(f"3시간 전 시그널 (2시간 유효): {is_signal_valid(test_signal, 2)}")
     
-    print(f"\nLog Format: {format_for_log()}")
-    print(f"ISO Format: {format_iso()}")
+    logger.info(f"\nLog Format: {format_for_log()}")
+    logger.info(f"ISO Format: {format_iso()}")

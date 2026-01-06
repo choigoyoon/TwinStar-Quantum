@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from enum import Enum
 import queue
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 # Windows asyncio 호환성
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -83,7 +87,7 @@ class WebSocketManager:
             await self.exchange.load_markets()
             
             self._update_status(ConnectionStatus.CONNECTED)
-            print(f"✅ WebSocket 연결 성공: {self.exchange_name}")
+            logger.info(f"✅ WebSocket 연결 성공: {self.exchange_name}")
             
             while not self._stop_event.is_set():
                 try:
@@ -107,11 +111,11 @@ class WebSocketManager:
                             
                 except Exception as e:
                     if not self._stop_event.is_set():
-                        print(f"⚠️ 스트림 에러: {e}")
+                        logger.info(f"⚠️ 스트림 에러: {e}")
                         await asyncio.sleep(1)
             
         except ImportError:
-            print("⚠️ ccxtpro 없음, 폴링 모드로 전환")
+            logger.info("⚠️ ccxtpro 없음, 폴링 모드로 전환")
             await self._polling_fallback(symbols, timeframe)
         
         except Exception as e:
@@ -132,7 +136,7 @@ class WebSocketManager:
             self.exchange.load_markets()
             
             self._update_status(ConnectionStatus.CONNECTED)
-            print(f"✅ 폴링 모드 시작: {self.exchange_name}")
+            logger.info(f"✅ 폴링 모드 시작: {self.exchange_name}")
             
             # 타임프레임별 폴링 간격 (초)
             poll_intervals = {
@@ -160,7 +164,7 @@ class WebSocketManager:
                             )
                             self._data_queue.put(candle)
                     except Exception as e:
-                        print(f"⚠️ 폴링 에러 {symbol}: {e}")
+                        logger.info(f"⚠️ 폴링 에러 {symbol}: {e}")
                 
                 # 폴링 간격 대기
                 for _ in range(interval):
@@ -211,7 +215,7 @@ class WebSocketManager:
             timeframe: '1m', '5m', '15m' 등
         """
         if self._thread and self._thread.is_alive():
-            print("⚠️ 이미 실행 중")
+            logger.info("⚠️ 이미 실행 중")
             return False
         
         self.exchange_name = exchange.lower()
@@ -242,7 +246,7 @@ class WebSocketManager:
         )
         self._thread.start()
         
-        print(f"🚀 WebSocket 시작: {exchange} {normalized_symbols} {timeframe}")
+        logger.info(f"🚀 WebSocket 시작: {exchange} {normalized_symbols} {timeframe}")
         return True
     
     def stop(self):
@@ -260,12 +264,12 @@ class WebSocketManager:
         
         self.streams.clear()
         self._update_status(ConnectionStatus.DISCONNECTED)
-        print("🛑 WebSocket 중지")
+        logger.info("🛑 WebSocket 중지")
     
     def add_stream(self, symbol: str, timeframe: str) -> bool:
         """스트림 추가 (런타임)"""
         # 현재 구현에서는 재시작 필요
-        print(f"⚠️ 스트림 추가는 재시작 필요: {symbol} {timeframe}")
+        logger.info(f"⚠️ 스트림 추가는 재시작 필요: {symbol} {timeframe}")
         return False
     
     def remove_stream(self, symbol: str, timeframe: str) -> bool:
@@ -328,16 +332,16 @@ if __name__ == "__main__":
     
     # 콜백 설정
     def on_candle(candle: RealtimeCandle):
-        print(f"📊 {candle.symbol} {candle.timeframe}: {candle.close:.2f} (완성: {candle.is_closed})")
+        logger.info(f"📊 {candle.symbol} {candle.timeframe}: {candle.close:.2f} (완성: {candle.is_closed})")
     
     def on_status(status: ConnectionStatus):
-        print(f"📡 상태: {status.value}")
+        logger.info(f"📡 상태: {status.value}")
     
     ws.on_candle = on_candle
     ws.on_status = on_status
     
     # 시작
-    print("🚀 WebSocket 테스트 시작...")
+    logger.info("🚀 WebSocket 테스트 시작...")
     ws.start('bybit', ['BTCUSDT'], '1m')
     
     # 30초 실행
@@ -345,9 +349,9 @@ if __name__ == "__main__":
         for i in range(30):
             ws._process_queue()  # 콜백 처리
             time.sleep(1)
-            print(f"⏱️ {i+1}/30초...")
+            logger.info(f"⏱️ {i+1}/30초...")
     except KeyboardInterrupt:
         pass
     finally:
         ws.stop()
-        print("✅ 테스트 완료")
+        logger.info("✅ 테스트 완료")

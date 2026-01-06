@@ -12,7 +12,6 @@ import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 class ErrorReporter:
@@ -179,13 +178,13 @@ def capture_error(error: Exception, context: str = ""):
 
 if __name__ == "__main__":
     # 테스트
-    print("에러 리포터 테스트")
-    print(f"앱 버전: {ErrorReporter._get_app_version()}")
-    print(f"최근 로그: {len(ErrorReporter._get_recent_logs())} 문자")
+    logger.info("에러 리포터 테스트")
+    logger.info(f"앱 버전: {ErrorReporter._get_app_version()}")
+    logger.info(f"최근 로그: {len(ErrorReporter._get_recent_logs())} 문자")
     
     # 테스트 에러
     try:
         raise ValueError("테스트 에러입니다")
     except Exception as e:
         ErrorReporter.capture(e, context="test")
-        print(f"에러 해시: {ErrorReporter._get_error_hash(e)}")
+        logger.info(f"에러 해시: {ErrorReporter._get_error_hash(e)}")

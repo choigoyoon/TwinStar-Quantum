@@ -28,65 +28,59 @@ TF_RESAMPLE_MAP = {
     '1w': 'W-MON', '1W': 'W-MON'
 }
 
-# ============ 기본 파라미터 (전체 프로젝트 공용) ============
-# [FIX] 과거 archive 전략과 동일한 값으로 복원
-DEFAULT_PARAMS = {
-    'atr_mult': 1.5,              # 과거: 1.5~2.0 (변동성 기반)
-    'atr_period': 14,
-    'rsi_period': 14,             # 과거: 14 (표준)
-    'trail_start_r': 0.8,         # 과거: 0.4~0.8
-    'trail_dist_r': 0.5,          # [FIX] 0.1 → 0.5 (과거 archive 값)
-    'pullback_rsi_long': 45,      # [FIX] 40 → 45 (Relaxed)
-    'pullback_rsi_short': 55,     # [FIX] 60 → 55 (Relaxed)
-    'pattern_tolerance': 0.05,    # [FIX] 0.03 → 0.05 (Relaxed)
-    'entry_validity_hours': 48.0, # [RESTORED] 원래 값 복원
-    'max_adds': 1,
-    'slippage': 0.0005,
-    'fee': 0.00055
-}
-
-# ============ JSON 설정 로드 ============
-import json
-import os
-import sys
-
-# [EXE] 경로 호환성
+# ============ 방향 상수 (config/parameters.py에서 import) ============
 try:
-    from paths import Paths
-    _CONFIG_PATH = os.path.join(Paths.USER_CONFIG, 'strategy_params.json')
+    from config.parameters import (
+        SLIPPAGE, FEE, TOTAL_COST,
+        DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
+        to_api_direction, from_api_direction
+    )
 except ImportError:
-    _CONFIG_PATH = os.path.join(os.path.dirname(__file__), '..', 'config', 'strategy_params.json')
+    # Fallback
+    SLIPPAGE = 0.0006
+    FEE = 0.00055
+    TOTAL_COST = SLIPPAGE + FEE
+    DIRECTION_LONG = 'Long'
+    DIRECTION_SHORT = 'Short'
+    DIRECTION_BOTH = 'Both'
+    def to_api_direction(d): return 'Buy' if d == 'Long' else 'Sell'
+    def from_api_direction(d): return 'Long' if d.lower() in ('buy', 'long') else 'Short'
 
-def load_params_from_json() -> dict:
-    """JSON 파일에서 파라미터 로드 (없으면 DEFAULT_PARAMS 반환)"""
-    if os.path.exists(_CONFIG_PATH):
-        try:
-            with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:
-                loaded = json.load(f)
-                # DEFAULT_PARAMS 기반으로 업데이트 (누락된 키 보완)
-                merged = DEFAULT_PARAMS.copy()
-                merged.update(loaded)
-                return merged
-        except Exception as e:
-            print(f"[WARN] JSON 설정 로드 실패: {e}")
-    return DEFAULT_PARAMS.copy()
+# ============ 기본 파라미터 (전체 프로젝트 공용) ============
+# [Phase 3] Single Source of Truth: config/parameters.py에서 import
+try:
+    from config.parameters import (
+        DEFAULT_PARAMS,
+        PARAM_RANGES,
+        REQUIRED_PARAMS,
+        get_param,
+        get_all_params,
+        validate_params,
+        load_params_from_json,
+        save_params_to_json
+    )
+except ImportError:
+    # Fallback for EXE or path issues
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from config.parameters import (
+        DEFAULT_PARAMS,
+        PARAM_RANGES,
+        REQUIRED_PARAMS,
+        get_param,
+        get_all_params,
+        validate_params,
+        load_params_from_json,
+        save_params_to_json
+    )
 
-def save_params_to_json(params: dict) -> bool:
-    """파라미터를 JSON 파일로 저장"""
-    try:
-        config_dir = os.path.dirname(_CONFIG_PATH)
-        if not os.path.exists(config_dir):
-            os.makedirs(config_dir)
-        with open(_CONFIG_PATH, 'w', encoding='utf-8') as f:
-            json.dump(params, f, indent=2, ensure_ascii=False)
-        return True
-    except Exception as e:
-        print(f"[ERROR] JSON 저장 실패: {e}")
-        return False
 
 def get_params() -> dict:
     """현재 활성 파라미터 반환 (JSON 우선, 없으면 기본값)"""
     return load_params_from_json()
+
+
 
 # ============ 경로 상수 ============
 try:

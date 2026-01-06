@@ -244,6 +244,17 @@ class CCXTExchange(BaseExchange):
             logging.error(f"{self.name} connect error: {e}")
             return False
     
+    def sync_time(self) -> bool:
+        """서버 시간 동기화 (CCXT)"""
+        try:
+            if hasattr(self.ccxt_exchange, 'load_time_difference'):
+                self.ccxt_exchange.load_time_difference()
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"Sync time error: {e}")
+            return False
+            
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
         try:

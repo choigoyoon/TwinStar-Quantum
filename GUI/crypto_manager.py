@@ -8,10 +8,13 @@
 import os
 import json
 import hashlib
-import base64
 import uuid
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Dict
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 try:
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -20,7 +23,7 @@ try:
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
-    print("[Warning] cryptography 라이브러리 없음. pip install cryptography")
+    logger.info("[Warning] cryptography 라이브러리 없음. pip install cryptography")
 
 # 파일 경로
 import sys
@@ -59,7 +62,7 @@ def get_machine_id() -> str:
         combined = f"{mac}:{user}:{home}"
         return hashlib.sha256(combined.encode()).hexdigest()
     except Exception as e:
-        print(f"[Warning] Machine ID 생성 실패: {e}")
+        logger.info(f"[Warning] Machine ID 생성 실패: {e}")
         # 폴백: MAC만 사용
         return hashlib.sha256(hex(uuid.getnode()).encode()).hexdigest()
 
@@ -112,7 +115,7 @@ def save_api_keys(config: Dict) -> bool:
     """
     try:
         if not CRYPTO_AVAILABLE:
-            print("[Error] cryptography 라이브러리 없음")
+            logger.info("[Error] cryptography 라이브러리 없음")
             return False
         
         # 디렉토리 생성
@@ -132,14 +135,14 @@ def save_api_keys(config: Dict) -> bool:
         
         # 검증
         if not verify_save(config):
-            print("[Error] 저장 검증 실패")
+            logger.info("[Error] 저장 검증 실패")
             return False
         
-        print(f"[Crypto] API 키 암호화 저장 완료: {API_KEYS_FILE}")
+        logger.info(f"[Crypto] API 키 암호화 저장 완료: {API_KEYS_FILE}")
         return True
         
     except Exception as e:
-        print(f"[Error] API 키 저장 실패: {e}")
+        logger.info(f"[Error] API 키 저장 실패: {e}")
         return False
 
 
@@ -152,11 +155,11 @@ def load_api_keys() -> Dict:
     """
     try:
         if not CRYPTO_AVAILABLE:
-            # print("[Warning] cryptography 없음, 레거시 파일 시도")
+            # logger.info("[Warning] cryptography 없음, 레거시 파일 시도")
             return _load_legacy_config()
         
         if not API_KEYS_FILE.exists():
-            # print("[Crypto] 암호화 파일 없음, 레거시 마이그레이션 시도")
+            # logger.info("[Crypto] 암호화 파일 없음, 레거시 마이그레이션 시도")
             return _migrate_legacy_config()
         
         # 파일 읽기
@@ -170,12 +173,12 @@ def load_api_keys() -> Dict:
         
         # JSON 파싱
         config = json.loads(decrypted.decode('utf-8'))
-        print(f"[Crypto] API 키 복호화 로드 완료 ({len(config)}개 거래소)")
+        logger.info(f"[Crypto] API 키 복호화 로드 완료 ({len(config)}개 거래소)")
         return config
         
     except Exception as e:
-        print(f"[Error] API 키 로드 실패: {e}")
-        print("다른 PC에서 복사한 파일이거나 손상됨")
+        logger.info(f"[Error] API 키 로드 실패: {e}")
+        logger.info("다른 PC에서 복사한 파일이거나 손상됨")
         return {}
 
 
@@ -196,7 +199,7 @@ def verify_save(original: Dict) -> bool:
         
         return True
     except Exception as e:
-        print(f"[Crypto] Verify save failed: {e}")
+        logger.info(f"[Crypto] Verify save failed: {e}")
         return False
 
 
@@ -207,7 +210,7 @@ def _load_legacy_config() -> Dict:
             with open(LEGACY_CONFIG_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
     except Exception as e:
-        print(f"[Warning] 레거시 설정 로드 실패: {e}")
+        logger.info(f"[Warning] 레거시 설정 로드 실패: {e}")
     return {}
 
 
@@ -216,12 +219,12 @@ def _migrate_legacy_config() -> Dict:
     legacy = _load_legacy_config()
     
     if legacy:
-        print("[Crypto] 레거시 설정 발견, 암호화 마이그레이션 중...")
+        logger.info("[Crypto] 레거시 설정 발견, 암호화 마이그레이션 중...")
         if save_api_keys(legacy):
             # 백업 후 삭제
             backup_path = LEGACY_CONFIG_FILE.with_suffix('.json.bak')
             LEGACY_CONFIG_FILE.rename(backup_path)
-            print(f"[Crypto] 레거시 파일 백업: {backup_path}")
+            logger.info(f"[Crypto] 레거시 파일 백업: {backup_path}")
         return legacy
     
     return {}
@@ -232,18 +235,18 @@ def delete_encrypted_keys() -> bool:
     try:
         if API_KEYS_FILE.exists():
             API_KEYS_FILE.unlink()
-            print("[Crypto] 암호화 파일 삭제됨")
+            logger.info("[Crypto] 암호화 파일 삭제됨")
             return True
     except Exception as e:
-        print(f"[Error] 삭제 실패: {e}")
+        logger.info(f"[Error] 삭제 실패: {e}")
     return False
 
 
 # ============ 테스트 ============
 if __name__ == "__main__":
-    print("=== Crypto Manager Test ===")
-    print(f"Machine ID: {get_machine_id()[:16]}...")
-    print(f"Crypto Available: {CRYPTO_AVAILABLE}")
+    logger.info("=== Crypto Manager Test ===")
+    logger.info(f"Machine ID: {get_machine_id()[:16]}...")
+    logger.info(f"Crypto Available: {CRYPTO_AVAILABLE}")
     
     # 테스트 저장/로드
     test_config = {
@@ -251,15 +254,15 @@ if __name__ == "__main__":
         'binance': {'api_key': 'bn_key', 'api_secret': 'bn_secret'}
     }
     
-    print("\n1. Saving...")
+    logger.info("\n1. Saving...")
     save_api_keys(test_config)
     
-    print("\n2. Loading...")
+    logger.info("\n2. Loading...")
     loaded = load_api_keys()
-    print(f"Loaded: {list(loaded.keys())}")
+    logger.info(f"Loaded: {list(loaded.keys())}")
     
-    print("\n3. Verify...")
+    logger.info("\n3. Verify...")
     if loaded.get('bybit', {}).get('api_key') == 'test_key_123':
-        print("✅ Test PASSED!")
+        logger.info("✅ Test PASSED!")
     else:
-        print("❌ Test FAILED!")
+        logger.info("❌ Test FAILED!")

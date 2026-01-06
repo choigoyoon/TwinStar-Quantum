@@ -11,6 +11,10 @@ from PyQt5.QtWidgets import (
     QComboBox, QPushButton, QFrame, QGridLayout,
     QGroupBox, QScrollArea
 )
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
@@ -254,17 +258,21 @@ class StrategySelectorWidget(QWidget):
     
     def _load_strategies(self):
         """전략 목록 로드"""
-        strategies = self._loader.get_available_strategies(self._user_tier)
+        strategies = []
+        for sid in self._loader.list_all():
+            info = self._loader.get_strategy_info(sid)
+            if info:
+                strategies.append(info)
         
         for info in strategies:
             # 전략 인스턴스 로드하여 config 가져오기
-            strategy = self._loader.load_strategy(info.id)
+            strategy = self._loader.load_strategy(info.strategy_id)
             config = strategy.get_config() if strategy else None
             
             card = StrategyCard(info, config)
             card.selected.connect(self._on_card_selected)
             
-            self._cards[info.id] = card
+            self._cards[info.strategy_id] = card
             self._cards_layout.insertWidget(self._cards_layout.count() - 1, card)
     
     def _filter_strategies(self, tier_text: str):
@@ -336,11 +344,11 @@ if __name__ == "__main__":
     widget.resize(400, 500)
     
     def on_strategy_selected(sid, strategy):
-        print(f"선택됨: {sid}")
+        logger.info(f"선택됨: {sid}")
         config = strategy.get_config()
-        print(f"  - 이름: {config.name}")
-        print(f"  - TF: {config.timeframe}")
-        print(f"  - 승률: {config.win_rate}%")
+        logger.info(f"  - 이름: {config.name}")
+        logger.info(f"  - TF: {config.timeframe}")
+        logger.info(f"  - 승률: {config.win_rate}%")
     
     widget.strategy_selected.connect(on_strategy_selected)
     widget.show()

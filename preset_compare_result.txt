@@ -1,0 +1,18 @@
+﻿======================================================================
+  프리셋 파라미터 vs 기본 파라미터 비교
+======================================================================
+py : Traceback (most recent call last):
+위치 줄:1 문자:1
++ py verify_preset_params.py 2>&1 | Out-File -Encoding UTF8 pre
+set_comp ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most r 
+   ecent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\매매전략\verify_preset_params.py", line 162, in <module>
+    main()
+  File "C:\매매전략\verify_preset_params.py", line 112, in main
+    print("\n\U0001f4ca 50,000 랜덤워크 캔들 생성...")
+UnicodeEncodeError: 'cp949' codec can't encode character '\U000
+1f4ca' in position 2: illegal multibyte sequence

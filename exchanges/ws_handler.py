@@ -9,7 +9,6 @@
 import asyncio
 import json
 import logging
-import traceback
 from typing import Callable, Optional, Dict
 from datetime import datetime
 import time

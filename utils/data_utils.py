@@ -6,15 +6,23 @@
 
 import pandas as pd
 
-# 상수 직접 정의 (의존성 최소화)
-TF_RESAMPLE_MAP = {
-    '15min': '15min', '15m': '15min',
-    '30min': '30min', '30m': '30min',
-    '1h': '1h', '1H': '1h',
-    '4h': '4h', '4H': '4h',
-    '1d': '1D', '1D': '1D',
-    '1w': '1W', '1W': '1W',
-}
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
+# TF_RESAMPLE_MAP: constants.py에서 import (Single Source)
+try:
+    from GUI.constants import TF_RESAMPLE_MAP
+except ImportError:
+    # Fallback for EXE or path issues
+    TF_RESAMPLE_MAP = {
+        '15min': '15min', '15m': '15min',
+        '30min': '30min', '30m': '30min',
+        '1h': '1h', '1H': '1h',
+        '4h': '4h', '4H': '4h',
+        '1d': '1D', '1D': '1D',
+        '1w': '1W', '1W': '1W',
+    }
 
 
 def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True) -> pd.DataFrame:
@@ -86,12 +94,12 @@ def _add_indicators(df: pd.DataFrame) -> pd.DataFrame:
             df['atr'] = df['atr_14']
             
     except ImportError:
-        print("[data_utils] IndicatorGenerator not found, skipping indicators")
+        logger.info("[data_utils] IndicatorGenerator not found, skipping indicators")
         # 기본 컬럼이 없으면 에러 날 수 있으므로 최소한의 조치
         if 'rsi' not in df.columns: df['rsi'] = 50
         if 'atr' not in df.columns: df['atr'] = 0
     except Exception as e:
-        print(f"[data_utils] Indicator error: {e}")
+        logger.error(f"[data_utils] Indicator error: {e}")
         if 'rsi' not in df.columns: df['rsi'] = 50
         if 'atr' not in df.columns: df['atr'] = 0
     

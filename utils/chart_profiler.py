@@ -10,6 +10,10 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Optional
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 class ChartProfiler:
     """차트 프로파일 추출"""
@@ -46,7 +50,7 @@ class ChartProfiler:
             }
             return profile
         except Exception as e:
-            print(f"[ChartProfiler] 프로파일 추출 오류: {e}")
+            logger.info(f"[ChartProfiler] 프로파일 추출 오류: {e}")
             return self._empty_profile()
     
     def _calc_volatility(self, df: pd.DataFrame) -> float:
@@ -208,4 +212,4 @@ if __name__ == "__main__":
     })
     
     profile = profiler.extract_profile(dummy_df)
-    print("프로파일:", profile)
+    logger.info(f"프로파일: {profile}")

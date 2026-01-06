@@ -1,0 +1,15 @@
+{
+  "exchange": "bybit",
+  "timeframes": [
+    "1h"
+  ],
+  "total_symbols": 1,
+  "completed": 0,
+  "current_symbol": "BTCUSDT",
+  "started_at": "2025-12-31T10:03:08.889444",
+  "last_update": "2025-12-31T10:12:14.094209",
+  "failed_symbols": [],
+  "success_count": 1,
+  "min_win_rate": 60.0,
+  "min_trades": 30
+}

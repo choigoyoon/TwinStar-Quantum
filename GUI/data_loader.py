@@ -3,8 +3,11 @@
 import os
 import sys
 import pandas as pd
-from pathlib import Path
 from datetime import datetime
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -45,16 +48,25 @@ def load_data_and_trades(symbol="BTCUSDT", exchange="bybit", timeframe="1h"):
             candle_data.append((t, o, h, l, c))
             volume_data.append((t, o, c, v))
         
-        # MACD 계산
-        if len(df) > 26:
-            exp1 = df['close'].ewm(span=12, adjust=False).mean()
-            exp2 = df['close'].ewm(span=26, adjust=False).mean()
+        # MACD 계산 (파라미터화)
+        try:
+            from constants import DEFAULT_PARAMS
+            mf = DEFAULT_PARAMS.get('macd_fast', 12)
+            ms = DEFAULT_PARAMS.get('macd_slow', 26)
+            mg = DEFAULT_PARAMS.get('macd_signal', 9)
+        except ImportError:
+            mf, ms, mg = 12, 26, 9
+
+        if len(df) > ms:
+            exp1 = df['close'].ewm(span=mf, adjust=False).mean()
+            exp2 = df['close'].ewm(span=ms, adjust=False).mean()
             macd = exp1 - exp2
-            signal = macd.ewm(span=9, adjust=False).mean()
+            signal = macd.ewm(span=mg, adjust=False).mean()
             hist = macd - signal
             macd_data = hist.tolist()
         else:
             macd_data = []
+
         
         # 거래 기록 (예시 데이터)
         trades = []
@@ -62,7 +74,7 @@ def load_data_and_trades(symbol="BTCUSDT", exchange="bybit", timeframe="1h"):
         return candle_data, volume_data, macd_data, trades, df
         
     except Exception as e:
-        print(f"Data load error: {e}")
+        logger.info(f"Data load error: {e}")
         return [], [], [], [], pd.DataFrame()
 
 
@@ -86,7 +98,7 @@ def load_ohlcv_df(symbol="BTCUSDT", exchange="bybit", timeframe="15m",
         return df if df is not None else pd.DataFrame()
         
     except Exception as e:
-        print(f"OHLCV load error: {e}")
+        logger.info(f"OHLCV load error: {e}")
         return pd.DataFrame()
 
 
@@ -112,18 +124,18 @@ def download_and_save(symbol, exchange, timeframe, days=180):
         )
         
         if df is not None and len(df) > 0:
-            print(f"✅ Downloaded {len(df)} candles")
+            logger.info(f"✅ Downloaded {len(df)} candles")
             return True
         return False
         
     except Exception as e:
-        print(f"Download error: {e}")
+        logger.info(f"Download error: {e}")
         return False
 
 
 # 테스트
 if __name__ == "__main__":
     candles, volumes, macd, trades, df = load_data_and_trades()
-    print(f"Loaded: {len(candles)} candles")
+    logger.info(f"Loaded: {len(candles)} candles")
     if len(df) > 0:
-        print(df.tail(3))
+        logger.info(f"{df.tail(3)}")

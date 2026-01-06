@@ -6,7 +6,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional
 from datetime import datetime
 import pandas as pd
 
@@ -241,22 +241,27 @@ class BaseExchange(ABC):
         return last_swing_low, last_swing_high
     
     def get_atr(self, df: pd.DataFrame, period: int = 14) -> float:
-        """ATR 계산 (공통 로직)"""
-        high = df['high'].values
-        low = df['low'].values
-        close = df['close'].values
-        
-        tr = []
-        for i in range(1, len(df)):
-            tr1 = high[i] - low[i]
-            tr2 = abs(high[i] - close[i-1])
-            tr3 = abs(low[i] - close[i-1])
-            tr.append(max(tr1, tr2, tr3))
-        
-        if len(tr) >= period:
+        """ATR 계산 (utils.indicators 모듈 위임)"""
+        try:
+            from utils.indicators import calculate_atr
+            return calculate_atr(df, period=period, return_series=False)
+        except ImportError:
+            # Fallback for standalone execution
             import numpy as np
-            return np.mean(tr[-period:])
-        return np.mean(tr) if tr else 0
+            high = df['high'].values
+            low = df['low'].values
+            close = df['close'].values
+            
+            tr = []
+            for i in range(1, len(df)):
+                tr1 = high[i] - low[i]
+                tr2 = abs(high[i] - close[i-1])
+                tr3 = abs(low[i] - close[i-1])
+                tr.append(max(tr1, tr2, tr3))
+            
+            if len(tr) >= period:
+                return np.mean(tr[-period:])
+            return np.mean(tr) if tr else 0
     
     def calculate_position_size(self, price: float) -> float:
         """포지션 크기 계산"""
@@ -281,7 +286,7 @@ class BaseExchange(ABC):
                 logging.debug(f"Failed to load trade history from {log_file}: {e}")
         return []
     
-    def get_realized_pnl(selfself, limit: int = 100) -> float:
+    def get_realized_pnl(self, limit: int = 100) -> float:
         """누적 실현 손익 조회"""
         trades = self.get_trade_history(limit=limit)
         return sum(t.get('pnl', 0) for t in trades)

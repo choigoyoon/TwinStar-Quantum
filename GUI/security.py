@@ -4,7 +4,11 @@ import json
 import hashlib
 import base64
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SecurityManager:
@@ -31,7 +35,7 @@ class SecurityManager:
             with open(self.CONFIG_FILE, 'w') as f:
                 json.dump(self._config, f, indent=2)
         except Exception as e:
-            print(f"Security config save error: {e}")
+            logger.info(f"Security config save error: {e}")
     
     def encrypt_key(self, key: str) -> str:
         """API 키 암호화 (Base64 인코딩)
@@ -110,6 +114,6 @@ if __name__ == "__main__":
     
     # API 키 조회 테스트
     keys = sm.get_api_keys('bybit')
-    print(f"API Key: ***{keys.get('api_key', '')[-4:]}")
-    print(f"Secret: ***{keys.get('api_secret', '')[-4:]}")
-    print(f"Testnet: {keys.get('testnet')}")
+    logger.info(f"API Key: ***{keys.get('api_key', '')[-4:]}")
+    logger.info(f"Secret: ***{keys.get('api_secret', '')[-4:]}")
+    logger.info(f"Testnet: {keys.get('testnet')}")

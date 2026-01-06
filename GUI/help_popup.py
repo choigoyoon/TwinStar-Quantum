@@ -4,7 +4,6 @@ help_popup.py - TwinStar Quantum 도움말 팝업
 
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, 
                              QTextBrowser, QPushButton)
-from PyQt5.QtCore import Qt
 
 
 class HelpPopup(QDialog):

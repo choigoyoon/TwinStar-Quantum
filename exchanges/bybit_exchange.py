@@ -95,9 +95,11 @@ class BybitExchange(BaseExchange):
             logging.error(f"Bybit sync_time error: {e}")
             return False
 
-    def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
+    def get_klines(self, symbol: str = None, interval: str = '15m', limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
         try:
+            target_symbol = symbol.upper() if symbol else self.symbol.upper()
+
             # Bybit interval 변환 (다양한 포맷 지원)
             interval_map = {
                 '1': '1', '5': '5', '15': '15', '60': '60', '240': '240',
@@ -109,7 +111,7 @@ class BybitExchange(BaseExchange):
             
             result = self.session.get_kline(
                 category="linear",
-                symbol=self.symbol,
+                symbol=target_symbol,
                 interval=bybit_interval,
                 limit=limit
             )
@@ -131,12 +133,45 @@ class BybitExchange(BaseExchange):
         except Exception as e:
             logging.error(f"Kline fetch error: {e}")
             return None
+
+    def fetch_balance(self) -> dict:
+        """CCXT 호환 잔고 조회 (ExchangeManager용)"""
+        bal = self.get_balance()
+        # Return simplified dict structure expected by ExchangeManager logic
+        # ExchangeManager checks 'total' or 'free' or direct value
+        return {'USDT': {'free': bal, 'total': bal}} 
     
-    def get_current_price(self) -> float:
+    
+    def get_current_candle(self) -> Optional[dict]:
+        """현재 캔들(15m 최근 완료) 조회"""
+        try:
+            # Limit=1로 최신 조회
+            df = self.get_klines(interval='15', limit=1)
+            if df is not None and not df.empty:
+                idx = df.index[-1]
+                # Series or DataFrame row handling
+                row = df.iloc[-1]
+                return {
+                    'timestamp': int(row['timestamp'].timestamp() * 1000) if hasattr(row['timestamp'], 'timestamp') else int(idx.timestamp() * 1000),
+                    'open': float(row['open']),
+                    'high': float(row['high']),
+                    'low': float(row['low']),
+                    'close': float(row['close']),
+                    'volume': float(row['volume'])
+                }
+            return None
+        except Exception as e:
+            logging.error(f"Bybit get_current_candle error: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    def get_current_price(self, symbol: str = None) -> float:
         """현재 가격"""
+        target_symbol = symbol.upper() if symbol else self.symbol.upper()
         try:
             # [FIX] API 호출 추가
-            result = self.session.get_tickers(category="linear", symbol=self.symbol)
+            result = self.session.get_tickers(category="linear", symbol=target_symbol)
             res_list = result.get('result', {}).get('list', [])
             if res_list:
                 return float(res_list[0].get('lastPrice', 0))
@@ -392,7 +427,7 @@ class BybitExchange(BaseExchange):
             return 0
 
     
-    def get_positions(self) -> list:
+    def get_positions(self) -> Optional[list]:
         """모든 열린 포지션 조회 (긴급청산용)
         
         Returns:
@@ -403,7 +438,7 @@ class BybitExchange(BaseExchange):
             # [FIX] 세션이 초기화되지 않았으면 스킵
             if self.session is None:
                 logging.warning("[Bybit] Session not initialized, skipping position query")
-                return []
+                return None
             
             # [FIX] UTA(Unified Trading Account) 호환성: settleCoin="USDT" 대신 category만 사용하거나 symbol 필터 권장
             # settleCoin="USDT"는 일부 UTA 환경에서 401 에러를 유발할 수 있음
@@ -415,7 +450,7 @@ class BybitExchange(BaseExchange):
             
             if result.get('retCode') != 0:
                 logging.error(f"포지션 조회 실패: {result.get('retMsg')}")
-                return []
+                return None
             
             positions = []
             raw_list = result.get('result', {}).get('list', [])
@@ -446,7 +481,7 @@ class BybitExchange(BaseExchange):
             
         except Exception as e:
             logging.error(f"포지션 조회 에러: {e}")
-            return []
+            return None
     
     def _get_tick_size(self) -> dict:
         """Tick size 조회"""

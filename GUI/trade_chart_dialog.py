@@ -4,17 +4,19 @@
 """
 
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 from datetime import datetime
-import numpy as np
 
 # 한글 폰트 설정
 import matplotlib
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 matplotlib.rcParams['font.family'] = 'Malgun Gothic'  # 맑은 고딕
 matplotlib.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
 
@@ -101,7 +103,7 @@ class TradeChartDialog(QDialog):
                 edgecolor='none',
                 bbox_inches='tight'
             )
-            print(f"✅ 차트 이미지 저장: {filename}")
+            logger.info(f"✅ 차트 이미지 저장: {filename}")
     
     def _plot_chart(self):
         """TradingView 스타일 차트 그리기"""

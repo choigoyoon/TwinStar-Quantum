@@ -203,6 +203,25 @@ class TradeStorage:
             'max_loss_pct': min(pnl_list) if pnl_list else 0,
         }
 
+    def reset_history(self):
+        """거래 내역 초기화 (백업 후 삭제)"""
+        with self._lock:
+            # 1. 기존 데이터 백업
+            if os.path.exists(self.path):
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                backup_path = f"{self.path}.bak_{timestamp}"
+                try:
+                    os.rename(self.path, backup_path)
+                    logging.info(f"💾 Trade History backed up to: {backup_path}")
+                except Exception as e:
+                    logging.error(f"❌ Failed to backup trade history: {e}")
+            
+            # 2. 버퍼 및 파일 초기화
+            self._buffer = []
+            self._last_save = datetime.now()
+            # 파일이 삭제되었거나 이름이 바뀌었으므로 새로 생성할 준비됨
+            logging.info(f"🧹 Trade History reset for {self.exchange}/{self.symbol}")
+
 
 # 전역 인스턴스 캐시
 _storage_instances: Dict[str, TradeStorage] = {}

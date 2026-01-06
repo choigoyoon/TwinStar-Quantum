@@ -15,7 +15,6 @@ from PyQt5.QtWidgets import (
     QGroupBox, QMessageBox
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

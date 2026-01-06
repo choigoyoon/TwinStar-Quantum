@@ -1,7 +1,16 @@
 {
-  "position": "Long",
-  "entry_price": 97500.0,
-  "updated_at": "2025-12-08T10:22:53.600573",
+  "position": null,
+  "capital": 1000,
+  "bt_state": {
+    "position": null,
+    "positions": [],
+    "pending": [],
+    "current_sl": 0,
+    "extreme_price": 0,
+    "last_time": null
+  },
+  "symbol": "BTCUSDT",
+  "timestamp": "2026-01-05T22:53:10.857688",
   "exchange": "bybit",
-  "symbol": "BTCUSDT"
+  "updated_at": "2026-01-05T22:53:10.857688"
 }

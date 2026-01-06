@@ -12,7 +12,6 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QLineEdit, QCheckBox, QMessageBox, QGroupBox
 )
-from PyQt5.QtCore import Qt
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

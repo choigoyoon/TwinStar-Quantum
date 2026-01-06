@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass
 from typing import Dict, Optional, Callable, List
-from datetime import datetime
-from enum import Enum
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -151,10 +153,10 @@ if __name__ == "__main__":
     aggregator = CandleAggregator(['5m', '15m', '1h'])
     
     def on_update(tf, candle, is_closed):
-        print(f"[{tf}] Update: O={candle.open:.2f} H={candle.high:.2f} L={candle.low:.2f} C={candle.close:.2f}")
+        logger.info(f"[{tf}] Update: O={candle.open:.2f} H={candle.high:.2f} L={candle.low:.2f} C={candle.close:.2f}")
     
     def on_closed(tf, candle):
-        print(f"[{tf}] ✅ CLOSED: O={candle.open:.2f} H={candle.high:.2f} L={candle.low:.2f} C={candle.close:.2f}")
+        logger.info(f"[{tf}] ✅ CLOSED: O={candle.open:.2f} H={candle.high:.2f} L={candle.low:.2f} C={candle.close:.2f}")
     
     aggregator.on_candle_update = on_update
     aggregator.on_candle_closed = on_closed

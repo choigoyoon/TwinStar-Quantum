@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import (
     QGroupBox, QTextEdit, QGridLayout, QSpinBox, QDoubleSpinBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 )
-from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

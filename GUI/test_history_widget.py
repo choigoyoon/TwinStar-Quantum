@@ -9,6 +9,9 @@ from PyQt5.QtWidgets import QApplication
 from history_widget import HistoryWidget
 import json
 
+import logging
+logger = logging.getLogger(__name__)
+
 def create_test_data():
     """테스트 데이터 생성"""
     trades = [
@@ -73,8 +76,8 @@ def create_test_data():
     history_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "trade_history.json")
     with open(history_file, 'w') as f:
         json.dump(trades, f, indent=2)
-    print(f"✅ 테스트 데이터 생성: {history_file}")
-    print(f"   - {len(trades)}개 거래")
+    logger.info(f"✅ 테스트 데이터 생성: {history_file}")
+    logger.info(f"   - {len(trades)}개 거래")
     return trades
 
 
@@ -89,53 +92,53 @@ def create_test_csv():
         writer.writerow(["2024-12-06 08:00", "BTCUSDT", "Buy", "98000", "99500", "0.02", "90", "1.53", "Yes"])
         writer.writerow(["2024-12-06 12:30", "ETHUSDT", "Sell", "3600", "3550", "0.5", "25", "1.39", "No"])
     
-    print(f"✅ 테스트 CSV 생성: {csv_file}")
+    logger.info(f"✅ 테스트 CSV 생성: {csv_file}")
     return csv_file
 
 
 def test_all_features():
     """모든 기능 테스트"""
-    print("=" * 60)
-    print("🧪 History Widget 전체 기능 점검")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("🧪 History Widget 전체 기능 점검")
+    logger.info("=" * 60)
     
     # 1. 테스트 데이터 생성
-    print("\n[1] 테스트 데이터 생성...")
+    logger.info("\n[1] 테스트 데이터 생성...")
     trades = create_test_data()
     csv_file = create_test_csv()
     
     # 2. 위젯 생성
-    print("\n[2] HistoryWidget 생성...")
+    logger.info("\n[2] HistoryWidget 생성...")
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background: #0d1117; color: white; }")
     
     widget = HistoryWidget()
     
     # 3. 자동 로딩 확인
-    print("\n[3] 자동 로딩 확인...")
+    logger.info("\n[3] 자동 로딩 확인...")
     if widget._trades:
-        print(f"   ✅ trade_history.json 로딩 성공: {len(widget._trades)}개 거래")
+        logger.info(f"   ✅ trade_history.json 로딩 성공: {len(widget._trades)}개 거래")
     else:
-        print("   ❌ 거래 데이터 없음")
+        logger.info("   ❌ 거래 데이터 없음")
     
     # 4. 필터 확인
-    print("\n[4] 필터 기능 확인...")
-    print(f"   - Symbol 필터 옵션: {[widget.symbol_filter.itemText(i) for i in range(widget.symbol_filter.count())]}")
-    print(f"   - Side 필터 옵션: {[widget.side_filter.itemText(i) for i in range(widget.side_filter.count())]}")
-    print(f"   - Result 필터 옵션: {[widget.result_filter.itemText(i) for i in range(widget.result_filter.count())]}")
-    print("   ✅ 필터 기능 정상")
+    logger.info("\n[4] 필터 기능 확인...")
+    logger.info(f"   - Symbol 필터 옵션: {[widget.symbol_filter.itemText(i) for i in range(widget.symbol_filter.count())]}")
+    logger.info(f"   - Side 필터 옵션: {[widget.side_filter.itemText(i) for i in range(widget.side_filter.count())]}")
+    logger.info(f"   - Result 필터 옵션: {[widget.result_filter.itemText(i) for i in range(widget.result_filter.count())]}")
+    logger.info("   ✅ 필터 기능 정상")
     
     # 5. 테이블 컬럼 확인
-    print("\n[5] 테이블 컬럼 확인...")
+    logger.info("\n[5] 테이블 컬럼 확인...")
     columns = [widget.table.horizontalHeaderItem(i).text() for i in range(widget.table.columnCount())]
-    print(f"   컬럼: {columns}")
+    logger.info(f"   컬럼: {columns}")
     if "#" in columns:
-        print("   ✅ 매매 번호(#) 컬럼 있음")
+        logger.info("   ✅ 매매 번호(#) 컬럼 있음")
     else:
-        print("   ❌ 매매 번호(#) 컬럼 없음")
+        logger.info("   ❌ 매매 번호(#) 컬럼 없음")
     
     # 6. 통계 카드 확인
-    print("\n[6] 통계 카드 확인...")
+    logger.info("\n[6] 통계 카드 확인...")
     stat_cards = [
         'total_trades_card', 'win_rate_card', 'total_pnl_card', 
         'profit_factor_card', 'avg_pnl_card', 'max_dd_card',
@@ -144,49 +147,49 @@ def test_all_features():
     ]
     for card in stat_cards:
         if hasattr(widget, card):
-            print(f"   ✅ {card}")
+            logger.info(f"   ✅ {card}")
         else:
-            print(f"   ❌ {card} 없음")
+            logger.info(f"   ❌ {card} 없음")
     
     # 7. 드래그앤드롭 확인
-    print("\n[7] 드래그앤드롭 확인...")
+    logger.info("\n[7] 드래그앤드롭 확인...")
     if widget.acceptDrops():
-        print("   ✅ 드래그앤드롭 활성화됨")
+        logger.info("   ✅ 드래그앤드롭 활성화됨")
     else:
-        print("   ❌ 드래그앤드롭 비활성화")
+        logger.info("   ❌ 드래그앤드롭 비활성화")
     
     # 8. CSV 임포트 테스트
-    print("\n[8] CSV 임포트 테스트...")
+    logger.info("\n[8] CSV 임포트 테스트...")
     try:
         widget._load_csv_file(csv_file)
-        print(f"   ✅ CSV 로딩 성공: {len(widget._trades)}개 거래")
+        logger.info(f"   ✅ CSV 로딩 성공: {len(widget._trades)}개 거래")
     except Exception as e:
-        print(f"   ❌ CSV 로딩 실패: {e}")
+        logger.info(f"   ❌ CSV 로딩 실패: {e}")
     
     # 9. 더블클릭 핸들러 확인
-    print("\n[9] 더블클릭 차트 기능 확인...")
+    logger.info("\n[9] 더블클릭 차트 기능 확인...")
     if hasattr(widget, '_on_cell_double_clicked'):
-        print("   ✅ 더블클릭 핸들러 있음")
+        logger.info("   ✅ 더블클릭 핸들러 있음")
     else:
-        print("   ❌ 더블클릭 핸들러 없음")
+        logger.info("   ❌ 더블클릭 핸들러 없음")
     
     # 10. 차트 팝업 클래스 확인
-    print("\n[10] 차트 팝업 클래스 확인...")
+    logger.info("\n[10] 차트 팝업 클래스 확인...")
     try:
         from history_widget import TradeChartPopup
-        print("   ✅ TradeChartPopup 클래스 있음")
+        logger.info("   ✅ TradeChartPopup 클래스 있음")
     except ImportError:
-        print("   ❌ TradeChartPopup 클래스 없음")
+        logger.info("   ❌ TradeChartPopup 클래스 없음")
     
-    print("\n" + "=" * 60)
-    print("🎉 전체 기능 점검 완료!")
-    print("=" * 60)
+    logger.info("\n" + "=" * 60)
+    logger.info("🎉 전체 기능 점검 완료!")
+    logger.info("=" * 60)
     
     # 화면 표시
     widget.resize(1200, 800)
     widget.show()
     
-    print("\n📋 GUI 창이 열렸습니다. 확인 후 닫아주세요.")
+    logger.info("\n📋 GUI 창이 열렸습니다. 확인 후 닫아주세요.")
     # sys.exit(app.exec_())  # 주석 처리 - 자동 테스트용
     return True
 

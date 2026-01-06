@@ -1,0 +1,8 @@
+{
+  "entry_amount": 100.0,
+  "leverage": 3,
+  "max_positions": 1,
+  "priority": "win_rate",
+  "blacklist": [],
+  "interval": 1.5
+}

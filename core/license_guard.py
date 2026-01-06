@@ -14,7 +14,10 @@ import json
 import base64
 import hashlib
 import uuid
-import os
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 try:
     from Crypto.Cipher import AES
@@ -22,7 +25,7 @@ try:
     HAS_CRYPTO = True
 except ImportError:
     HAS_CRYPTO = False
-    print("⚠️ pycryptodome 없음 - pip install pycryptodome")
+    logger.info("⚠️ pycryptodome 없음 - pip install pycryptodome")
 
 # 설정 (난독화)
 # API URL은 base64 인코딩으로 분산 저장
@@ -313,7 +316,7 @@ class LicenseGuard:
     def _decrypt_params(self, encrypted: str) -> dict:
         """암호화된 파라미터 복호화"""
         if not HAS_CRYPTO:
-            print("⚠️ 복호화 라이브러리 없음")
+            logger.info("⚠️ 복호화 라이브러리 없음")
             return None
         
         try:
@@ -328,18 +331,18 @@ class LicenseGuard:
             
             # 만료 시간 체크
             if params.get('expires', 0) < time.time():
-                print("⚠️ 파라미터 만료됨")
+                logger.info("⚠️ 파라미터 만료됨")
                 return None
             
             # HW ID 체크
             if params.get('hw_id') and params.get('hw_id') != self.hw_id:
-                print("⚠️ PC 불일치")
+                logger.info("⚠️ PC 불일치")
                 return None
             
             return params
             
         except Exception as e:
-            print(f"복호화 실패: {e}")
+            logger.info(f"복호화 실패: {e}")
             return None
     
     def get_params(self) -> dict:
@@ -371,7 +374,7 @@ class LicenseGuard:
         """유예 모드 진입 (서버 장애 시)"""
         self.grace_mode = True
         self.grace_until = time.time() + (hours * 3600)
-        print(f"⚠️ 유예 모드 진입 ({hours}시간)")
+        logger.warning(f"⚠️ 유예 모드 진입 ({hours}시간)")
     
     def exit_grace_mode(self):
         """유예 모드 종료"""
@@ -592,6 +595,26 @@ class LicenseGuard:
         return self.tier
 
 
+    def record_payment(self, user_id: int, amount_usd: float, crypto_type: str, tx_hash: str) -> int:
+        """결제 기록 전송 (서버)"""
+        try:
+            response = requests.post(_get_api_url(), data={
+                'action': 'record_payment',
+                'user_id': user_id,
+                'amount': amount_usd,
+                'crypto': crypto_type,
+                'tx_hash': tx_hash,
+                'hw_id': self.hw_id
+            }, timeout=10)
+            
+            result = response.json()
+            if result.get('success'):
+                return result.get('payment_id', 0)
+            return 0
+        except Exception:
+            return 0
+
+
 # ==================== 싱글톤 ====================
 
 _guard_instance = None
@@ -609,5 +632,5 @@ def get_license_guard() -> LicenseGuard:
 if __name__ == "__main__":
     guard = get_license_guard()
     
-    print(f"Hardware ID: {guard.hw_id}")
-    print(f"Server status: {guard.check_server_status()}")
+    logger.info(f"Hardware ID: {guard.hw_id}")
+    logger.info(f"Server status: {guard.check_server_status()}")

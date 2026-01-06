@@ -1,9 +1,9 @@
 import sys
 import os
-import pandas as pd
-import sqlite3
-from datetime import datetime
-import importlib
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 # Add paths
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,12 +11,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'strategies'))
 
 def print_header(title):
-    print(f"\n{'='*50}\n{title}\n{'='*50}")
+    logger.info(f"\n{'='*50}\n{title}\n{'='*50}")
 
 def check_file_exists(path, desc):
     exists = os.path.exists(path)
     status = "✅ Found" if exists else "❌ Missing"
-    print(f"{desc:<30}: {status} ({path})")
+    logger.info(f"{desc:<30}: {status} ({path})")
     return exists
 
 def test_data_manager():
@@ -24,31 +24,31 @@ def test_data_manager():
     try:
         from data_manager import DataManager
         dm = DataManager()
-        print(f"Cache Directory: {dm.cache_dir}")
+        logger.info(f"Cache Directory: {dm.cache_dir}")
         
         # Check specific DB file
         target_symbol = 'btcusdt'
         target_tf = '15m'
         target_exchange = 'bybit'
         
-        print(f"\nLoading {target_exchange} {target_symbol} {target_tf}...")
+        logger.info(f"\nLoading {target_exchange} {target_symbol} {target_tf}...")
         df = dm.load_data(target_symbol, target_exchange, target_tf)
         
         if df is not None and not df.empty:
-            print(f"✅ Data Loaded Successfully")
-            print(f"   Rows: {len(df)}")
-            print(f"   Period: {df.iloc[0]['timestamp']} ~ {df.iloc[-1]['timestamp']}")
+            logger.info(f"✅ Data Loaded Successfully")
+            logger.info(f"   Rows: {len(df)}")
+            logger.info(f"   Period: {df.iloc[0]['timestamp']} ~ {df.iloc[-1]['timestamp']}")
             
             # Check for legacy data length (should be around 199k for full history)
             if len(df) > 100000:
-                 print("   ✅ Full History Detected (Converted from CSV)")
+                 logger.info("   ✅ Full History Detected (Converted from CSV)")
             else:
-                 print("   ⚠️ Only Partial History Detected (Recent Download?)")
+                 logger.info("   ⚠️ Only Partial History Detected (Recent Download?)")
         else:
-            print("❌ Data Load Failed")
+            logger.info("❌ Data Load Failed")
             
     except Exception as e:
-        print(f"❌ DataManager Error: {e}")
+        logger.info(f"❌ DataManager Error: {e}")
         import traceback
         traceback.print_exc()
 
@@ -58,24 +58,24 @@ def test_strategy_structure():
         from strategies.wm_pattern_strategy import WMPatternStrategy
         strategy = WMPatternStrategy()
         
-        print(f"Strategy Name: {strategy.config.name}")
-        print(f"Version: {strategy.config.version}")
+        logger.info(f"Strategy Name: {strategy.config.name}")
+        logger.info(f"Version: {strategy.config.version}")
         
         # Check for legacy backtest wrapper
         if hasattr(strategy, 'run_legacy_backtest'):
-             print("✅ 'run_legacy_backtest' method FOUND (Wrapper Correct)")
+             logger.info("✅ 'run_legacy_backtest' method FOUND (Wrapper Correct)")
         else:
-             print("❌ 'run_legacy_backtest' method MISSING (Wrapper Incorrect)")
+             logger.info("❌ 'run_legacy_backtest' method MISSING (Wrapper Incorrect)")
              
     except Exception as e:
-        print(f"❌ Strategy Error: {e}")
+        logger.info(f"❌ Strategy Error: {e}")
         import traceback
         traceback.print_exc()
 
 def test_backtest_integration():
     print_header("3. Backtest Engine Integration Test")
     try:
-        from strategies.common.backtest_engine import BacktestEngine, BacktestConfig
+        from strategies.common.backtest_engine import BacktestEngine
         from strategies.common.strategy_interface import Candle
 
         
@@ -89,7 +89,7 @@ def test_backtest_integration():
         strategy = WMPatternStrategy()
         
         engine = BacktestEngine()
-        print("Running Engine with Strategy...")
+        logger.info("Running Engine with Strategy...")
         
         # Note: run_legacy_backtest might fail with mock data if it expects a specific CSV
         # We just want to check if the engine calls the right method.
@@ -99,14 +99,14 @@ def test_backtest_integration():
         
         try:
             result = engine.run(strategy, candles)
-            print("✅ Engine returned result object")
+            logger.info("✅ Engine returned result object")
         except Exception as inner_e:
-            print(f"⚠️ Engine run raised exception (Expected if mock data doesn't match strategy requirements): {inner_e}")
+            logger.info(f"⚠️ Engine run raised exception (Expected if mock data doesn't match strategy requirements): {inner_e}")
             if "BreakevenStrategy" in str(inner_e) or "run_legacy_backtest" in str(inner_e):
-                print("   -> Trace suggests correct delegation logic.")
+                logger.info("   -> Trace suggests correct delegation logic.")
             
     except Exception as e:
-        print(f"❌ Backtest Engine Error: {e}")
+        logger.info(f"❌ Backtest Engine Error: {e}")
         import traceback
         traceback.print_exc()
 

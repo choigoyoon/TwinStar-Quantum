@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import (
     QStackedWidget, QWidget, QFormLayout
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
 
 # License Guard
 try:

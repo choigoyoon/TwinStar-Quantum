@@ -7,12 +7,9 @@
 - 특이사항: 레버리지 없음, SL은 로컬 관리
 """
 
-import os
 import time
 import logging
-import pandas as pd
 from datetime import datetime
-from typing import Optional
 
 from .base_exchange import BaseExchange, Position
 
@@ -321,6 +318,31 @@ class UpbitExchange(BaseExchange):
         except Exception as e:
             logging.error(f"Coin balance error: {e}")
             return 0
+
+    def get_positions(self) -> list:
+        """현물은 포지션 개념 없음 - 잔고 반환"""
+        try:
+            if not self.upbit: return []
+            balances = self.upbit.get_balances()
+            positions = []
+            for b in balances:
+                qty = float(b.get('balance', 0))
+                if qty > 0 and b.get('currency') != 'KRW':
+                    coin = b.get('currency')
+                    positions.append({
+                        'symbol': f"KRW-{coin}",
+                        'side': 'Long',
+                        'size': qty,
+                        'entry_price': float(b.get('avg_buy_price', 0)),
+                        'leverage': 1
+                    })
+            return positions
+        except:
+            return []
+
+    def get_realized_pnl(self, symbol: str = None) -> float:
+        """현물은 API 미지원 - 0 반환"""
+        return 0.0
 
     # ============================================
     # WebSocket + 자동 시간 동기화 (Phase 2+3)

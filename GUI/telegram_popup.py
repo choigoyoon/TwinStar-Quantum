@@ -1,5 +1,9 @@
 """
 텔레그램 알림 설정 팝업 (개선 버전)
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 - 접이식 설정 가이드
 - 알림 종류별 체크박스
 - 토큰 표시/숨김 토글
@@ -295,7 +299,7 @@ class TelegramPopup(QDialog):
                 if settings.get("bot_token"):
                     self.guide_group.setChecked(False)
         except Exception as e:
-            print(f"[Telegram] 설정 로드 실패: {e}")
+            logger.info(f"[Telegram] 설정 로드 실패: {e}")
 
 
 if __name__ == "__main__":

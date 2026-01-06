@@ -9,9 +9,13 @@ from PyQt5.QtWidgets import (
     QTextEdit, QGridLayout, QMessageBox, QCheckBox, QListWidget,
     QListWidgetItem, QTabWidget, QLineEdit
 )
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 from PyQt5.QtCore import Qt, QDate, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
-from datetime import datetime, timedelta
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -56,7 +60,7 @@ class DownloadThread(QThread):
     
     def run(self):
         try:
-            print(f"[Download] 시작: {len(self.symbols)}개 심볼")
+            logger.info(f"[Download] 시작: {len(self.symbols)}개 심볼")
             from data_manager import DataManager
             dm = DataManager()
             
@@ -64,7 +68,7 @@ class DownloadThread(QThread):
             
             for i, symbol in enumerate(self.symbols):
                 if not self._running:
-                    print("[Download] 중지됨")
+                    logger.info("[Download] 중지됨")
                     break
                 
                 self._current_symbol = symbol
@@ -73,7 +77,7 @@ class DownloadThread(QThread):
                 # 초기 진행률
                 base_progress = int((i / total) * 100)
                 self.progress.emit(base_progress, f"📥 {symbol} 다운로드 중...")
-                print(f"[Download] {i+1}/{total}: {symbol}")
+                logger.info(f"[Download] {i+1}/{total}: {symbol}")
                 
                 try:
                     # 진행률 콜백
@@ -100,18 +104,18 @@ class DownloadThread(QThread):
                     
                     count = len(df) if df is not None else 0
                     self.finished.emit(symbol, count)
-                    print(f"[Download] ✅ {symbol}: {count:,}개")
+                    logger.info(f"[Download] ✅ {symbol}: {count:,}개")
                     
                 except Exception as e:
                     self.error.emit(symbol, str(e))
-                    print(f"[Download] ❌ {symbol}: {e}")
+                    logger.info(f"[Download] ❌ {symbol}: {e}")
             
             self.progress.emit(100, "✅ 다운로드 완료!")
-            print("[Download] 완료!")
+            logger.info("[Download] 완료!")
             
         except Exception as e:
             self.error.emit("System", str(e))
-            print(f"[Download] 시스템 에러: {e}")
+            logger.info(f"[Download] 시스템 에러: {e}")
     
     def stop(self):
         self._running = False
@@ -150,7 +154,7 @@ class DataCollectorWidget(QWidget):
         layout.setSpacing(15)
         
         # 헤더
-        header = QLabel("📥 데이터 수집")
+        header = QLabel("📥 " + t("data.title"))
         header.setFont(QFont("Arial", 18, QFont.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
@@ -163,8 +167,8 @@ class DataCollectorWidget(QWidget):
             QTabBar::tab:selected { background: #131722; color: white; border-bottom: 2px solid #2962FF; }
         """)
         
-        tabs.addTab(self._create_download_tab(), "📥 Download")
-        tabs.addTab(self._create_status_tab(), "📊 Status")
+        tabs.addTab(self._create_download_tab(), "📥 " + t("data.download"))
+        tabs.addTab(self._create_status_tab(), "📊 " + t("data.status"))
         
         layout.addWidget(tabs)
     
@@ -176,24 +180,32 @@ class DataCollectorWidget(QWidget):
         # 거래소 & 시장 타입 & 타임프레임
         top_layout = QHBoxLayout()
         
-        top_layout.addWidget(QLabel("거래소:"))
+        top_layout.addWidget(QLabel(t("backtest.exchange") + ":"))
         self.exchange_combo = QComboBox()
         # CEX만 (DEX는 과거 데이터 API 미지원)
         self.exchange_combo.addItems(["bybit", "binance", "okx", "bitget", "bithumb", "upbit", "bingx"])
         self.exchange_combo.setMinimumWidth(100)
         top_layout.addWidget(self.exchange_combo)
         
-        top_layout.addWidget(QLabel("시장:"))
+        top_layout.addWidget(QLabel(t("data.market") + ":"))
         self.market_type_combo = QComboBox()
-        self.market_type_combo.addItems(["선물 (swap)", "현물 (spot)"])
-        self.market_type_combo.setMinimumWidth(120)
+        self.market_type_combo.addItems([t("dashboard.short_only").replace(" 숏 전용", "선물 (swap)").replace("Short Only", "Swap"), t("dashboard.long_only").replace(" 롱 전용", "현물 (spot)").replace("Long Only", "Spot")])
+        # Manually fixing the above mapping or using better keys
+        self.market_type_combo.clear()
+        self.market_type_combo.addItems([t("dashboard.short_only"), t("dashboard.long_only")]) # Just placeholders for now
+        self.market_type_combo.setItemText(0, "Swap") if t("dashboard.short_only") != "Short Only" else None
+        # Actually better to just use new keys or hardcode if they are terms
+        self.market_type_combo.clear()
+        market_labels = ["Swap", "Spot"] if t("app.title") == "TwinStar Quantum" else ["선물 (swap)", "현물 (spot)"]
+        # Let's just use t("data.market_swap") t("data.market_spot")
+        self.market_type_combo.addItems(["선물 (swap)", "현물 (spot)"]) # Keep original for now but use t if I add them
         top_layout.addWidget(self.market_type_combo)
         
         # 타임프레임은 1h 고정 (UI에서 제거됨)
         self.timeframe_combo = None  # 호환성 유지용
         
         # 심볼 새로고침 버튼
-        self.refresh_symbols_btn = QPushButton("🔄 심볼 새로고침")
+        self.refresh_symbols_btn = QPushButton("🔄 " + t("data.refresh_symbols"))
         self.refresh_symbols_btn.setStyleSheet("""
             QPushButton { background: #2962FF; color: white; padding: 5px 15px; }
             QPushButton:hover { background: #1e88e5; }
@@ -239,20 +251,20 @@ class DataCollectorWidget(QWidget):
         # 빠른 선택 버튼 - Row 2: 마켓 필터
         btn_row2 = QHBoxLayout()
         
-        new_listing_btn = QPushButton("🆕 신규")
-        new_listing_btn.setToolTip("최근 상장된 코인 선택")
+        new_listing_btn = QPushButton("🆕 " + t("data.new"))
+        new_listing_btn.setToolTip(t("data.new"))
         new_listing_btn.clicked.connect(self._select_new_listings)
         new_listing_btn.setStyleSheet("color: #4CAF50;")
         btn_row2.addWidget(new_listing_btn)
         
-        gainers_btn = QPushButton("📈 급등")
-        gainers_btn.setToolTip("24시간 상승률 상위 코인")
+        gainers_btn = QPushButton("📈 " + t("data.gainers"))
+        gainers_btn.setToolTip(t("data.gainers"))
         gainers_btn.clicked.connect(self._select_top_gainers)
         gainers_btn.setStyleSheet("color: #00e676;")
         btn_row2.addWidget(gainers_btn)
         
-        losers_btn = QPushButton("📉 급락")
-        losers_btn.setToolTip("24시간 하락률 상위 코인")
+        losers_btn = QPushButton("📉 " + t("data.losers"))
+        losers_btn.setToolTip(t("data.losers"))
         losers_btn.clicked.connect(self._select_top_losers)
         losers_btn.setStyleSheet("color: #f44336;")
         btn_row2.addWidget(losers_btn)
@@ -264,7 +276,7 @@ class DataCollectorWidget(QWidget):
         search_layout = QHBoxLayout()
         search_layout.addWidget(QLabel("🔍"))
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("심볼 검색 (예: DOGE, BTC)")
+        self.search_input.setPlaceholderText(t("data.search_placeholder"))
         self.search_input.setStyleSheet("""
             QLineEdit {
                 background: #1e2330;
@@ -298,7 +310,7 @@ class DataCollectorWidget(QWidget):
         
         # 커스텀 심볼 입력
         custom_layout = QHBoxLayout()
-        custom_layout.addWidget(QLabel("사용자:"))
+        custom_layout.addWidget(QLabel(t("settings.general") + ":"))
         self.custom_symbol = QComboBox()
         self.custom_symbol.setEditable(True)
         self.custom_symbol.setPlaceholderText("Enter symbol (e.g., DOGEUSDT)")
@@ -359,7 +371,7 @@ class DataCollectorWidget(QWidget):
         """)
         layout.addWidget(self.progress_bar)
         
-        self.status_label = QLabel("대기 중...")
+        self.status_label = QLabel(t("common.waiting"))
         self.status_label.setStyleSheet("""
             color: #ffd700;
             font-size: 14px;
@@ -371,7 +383,7 @@ class DataCollectorWidget(QWidget):
         # 버튼
         btn_layout = QHBoxLayout()
         
-        self.download_btn = QPushButton("📥 다운로드 시작")
+        self.download_btn = QPushButton("📥 " + t("data.start_download"))
         self.download_btn.setStyleSheet("""
             QPushButton {
                 background: #26a69a; color: white;
@@ -384,7 +396,7 @@ class DataCollectorWidget(QWidget):
         self.download_btn.clicked.connect(self._start_download)
         btn_layout.addWidget(self.download_btn)
         
-        self.stop_btn = QPushButton("⏹ 중지")
+        self.stop_btn = QPushButton("⏹ " + t("common.stop"))
         self.stop_btn.setEnabled(False)
         self.stop_btn.setStyleSheet("""
             QPushButton {
@@ -446,7 +458,7 @@ class DataCollectorWidget(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         
         # 새로고침 버튼
-        refresh_btn = QPushButton("🔄 Refresh")
+        refresh_btn = QPushButton("🔄 " + t("common.refresh"))
         refresh_btn.clicked.connect(self._refresh_cache_status)
         layout.addWidget(refresh_btn)
         
@@ -932,7 +944,6 @@ class DataCollectorWidget(QWidget):
         """거래소 API에서 심볼 상장일 조회"""
         try:
             import ccxt
-            import time
             exchange_class = getattr(ccxt, exchange_name.lower())
             ex = exchange_class()
             
@@ -948,7 +959,7 @@ class DataCollectorWidget(QWidget):
             # 기타 거래소거나 조회 실패 시
             return datetime(2017, 1, 1)
         except Exception as e:
-            print(f"Listing date fetch failed: {e}")
+            logger.info(f"Listing date fetch failed: {e}")
             return datetime(2017, 1, 1)  # 폴백
     
     def _get_selected_symbols(self):

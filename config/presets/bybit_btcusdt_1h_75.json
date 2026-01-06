@@ -1,0 +1,28 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "optimized_at": "2026-01-05T07:30:51.674017",
+        "version": "1.7.0",
+        "verified": true,
+        "verified_date": null,
+        "verification_stats": {
+            "passed": true,
+            "win_rate": 75.5
+        },
+        "name": "bybit_btcusdt_1h_75",
+        "updated": "2026-01-05 07:32:13"
+    },
+    "_result": {
+        "win_rate": 75.5,
+        "profit_factor": null,
+        "total_trades": null,
+        "max_drawdown": 15.0,
+        "sharpe_ratio": 0,
+        "grade": "A"
+    },
+    "params": {
+        "rsi_period": 14
+    }
+}

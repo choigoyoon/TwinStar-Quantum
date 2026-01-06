@@ -6,7 +6,10 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-import time
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 # Windows asyncio 호환
 if sys.platform == 'win32':
@@ -41,9 +44,9 @@ class SymbolCache:
             try:
                 with open(self.cache_path, 'r', encoding='utf-8') as f:
                     self._cache = json.load(f)
-                print(f"📦 심볼 캐시 로드: {len(self._cache.get('exchanges', {}))} 거래소")
+                logger.info(f"📦 심볼 캐시 로드: {len(self._cache.get('exchanges', {}))} 거래소")
             except Exception as e:
-                print(f"⚠️ 캐시 로드 실패: {e}")
+                logger.info(f"⚠️ 캐시 로드 실패: {e}")
                 self._cache = {}
     
     def _save_cache(self):
@@ -51,9 +54,9 @@ class SymbolCache:
         try:
             with open(self.cache_path, 'w', encoding='utf-8') as f:
                 json.dump(self._cache, f, indent=2, ensure_ascii=False)
-            print(f"💾 심볼 캐시 저장: {self.cache_path}")
+            logger.info(f"💾 심볼 캐시 저장: {self.cache_path}")
         except Exception as e:
-            print(f"❌ 캐시 저장 실패: {e}")
+            logger.info(f"❌ 캐시 저장 실패: {e}")
     
     def _is_cache_valid(self, exchange: str) -> bool:
         """캐시 유효성 체크"""
@@ -117,7 +120,7 @@ class SymbolCache:
             
             exchange_class = getattr(ccxtpro, exchange.lower(), None)
             if not exchange_class:
-                print(f"❌ 지원하지 않는 거래소: {exchange}")
+                logger.info(f"❌ 지원하지 않는 거래소: {exchange}")
                 return False
             
             ex = exchange_class({
@@ -125,7 +128,7 @@ class SymbolCache:
                 'options': {'defaultType': 'swap'}
             })
             
-            print(f"🔄 {exchange} 심볼 로딩 중...")
+            logger.info(f"🔄 {exchange} 심볼 로딩 중...")
             await ex.load_markets()
             
             symbols = []
@@ -140,7 +143,7 @@ class SymbolCache:
                 if fetch_listing_dates:
                     listing_date = await self._estimate_listing_date(ex, sym)
                     if (i + 1) % 10 == 0:
-                        print(f"   {i+1}/{total} 처리 중...")
+                        logger.info(f"   {i+1}/{total} 처리 중...")
                 
                 symbols.append({
                     'symbol': sym,
@@ -165,11 +168,11 @@ class SymbolCache:
             await ex.close()
             self._save_cache()
             
-            print(f"✅ {exchange} 심볼 업데이트 완료: {len(symbols)}개")
+            logger.info(f"✅ {exchange} 심볼 업데이트 완료: {len(symbols)}개")
             return True
             
         except Exception as e:
-            print(f"❌ {exchange} 업데이트 실패: {e}")
+            logger.info(f"❌ {exchange} 업데이트 실패: {e}")
             return False
     
     async def _estimate_listing_date(self, exchange, symbol: str) -> Optional[str]:
@@ -228,19 +231,19 @@ class SymbolCache:
     def print_summary(self, exchange: str):
         """캐시 요약 출력"""
         if not self._is_cache_valid(exchange):
-            print(f"❌ {exchange} 캐시 없음")
+            logger.info(f"❌ {exchange} 캐시 없음")
             return
         
         data = self._cache['exchanges'][exchange]
-        print(f"\n📊 {exchange.upper()} 심볼 캐시")
-        print(f"   업데이트: {data['updated_at']}")
-        print(f"   심볼 수: {data['count']}")
+        logger.info(f"\n📊 {exchange.upper()} 심볼 캐시")
+        logger.info(f"   업데이트: {data['updated_at']}")
+        logger.info(f"   심볼 수: {data['count']}")
         
         # 샘플 출력
         symbols = data.get('symbols', [])[:10]
         for s in symbols:
             listing = s.get('listing_date', '?')
-            print(f"   - {s['symbol']}: {listing}")
+            logger.info(f"   - {s['symbol']}: {listing}")
 
 
 # 싱글톤 인스턴스
@@ -267,17 +270,17 @@ if __name__ == "__main__":
     cache = get_symbol_cache()
     
     if args.update:
-        print(f"🔄 {args.update} 업데이트 시작...")
+        logger.info(f"🔄 {args.update} 업데이트 시작...")
         cache.update_exchange(args.update)
     elif args.show:
         cache.print_summary(args.show)
     elif args.list:
         popular = cache.get_popular_symbols(args.list)
-        print(f"\n📈 {args.list.upper()} 인기 심볼:")
+        logger.info(f"\n📈 {args.list.upper()} 인기 심볼:")
         for s in popular:
-            print(f"  - {s['symbol']} (상장: {s.get('listing_date', '?')})")
+            logger.info(f"  - {s['symbol']} (상장: {s.get('listing_date', '?')})")
     else:
         # 기본: Bybit 업데이트
-        print("🔄 Bybit 심볼 캐시 업데이트...")
+        logger.info("🔄 Bybit 심볼 캐시 업데이트...")
         cache.update_exchange('bybit')
         cache.print_summary('bybit')

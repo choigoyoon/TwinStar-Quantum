@@ -10,6 +10,10 @@ from dataclasses import dataclass
 import json
 import time
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 @dataclass
 class CacheInfo:
     symbol: str
@@ -43,14 +47,14 @@ class DataManager:
         try:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            print(f"Warning: Could not create cache dir: {e}")
+            logger.info(f"Warning: Could not create cache dir: {e}")
             # 대안: 임시 폴더 사용
             import tempfile
             self.cache_dir = Path(tempfile.gettempdir()) / "trading_cache"
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # [DEBUG] 경로 출력
-        print(f"[DataManager] Cache Dir: {self.cache_dir}")
+        logger.info(f"[DataManager] Cache Dir: {self.cache_dir}")
         
         self.exchange_manager = None
     
@@ -70,7 +74,7 @@ class DataManager:
                 with open(self._index_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
         except Exception as e:
-            print(f"⚠️ Index load failed: {e}")
+            logger.info(f"⚠️ Index load failed: {e}")
         return {}
 
     def _save_index(self, index_data: Dict):
@@ -79,7 +83,7 @@ class DataManager:
             with open(self._index_path, 'w', encoding='utf-8') as f:
                 json.dump(index_data, f, indent=2)
         except Exception as e:
-            print(f"⚠️ Index save failed: {e}")
+            logger.info(f"⚠️ Index save failed: {e}")
     
     # 타임프레임 → pandas 리샘플 규칙
     TF_TO_PANDAS = {
@@ -99,7 +103,7 @@ class DataManager:
             리샘플된 OHLCV 데이터프레임
         """
         if target_tf not in self.TF_TO_PANDAS:
-            print(f"⚠️ 지원하지 않는 타임프레임: {target_tf}")
+            logger.info(f"⚠️ 지원하지 않는 타임프레임: {target_tf}")
             return df
         
         rule = self.TF_TO_PANDAS[target_tf]
@@ -150,7 +154,7 @@ class DataManager:
         df_15m = self.load(symbol, '15m', exchange, needed_15m)
         
         if df_15m is None or len(df_15m) == 0:
-            print(f"⚠️ 15분 데이터 없음, 직접 다운로드 시도...")
+            logger.info(f"⚠️ 15분 데이터 없음, 직접 다운로드 시도...")
             return self.load(symbol, timeframe, exchange, limit)
         
         # 리샘플링
@@ -160,7 +164,7 @@ class DataManager:
         if len(resampled) > limit:
             resampled = resampled.tail(limit).reset_index(drop=True)
         
-        print(f"📊 {symbol} {timeframe}: 15분→{len(resampled)}개 리샘플링")
+        logger.info(f"📊 {symbol} {timeframe}: 15분→{len(resampled)}개 리샘플링")
         return resampled
     
     def _get_cache_path(self, exchange: str, symbol: str, timeframe: str) -> Path:
@@ -207,11 +211,11 @@ class DataManager:
             if req_start_ts is None or req_start_ts >= cache_start_ts:
                 last_time = existing_df['timestamp'].max()
                 start_ts = int(last_time) + 1
-                print(f"📦 캐시 업데이트: {len(existing_df)}개 이후부터 다운로드")
+                logger.info(f"📦 캐시 업데이트: {len(existing_df)}개 이후부터 다운로드")
             else:
                 # 요청한 시작일이 캐시보다 더 과거라면: 과거부터 전체 수집 (병합 로직이 중복 제거함)
                 start_ts = req_start_ts
-                print(f"📦 히스토리 채우기: 캐시 시작점({datetime.fromtimestamp(cache_start_ts/1000)})보다 과거인 {start_date}부터 수집 시작")
+                logger.info(f"📦 히스토리 채우기: 캐시 시작점({datetime.fromtimestamp(cache_start_ts/1000)})보다 과거인 {start_date}부터 수집 시작")
         else:
             start_ts = req_start_ts
             existing_df = pd.DataFrame()
@@ -224,7 +228,7 @@ class DataManager:
         )
         
         if new_data is None or len(new_data) == 0:
-            print("📭 새 데이터 없음")
+            logger.info("📭 새 데이터 없음")
             return existing_df
         
         new_df = pd.DataFrame(new_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -240,14 +244,14 @@ class DataManager:
         # 4.5. 데이터 가공 (지표 추가 등)
         if processor:
             try:
-                print("⚙️ 데이터 가공 중...")
+                logger.info("⚙️ 데이터 가공 중...")
                 combined = processor(combined)
             except Exception as e:
-                print(f"⚠️ 데이터 가공 실패: {e}")
+                logger.info(f"⚠️ 데이터 가공 실패: {e}")
 
         # 5. 캐시 저장
         self._save_cache(cache_path, combined)
-        print(f"✅ 저장 완료: {len(combined)}개 캔들 → {cache_path.name}")
+        logger.info(f"✅ 저장 완료: {len(combined)}개 캔들 → {cache_path.name}")
         
         # [NEW] 빗썸-업비트 하이크리드: 업비트 데이터를 빗썸 파일로 동시 복사
         # 업비트 다운로드 시 빗썸 파일도 갱신, 빗썸 다운로드(리다이렉트됨) 시에도 빗썸 파일 저장
@@ -262,13 +266,13 @@ class DataManager:
                 if exchange.lower() == 'upbit':
                     bithumb_cache = self._get_cache_path('bithumb', coin, timeframe)
                     self._save_cache(bithumb_cache, combined)
-                    print(f"🔄 [HYBRID] Upbit data copied to Bithumb cache: {bithumb_cache.name}")
+                    logger.info(f"🔄 [HYBRID] Upbit data copied to Bithumb cache: {bithumb_cache.name}")
                 elif exchange.lower() == 'bithumb':
                     upbit_cache = self._get_cache_path('upbit', coin, timeframe)
                     self._save_cache(upbit_cache, combined)
-                    print(f"🔄 [HYBRID] Bithumb(Redirected) data copied to Upbit cache: {upbit_cache.name}")
+                    logger.info(f"🔄 [HYBRID] Bithumb(Redirected) data copied to Upbit cache: {upbit_cache.name}")
         except Exception as e:
-            print(f"⚠️ [HYBRID] Dual-saving failed: {e}")
+            logger.info(f"⚠️ [HYBRID] Dual-saving failed: {e}")
             
         return combined
     
@@ -358,7 +362,7 @@ class DataManager:
             
             fetched_count = 0
             
-            print(f"📥 [Upbit-Pyupbit] {symbol} {interval} 수집 시작 (Target: {limit})")
+            logger.info(f"📥 [Upbit-Pyupbit] {symbol} {interval} 수집 시작 (Target: {limit})")
             
             # 3. Backward Loop
             while fetched_count < limit:
@@ -411,14 +415,14 @@ class DataManager:
             # pyupbit 컬럼: open, high, low, close, volume, value(거래대금)
             result = all_df[['timestamp', 'open', 'high', 'low', 'close', 'volume']].values.tolist()
             
-            print(f"✅ [Upbit-Pyupbit] 수집 완료: {len(result)}개")
+            logger.info(f"✅ [Upbit-Pyupbit] 수집 완료: {len(result)}개")
             return result
             
         except ImportError:
-            print("❌ pyupbit not installed")
+            logger.info("❌ pyupbit not installed")
             return []
         except Exception as e:
-            print(f"❌ [Upbit-Pyupbit] Error: {e}")
+            logger.info(f"❌ [Upbit-Pyupbit] Error: {e}")
             return []
 
     def _fetch_ohlcv(self, symbol: str, timeframe: str, exchange: str,
@@ -441,15 +445,15 @@ class DataManager:
                     # 심볼에서 코인 이름 추출 (예: BTC/KRW -> BTC, BTC -> BTC)
                     coin = symbol.split('/')[0].replace('KRW', '').replace('-', '').upper()
                     if coin in COMMON_KRW_SYMBOLS:
-                        print(f"🔄 [HYBRID] Bithumb {coin} -> Switching to Upbit Data Source")
+                        logger.info(f"🔄 [HYBRID] Bithumb {coin} -> Switching to Upbit Data Source")
                         exchange_id = 'upbit'
                         # 업비트 형식으로 심볼 변환
                         symbol = f"{coin}/KRW"
                 except Exception as e:
-                    print(f"⚠️ [HYBRID] Redirection failed: {e}")
+                    logger.info(f"⚠️ [HYBRID] Redirection failed: {e}")
 
                 except Exception as e:
-                    print(f"⚠️ [HYBRID] Redirection failed: {e}")
+                    logger.info(f"⚠️ [HYBRID] Redirection failed: {e}")
 
             # [NEW] Upbit 전용 처리 (Pyupbit + Pagination)
             if exchange_id == 'upbit':
@@ -516,7 +520,7 @@ class DataManager:
             # 요청한 limit보다 batch_size가 크면 조절
             batch_size = min(batch_size, limit)
             
-            print(f"📥 {exchange_id} 데이터 수집 시작: {symbol} ({timeframe}), Target: {limit}, Batch: {batch_size}")
+            logger.info(f"📥 {exchange_id} 데이터 수집 시작: {symbol} ({timeframe}), Target: {limit}, Batch: {batch_size}")
             
             retry_count = 0
             max_retries = 3
@@ -528,15 +532,15 @@ class DataManager:
                     
                     # [DEBUG] Readable timestamp
                     readable_since = datetime.fromtimestamp(since/1000).strftime('%Y-%m-%d %H:%M')
-                    print(f"[DataManager] Batch {fetched//batch_size + 1}: {fetched:,}/{limit:,} candles (since={readable_since})")
+                    logger.info(f"[DataManager] Batch {fetched//batch_size + 1}: {fetched:,}/{limit:,} candles (since={readable_since})")
                     data = ex.fetch_ohlcv(symbol, timeframe, since=since, limit=current_batch)
                     retry_count = 0
                 except Exception as e:
                     retry_count += 1
                     if retry_count >= max_retries:
-                        print(f"❌ {exchange_id} 재시도 실패: {e}")
+                        logger.info(f"❌ {exchange_id} 재시도 실패: {e}")
                         break
-                    print(f"⚠️ 재시도 {retry_count}/{max_retries}...")
+                    logger.info(f"⚠️ 재시도 {retry_count}/{max_retries}...")
                     time.sleep(2)
                     continue
                 
@@ -545,7 +549,7 @@ class DataManager:
                     if fetched == 0 and since is not None:
                         # [CAUTION] 'since=None'은 거래소에 따라 최신 1000개만 반환하고 끝날 수 있음
                         # 여기서는 log만 남기고 루프를 종료하거나, 다른 전략을 취해야 함
-                        print(f"ℹ️ {exchange_id}: {datetime.fromtimestamp(since/1000)} 이후 데이터 없음 (상장 전 또는 서버 제한)")
+                        logger.info(f"ℹ️ {exchange_id}: {datetime.fromtimestamp(since/1000)} 이후 데이터 없음 (상장 전 또는 서버 제한)")
                     break
                 
                 # [FIX] CCXT 페이지네이션의 고질적인 중복 체크 개선
@@ -556,7 +560,7 @@ class DataManager:
                         new_candles.append(d)
                 
                 if not new_candles:
-                    print("ℹ️ 더 이상 새로운 데이터가 없습니다. (수집 종료)")
+                    logger.info("ℹ️ 더 이상 새로운 데이터가 없습니다. (수집 종료)")
                     break
                     
                 all_data.extend(new_candles)
@@ -571,7 +575,7 @@ class DataManager:
                 # 현재 시간에 도달했는지 체크 (10초 전까지 수집)
                 now_ts = int(time.time() * 1000)
                 if last_ts >= now_ts - 20000: # 20초 이내
-                    print("✅ 현재 시점에 도달했습니다.")
+                    logger.info("✅ 현재 시점에 도달했습니다.")
                     break
                     
                 since = last_ts + 1
@@ -583,11 +587,11 @@ class DataManager:
                 df_temp = df_temp.drop_duplicates(subset=['ts']).sort_values('ts')
                 all_data = df_temp.values.tolist()
                 
-            print(f"✅ {exchange_id} 수집 완료: 총 {len(all_data)}개 캔들")
+            logger.info(f"✅ {exchange_id} 수집 완료: 총 {len(all_data)}개 캔들")
             return all_data
             
         except Exception as e:
-            print(f"❌ {symbol} 다운로드 실패: {e}")
+            logger.info(f"❌ {symbol} 다운로드 실패: {e}")
             return []
     
     def _load_cache(self, cache_path: Path) -> Optional[pd.DataFrame]:
@@ -602,7 +606,7 @@ class DataManager:
                         df['timestamp'] = df['timestamp'].astype(np.int64) // 10**6
                 return df
             except Exception as e:
-                print(f"⚠️ Parquet 로드 실패: {e}")
+                logger.info(f"⚠️ Parquet 로드 실패: {e}")
         
         # 2. 레거시 SQLite 파일 확인 (마이그레이션 지원)
         legacy_path = cache_path.with_suffix('.db')
@@ -611,7 +615,7 @@ class DataManager:
                 conn = sqlite3.connect(legacy_path)
                 df = pd.read_sql("SELECT * FROM ohlcv ORDER BY timestamp", conn)
                 conn.close()
-                print(f"📦 레거시 DB → Parquet 변환: {legacy_path.name}")
+                logger.info(f"📦 레거시 DB → Parquet 변환: {legacy_path.name}")
                 # 자동 변환
                 self._save_cache(cache_path, df)
                 return df
@@ -623,7 +627,7 @@ class DataManager:
     def _save_cache(self, cache_path: Path, df: pd.DataFrame):
         """Parquet 캐시 저장 (압축)"""
         df.to_parquet(cache_path, index=False, compression='snappy')
-        print(f"💾 Parquet 저장: {cache_path.name} ({len(df):,}행)")
+        logger.info(f"💾 Parquet 저장: {cache_path.name} ({len(df):,}행)")
     
     def load(self, symbol: str, timeframe: str, exchange: str = "bybit",
              start_date: str = None, end_date: str = None) -> pd.DataFrame:
@@ -769,7 +773,7 @@ class DataManager:
                                 file_size=size
                             ))
             except Exception as e:
-                # print(f"Error processing {db_file.name}: {e}")
+                # logger.info(f"Error processing {db_file.name}: {e}")
                 continue
                 
         # 존재하지 않는 파일 인덱스에서 제거
@@ -853,22 +857,22 @@ class DataManager:
 if __name__ == "__main__":
     dm = DataManager()
     
-    print("📂 캐시 디렉토리:", dm.cache_dir)
-    print("📊 지원 타임프레임:", dm.TIMEFRAMES)
+    logger.info(f"📂 캐시 디렉토리: {dm.cache_dir}")
+    logger.info(f"📊 지원 타임프레임: {dm.TIMEFRAMES}")
     
     # 캐시 목록
     cache_list = dm.get_cache_list()
-    print(f"\n📦 캐시된 데이터: {len(cache_list)}개")
+    logger.info(f"\n📦 캐시된 데이터: {len(cache_list)}개")
     for c in cache_list[:5]:
-        print(f"  - {c.exchange} {c.symbol} {c.timeframe}: {c.candle_count}개")
+        logger.info(f"  - {c.exchange} {c.symbol} {c.timeframe}: {c.candle_count}개")
     
     # 중복 체크
     dup_result = dm.cleanup_duplicates(dry_run=True)
-    print(f"\n🔍 중복 캐시: {dup_result['found']}개 그룹")
+    logger.info(f"\n🔍 중복 캐시: {dup_result['found']}개 그룹")
     
     # 다운로드 테스트 (API 없이)
-    print("\n📥 다운로드 테스트...")
+    logger.info("\n📥 다운로드 테스트...")
     df = dm.download('BTCUSDT', '15m', exchange='bybit', limit=100)
     if len(df) > 0:
-        print(f"✅ 다운로드 성공: {len(df)}개 캔들")
-        print(df.tail(3))
+        logger.info(f"✅ 다운로드 성공: {len(df)}개 캔들")
+        logger.info(df.tail(3))

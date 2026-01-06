@@ -1,0 +1,16 @@
+{
+  "position": null,
+  "capital": 1000,
+  "bt_state": {
+    "position": null,
+    "positions": [],
+    "pending": [],
+    "current_sl": 0,
+    "extreme_price": 0,
+    "last_time": null
+  },
+  "symbol": "BTCUSDT",
+  "timestamp": "2026-01-01T21:33:20.561163",
+  "exchange": "bybit",
+  "updated_at": "2026-01-01T21:33:20.561163"
+}

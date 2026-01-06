@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QFrame, QGridLayout
 )
 from PyQt5.QtCore import Qt
-from capital_config import get_position_sizer, CapitalConfig
+from capital_config import get_position_sizer
 
 class CapitalManagementWidget(QWidget):
     """자금 관리 설정 및 계산기 위젯"""

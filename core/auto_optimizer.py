@@ -27,7 +27,6 @@ except ImportError:
 
 try:
     from core.optimizer import BacktestOptimizer
-    from core.strategy_core import AlphaX7Core
     HAS_OPTIMIZER = True
 except ImportError:
     HAS_OPTIMIZER = False

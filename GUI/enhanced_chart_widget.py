@@ -11,6 +11,10 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QFrame, QCheckBox, QComboBox, QGroupBox)
 from PyQt5.QtCore import Qt
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 # Add project root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
@@ -19,8 +23,8 @@ try:
     from nowcast_widget import NowcastWidget
     from candle_aggregator import CandleAggregator, Candle
 except ImportError:
-    from gui.nowcast_widget import NowcastWidget
-    from gui.candle_aggregator import CandleAggregator, Candle
+    from GUI.nowcast_widget import NowcastWidget
+    from GUI.candle_aggregator import CandleAggregator, Candle
 
 # websocket_manager가 있으면
 try:
@@ -28,11 +32,11 @@ try:
     HAS_WEBSOCKET = True
 except ImportError:
     try:
-        from gui.websocket_manager import WebSocketManager
+        from GUI.websocket_manager import WebSocketManager
         HAS_WEBSOCKET = True
     except ImportError:
         HAS_WEBSOCKET = False
-        print("[Warning] websocket_manager not found")
+        logger.info("[Warning] websocket_manager not found")
 
 
 class EnhancedChartWidget(QWidget):
@@ -183,10 +187,10 @@ class EnhancedChartWidget(QWidget):
             
             self._ws_connected = True
             self.status_label.setText(f"✅ {symbol} 실시간 연결됨")
-            print(f"[Chart] WebSocket 시작: {exchange} {symbol}")
+            logger.info(f"[Chart] WebSocket 시작: {exchange} {symbol}")
             
         except Exception as e:
-            print(f"[Error] WebSocket 시작 실패: {e}")
+            logger.info(f"[Error] WebSocket 시작 실패: {e}")
             self.status_label.setText(f"❌ 연결 실패")
     
     def _process_ws_queue(self):
@@ -196,7 +200,7 @@ class EnhancedChartWidget(QWidget):
     
     def _on_ws_status(self, status):
         """WebSocket 상태 변경"""
-        from websocket_manager import ConnectionStatus
+        from GUI.websocket_manager import ConnectionStatus
         if status == ConnectionStatus.CONNECTED:
             self.status_label.setText("✅ 연결됨")
         elif status == ConnectionStatus.DISCONNECTED:
@@ -214,7 +218,7 @@ class EnhancedChartWidget(QWidget):
         
         self._ws_connected = False
         self.status_label.setText("⏸ 대기 중")
-        print("[Chart] WebSocket 종료")
+        logger.info("[Chart] WebSocket 종료")
     
     def _on_ws_candle_data(self, realtime_candle):
         """WebSocket 데이터 수신 → Aggregator 전달"""
@@ -237,7 +241,7 @@ class EnhancedChartWidget(QWidget):
             self.price_label.setText(f"현재가: ${candle.close:,.2f}")
             
         except Exception as e:
-            print(f"[Error] 캔들 처리: {e}")
+            logger.info(f"[Error] 캔들 처리: {e}")
     
     def _on_aggregator_update(self, tf: str, candle: Candle, is_closed: bool):
         """Aggregator 캔들 업데이트 → 차트 반영"""
@@ -252,7 +256,7 @@ class EnhancedChartWidget(QWidget):
     
     def _on_aggregator_closed(self, tf: str, candle: Candle):
         """Aggregator 캔들 완성"""
-        print(f"[Aggregator] {tf} 캔들 완성: C:{candle.close:.2f}")
+        logger.info(f"[Aggregator] {tf} 캔들 완성: C:{candle.close:.2f}")
     
     # ===== 차트 업데이트 =====
     def _add_candle_to_chart(self, candle: Candle):
@@ -267,7 +271,7 @@ class EnhancedChartWidget(QWidget):
             self._chart_prices = self._chart_prices[-500:]
         
         self._redraw_chart()
-        print(f"[Chart] 새 캔들: ${candle.close:,.2f}")
+        logger.info(f"[Chart] 새 캔들: ${candle.close:,.2f}")
     
     def _update_last_candle(self, candle: Candle):
         """마지막 캔들 업데이트 (실시간)"""
@@ -304,7 +308,7 @@ class EnhancedChartWidget(QWidget):
             self.chart_view.plot(x, prices, pen=pen)
             
         except Exception as e:
-            print(f"[Chart] 리드로우 에러: {e}")
+            logger.info(f"[Chart] 리드로우 에러: {e}")
     
     def _reload_chart(self):
         """차트 새로고침 - Download 실행"""
@@ -316,7 +320,7 @@ class EnhancedChartWidget(QWidget):
         symbol = self.symbol_combo.currentText()
         tf = self.nowcast_widget.get_base_timeframe()
         
-        print(f"[Chart] 다운로드: {exchange} {symbol} {tf}")
+        logger.info(f"[Chart] 다운로드: {exchange} {symbol} {tf}")
         
         try:
             from data_manager import DataManager
@@ -335,12 +339,12 @@ class EnhancedChartWidget(QWidget):
             if df is not None and len(df) > 0:
                 self.candle_count_label.setText(f"캔들: {len(df)}개")
                 self._draw_chart(df)
-                print(f"[Chart] ✅ {len(df)}개 캔들 표시 완료")
+                logger.info(f"[Chart] ✅ {len(df)}개 캔들 표시 완료")
             else:
-                print("[Chart] 데이터 없음")
+                logger.info("[Chart] 데이터 없음")
                 
         except Exception as e:
-            print(f"[Chart] 다운로드 에러: {e}")
+            logger.info(f"[Chart] 다운로드 에러: {e}")
     
     def _draw_chart(self, df):
         """차트 그리기"""
@@ -370,7 +374,7 @@ class EnhancedChartWidget(QWidget):
                 self.price_label.setText(f"현재가: ${prices[-1]:,.2f}")
             
         except Exception as e:
-            print(f"[Chart] 차트 그리기 에러: {e}")
+            logger.info(f"[Chart] 차트 그리기 에러: {e}")
     
     # ===== 종료 처리 =====
     def closeEvent(self, event):
@@ -395,7 +399,7 @@ if __name__ == "__main__":
     # DataManager Mock
     class MockDataManager:
         def download_ohlcv(self, exchange, symbol, tf, limit=500):
-            print(f"Mock Download: {exchange} {symbol} {tf}")
+            logger.info(f"Mock Download: {exchange} {symbol} {tf}")
             return [1] * limit # Fake data
             
     widget = EnhancedChartWidget(data_manager=MockDataManager())

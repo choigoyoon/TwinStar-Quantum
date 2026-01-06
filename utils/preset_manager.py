@@ -6,14 +6,24 @@
 - config/presets/ 폴더에 JSON 저장/로드
 """
 
-import os
 import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime
 
 # 경로 설정 (Paths 클래스 활용)
 from paths import Paths
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
+# [Phase 3] Single Source of Truth
+try:
+    from config.parameters import DEFAULT_PARAMS as CONFIG_DEFAULT_PARAMS, get_all_params
+except ImportError:
+    CONFIG_DEFAULT_PARAMS = None
+    get_all_params = None
 
 # 외부 저장용 (사용자 데이터)
 BASE_DIR = Path(Paths.BASE)
@@ -26,6 +36,7 @@ INTERNAL_CONFIG = Path(Paths.CONFIG)
 INTERNAL_PRESETS = INTERNAL_CONFIG / 'presets'
 
 # ==================== 새 스키마 V2 ====================
+# ==================== 새 스키마 V2 ====================
 DEFAULT_PARAMS_V2 = {
     "_meta": {
         "name": "Default",
@@ -35,26 +46,26 @@ DEFAULT_PARAMS_V2 = {
         "updated": None
     },
     "timeframes": {
-        "filter_tf": "4h",
+        "filter_tf": CONFIG_DEFAULT_PARAMS.get("filter_tf", "4h") if CONFIG_DEFAULT_PARAMS else "4h",
         "trend_interval": "1h",
-        "entry_tf": "15min"
+        "entry_tf": CONFIG_DEFAULT_PARAMS.get("entry_tf", "15m") if CONFIG_DEFAULT_PARAMS else "15m"
     },
     "trading": {
-        "leverage": 3,
-        "direction": "Both"
+        "leverage": CONFIG_DEFAULT_PARAMS.get("leverage", 3) if CONFIG_DEFAULT_PARAMS else 3,
+        "direction": CONFIG_DEFAULT_PARAMS.get("direction", "Both") if CONFIG_DEFAULT_PARAMS else "Both"
     },
     "indicators": {
-        "rsi_period": 21,
-        "atr_mult": 1.25,
-        "pullback_rsi_long": 40,
-        "pullback_rsi_short": 60,
-        "pattern_tolerance": 0.05
+        "rsi_period": CONFIG_DEFAULT_PARAMS.get("rsi_period", 14) if CONFIG_DEFAULT_PARAMS else 14,
+        "atr_mult": CONFIG_DEFAULT_PARAMS.get("atr_mult", 2.2) if CONFIG_DEFAULT_PARAMS else 2.2,
+        "pullback_rsi_long": CONFIG_DEFAULT_PARAMS.get("pullback_rsi_long", 45) if CONFIG_DEFAULT_PARAMS else 45,
+        "pullback_rsi_short": CONFIG_DEFAULT_PARAMS.get("pullback_rsi_short", 55) if CONFIG_DEFAULT_PARAMS else 55,
+        "pattern_tolerance": CONFIG_DEFAULT_PARAMS.get("pattern_tolerance", 0.05) if CONFIG_DEFAULT_PARAMS else 0.05
     },
     "risk": {
-        "trail_start_r": 1.0,
-        "trail_dist_r": 0.2,
-        "max_adds": 1,
-        "entry_validity_hours": 4.0
+        "trail_start_r": CONFIG_DEFAULT_PARAMS.get("trail_start_r", 0.8) if CONFIG_DEFAULT_PARAMS else 0.8,
+        "trail_dist_r": CONFIG_DEFAULT_PARAMS.get("trail_dist_r", 0.5) if CONFIG_DEFAULT_PARAMS else 0.5,
+        "max_adds": CONFIG_DEFAULT_PARAMS.get("max_adds", 1) if CONFIG_DEFAULT_PARAMS else 1,
+        "entry_validity_hours": CONFIG_DEFAULT_PARAMS.get("entry_validity_hours", 48.0) if CONFIG_DEFAULT_PARAMS else 48.0
     },
     "fixed": {
         "slippage_pct": 0.05,
@@ -64,24 +75,12 @@ DEFAULT_PARAMS_V2 = {
 }
 
 # ==================== 레거시 Flat 구조 ====================
-DEFAULT_PARAMS_FLAT = {
-    "_description": "Default Strategy Parameters",
-    "_updated": None,
-    "atr_mult": 1.25,
-    "trail_start_r": 1.0,
-    "trail_dist_r": 0.2,
-    "pattern_tolerance": 0.05,
-    "entry_validity_hours": 4.0,
-    "pullback_rsi_long": 40,
-    "pullback_rsi_short": 60,
-    "rsi_period": 21,
-    "max_adds": 1,
-    "trend_interval": "1h",
-    "entry_tf": "15min",
-    "filter_tf": "4h",
-    "leverage": 3,
-    "direction": "Both"
-}
+# [Phase 3] config/parameters.py에서 기본값 사용
+if CONFIG_DEFAULT_PARAMS:
+    DEFAULT_PARAMS_FLAT = {**CONFIG_DEFAULT_PARAMS, "_description": "Default Strategy Parameters", "_updated": None}
+else:
+    # config/parameters.py가 없으면 빈 딕셔너리로 초기화하거나 에러 발생 (Phase 3 완료 시점에서는 항상 존재해야 함)
+    DEFAULT_PARAMS_FLAT = {"_description": "Error: config.parameters not found"}
 
 
 class PresetManager:
@@ -116,7 +115,7 @@ class PresetManager:
             data = DEFAULT_PARAMS_V2.copy()
             data['_meta']['created'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             self._save_json(default_path, data)
-            print(f"[PresetManager] 기본 프리셋 생성: {default_path}")
+            logger.info(f"[PresetManager] 기본 프리셋 생성: {default_path}")
     
     def _save_json(self, path: Path, data: Dict) -> bool:
         """JSON 저장"""
@@ -130,7 +129,7 @@ class PresetManager:
                 json.dump(data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"[PresetManager] 저장 실패: {e}")
+            logger.info(f"[PresetManager] 저장 실패: {e}")
             return False
     
     def _load_json(self, path: Path) -> Dict:
@@ -141,7 +140,7 @@ class PresetManager:
         except FileNotFoundError:
             return {}
         except json.JSONDecodeError as e:
-            print(f"[PresetManager] JSON 파싱 오류: {e}")
+            logger.info(f"[PresetManager] JSON 파싱 오류: {e}")
             return {}
     
     # ==================== 형식 변환 ====================
@@ -157,6 +156,8 @@ class PresetManager:
                 "name": legacy.get('_description', 'Converted'),
                 "type": "preset",
                 "version": "2.0",
+                "exchange": legacy.get('exchange'),
+                "symbol": legacy.get('symbol'),
                 "created": legacy.get('_updated'),
                 "updated": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             },
@@ -199,6 +200,8 @@ class PresetManager:
             if '_meta' in data:
                 result['_description'] = data['_meta'].get('symbol', '')
                 result['_updated'] = data['_meta'].get('created', '')
+                if 'exchange' in data['_meta']: result['exchange'] = data['_meta']['exchange']
+                if 'symbol' in data['_meta']: result['symbol'] = data['_meta']['symbol']
             return result
         
         if not self._is_v2_format(data):
@@ -213,6 +216,9 @@ class PresetManager:
         if '_meta' in data:
             flat['_description'] = data['_meta'].get('name', '')
             flat['_updated'] = data['_meta'].get('updated', '')
+            # [NEW] 거래소/심볼 정보 복원
+            if 'exchange' in data['_meta']: flat['exchange'] = data['_meta']['exchange']
+            if 'symbol' in data['_meta']: flat['symbol'] = data['_meta']['symbol']
         
         return flat
     
@@ -240,7 +246,7 @@ class PresetManager:
             target_path = preset_path
         elif internal_path.exists():
             target_path = internal_path
-            print(f"[PresetManager] Using bundled preset: {name}")
+            logger.info(f"[PresetManager] Using bundled preset: {name}")
         
         if target_path:
             data = self._load_json(target_path)
@@ -292,7 +298,7 @@ class PresetManager:
         
         if self._save_json(preset_path, params):
             self._cache[name] = params
-            print(f"[PresetManager] 프리셋 저장: {name}")
+            logger.info(f"[PresetManager] 프리셋 저장: {name}")
             return True
         return False
     
@@ -326,31 +332,79 @@ class PresetManager:
         # 1. 사용자 프리셋 (수정 가능)
         if PRESETS_DIR.exists():
             for f in PRESETS_DIR.glob('*.json'):
-                presets.add(f.stem)
+                name = f.stem
+                if name.startswith('_') and name != '_default':
+                    continue
+                presets.add(name)
         
         # 2. 내부 번들 프리셋 (읽기 전용)
         if INTERNAL_PRESETS.exists():
             for f in INTERNAL_PRESETS.glob('*.json'):
-                presets.add(f.stem)
+                name = f.stem
+                if name.startswith('_') and name != '_default':
+                    continue
+                presets.add(name)
                 
-        return sorted(list(presets))
+        # [FIX] 최신순(mtime) 정렬 - 사용자가 요청한 대로 "저장하면 제일 위에"
+        def get_mtime(name):
+            p = PRESETS_DIR / f'{name}.json'
+            if p.exists():
+                return p.stat().st_mtime
+            p = INTERNAL_PRESETS / f'{name}.json'
+            if p.exists():
+                return p.stat().st_mtime
+            return 0
+            
+        result = sorted(list(presets), key=get_mtime, reverse=True)
+        return result
     
     def delete_preset(self, name: str) -> bool:
         """프리셋 삭제 (기본 프리셋 제외)"""
+        # _default는 삭제 불가
         if name == '_default':
-            print("[PresetManager] 기본 프리셋은 삭제 불가")
             return False
-        
-        preset_path = PRESETS_DIR / f'{name}.json'
+
+        path = PRESETS_DIR / f"{name}.json" # Changed to PRESETS_DIR
+        if not path.exists():
+            return False
+
         try:
-            if preset_path.exists():
-                preset_path.unlink()
-                if name in self._cache:
-                    del self._cache[name]
-                return True
-        except Exception as e:
-            print(f"[PresetManager] 삭제 실패: {e}")
-        return False
+            path.unlink()
+            if name in self._cache:
+                del self._cache[name]
+            return True
+        except Exception:
+            return False
+
+    def set_verified(self, name: str, stats: dict) -> bool:
+        """
+        [NEW v2.0] 프리셋 검증 상태 업데이트
+        Args:
+            name: 프리셋 이름
+            stats: {'win_rate': float, 'mdd': float, 'grade': str, 'passed': bool}
+        """
+        try:
+            data = self.load_preset(name)
+            
+            # 메타데이터 업데이트
+            data['_meta']['verified'] = stats.get('passed', False)
+            data['_meta']['verified_date'] = stats.get('date', None)
+            data['_meta']['verification_stats'] = stats
+            
+            # 저장
+            return self.save_preset(name, data)
+        except Exception:
+            return False
+
+    def get_verification_status(self, name: str) -> dict:
+        """
+        [NEW v2.0] 프리셋 검증 상태 조회
+        """
+        try:
+            data = self.load_preset(name)
+            return data.get('_meta', {}).get('verification_stats', {})
+        except Exception:
+            return {}
     
     def clear_cache(self):
         """캐시 초기화"""
@@ -381,20 +435,20 @@ def save_strategy_params(params: Dict) -> bool:
 
 # ==================== 테스트 ====================
 if __name__ == "__main__":
-    print("=== PresetManager V2 Test ===")
+    logger.info("=== PresetManager V2 Test ===")
     
     pm = get_preset_manager()
     
     # 1. 프리셋 목록
-    print(f"\n1. 프리셋 목록: {pm.list_presets()}")
+    logger.info(f"\n1. 프리셋 목록: {pm.list_presets()}")
     
     # 2. V2 형식 로드
     default_v2 = pm.load_preset()
-    print(f"\n2. V2 형식: timeframes={default_v2.get('timeframes')}")
+    logger.info(f"\n2. V2 형식: timeframes={default_v2.get('timeframes')}")
     
     # 3. Flat 형식 로드
     default_flat = pm.load_preset_flat()
-    print(f"\n3. Flat 형식: atr_mult={default_flat.get('atr_mult')}, leverage={default_flat.get('leverage')}")
+    logger.info(f"\n3. Flat 형식: atr_mult={default_flat.get('atr_mult')}, leverage={default_flat.get('leverage')}")
     
     # 4. 커스텀 프리셋 저장 (V2)
     test_preset = {
@@ -404,46 +458,47 @@ if __name__ == "__main__":
         "risk": {"trail_start_r": 1.5, "trail_dist_r": 0.3},
     }
     pm.save_preset('test_v2', test_preset)
-    print("\n4. V2 프리셋 저장: test_v2")
+    logger.info("\n4. V2 프리셋 저장: test_v2")
     
     # 5. 재로드 확인
     loaded = pm.load_preset('test_v2')
-    print(f"\n5. 재로드: leverage={loaded['trading']['leverage']}, atr_mult={loaded['indicators']['atr_mult']}")
+    logger.info(f"\n5. 재로드: leverage={loaded['trading']['leverage']}, atr_mult={loaded['indicators']['atr_mult']}")
     
     # 6. Flat 변환
     flat = pm.load_preset_flat('test_v2')
-    print(f"\n6. Flat 변환: leverage={flat.get('leverage')}, atr_mult={flat.get('atr_mult')}")
+    logger.info(f"\n6. Flat 변환: leverage={flat.get('leverage')}, atr_mult={flat.get('atr_mult')}")
     
     # 7. 레거시 호환
     legacy = load_strategy_params()
-    print(f"\n7. 레거시 로드: {len(legacy)}개 키")
+    logger.info(f"\n7. 레거시 로드: {len(legacy)}개 키")
     
     # 8. 정리
     pm.delete_preset('test_v2')
-    print("\n8. 테스트 프리셋 삭제: test_v2")
+    logger.info("\n8. 테스트 프리셋 삭제: test_v2")
     
-    print("\n✅ Test PASSED!")
+    logger.info("\n✅ Test PASSED!")
 
 
 def get_backtest_params(preset_name: str = None) -> Dict:
     """백테스트/실매매용 통합 파라미터 로드
     
     우선순위:
-    1. DEFAULT_PARAMS (기본값)
+    1. config/parameters.py DEFAULT_PARAMS (기본값)
     2. strategy_params.json (저장된 설정)
     3. 프리셋 파일 (지정된 경우)
     """
-    # 1. 기본값 로드 (GUI.constants가 Source of Truth)
-    try:
-        from GUI.constants import DEFAULT_PARAMS
-        params = DEFAULT_PARAMS.copy()
-    except ImportError:
-        # Fallback if GUI module not accessible
+    # 1. 기본값 로드 (config/parameters.py가 Source of Truth)
+    if get_all_params:
+        params = get_all_params()
+    elif CONFIG_DEFAULT_PARAMS:
+        params = CONFIG_DEFAULT_PARAMS.copy()
+    else:
+        # Fallback
         params = {
-            'atr_mult': 1.25, 'trail_start_r': 0.8, 'trail_dist_r': 0.1,
-            'pattern_tolerance': 0.03, 'entry_validity_hours': 6.0,
+            'atr_mult': 2.2, 'trail_start_r': 0.8, 'trail_dist_r': 0.5,
+            'pattern_tolerance': 0.05, 'entry_validity_hours': 48.0,
             'filter_tf': '4h', 'rsi_period': 14, 'atr_period': 14,
-            'pullback_rsi_long': 40, 'pullback_rsi_short': 60
+            'pullback_rsi_long': 45, 'pullback_rsi_short': 55
         }
     
     # 2. strategy_params.json 로드 (사용자 저장값)
@@ -459,8 +514,8 @@ def get_backtest_params(preset_name: str = None) -> Dict:
             preset_params = mgr.load_preset_flat(preset_name)
             if preset_params:
                 params.update(preset_params)
-                print(f"[PARAMS] Preset applied: {preset_name}")
+                logger.info(f"[PARAMS] Preset applied: {preset_name}")
         except Exception as e:
-            print(f"[PARAMS] Preset load failed: {e}")
+            logger.info(f"[PARAMS] Preset load failed: {e}")
     
     return params

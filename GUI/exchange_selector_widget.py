@@ -5,8 +5,11 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QRadioButton, QButtonGroup, QCompleter, QFrame
 )
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 from PyQt5.QtCore import Qt, pyqtSignal, QStringListModel
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
 from exchanges.exchange_manager import ExchangeManager
 
@@ -129,7 +132,7 @@ class ExchangeSelectorWidget(QWidget):
         """Handle exchange change"""
         exchange_id = self.combo_exchange.currentData()
         self.current_exchange = exchange_id
-        print(f"[DEBUG] Exchange changed to: {exchange_id}")
+        logger.info(f"[DEBUG] Exchange changed to: {exchange_id}")
         
         # Update market type buttons based on exchange capabilities
         config = self.em.get_supported_exchanges().get(exchange_id)
@@ -157,7 +160,7 @@ class ExchangeSelectorWidget(QWidget):
         elif button == self.rb_coin:
             self.current_market_type = 'coin_futures'
             
-        print(f"[DEBUG] Market type changed to: {self.current_market_type}")
+        logger.info(f"[DEBUG] Market type changed to: {self.current_market_type}")
         self.load_symbols()
         
     def load_symbols(self):
@@ -165,7 +168,7 @@ class ExchangeSelectorWidget(QWidget):
         self.combo_symbol.blockSignals(True)
         self.combo_symbol.clear()
         
-        print(f"[DEBUG] Loading symbols for {self.current_exchange} ({self.current_market_type})...")
+        logger.info(f"[DEBUG] Loading symbols for {self.current_exchange} ({self.current_market_type})...")
         symbols = self.em.get_symbols(self.current_exchange, self.current_market_type)
         
         symbol_names = []
@@ -194,7 +197,7 @@ class ExchangeSelectorWidget(QWidget):
             return
             
         self.current_symbol = symbol
-        print(f"[DEBUG] Symbol selected: {symbol}")
+        logger.info(f"[DEBUG] Symbol selected: {symbol}")
         
         # Emit signal
         self.symbol_changed.emit(self.current_exchange, self.current_market_type, symbol)

@@ -3,7 +3,6 @@
 Lighter DEX 거래소 어댑터
 """
 
-import os
 import time
 import logging
 import asyncio

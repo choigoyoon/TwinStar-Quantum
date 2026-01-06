@@ -3,7 +3,6 @@ TwinStar Quantum Auto Updater
 Silent Install 방식 - Setup.exe 다운로드 후 자동 설치
 """
 
-import os
 import sys
 import json
 import logging
@@ -18,7 +17,7 @@ class Updater:
     """앱 내 자동 업데이트 관리 (Silent Install 방식)"""
     
     VERSION_URL = "https://raw.githubusercontent.com/choigoyoon/TwinStar-Quantum/main/version.json"
-    CURRENT_VERSION = "1.4.4"
+    CURRENT_VERSION = "1.7.1"
     
     def __init__(self):
         self.base_path = self._get_base_path()
@@ -207,8 +206,8 @@ def get_updater() -> Updater:
 if __name__ == "__main__":
     # 테스트
     updater = get_updater()
-    print(f"현재 버전: {updater.current_version}")
-    print(f"Base Path: {updater.base_path}")
+    logger.info(f"현재 버전: {updater.current_version}")
+    logger.info(f"Base Path: {updater.base_path}")
     
     result = updater.check_update()
-    print(f"업데이트 확인: {result}")
+    logger.info(f"업데이트 확인: {result}")

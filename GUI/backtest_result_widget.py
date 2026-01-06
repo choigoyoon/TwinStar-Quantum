@@ -24,7 +24,18 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from strategies.common.strategy_interface import BacktestResult, TradeSignal, TradeStatus, Candle
-from trade_chart_dialog import TradeChartDialog
+
+import logging
+logger = logging.getLogger(__name__)
+try:
+    from GUI.trade_chart_dialog import TradeChartDialog
+except ImportError:
+    try:
+        from trade_chart_dialog import TradeChartDialog
+    except ImportError:
+        # Fallback for direct execution
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        from trade_chart_dialog import TradeChartDialog
 
 
 class TradeTableWidget(QTableWidget):
@@ -389,7 +400,7 @@ class BacktestResultWidget(QWidget):
                 self._equity_chart.addItem(fill)
             
         except Exception as e:
-            print(f"[Chart] 에쿼티 그리기 오류: {e}")
+            logger.info(f"[Chart] 에쿼티 그리기 오류: {e}")
     
     def _on_trade_clicked(self, candle_index: int):
         """거래 클릭 → 차트 이동"""
@@ -414,7 +425,7 @@ class BacktestResultWidget(QWidget):
             # 위젯 스크린샷
             pixmap = self.grab()
             pixmap.save(filename)
-            print(f"✅ 스크린샷 저장: {filename}")
+            logger.info(f"✅ 스크린샷 저장: {filename}")
     
     def _export_csv(self):
         """CSV 내보내기"""
@@ -465,7 +476,7 @@ class BacktestResultWidget(QWidget):
                     f"{trade.pnl_percent:+.2f}%"
                 ])
         
-        print(f"✅ CSV 저장 완료: {filename}")
+        logger.info(f"✅ CSV 저장 완료: {filename}")
     
     def _show_trade_details(self):
         """상세 매매 팝업 표시"""
@@ -512,7 +523,7 @@ class BacktestResultWidget(QWidget):
             popup.exec_()
             
         except Exception as e:
-            print(f"상세 매매 표시 오류: {e}")
+            logger.info(f"상세 매매 표시 오류: {e}")
             import traceback
             traceback.print_exc()
 

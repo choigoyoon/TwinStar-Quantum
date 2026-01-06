@@ -8,20 +8,10 @@ Dual-Track Live Trader
 import logging
 import threading
 import time
-from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-try:
-    from core.unified_bot import UnifiedBot
-except ImportError:
-    UnifiedBot = None
-
-# DataManager import
-try:
-    from GUI.data_manager import DataManager
-except ImportError:
-    DataManager = None
-
+from core.trade_common import CapitalMode, CoinStatus
+from core.capital_manager import CapitalManager
 from core.preset_health import get_health_monitor
 
 class DualTrackTrader:
@@ -32,12 +22,13 @@ class DualTrackTrader:
                  btc_fixed_usd: float = 100.0,
                  initial_alt_capital: float = 1000.0):
         
-        self.exchange = exchange_client
+        # [MODULAR] Capital Management
+        self.capital_manager = CapitalManager()
         self.btc_fixed_usd = btc_fixed_usd
-        self.alt_capital = initial_alt_capital
+        self.initial_alt_capital = initial_alt_capital
         
         # 봇 인스턴스 저장 {symbol: bot_instance}
-        self.bots: Dict[str, UnifiedBot] = {}
+        self.bots: Dict[str, Any] = {}
         
         # 활성 포지션 추적
         self.active_positions = {
@@ -48,7 +39,7 @@ class DualTrackTrader:
         self.is_running = False
         self._lock = threading.Lock()
         
-        logging.info(f"[DUAL-TRACK] Initialized: BTC_Fixed=${btc_fixed_usd}, Alt_Start=${initial_alt_capital}")
+        logging.info(f"[DUAL-TRACK] \u2705 Initialized (Modular): BTC_Fixed=${btc_fixed_usd}, Alt_Start=${initial_alt_capital}")
 
     def is_btc(self, symbol: str) -> bool:
         """BTC 계열 여부 판별"""
@@ -119,33 +110,32 @@ class DualTrackTrader:
                 logging.info(f"[DUAL-TRACK] ALT Track Entry: {symbol} @ {price}, Capital Used: ${self.alt_capital:.2f}")
 
     def on_exit_executed(self, symbol: str, pnl_usd: float, pnl_pct: float):
-        """청산 완료 시 호출 (자본 업데이트)"""
+        """청산 완료 시 호출 (CapitalManager 업데이트)"""
         with self._lock:
             track = 'btc' if self.is_btc(symbol) else 'alt'
             
             if self.active_positions[track] == symbol:
                 self.active_positions[track] = None
                 
-                if track == 'alt':
-                    # 알트 트랙은 복리 적용
-                    self.alt_capital += pnl_usd
-                    logging.info(f"[DUAL-TRACK] ALT Track Exit: {symbol}, PnL: ${pnl_usd:+.2f} ({pnl_pct:+.2f}%), New Capital: ${self.alt_capital:.2f}")
-                else:
-                    # BTC 트랙은 고정 금액이므로 로그만 기록 (전체 자산에는 영향 주지만 다음 진입액은 고정)
-                    logging.info(f"[DUAL-TRACK] BTC Track Exit: {symbol}, PnL: ${pnl_usd:+.2f} ({pnl_pct:+.2f}%)")
+                # CapitalManager에 PnL 업데이트
+                self.capital_manager.update_after_trade(pnl_usd)
+                
+                new_capital = self.capital_manager.get_trade_size()
+                logging.info(f"[DUAL-TRACK] {track.upper()} Track Exit: {symbol}, PnL: ${pnl_usd:+.2f} ({pnl_pct:+.2f}%), New Capital: ${new_capital:.2f}")
             
             # 헬스 모니터 기록
             preset_name = getattr(self.bots.get(symbol), 'preset_name', symbol)
             get_health_monitor().record_trade(preset_name, pnl_usd > 0, pnl_pct)
 
     def get_summary(self) -> Dict:
-        """현황 요약"""
+        """현황 요약 (CapitalManager 기반)"""
         return {
-            'alt_capital': self.alt_capital,
+            'alt_capital': self.capital_manager.get_trade_size() if not self.active_positions['alt'] else self.initial_alt_capital,
             'btc_fixed': self.btc_fixed_usd,
             'active_btc': self.active_positions['btc'],
             'active_alt': self.active_positions['alt'],
-            'total_bots': len(self.bots)
+            'total_bots': len(self.bots),
+            'mode': self.capital_manager.mode.upper()
         }
 
     def start_monitoring(self, symbols: List[str]):

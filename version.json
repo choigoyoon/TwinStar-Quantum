@@ -1,12 +1,16 @@
 {
-  "version": "1.5.8",
-  "latest_version": "1.5.8",
-  "release_date": "2025-12-30",
-  "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/download/v1.5.8/TwinStar_Quantum_Setup_v1.5.8.exe",
+  "version": "1.7.1",
+  "latest_version": "1.7.1",
+  "release_date": "2026-01-06",
+  "download_url": "https://youngstreet.co.kr/update/TwinStar_Quantum_Setup_v1.7.1.exe",
   "changelog": [
-    "v1.5.8: 싱글 트레이딩 박스 내 불필요한 공백 제거 (Full Filling)",
-    "v1.5.7: 로그 콘솔(cmd) 복구 및 좌측 패널 상시 노출",
-    "v1.5.6: 시드 오버 방지 및 데이터 수집 1000개 제한 해결",
-    "v1.5.6: 대시보드 박스 형태 레이아웃 전면 개편"
+    "v1.7.1: 시스템 무결성 검증 완료 및 Deep Clean 적용, 자동 업데이트 로직 강화, 자산 관리 모드(CapitalManager) 정식 통합",
+    "v1.7.0: 멀티 심볼 백테스트 엔진 도입, 배치 최적화 및 프리셋 자동 생성",
+    "v1.6.3: 복리 잔액 상시 표시, 시드 잠금/해제 UI, 실시간 수익률 색상 표시",
+    "v1.6.2: PnL 레버리지 반영, SL 실시간 업데이트 최적화, 포지션 동기화 보강",
+    "v1.6.1: 시드 관리 기능 추가 (± 실시간 입출금, ↺ PnL 리셋)",
+    "v1.6.0: PnL 수식 정밀화 (수량 기반) 및 부호 오류 수정 완결판",
+    "v1.5.9: 매매 이어가기(Persistence) 긴급 수정",
+    "v1.5.7: 로그 콘솔(cmd) 복구 및 좌측 패널 상시 노출"
   ]
 }

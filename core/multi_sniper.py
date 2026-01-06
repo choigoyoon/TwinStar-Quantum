@@ -12,38 +12,15 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
-from paths import Paths
-
-
-class CoinStatus(Enum):
-    WAIT = "⚪ 대기"
-    WATCH = "🟡 주시"
-    READY = "🟢 준비"
-    IN_POSITION = "🔴 보유"
-    EXCLUDED = "⛔ 제외"
-
-
-@dataclass
-class CoinState:
-    symbol: str
-    initial_seed: float
-    seed: float
-    params: dict
-    status: CoinStatus = CoinStatus.WAIT
-    readiness: float = 0.0
-    position: Optional[dict] = None
-    backtest_winrate: float = 0.0
-    last_update: datetime = field(default_factory=datetime.now)
+from core.trade_common import CoinStatus, CoinState, CapitalMode, WS_LIMITS
+from core.capital_manager import CapitalManager
 
 
 class MultiCoinSniper:
     """멀티코인 스나이퍼 - Premium 전용"""
     
-    # [NEW] 거래소별 제한
-    WS_LIMITS = {
-        'bybit': 100, 'binance': 100, 'okx': 80,
-        'bitget': 80, 'bingx': 50, 'upbit': 30, 'bithumb': 30
-    }
+    # [MODULAR]
+    WS_LIMITS = WS_LIMITS
     SCAN_INTERVALS = {
         'bybit': 0.5, 'binance': 0.5, 'okx': 1.0,
         'bitget': 1.0, 'bingx': 1.0, 'upbit': 1.0, 'bithumb': 1.0
@@ -63,7 +40,8 @@ class MultiCoinSniper:
         from core.strategy_core import AlphaX7Core
         self.strategy = AlphaX7Core()
         
-        # [NEW] 거래소별 제한 적용
+        # [MODULAR] Capital Management
+        self.capital_manager = CapitalManager()
         self.WS_MAX = self.WS_LIMITS.get(self.exchange, 50)
         self.SCAN_INTERVAL = self.SCAN_INTERVALS.get(self.exchange, 1.0)
         self.logger.info(f"[{exchange}] WS 제한: {self.WS_MAX}개, 스캔 간격: {self.SCAN_INTERVAL}초")
@@ -329,7 +307,7 @@ class MultiCoinSniper:
                 self.logger.info(f"{symbol} 제외 (승률 {state.backtest_winrate:.1f}% < {self.MIN_WINRATE}%)")
     
     def _allocate_seeds(self, exchange: str):
-        """시드 배분 - 거래량 비례"""
+        """CapitalManager를 통한 시드 배분 (거래량 비례)"""
         active_coins = [s for s, c in self.coins.items() if c.status != CoinStatus.EXCLUDED]
         
         if not active_coins:
@@ -339,22 +317,23 @@ class MultiCoinSniper:
         volumes = self._get_volumes(exchange, active_coins)
         total_volume = sum(volumes.values())
         
-        if total_volume == 0:
-            # 균등 배분
-            per_coin = (self.total_seed * 0.8) / len(active_coins)
-            for symbol in active_coins:
-                self.coins[symbol].initial_seed = per_coin
-                self.coins[symbol].seed = per_coin
-            return
-        
-        # 거래량 비례 배분 (80%, 20%는 예비)
         available_seed = self.total_seed * 0.8
         
         for symbol in active_coins:
-            ratio = volumes.get(symbol, 0) / total_volume
-            seed = available_seed * ratio
-            self.coins[symbol].initial_seed = seed
-            self.coins[symbol].seed = seed
+            if total_volume > 0:
+                ratio = volumes.get(symbol, 0) / total_volume
+                base_seed = available_seed * ratio
+            else:
+                base_seed = available_seed / len(active_coins)
+            
+            # CapitalManager를 통해 시드 조회
+            seed = self.capital_manager.get_trade_size()
+            
+            self.coins[symbol].initial_seed = base_seed
+            self.coins[symbol].current_seed = seed
+            self.coins[symbol].params["seed"] = seed
+        
+        self.logger.info(f"💵 CapitalManager 배분 완료 (Mode: {self.capital_manager.mode.upper()})")
     
     def _get_volumes(self, exchange: str, symbols: List[str]) -> Dict[str, float]:
         """거래량 조회"""

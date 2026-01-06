@@ -37,6 +37,7 @@ class Paths:
     USER = os.path.join(BASE, 'user')                        # 사용자 데이터 루트
     LOGS = os.path.join(BASE, 'logs')                        # 로그 폴더
     DATA = os.path.join(BASE, 'data')                        # 데이터 폴더
+    USER_DATA = USER                                         # [Alias] 호환성용
     CACHE = os.path.join(DATA, 'cache')                      # 캐시
     PRESETS = os.path.join(USER_CONFIG, 'presets')           # 프리셋 폴더
     

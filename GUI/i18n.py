@@ -1,6 +1,9 @@
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 # i18n.py - 다국어 지원 시스템
 
-from typing import Dict
 
 class I18n:
     """다국어 지원 매니저"""
@@ -194,7 +197,7 @@ class I18n:
         """언어 설정 (ko/en)"""
         if lang in cls.TRANSLATIONS:
             cls._current_lang = lang
-            print(f"🌐 Language set to: {lang}")
+            logger.info(f"🌐 Language set to: {lang}")
             return True
         return False
     
@@ -233,14 +236,14 @@ def get_lang() -> str:
 
 # 테스트
 if __name__ == "__main__":
-    print("=== 한국어 ===")
+    logger.info("=== 한국어 ===")
     set_lang('ko')
-    print(t('tab_home'))
-    print(t('btn_start_trading'))
-    print(t('step1_desc'))
+    logger.info(f"{t('tab_home')}")
+    logger.info(f"{t('btn_start_trading')}")
+    logger.info(f"{t('step1_desc')}")
     
-    print("\n=== English ===")
+    logger.info("\n=== English ===")
     set_lang('en')
-    print(t('tab_home'))
-    print(t('btn_start_trading'))
-    print(t('step1_desc'))
+    logger.info(f"{t('tab_home')}")
+    logger.info(f"{t('btn_start_trading')}")
+    logger.info(f"{t('step1_desc')}")

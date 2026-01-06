@@ -3,30 +3,30 @@
         "name": "Default",
         "type": "preset",
         "version": "2.0",
-        "created": "2025-12-30 17:11:27",
-        "updated": "2025-12-30 17:11:27"
+        "created": "2026-01-05 07:30:53",
+        "updated": "2026-01-05 07:30:53"
     },
     "timeframes": {
         "filter_tf": "4h",
         "trend_interval": "1h",
-        "entry_tf": "15min"
+        "entry_tf": "15m"
     },
     "trading": {
-        "leverage": 3,
+        "leverage": 10,
         "direction": "Both"
     },
     "indicators": {
-        "rsi_period": 21,
+        "rsi_period": 14,
         "atr_mult": 1.25,
-        "pullback_rsi_long": 40,
-        "pullback_rsi_short": 60,
+        "pullback_rsi_long": 35,
+        "pullback_rsi_short": 65,
         "pattern_tolerance": 0.05
     },
     "risk": {
-        "trail_start_r": 1.0,
-        "trail_dist_r": 0.2,
+        "trail_start_r": 0.8,
+        "trail_dist_r": 0.1,
         "max_adds": 1,
-        "entry_validity_hours": 4.0
+        "entry_validity_hours": 6.0
     },
     "fixed": {
         "slippage_pct": 0.05,

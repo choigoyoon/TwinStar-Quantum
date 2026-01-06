@@ -7,14 +7,11 @@ Multi-Chain System Integrated UI
 
 import sys
 import os
-import json
-import logging
 import threading
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from datetime import datetime
-from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -22,7 +19,7 @@ from PyQt5.QtWidgets import (
     QHeaderView, QTabWidget, QTextEdit, QMessageBox, QFileDialog,
     QDoubleSpinBox, QSpinBox, QCheckBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QObject, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QObject
 
 # 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +30,6 @@ if project_root not in sys.path:
 from core.multi_optimizer import MultiOptimizer
 from core.multi_backtest import MultiBacktester
 from core.dual_track_trader import DualTrackTrader
-from core.preset_health import get_health_monitor
 
 class LogSignal(QObject):
     """로그 전달용 시그널"""

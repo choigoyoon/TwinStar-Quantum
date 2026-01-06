@@ -2,11 +2,15 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Callable
+from typing import List, Optional, Dict
 from enum import Enum
 from datetime import datetime
 import pandas as pd
 import numpy as np
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # 신호 타입 정의
@@ -325,13 +329,13 @@ class StrategyManager:
         """전략 등록"""
         config = strategy.get_config()
         self.strategies[config.strategy_id] = strategy
-        print(f"✅ 전략 등록: {config.name} v{config.version}")
+        logger.info(f"✅ 전략 등록: {config.name} v{config.version}")
     
     def activate(self, strategy_id: str) -> bool:
         """전략 활성화"""
         if strategy_id in self.strategies:
             self.active_strategy = self.strategies[strategy_id]
-            print(f"🎯 전략 활성화: {strategy_id}")
+            logger.info(f"🎯 전략 활성화: {strategy_id}")
             return True
         return False
     
@@ -351,23 +355,23 @@ class StrategyManager:
 # ============================================================
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("Strategy Interface 테스트")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("Strategy Interface 테스트")
+    logger.info("=" * 50)
     
     # 전략 생성
     strategy = HolyGrailStrategy(tp_pct=2.0, sl_pct=2.0)
     config = strategy.get_config()
     
-    print(f"\n📋 전략 정보:")
-    print(f"  - ID: {config.strategy_id}")
-    print(f"  - 이름: {config.name}")
-    print(f"  - 버전: {config.version}")
-    print(f"  - 타임프레임: {config.timeframe}")
-    print(f"  - 설명: {config.description}")
+    logger.info(f"\n📋 전략 정보:")
+    logger.info(f"  - ID: {config.strategy_id}")
+    logger.info(f"  - 이름: {config.name}")
+    logger.info(f"  - 버전: {config.version}")
+    logger.info(f"  - 타임프레임: {config.timeframe}")
+    logger.info(f"  - 설명: {config.description}")
     
     # 더미 데이터로 테스트
-    print(f"\n📊 더미 데이터 신호 테스트...")
+    logger.info(f"\n📊 더미 데이터 신호 테스트...")
     
     np.random.seed(42)
     dates = pd.date_range('2024-01-01', periods=100, freq='15min')
@@ -386,21 +390,21 @@ if __name__ == "__main__":
     signal = strategy.check_signal(dummy_data)
     
     if signal:
-        print(f"  ✅ 신호 발생!")
-        print(f"  - 타입: {signal.signal_type.value}")
-        print(f"  - 진입가: {signal.entry_price:.2f}")
-        print(f"  - 손절가: {signal.stop_loss:.2f}")
-        print(f"  - 익절가: {signal.take_profit:.2f}")
+        logger.info(f"  ✅ 신호 발생!")
+        logger.info(f"  - 타입: {signal.signal_type.value}")
+        logger.info(f"  - 진입가: {signal.entry_price:.2f}")
+        logger.info(f"  - 손절가: {signal.stop_loss:.2f}")
+        logger.info(f"  - 익절가: {signal.take_profit:.2f}")
     else:
-        print(f"  ⏳ 신호 없음 (정상)")
+        logger.info(f"  ⏳ 신호 없음 (정상)")
     
     # 전략 매니저 테스트
-    print(f"\n🎯 전략 매니저 테스트...")
+    logger.info(f"\n🎯 전략 매니저 테스트...")
     manager = StrategyManager()
     manager.register(strategy)
     manager.activate("holy_grail_v1")
     
     strategies = manager.get_list()
-    print(f"  등록된 전략: {len(strategies)}개")
+    logger.info(f"  등록된 전략: {len(strategies)}개")
     
-    print("\n✅ 테스트 완료!")
+    logger.info("\n✅ 테스트 완료!")

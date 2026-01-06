@@ -6,7 +6,10 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
     QProgressBar
 )
-from PyQt5.QtCore import Qt
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 import os
 
 from data_manager import DataManager
@@ -138,7 +141,7 @@ class CacheManagerWidget(QWidget):
                 path = self.dm.CACHE_DIR / filename
                 if path.exists():
                     os.remove(path)
-                    print(f"Deleted {filename}")
+                    logger.info(f"Deleted {filename}")
                     self.load_cache_list() # 목록 갱신
             except Exception as e:
                 QMessageBox.critical(self, t("common.error"), f"Failed to delete: {e}")

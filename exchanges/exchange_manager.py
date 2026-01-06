@@ -3,8 +3,6 @@
 """
 
 import ccxt
-import sys
-import os
 import logging
 from typing import Optional, Dict, List
 from dataclasses import dataclass
@@ -88,7 +86,7 @@ class ExchangeManager:
                     self.configs[name] = ExchangeConfig(
                         name=name,
                         api_key=config.get('api_key', ''),
-                        api_secret=config.get('api_secret', ''),
+                        api_secret=config.get('api_secret', config.get('secret', '')), # [FIX] secret alias
                         testnet=config.get('testnet', False),
                         passphrase=config.get('password', config.get('passphrase', ''))
                     )
@@ -153,53 +151,61 @@ class ExchangeManager:
         
         config = self.configs[exchange_name]
         info = SUPPORTED_EXCHANGES.get(exchange_name, {})
+
+        # [DEBUG] Key Status Check
+        masked_key = config.api_key[:4] + "***" if config.api_key else "None"
+        has_secret = bool(config.api_secret)
+        has_pass = bool(config.passphrase)
+        print(f"[Connect] {exchange_name}: Key={masked_key}, Secret={'OK' if has_secret else 'MISSING'}, Pass={'OK' if has_pass else 'MISSING'}")
         
         try:
             # [NEW] 한국 거래소는 전용 라이브러리 사용
             if info.get('native'):
                 return self._connect_native(exchange_name, config, info)
             
-            # ccxt 거래소 클래스 가져오기
-            if exchange_name == 'binance_spot':
-                exchange_class = getattr(ccxt, 'binance')
-            else:
-                exchange_class = getattr(ccxt, exchange_name)
+            # [FIX] Use Custom Adapter Classes
+            exchange = None
             
-            # 옵션 설정
-            options = {
-                'apiKey': config.api_key,
-                'secret': config.api_secret,
-                'enableRateLimit': True,
-                'options': {
-                    'adjustForTimeDifference': True,
-                    'recvWindow': 60000  # [NEW] 시간 허용 범위 확대
-                },
+            # Common config dictionary
+            adapter_config = {
+                'api_key': config.api_key,
+                'api_secret': config.api_secret,
+                'testnet': config.testnet,
+                'passphrase': config.passphrase
             }
             
-            # 선물 옵션
-            if info.get('type') == 'futures':
-                options['options'].update({'defaultType': 'swap'})
-            
-            # 테스트넷
-            if config.testnet and info.get('testnet'):
-                if exchange_name == 'bybit':
-                    options['options'] = options.get('options', {})
-                    options['options']['testnet'] = True
-                elif exchange_name == 'binance':
-                    options['options'] = options.get('options', {})
-                    options['options']['testnet'] = True
-            
-            # OKX/Bitget passphrase
-            if config.passphrase:
-                options['password'] = config.passphrase
-            
-            # 거래소 생성
-            exchange = exchange_class(options)
-            exchange.load_markets()
-            
+            if exchange_name == 'bybit':
+                from exchanges.bybit_exchange import BybitExchange
+                exchange = BybitExchange(adapter_config)
+                
+            elif exchange_name == 'binance':
+                from exchanges.binance_exchange import BinanceExchange
+                exchange = BinanceExchange(adapter_config)
+                
+            elif exchange_name == 'bitget':
+                from exchanges.bitget_exchange import BitgetExchange
+                exchange = BitgetExchange(adapter_config)
+                
+            elif exchange_name == 'okx':
+                from exchanges.okx_exchange import OKXExchange
+                exchange = OKXExchange(adapter_config)
+                
+            elif exchange_name == 'bingx':
+                from exchanges.bingx_exchange import BingXExchange
+                exchange = BingXExchange(adapter_config)
+                
+            else:
+                 # Fallback to ccxt (should not happen for supported futures)
+                exchange = exchange_class(options)
+                exchange.load_markets()
+
+            # Connect (Adapter classes usually connect in __init__ or have connect method)
+            if hasattr(exchange, 'connect') and not getattr(exchange, 'is_connected', False):
+                 exchange.connect()
+
             self.exchanges[exchange_name] = exchange
             
-            print(f"✅ {info.get('name', exchange_name)} 연결 성공")
+            print(f"✅ {info.get('name', exchange_name)} 연결 성공 (Adapter)")
             return (True, "")
             
         except Exception as e:
@@ -353,18 +359,39 @@ class ExchangeManager:
             # KRW 거래소 판별
             is_krw = exchange_name.lower() in ['upbit', 'bithumb']
             
+            # 통화 자동 선택
+            if currency is None:
+                currency = 'KRW' if is_krw else 'USDT'
+            
+            # [FIX] 한국 거래소는 네이티브 메서드 사용 (currency 인자 필요)
+            if exchange_name.lower() == 'upbit':
+                # pyupbit: get_balance("KRW") 형식
+                return float(ex.get_balance(currency) or 0.0)
+            elif exchange_name.lower() == 'bithumb':
+                # pybithumb: get_balance("BTC") 형식 - KRW 잔고는 별도 처리
+                if currency == 'KRW':
+                    # pybithumb에서 KRW 잔고 조회 (KRW는 float로 반환될 수 있음)
+                    try:
+                        bal = ex.get_balance("KRW")
+                        if isinstance(bal, tuple):
+                            return float(bal[1]) if len(bal) >= 2 else 0.0
+                        return float(bal or 0.0)
+                    except:
+                        return 0.0
+                else:
+                    bal = ex.get_balance(currency)
+                    if isinstance(bal, tuple) and len(bal) >= 2:
+                        return float(bal[1])  # 사용가능
+                    return float(bal) if bal else 0.0
+            
             # [NEW] 어댑터별 잔고 데이터 확보
             if hasattr(ex, 'fetch_balance'):
                 balance_data = ex.fetch_balance()
             elif hasattr(ex, 'get_balance'):
-                # fetch_balance가 없는 경우 get_balance 결과가 dict인지 확인
                 balance_data = ex.get_balance()
             else:
                 return 0.0
-            
-            # 통화 자동 선택
-            if currency is None:
-                currency = 'KRW' if is_krw else 'USDT'
+
             
             # 잔고 추출 로직
             from utils.helpers import safe_float
@@ -420,6 +447,25 @@ class ExchangeManager:
         
         return result
     
+    def get_positions(self, exchange_name: str) -> List[dict]:
+        """거래소 모든 포지션 조회"""
+        try:
+            ex = self.exchanges.get(exchange_name.lower())
+            if not ex:
+                # 연결 시도
+                success, _ = self._connect(exchange_name)
+                if success:
+                    ex = self.exchanges.get(exchange_name.lower())
+                else:
+                    return []
+            
+            if hasattr(ex, 'get_positions'):
+                return ex.get_positions()
+            return []
+        except Exception as e:
+            logging.error(f"[ExchangeManager] {exchange_name} 포지션 조회 실패: {e}")
+            return []
+
     def disconnect(self, exchange_name: str):
         """연결 해제"""
         if exchange_name in self.exchanges:

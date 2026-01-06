@@ -13,13 +13,20 @@ from datetime import datetime
 from pathlib import Path
 import multiprocessing
 
+from core.optimization_logic import OptimizationEngine
+from core.strategy_core import AlphaX7Core
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QDoubleSpinBox, QSpinBox,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QProgressBar, QMessageBox, QScrollArea, QCheckBox, QLineEdit,
-    QRadioButton, QButtonGroup, QFrame
+    QRadioButton, QButtonGroup, QFrame, QApplication
 )
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QColor
 import pandas as pd
@@ -33,17 +40,29 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 try:
-    from constants import TF_MAPPING, DEFAULT_PARAMS
+    from constants import TF_MAPPING, DEFAULT_PARAMS, EXCHANGE_INFO, TF_RESAMPLE_MAP
 except ImportError:
-    TF_MAPPING = {'1h': '15min', '4h': '1h', '1d': '4h', '1w': '1d'}
-    DEFAULT_PARAMS = {'atr_mult': 1.5, 'rsi_period': 14, 'entry_validity_hours': 12.0}
+    # 릴리즈 환경(EXE) 또는 개별 실행 시 폴백
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    try:
+        from GUI.constants import TF_MAPPING, DEFAULT_PARAMS, EXCHANGE_INFO, TF_RESAMPLE_MAP
+    except ImportError:
+        TF_MAPPING = {'1h': '15min', '4h': '1h', '1d': '4h', '1w': '1d'}
+        DEFAULT_PARAMS = {'atr_mult': 1.5, 'rsi_period': 14, 'entry_validity_hours': 12.0}
+        EXCHANGE_INFO = {}
+        TF_RESAMPLE_MAP = {}
 
 try:
     from paths import Paths
 except ImportError:
-    class Paths:
-        CACHE = "data/cache"
-        CONFIG = "config"
+    try:
+        from core.paths import Paths
+    except ImportError:
+        class Paths:
+            CACHE = "data/cache"
+            CONFIG = "config"
+            PRESETS = "config/presets"
+
 
 # 다국어 지원
 try:
@@ -56,28 +75,32 @@ except ImportError:
 class OptimizationWorker(QThread):
     """Optimization execution thread"""
     
-    progress = pyqtSignal(int)
+    progress = pyqtSignal(int, int) # completed, total
+    task_done = pyqtSignal(object)
     finished = pyqtSignal(list)
     error = pyqtSignal(str)
     
-    def __init__(self, optimizer, param_grid, metric, slippage=0.0005, fee=0.00055):
+    def __init__(self, engine, df, param_grid, max_workers=4, symbol="", timeframe="", capital_mode="compound"):
         super().__init__()
-        self.optimizer = optimizer
+        self.engine = engine
+        self.df = df
         self.param_grid = param_grid
-        self.metric = metric
-        self.slippage = slippage
-        self.fee = fee
-        self.n_cores = None
+        self.max_workers = max_workers
+        self.symbol = symbol
+        self.timeframe = timeframe
+        self.capital_mode = capital_mode # [NEW]
     
     def run(self):
         try:
-            self.optimizer.set_progress_callback(self.progress.emit)
-            results = self.optimizer.optimize(
+            # Set progress callback on the engine to emit signal
+            self.engine.progress_callback = self.progress.emit
+            
+            results = self.engine.run_optimization(
+                self.df,
                 self.param_grid, 
-                self.metric, 
-                slippage=self.slippage, 
-                fee=self.fee,
-                n_cores=self.n_cores
+                max_workers=self.max_workers,
+                task_callback=self.task_done.emit,
+                capital_mode=self.capital_mode # [NEW]
             )
             self.finished.emit(results)
         except Exception as e:
@@ -86,8 +109,9 @@ class OptimizationWorker(QThread):
             self.error.emit(str(e))
     
     def cancel(self):
-        if self.optimizer:
-            self.optimizer.cancel()
+        if self.engine:
+            self.engine.cancel()
+
 
 
 class ParamRangeWidget(QWidget):
@@ -192,8 +216,8 @@ class ParamChoiceWidget(QWidget):
         return selected
 
 
-class OptimizationWidget(QWidget):
-    """Optimization Widget - Full Version"""
+class SingleOptimizerWidget(QWidget):
+    """싱글 심볼 최적화 위젯 (기존 기능)"""
     
     settings_applied = pyqtSignal(dict)
     
@@ -206,11 +230,12 @@ class OptimizationWidget(QWidget):
         # CPU cores calculation
         self.cpu_total = multiprocessing.cpu_count()
         self.speed_options = {
-            'Fast (CPU 90%)': max(1, int(self.cpu_total * 0.9)),
+            'Turbo (CPU 90%)': max(1, int(self.cpu_total * 0.9)),
+            'Power (CPU 80%)': max(1, int(self.cpu_total * 0.8)),
             'Normal (CPU 60%)': max(1, int(self.cpu_total * 0.6)),
             'Slow (CPU 30%)': max(1, int(self.cpu_total * 0.3)),
         }
-        self.current_cores = self.speed_options['Normal (CPU 60%)']
+        self.current_cores = self.speed_options['Power (CPU 80%)']
         
         self._init_ui()
         self._load_data_sources()
@@ -230,15 +255,16 @@ class OptimizationWidget(QWidget):
         layout.setSpacing(15)
         
         # 모드 선택 (라디오 버튼 가로 배치)
-        mode_label = QLabel("🔍 검색 모드:")
+        mode_label = QLabel(t("optimization.search_mode") + ":")
         mode_label.setStyleSheet("font-weight: bold; color: #00d4ff;")
         layout.addWidget(mode_label)
         
         self.mode_group = QButtonGroup()
         modes = [
-            ("⚡ 빠른", "~36개 조합", 0),
-            ("📊 표준", "~3,600개 조합", 1),
-            ("🔬 심층", "~12,800개 조합", 2)
+            (t("optimization.quick"), "~36 combinations", 0),
+            (t("optimization.standard"), "~3,600 combinations", 1),
+            (t("optimization.deep"), "~12,800 combinations", 2),
+            ("🎯 순차", "4단계 자동 (~135 combinations)", 3)  # Staged mode
         ]
         
         for text, tooltip, mode_id in modes:
@@ -251,11 +277,24 @@ class OptimizationWidget(QWidget):
             self.mode_group.addButton(radio, mode_id)
             layout.addWidget(radio)
         
+        # [NEW] Capital Mode Selection
+        mode_select_label = QLabel("자본 모드:")
+        mode_select_label.setStyleSheet("font-weight: bold; color: #ff9800;")
+        layout.addWidget(mode_select_label)
+        
+        self.capital_mode_combo = QComboBox()
+        self.capital_mode_combo.addItems(["COMPOUND", "FIXED"])
+        self.capital_mode_combo.setFixedWidth(100)
+        self.capital_mode_combo.setStyleSheet("""
+            QComboBox { background: #333; color: #ff9800; border: 1px solid #555; padding: 3px; }
+        """)
+        layout.addWidget(self.capital_mode_combo)
+        
         # 모드 변경 시 estimate 업데이트
         self.mode_group.buttonClicked.connect(self._update_estimate)
         
         # [FIX] 기준 TF 선택 콤보 추가 (가시적으로)
-        tf_label = QLabel("📊 기준 TF:")
+        tf_label = QLabel(t("optimization.benchmark_tf") + ":")
         tf_label.setStyleSheet("font-weight: bold; color: #00d4ff;")
         layout.addWidget(tf_label)
         
@@ -331,7 +370,7 @@ class OptimizationWidget(QWidget):
 
     def _init_result_area(self):
         """결과 영역: Top 20 한 페이지 표시"""
-        result_group = QGroupBox("📈 최적화 결과 (상위 20개)")
+        result_group = QGroupBox(t("optimization.results_group"))
         result_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold; color: #00d4ff;
@@ -357,16 +396,16 @@ class OptimizationWidget(QWidget):
             QPushButton:disabled { background: #555; color: #888; }
         """
         
-        self.compare_btn = QPushButton("📊 결과 비교")
+        self.compare_btn = QPushButton("📊 " + t("optimization.compare_btn"))
         self.compare_btn.setStyleSheet(btn_style.replace("%COLOR%", "#2196F3").replace("%HOVER%", "#1976D2"))
-        self.compare_btn.setToolTip("선택된 결과들을 차트로 비교")
+        self.compare_btn.setToolTip(t("optimization.compare_tip") if t("optimization.compare_tip") != "optimization.compare_tip" else "Compare selected results on chart")
         self.compare_btn.clicked.connect(self._compare_results)
         self.compare_btn.setEnabled(False)
         btn_row.addWidget(self.compare_btn)
         
-        self.export_csv_btn = QPushButton("📥 CSV 내보내기")
+        self.export_csv_btn = QPushButton("📥 " + t("optimization.export_csv_btn"))
         self.export_csv_btn.setStyleSheet(btn_style.replace("%COLOR%", "#607D8B").replace("%HOVER%", "#455A64"))
-        self.export_csv_btn.setToolTip("최적화 결과를 CSV로 저장")
+        self.export_csv_btn.setToolTip(t("optimization.export_csv_tip") if t("optimization.export_csv_tip") != "optimization.export_csv_tip" else "Export results to CSV")
         self.export_csv_btn.clicked.connect(self._export_csv)
         self.export_csv_btn.setEnabled(False)
         btn_row.addWidget(self.export_csv_btn)
@@ -379,8 +418,10 @@ class OptimizationWidget(QWidget):
         self.result_table.setColumnCount(11)
         self.result_table.setColumnCount(12)
         self.result_table.setHorizontalHeaderLabels([
-            '유형', '필터TF', 'ATR', '승률', '단리', '복리', 'MDD', 
-            '배율', '방향', '샤프', '안정성', '적용'
+            t("results_table.type"), t("results_table.filter_tf"), t("results_table.atr"), t("results_table.win_rate"), 
+            t("results_table.simple_return") if t("results_table.simple_return") != "results_table.simple_return" else "Ret(S)", 
+            t("results_table.compound_return") if t("results_table.compound_return") != "results_table.compound_return" else "Ret(C)", 
+            t("results_table.mdd"), t("results_table.leverage"), t("results_table.direction"), t("results_table.sharpe"), t("results_table.stability") if t("results_table.stability") != "results_table.stability" else "Stab", t("results_table.apply")
         ])
         self.result_table.setRowCount(20)  # Top 20 고정
         self.result_table.setMinimumHeight(500)  # 스크롤 없이 전체 표시
@@ -418,7 +459,7 @@ class OptimizationWidget(QWidget):
         layout.addWidget(self.dominance_label)
         
         # [FIX] Refine 그룹 추가 (2단계 최적화용)
-        self.refine_group = QGroupBox("🔬 Iterative Refinement")
+        self.refine_group = QGroupBox(t("optimization.refine_group"))
         self.refine_group.setVisible(False)
         self.refine_group.setStyleSheet("""
             QGroupBox {
@@ -427,7 +468,7 @@ class OptimizationWidget(QWidget):
             }
         """)
         refine_layout = QHBoxLayout(self.refine_group)
-        refine_btn = QPushButton("🚀 Run 2nd Stage")
+        refine_btn = QPushButton(t("optimization.run_refine"))
         refine_btn.setFixedSize(160, 36)
         refine_btn.setStyleSheet("""
             QPushButton {
@@ -440,8 +481,17 @@ class OptimizationWidget(QWidget):
         refine_layout.addStretch()
         layout.addWidget(self.refine_group)
         
-        # iterative_grid 초기화
-        self.iterative_grid = None
+        # [NEW] Grid Audit Log
+        self.grid_audit_table = QTableWidget()
+        self.grid_audit_table.setColumnCount(4)
+        self.grid_audit_table.setHorizontalHeaderLabels(['Combination', 'WinRate', 'Return', 'Sharpe'])
+        self.grid_audit_table.setFixedHeight(120)
+        self.grid_audit_table.setStyleSheet("""
+            QTableWidget { background: #131722; color: #888; border: 1px solid #363a45; font-size: 10px; }
+            QHeaderView::section { background: #131722; color: #555; padding: 2px; }
+        """)
+        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        layout.addWidget(self.grid_audit_table)
         
         return result_group
 
@@ -476,9 +526,9 @@ class OptimizationWidget(QWidget):
         combo_row.addWidget(self.exchange_combo)
         
         # [심볼 검색]
-        combo_row.addWidget(QLabel("Symbol:"))
+        combo_row.addWidget(QLabel(t("optimization.symbol") + ":"))
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("🔍 검색...")
+        self.search_edit.setPlaceholderText("🔍 " + t("common.select") + "...")
         self.search_edit.setFixedWidth(120)
         self.search_edit.setStyleSheet("background: #2b2b2b; color: white; padding: 5px; border: 1px solid #444; border-radius: 4px;")
         self.search_edit.textChanged.connect(lambda: self._filter_data_combo())
@@ -489,7 +539,7 @@ class OptimizationWidget(QWidget):
         self.data_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px; font-weight: bold;")
         combo_row.addWidget(self.data_combo, stretch=1)
         
-        self.refresh_btn = QPushButton("🔃 Refresh")
+        self.refresh_btn = QPushButton("🔃 " + t("optimization.refresh"))
         self.refresh_btn.setFixedWidth(90)
         self.refresh_btn.clicked.connect(self._load_data_sources)
         self.refresh_btn.setStyleSheet("background: #404040; color: white; padding: 5px; font-weight: bold;")
@@ -502,7 +552,7 @@ class OptimizationWidget(QWidget):
         metric_row = QHBoxLayout()
         metric_row.setSpacing(10)
         
-        metric_row.addWidget(QLabel("정렬 기준:"))
+        metric_row.addWidget(QLabel(t("optimization.sort_by") + ":"))
         self.metric_combo = QComboBox()
         self.metric_combo.addItems(["WinRate", "Return", "Sharpe", "ProfitFactor"])
         self.metric_combo.setCurrentText("WinRate")
@@ -512,10 +562,10 @@ class OptimizationWidget(QWidget):
         
         metric_row.addSpacing(20)
         
-        metric_row.addWidget(QLabel("속도:"))
+        metric_row.addWidget(QLabel(t("optimization.speed") + ":"))
         self.speed_combo = QComboBox()
         self.speed_combo.addItems(list(self.speed_options.keys()))
-        self.speed_combo.setCurrentText("Normal (CPU 60%)")
+        self.speed_combo.setCurrentText("Power (CPU 80%)")
         self.speed_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px; min-width: 120px;")
         self.speed_combo.currentTextChanged.connect(self._on_speed_changed)
         metric_row.addWidget(self.speed_combo)
@@ -545,7 +595,7 @@ class OptimizationWidget(QWidget):
         main_layout.addWidget(self.progress_bar)
 
         # 3. Manual Settings (접이식)
-        self.manual_toggle_btn = QPushButton("▶ 고급 설정")
+        self.manual_toggle_btn = QPushButton("▶ " + t("optimization.advanced_settings"))
         self.manual_toggle_btn.setCheckable(True)
         self.manual_toggle_btn.setStyleSheet("""
             QPushButton {
@@ -605,6 +655,22 @@ class OptimizationWidget(QWidget):
             
         self.leverage_widget = ParamRangeWidget('레버리지', 1, 10, 1, decimals=0, tooltip="레버리지 범위")
         manual_layout.addWidget(self.leverage_widget)
+
+        manual_layout.addWidget(self._create_separator())
+        manual_layout.addWidget(QLabel("🔹 지표 기간 설정 (Periods)"))
+
+        # MACD Ranges
+        self.param_widgets['macd_fast'] = ParamRangeWidget('MACD Fast', 8, 16, 2, decimals=0, tooltip="MACD Fast 기반")
+        self.param_widgets['macd_slow'] = ParamRangeWidget('MACD Slow', 20, 32, 2, decimals=0, tooltip="MACD Slow 기반")
+        self.param_widgets['macd_signal'] = ParamRangeWidget('MACD Signal', 7, 12, 1, decimals=0, tooltip="MACD Signal 기반")
+        
+        # EMA/RSI/ATR Ranges
+        self.param_widgets['ema_period'] = ParamRangeWidget('EMA 기간', 10, 30, 5, decimals=0, tooltip="EMA 기준선 기간")
+        self.param_widgets['rsi_period'] = ParamRangeWidget('RSI 기간', 10, 21, 1, decimals=0, tooltip="RSI 계산 기간")
+        self.param_widgets['atr_period'] = ParamRangeWidget('ATR 기간', 10, 20, 1, decimals=0, tooltip="ATR 계산 기간")
+
+        for k in ['macd_fast', 'macd_slow', 'macd_signal', 'ema_period', 'rsi_period', 'atr_period']:
+            manual_layout.addWidget(self.param_widgets[k])
         
         self.direction_widget = ParamChoiceWidget('방향', ['롱', '숏', '양방향'], [2], tooltip="매매 방향")
         manual_layout.addWidget(self.direction_widget)
@@ -736,7 +802,7 @@ class OptimizationWidget(QWidget):
                 self.exchange_combo.addItem(e)
                 
         except Exception as e:
-            print(f"Data source load error: {e}")
+            logger.info(f"Data source load error: {e}")
         finally:
             self.exchange_combo.blockSignals(False)
             self._filter_data_combo()
@@ -806,7 +872,7 @@ class OptimizationWidget(QWidget):
                         chk.setEnabled(True)
                 self.status_label.setText("Ready")
         except Exception as e:
-            print(f"Error applying spot constraints: {e}")
+            logger.info(f"Error applying spot constraints: {e}")
     
     def _get_param_grid(self) -> dict:
         """모드에 따른 파라미터 그리드 생성"""
@@ -820,7 +886,7 @@ class OptimizationWidget(QWidget):
         trend_tf = self.trend_tf_combo.currentText()
         max_mdd = self.max_mdd_spin.value()
         
-        # [FIX] 모드별 Grid 선택
+        # 1. 모드별 Grid 기본값 로드
         mode_id = self.mode_group.checkedId() if hasattr(self, 'mode_group') else 1
         
         if mode_id == 0:      # Quick
@@ -830,14 +896,19 @@ class OptimizationWidget(QWidget):
         else:                 # Standard (1)
             base_grid = generate_standard_grid(trend_tf, max_mdd)
         
-        # [FIX] Manual Settings가 열려있을 때만 UI 값으로 override
+        # 2. [FIX] '고급 설정'이 활성화되어 있으면 UI 값으로 전체 Override
         if hasattr(self, 'manual_container') and self.manual_container.isVisible():
+            # 모든 등록된 위젯 순회 (atr_mult, trail_*, macd_*, ema_*, rsi_*, atr_*)
             for key, widget in self.param_widgets.items():
                 values = widget.get_values()
                 if values:
-                    base_grid[key] = values
+                    # 기간(Period) 관련 파라미터는 정수로 변환
+                    if any(p in key for p in ['period', 'fast', 'slow', 'signal']):
+                        base_grid[key] = [int(v) for v in values]
+                    else:
+                        base_grid[key] = values
             
-            # 레버리지 및 방향은 별도 위젯이므로 추가 체크
+            # 레버리지 및 방향 (상하위 위젯)
             if hasattr(self, 'leverage_widget'):
                 lev = self.leverage_widget.get_values()
                 if lev: base_grid['leverage'] = [int(v) for v in lev]
@@ -846,22 +917,34 @@ class OptimizationWidget(QWidget):
                 dirs = self.direction_widget.get_values()
                 if dirs: base_grid['direction'] = dirs
         
-        # [NEW] 현물 거래소 최종 강제 필터링 (그리드 수준에서 숏/레버리지 제거)
+        # 3. [FIX] Costs Injection (Slippage/Fee)
+        # UI Input (Percent) -> Logic (Rate)
+        # 0.05% -> 0.0005
+        if hasattr(self, 'slippage_spin'):
+            slip_pct = self.slippage_spin.value()
+            base_grid['slippage'] = [slip_pct / 100.0]
+        
+        if hasattr(self, 'fee_spin'):
+            fee_pct = self.fee_spin.value()
+            base_grid['fee'] = [fee_pct / 100.0]
+        
+        # 3. [NEW] 현물 거래소 최종 강제 필터링 (그리드 수준에서 숏/레버리지 제거)
         try:
             from utils.symbol_converter import is_spot_exchange
             exch = self.exchange_combo.currentText().lower()
             if is_spot_exchange(exch):
                 base_grid['leverage'] = [1]
                 base_grid['direction'] = ['Long']
-                print(f"📌 [OPT] Spot constraints enforced: leverage=[1], direction=['Long']")
+                logger.info(f"📌 [OPT] Spot constraints enforced: leverage=[1], direction=['Long']")
         except:
             pass
             
         return base_grid
 
+
     
     def _load_data(self) -> pd.DataFrame:
-        """Load selected data"""
+        """Load selected data and resample to 1H for pattern detection"""
         try:
             from data_manager import DataManager
             dm = DataManager()
@@ -871,19 +954,34 @@ class OptimizationWidget(QWidget):
             
             if db_path and os.path.exists(db_path):
                 df = pd.read_parquet(db_path)
-                print(f"Loaded: {len(df)} rows from {os.path.basename(db_path)}")
+                filename = os.path.basename(db_path)
+                logger.info(f"Loaded: {len(df)} rows from {filename}")
+                
+                # 15분봉 데이터는 리샘플링하지 않음 (filter_tf별 동적 리샘플링)
+                if '15m' in filename.lower():
+                    logger.info("  → 15분봉 원본 유지 (filter_tf별 동적 리샘플링)")
+                    if 'timestamp' in df.columns:
+                        # timestamp만 datetime으로 변환
+                        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                    
             else:
                 # Auto select latest
                 cache_files = list(dm.cache_dir.glob("*.parquet"))
                 if cache_files:
                     latest = max(cache_files, key=lambda p: p.stat().st_mtime)
                     df = pd.read_parquet(latest)
-                    print(f"Auto loaded: {latest.name}, {len(df)} rows")
+                    logger.info(f"Auto loaded: {latest.name}, {len(df)} rows")
+                    
+                    # 15분봉은 그대로 유지
+                    if '15m' in latest.name.lower():
+                        logger.info("  → 15분봉 원본 유지 (filter_tf별 동적 리샘플링)")
+                        if 'timestamp' in df.columns:
+                            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             
             self._current_df = df
             return df
         except Exception as e:
-            print(f"Data load error: {e}")
+            logger.info(f"Data load error: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -899,6 +997,15 @@ class OptimizationWidget(QWidget):
         if df is None or df.empty:
             QMessageBox.warning(self, t("common.warning"), "Data load failed")
             return
+        
+        # 모든 모드가 단계별 최적화 사용 (효율성 극대화)
+        mode_id = self.mode_group.checkedId()
+        mode_names = {0: 'quick', 1: 'standard', 2: 'deep', 3: 'staged'}
+        mode_name = mode_names.get(mode_id, 'staged')
+        
+        # 모든 모드에서 staged optimization 사용
+        self._run_staged_optimization(df, mode=mode_name)
+        return
             
         # Get param grid
         if custom_grid:
@@ -932,39 +1039,98 @@ class OptimizationWidget(QWidget):
         self.status_label.setText(f"Optimizing... (0/{total} combos)")
         
         try:
-            from core.optimizer import BacktestOptimizer
-            from core.strategy_core import AlphaX7Core
+            # [Phase 5] OptimizationEngine 인스턴스 생성 및 그리드 생성
+            self.engine = OptimizationEngine()
+            full_grid = self.engine.generate_grid_from_options(param_grid)
             
-            optimizer = BacktestOptimizer(AlphaX7Core, df)
-            
-            # [FIX] 메트릭 이름 매핑 (UI Label -> Attr Name)
-            metric_map = {
-                "WinRate": "win_rate",
-                "Return": "total_return",
-                "Sharpe": "sharpe_ratio",
-                "ProfitFactor": "profit_factor"
-            }
-            ui_metric = self.metric_combo.currentText()
-            metric = metric_map.get(ui_metric, "sharpe_ratio")
-            
-            slippage = self.slippage_spin.value() / 100
-            fee = self.fee_spin.value() / 100
-            
+            # [Phase 6] 데이터 정보 추출 (로깅용)
+            db_path = self.data_combo.currentData()
+            filename = os.path.basename(db_path) if db_path else "unknown"
+            parts = filename.split('_')
+            symbol = parts[1].upper() if len(parts) > 1 else "Unknown"
+            timeframe = parts[2].split('.')[0] if len(parts) > 2 else "1h"
+
+            # [Phase 7] Worker 생성 및 실행
             self.worker = OptimizationWorker(
-                optimizer=optimizer,
-                param_grid=param_grid,
-                metric=metric,
-                slippage=slippage,
-                fee=fee
+                self.engine, 
+                self._current_df, 
+                full_grid, 
+                max_workers=self.current_cores,
+                symbol=symbol,
+                timeframe=trend_tf,
+                capital_mode=self.capital_mode_combo.currentText() # [NEW]
             )
-            self.worker.n_cores = self.current_cores
+            
+            # 시그널 연결
             self.worker.progress.connect(self._on_progress)
+            self.worker.task_done.connect(self._on_task_done)
             self.worker.finished.connect(self._on_finished)
             self.worker.error.connect(self._on_error)
+            
+            # 스레드 시작
             self.worker.start()
             
         except Exception as e:
             QMessageBox.critical(self, t("common.error"), f"Optimization start failed: {e}")
+            self._reset_ui()
+    
+    def _run_staged_optimization(self, df, mode: str = 'staged'):
+        """4단계 순차 최적화 실행 (모든 모드에서 사용)"""
+        from core.optimization_logic import OptimizationEngine
+        
+        mode_display = {'quick': '⚡ 빠른', 'standard': '📊 보통', 'deep': '🔬 심층', 'staged': '🎯 순차'}
+        mode_label = mode_display.get(mode, '🎯 순차')
+        
+        # UI 업데이트
+        self.run_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(True)
+        self.progress.setVisible(True)
+        self.progress.setValue(0)
+        self.status_label.setText(f"{mode_label} 최적화: 1단계 시작...")
+        
+        def stage_callback(stage_num, message, params):
+            """단계별 콜백"""
+            progress_map = {1: 25, 2: 50, 3: 75, 4: 100}
+            self.progress.setValue(progress_map.get(stage_num, 0))
+            self.status_label.setText(f"🎯 {stage_num}단계: {message}")
+            QApplication.processEvents()
+        
+        try:
+            self.engine = OptimizationEngine()
+            
+            # 순차 최적화 실행 (동기 실행, 모드별 Grid 사용)
+            result = self.engine.run_staged_optimization(
+                df=df,
+                target_mdd=20.0,
+                max_workers=self.current_cores,
+                stage_callback=stage_callback,
+                mode=mode
+            )
+            
+            # 결과 표시
+            if result and result.get('candidates'):
+                candidates = result['candidates']
+                
+                # 모든 상위 후보들을 테이블에 표시
+                self._display_results(candidates)
+                
+                # 최적 파라미터(1순위) 및 레버리지 표시
+                best = candidates[0]
+                leverage = result.get('leverage', 1)
+                self._last_leverage = leverage  # [NEW] 저장 시 사용하기 위해 보관
+                mdd = best.max_drawdown
+                msg = (f"✅ 순차 최적화 완료!\n\n"
+                       f"📊 총 {result.get('total_combinations', 135)}개 조합 테스트\n"
+                       f"📉 MDD: {mdd:.1f}%\n"
+                       f"💪 적정 레버리지: {leverage}x (목표 MDD 20%)\n\n"
+                       f"결과가 테이블에 표시되었습니다.")
+                QMessageBox.information(self, "순차 최적화 완료", msg)
+            else:
+                QMessageBox.warning(self, t("common.warning"), "순차 최적화 결과 없음")
+                
+        except Exception as e:
+            QMessageBox.critical(self, t("common.error"), f"순차 최적화 실패: {e}")
+        finally:
             self._reset_ui()
     
     def _cancel_optimization(self):
@@ -972,12 +1138,33 @@ class OptimizationWidget(QWidget):
             self.worker.cancel()
             self.status_label.setText("Cancelling...")
     
-    def _on_progress(self, value: int):
-        self.progress.setValue(value)
-        self.status_label.setText(f"Optimizing... ({value}%)")
+    def _on_progress(self, completed: int, total: int):
+        if total > 0:
+            pct = int(completed / total * 100)
+            self.progress.setValue(pct)
+            self.status_label.setText(f"Optimizing... {completed}/{total} ({pct}%)")
+
+    def _on_error(self, msg: str):
+        QMessageBox.critical(self, t("common.error"), f"Optimization error: {msg}")
+        self._reset_ui()
+
+    def _on_task_done(self, result):
+        """그리드 감사 로그 업데이트"""
+        row = self.grid_audit_table.rowCount()
+        self.grid_audit_table.insertRow(0)
+        if self.grid_audit_table.rowCount() > 50:
+            self.grid_audit_table.removeRow(50)
+            
+        p = result.params
+        combo_str = f"ATR:{p.get('atr_mult')} SL:{p.get('trail_start_r')} DT:{p.get('trail_dist_r')}"
+        
+        self.grid_audit_table.setItem(0, 0, QTableWidgetItem(combo_str))
+        self.grid_audit_table.setItem(0, 1, QTableWidgetItem(f"{result.win_rate:.1f}%"))
+        self.grid_audit_table.setItem(0, 2, QTableWidgetItem(f"{result.simple_return:+.1f}%"))
+        self.grid_audit_table.setItem(0, 3, QTableWidgetItem(f"{result.sharpe_ratio:.2f}"))
     
     def _on_finished(self, results: list):
-        print(f"DEBUG: Optimization finished with {len(results)} raw results")
+        logger.info(f"DEBUG: Optimization finished with {len(results)} raw results")
         self._reset_ui()
         
         try:
@@ -986,7 +1173,7 @@ class OptimizationWidget(QWidget):
             total_count = len(results)
             
             self.results = results
-            print(f"DEBUG: Displaying {total_count} results (Filtered by core MDD <= {max_mdd_threshold}%)")
+            logger.info(f"DEBUG: Displaying {total_count} results (Filtered by core MDD <= {max_mdd_threshold}%)")
             self._display_results(results)
             
             status_msg = f"Done! Found {total_count} valid results (MDD target: {max_mdd_threshold}%)"
@@ -994,7 +1181,7 @@ class OptimizationWidget(QWidget):
             
             filtered_results = results # 2단계 분석용은 전체 사용하거나 상위 사용
         except Exception as e:
-            print(f"DEBUG: _on_finished error: {e}")
+            logger.info(f"DEBUG: _on_finished error: {e}")
             import traceback
             traceback.print_exc()
         
@@ -1019,7 +1206,7 @@ class OptimizationWidget(QWidget):
                 else:
                     self.refine_group.setVisible(False)
             except Exception as e:
-                print(f"Analysis error: {e}")
+                logger.info(f"Analysis error: {e}")
         else:
             self.refine_group.setVisible(False)
 
@@ -1046,7 +1233,7 @@ class OptimizationWidget(QWidget):
         )
         
         if confirm == QMessageBox.Yes:
-            print(f"🚀 [OPT] Stage 2 Refinement Start: {self.iterative_grid}")
+            logger.info(f"🚀 [OPT] Stage 2 Refinement Start: {self.iterative_grid}")
             self._run_optimization(custom_grid=self.iterative_grid)
             self.refine_group.setVisible(False)
     
@@ -1139,11 +1326,11 @@ class OptimizationWidget(QWidget):
         result_info = {}
         if result:
             result_info = {
-                "trades": result.trades,
+                "trades": getattr(result, 'trade_count', 0),
                 "win_rate": round(result.win_rate, 1),
-                "total_return": round(result.total_return, 1),
+                "total_return": round(result.simple_return, 1),
                 "mdd": round(result.max_drawdown, 1),
-                "sharpe": round(getattr(result, 'sharpe_ratio', 0), 2)
+                "sharpe": round(result.sharpe_ratio, 2)
             }
         
         # Data period
@@ -1160,34 +1347,19 @@ class OptimizationWidget(QWidget):
         if 'entry_tf' not in params:
             params['entry_tf'] = entry_tf
         
-        # [FIX] 누락된 핵심 파라미터 추가 (DEFAULT_PARAMS에서 가져오기)
-        # 최적화 그리드에 없는 파라미터들도 프리셋에 저장하여 백테스트와 일관성 유지
-        if 'pattern_tolerance' not in params:
-            params['pattern_tolerance'] = DEFAULT_PARAMS.get('pattern_tolerance', 0.05)
-        if 'entry_validity_hours' not in params:
-            params['entry_validity_hours'] = DEFAULT_PARAMS.get('entry_validity_hours', 48.0)
+        # [REFINED] config.parameters에서 모든 기본값을 가져와 병합 (Single Source of Truth)
+        from config.parameters import get_all_params
+        merged_params = get_all_params(params)
         
-        # [NEW] RSI 파라미터 추가 (중요)
-        if 'rsi_period' not in params:
-            params['rsi_period'] = DEFAULT_PARAMS.get('rsi_period', 14)
-        if 'pullback_rsi_long' not in params:
-            params['pullback_rsi_long'] = DEFAULT_PARAMS.get('pullback_rsi_long', 45)
-        if 'pullback_rsi_short' not in params:
-            params['pullback_rsi_short'] = DEFAULT_PARAMS.get('pullback_rsi_short', 55)
-            params['rsi_period'] = DEFAULT_PARAMS.get('rsi_period', 14)
-        if 'atr_period' not in params:
-            params['atr_period'] = DEFAULT_PARAMS.get('atr_period', 14)
-        if 'trail_start_r' not in params:
-            params['trail_start_r'] = DEFAULT_PARAMS.get('trail_start_r', 0.8)
-        if 'trail_dist_r' not in params:
-            params['trail_dist_r'] = DEFAULT_PARAMS.get('trail_dist_r', 0.5)
-        if 'pullback_rsi_long' not in params:
-            params['pullback_rsi_long'] = DEFAULT_PARAMS.get('pullback_rsi_long', 40)
-        if 'pullback_rsi_short' not in params:
-            params['pullback_rsi_short'] = DEFAULT_PARAMS.get('pullback_rsi_short', 60)
-        if 'max_adds' not in params:
-            params['max_adds'] = DEFAULT_PARAMS.get('max_adds', 1)
-        # Preset data
+        # [NEW] 최적화에서 추천한 레버리지 반영 (전략 파라미터로 저장)
+        if result and hasattr(self, 'engine'):
+            # result는 OptimizationResult 객체 (mdd, return 등 포함)
+            # 여기서는 OptimizationEngine에서 계산된 leverage 값을 가져옴
+            if hasattr(self, '_last_leverage'): # staged 최적화 결과에서 저장해둔 값
+                merged_params['leverage'] = self._last_leverage
+            elif hasattr(result, 'params') and 'leverage' in result.params:
+                merged_params['leverage'] = result.params['leverage']
+
         preset_data = {
             "_meta": {
                 "symbol": symbol,
@@ -1200,7 +1372,7 @@ class OptimizationWidget(QWidget):
                 "period_end": period_end,
             },
             "_result": result_info,
-            "params": params
+            "params": merged_params
         }
         
         # Filename - 통일된 명명 규칙 사용 (User Request: {exch}_{symbol}_{tf}.json)
@@ -1220,15 +1392,15 @@ class OptimizationWidget(QWidget):
             from utils.preset_manager import get_preset_manager
             pm = get_preset_manager()
             
-            # [FIX] User Request: Disable automatic preset saving to avoid cluttering
+            # [FIX] 메인 프리셋만 저장 (최신 덮어쓰기, 폴더 정리)
             # 1. 메인 프리셋 저장 (최신성 유지)
-            # pm.save_preset(main_name, preset_data)
+            pm.save_preset(main_name, preset_data)
             
-            # 2. 백업 프리셋 저장 (히스토리 보관)
+            # 2. 백업 프리셋 저장 (히스토리 보관) - 비활성화
             # pm.save_preset(backup_name, preset_data)
             
-            # print(f"✅ Preset consolidated save: {main_name} & {backup_name}")
-            pass
+            logger.info(f"✅ Preset saved: {main_name}")
+
         except Exception as e:
             logging.error(f"❌ Preset manager save failed: {e}")
         
@@ -1252,7 +1424,7 @@ class OptimizationWidget(QWidget):
         # 간단한 텍스트 비교창
         compare_text = "📊 Top 5 결과 비교\n" + "="*50 + "\n\n"
         for i, r in enumerate(top_results, 1):
-            compare_text += f"#{i}: WinRate {r.win_rate:.1f}% | Return {r.total_return:+.1f}% | MDD -{r.max_drawdown:.1f}% | Sharpe {r.sharpe_ratio:.2f}\n"
+            compare_text += f"#{i}: WinRate {r.win_rate:.1f}% | Return {r.simple_return:+.1f}% | MDD -{r.max_drawdown:.1f}% | Sharpe {r.sharpe_ratio:.2f}\n"
             compare_text += f"    ATR: {r.params.get('atr_mult', '-')} | Filter: {r.params.get('filter_tf', '-')} | Entry: {r.params.get('entry_tf', '-')}\n\n"
         
         QMessageBox.information(self, "📊 결과 비교", compare_text)
@@ -1298,10 +1470,10 @@ class OptimizationWidget(QWidget):
                         r.params.get('direction', '-'),
                         r.params.get('atr_mult', '-'),
                         f"{r.win_rate:.1f}",
-                        f"{r.total_return:.1f}",
+                        f"{r.simple_return:.1f}",
                         f"{r.max_drawdown:.1f}",
                         f"{r.sharpe_ratio:.2f}",
-                        r.trades
+                        getattr(r, 'trade_count', 0)
                     ])
             
             QMessageBox.information(self, "내보내기 완료", f"✅ CSV 파일이 저장되었습니다.\n{path}")
@@ -1310,12 +1482,534 @@ class OptimizationWidget(QWidget):
             QMessageBox.critical(self, "내보내기 실패", f"❌ CSV 저장 중 오류 발생: {e}")
 
 
+class BatchOptimizerWidget(QWidget):
+    """배치 최적화 UI 위젯 (v1.7.0)"""
+    
+    status_updated = pyqtSignal(str)
+    progress_updated = pyqtSignal(int, int, str)
+    task_done = pyqtSignal(object)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.optimizer = None
+        self.opt_thread = None
+        self._init_ui()
+        self.status_updated.connect(self._on_status_update)
+        self.progress_updated.connect(self._on_progress_update)
+        self.task_done.connect(self._on_task_done)
+    
+    def _init_ui(self):
+        from PyQt5.QtWidgets import QTextEdit, QGridLayout
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        
+        # === 설정 ===
+        settings = QGroupBox("⚙️ 배치 최적화 설정")
+        settings.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #444; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                padding-top: 10px;
+                font-weight: bold; 
+            }
+        """)
+        s_layout = QGridLayout(settings)
+        
+        # 거래소
+        s_layout.addWidget(QLabel("거래소:"), 0, 0)
+        self.exchange_combo = QComboBox()
+        self.exchange_combo.addItems(['bybit', 'binance', 'okx', 'bitget'])
+        self.exchange_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
+        s_layout.addWidget(self.exchange_combo, 0, 1)
+        
+        # 타임프레임
+        s_layout.addWidget(QLabel("TF:"), 0, 2)
+        tf_box = QHBoxLayout()
+        self.tf_4h = QCheckBox("4H")
+        self.tf_4h.setChecked(True)
+        self.tf_1d = QCheckBox("1D")
+        self.tf_1d.setChecked(True)
+        tf_box.addWidget(self.tf_4h)
+        tf_box.addWidget(self.tf_1d)
+        s_layout.addLayout(tf_box, 0, 3)
+        
+        # 최소 승률
+        s_layout.addWidget(QLabel("최소 승률:"), 1, 0)
+        self.min_wr = QDoubleSpinBox()
+        self.min_wr.setRange(0, 95)
+        self.min_wr.setValue(80)
+        self.min_wr.setSuffix("%")
+        self.min_wr.setStyleSheet("background: #2b2b2b; color: white;")
+        s_layout.addWidget(self.min_wr, 1, 1)
+        
+        # 최소 거래수
+        s_layout.addWidget(QLabel("최소 거래:"), 1, 2)
+        self.min_trades = QSpinBox()
+        self.min_trades.setRange(1, 200)
+        self.min_trades.setValue(1)
+        self.min_trades.setStyleSheet("background: #2b2b2b; color: white;")
+        s_layout.addWidget(self.min_trades, 1, 3)
+        
+        layout.addWidget(settings)
+        
+        # === 진행 상태 ===
+        progress_group = QGroupBox("📊 진행 상태")
+        progress_group.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #4CAF50; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                font-weight: bold; 
+                color: #4CAF50; 
+            }
+        """)
+        p_layout = QVBoxLayout(progress_group)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet("""
+            QProgressBar { 
+                border: 1px solid #333; 
+                border-radius: 5px; 
+                text-align: center; 
+                background: #1a1a2e; 
+                color: white; 
+                height: 25px; 
+            }
+            QProgressBar::chunk { 
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                    stop:0 #4CAF50, stop:1 #8BC34A); 
+            }
+        """)
+        p_layout.addWidget(self.progress_bar)
+        
+        # 상태 + 통계
+        stats_row = QHBoxLayout()
+        self.status_label = QLabel("대기 중")
+        self.status_label.setStyleSheet("color: #888;")
+        stats_row.addWidget(self.status_label)
+        
+        self.stats_label = QLabel("전체: 0 | 성공: 0 | 실패: 0")
+        self.stats_label.setStyleSheet("color: #00d4ff;")
+        stats_row.addWidget(self.stats_label)
+        stats_row.addStretch()
+        p_layout.addLayout(stats_row)
+        
+        layout.addWidget(progress_group)
+        
+        # === 로그 ===
+        log_group = QGroupBox("📜 실행 로그")
+        log_group.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #666; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                font-weight: bold; 
+            }
+        """)
+        log_layout = QVBoxLayout(log_group)
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setMaximumHeight(200)
+        self.log_text.setStyleSheet("""
+            QTextEdit { 
+                background: #1e222d; 
+                color: #cfcfcf; 
+                border: none; 
+                font-family: 'Consolas', 'Monospace'; 
+                font-size: 11px; 
+            }
+        """)
+        log_layout.addWidget(self.log_text)
+        layout.addWidget(log_group)
+        
+        # === 그리드 감사 (v1.7.0) ===
+        audit_group = QGroupBox("🔍 실시간 그리드 스캔 (Audit)")
+        audit_group.setStyleSheet("""
+            QGroupBox { border: 1px solid #363a45; border-radius: 5px; margin-top: 5px; font-weight: bold; color: #888; }
+        """)
+        a_layout = QVBoxLayout(audit_group)
+        self.grid_audit_table = QTableWidget()
+        self.grid_audit_table.setColumnCount(4)
+        self.grid_audit_table.setHorizontalHeaderLabels(['Symbol/TF', 'Combination', 'WinRate', 'Return'])
+        self.grid_audit_table.setFixedHeight(150)
+        self.grid_audit_table.setStyleSheet("""
+            QTableWidget { background: #131722; color: #cfcfcf; border: none; font-size: 10px; }
+            QHeaderView::section { background: #131722; color: #555; padding: 2px; }
+        """)
+        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        a_layout.addWidget(self.grid_audit_table)
+        layout.addWidget(audit_group)
+        
+        # === 버튼 ===
+        btn_layout = QHBoxLayout()
+        
+        self.start_btn = QPushButton("▶ 배치 최적화 시작")
+        self.start_btn.setStyleSheet("""
+            QPushButton { 
+                background: #4CAF50; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+                font-size: 14px;
+            }
+            QPushButton:hover { background: #45a049; }
+            QPushButton:disabled { background: #555; }
+        """)
+        self.start_btn.clicked.connect(self._on_start)
+        btn_layout.addWidget(self.start_btn)
+        
+        self.pause_btn = QPushButton("⏸ 일시정지")
+        self.pause_btn.setEnabled(False)
+        self.pause_btn.setStyleSheet("""
+            QPushButton { 
+                background: #FFC107; 
+                color: black; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background: #FFB300; }
+            QPushButton:disabled { background: #555; color: #888; }
+        """)
+        self.pause_btn.clicked.connect(self._on_pause)
+        btn_layout.addWidget(self.pause_btn)
+        
+        self.stop_btn = QPushButton("⏹ 중지")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.setStyleSheet("""
+            QPushButton { 
+                background: #f44336; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background: #d32f2f; }
+            QPushButton:disabled { background: #555; color: #888; }
+        """)
+        self.stop_btn.clicked.connect(self._on_stop)
+        btn_layout.addWidget(self.stop_btn)
+        
+        self.resume_btn = QPushButton("♻️ 이어하기")
+        self.resume_btn.setStyleSheet("""
+            QPushButton { 
+                background: #2196F3; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background: #1976D2; }
+        """)
+        self.resume_btn.clicked.connect(self._on_resume_saved)
+        btn_layout.addWidget(self.resume_btn)
+        
+        btn_layout.addStretch()
+        
+        self.result_btn = QPushButton("📂 프리셋 폴더")
+        self.result_btn.setStyleSheet("""
+            QPushButton { 
+                background: #9C27B0; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background: #7B1FA2; }
+        """)
+        self.result_btn.clicked.connect(self._on_open_folder)
+        btn_layout.addWidget(self.result_btn)
+        
+        layout.addLayout(btn_layout)
+    
+    def _log(self, message: str):
+        """로그 추가"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_text.append(f"[{timestamp}] {message}")
+        self.log_text.verticalScrollBar().setValue(
+            self.log_text.verticalScrollBar().maximum()
+        )
+    
+    def _on_status_update(self, message: str):
+        """상태 업데이트 (UI 스레드)"""
+        self.status_label.setText(message)
+        self._log(message)
+    
+    def _on_progress_update(self, current: int, total: int, symbol: str):
+        """진행률 업데이트 (UI 스레드)"""
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(current)
+        pct = current / total * 100 if total > 0 else 0
+        self.progress_bar.setFormat(f"{current}/{total} ({pct:.1f}%) - {symbol}")
+        
+        if self.optimizer and self.optimizer.state:
+            self.stats_label.setText(
+                f"전체: {total} | 성공: {self.optimizer.state.success_count} | "
+                f"실패: {len(self.optimizer.state.failed_symbols)}"
+            )
+    
+    def _status_callback(self, message: str):
+        """상태 콜백 (워커 스레드)"""
+        self.status_updated.emit(message)
+    
+    def _progress_callback(self, current: int, total: int, symbol: str):
+        """진행률 콜백 (워커 스레드)"""
+        self.progress_updated.emit(current, total, symbol)
+        
+    def _task_callback(self, result):
+        """그리드 결과 콜백 (워커 스레드)"""
+        self.task_done.emit(result)
+        
+    def _on_task_done(self, result):
+        """UI 업데이트: 그리드 감사 테이블"""
+        self.grid_audit_table.insertRow(0)
+        if self.grid_audit_table.rowCount() > 100:
+            self.grid_audit_table.removeRow(100)
+            
+        p = result.params
+        symbol_tf = f"{result.params.get('symbol', 'Unknown')}/{result.params.get('trend_interval', '-')}"
+        combo_str = f"ATR:{p.get('atr_mult')} SL:{p.get('trail_start_r')} DT:{p.get('trail_dist_r')}"
+        
+        self.grid_audit_table.setItem(0, 0, QTableWidgetItem(symbol_tf))
+        self.grid_audit_table.setItem(0, 1, QTableWidgetItem(combo_str))
+        self.grid_audit_table.setItem(0, 2, QTableWidgetItem(f"{result.win_rate:.1f}%"))
+        self.grid_audit_table.setItem(0, 3, QTableWidgetItem(f"{result.total_return:+.1f}%"))
+    
+    def _on_start(self):
+        """시작 버튼"""
+        import threading
+        
+        try:
+            from core.batch_optimizer import BatchOptimizer
+        except ImportError:
+            QMessageBox.critical(self, "오류", "BatchOptimizer 모듈을 찾을 수 없습니다.")
+            return
+        
+        timeframes = []
+        if self.tf_4h.isChecked():
+            timeframes.append('4h')
+        if self.tf_1d.isChecked():
+            timeframes.append('1d')
+        
+        if not timeframes:
+            QMessageBox.warning(self, "경고", "최소 1개 타임프레임을 선택하세요.")
+            return
+        
+        self.optimizer = BatchOptimizer(
+            exchange=self.exchange_combo.currentText(),
+            timeframes=timeframes,
+            min_win_rate=self.min_wr.value(),
+            min_trades=self.min_trades.value()
+        )
+        self.optimizer.set_callbacks(
+            status_cb=self._status_callback,
+            progress_cb=self._progress_callback,
+            task_cb=self._task_callback
+        )
+        
+        self.start_btn.setEnabled(False)
+        self.pause_btn.setEnabled(True)
+        self.stop_btn.setEnabled(True)
+        self.resume_btn.setEnabled(False)
+        self.log_text.clear()
+        
+        self._log("🚀 배치 최적화 시작...")
+        
+        self.opt_thread = threading.Thread(
+            target=self._run_optimizer,
+            kwargs={'resume': False},
+            daemon=True
+        )
+        self.opt_thread.start()
+    
+    def _run_optimizer(self, resume: bool = False):
+        """최적화 실행 (워커 스레드)"""
+        try:
+            self.optimizer.run(resume=resume)
+        except Exception as e:
+            self._status_callback(f"❌ 오류: {e}")
+        finally:
+            from PyQt5.QtCore import QMetaObject, Qt
+            QMetaObject.invokeMethod(self, "_on_complete", Qt.QueuedConnection)
+    
+    def _on_complete(self):
+        """완료 후 UI 복원"""
+        self.start_btn.setEnabled(True)
+        self.pause_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)
+        self.resume_btn.setEnabled(True)
+        self.pause_btn.setText("⏸ 일시정지")
+    
+    def _on_pause(self):
+        """일시정지/재개 토글"""
+        if self.optimizer:
+            if self.optimizer.is_paused:
+                self.optimizer.resume()
+                self.pause_btn.setText("⏸ 일시정지")
+                self._log("▶️ 재개됨")
+            else:
+                self.optimizer.pause()
+                self.pause_btn.setText("▶ 재개")
+                self._log("⏸ 일시정지됨")
+    
+    def _on_stop(self):
+        """중지 버튼"""
+        if self.optimizer:
+            reply = QMessageBox.question(
+                self, "확인",
+                "배치 최적화를 중지하시겠습니까?\n\n"
+                "진행 상태는 저장되며, '이어하기' 버튼으로 재개할 수 있습니다.",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.optimizer.stop()
+                self._on_complete()
+    
+    def _on_resume_saved(self):
+        """저장된 상태에서 이어하기"""
+        import threading
+        
+        try:
+            from core.batch_optimizer import BatchOptimizer
+        except ImportError:
+            QMessageBox.critical(self, "오류", "BatchOptimizer 모듈을 찾을 수 없습니다.")
+            return
+        
+        temp_opt = BatchOptimizer()
+        if not temp_opt.load_state():
+            QMessageBox.information(self, "알림", "저장된 진행 상태가 없습니다.")
+            return
+        
+        state = temp_opt.state
+        
+        reply = QMessageBox.question(
+            self, "이어하기 확인",
+            f"이전 작업을 이어서 진행하시겠습니까?\n\n"
+            f"거래소: {state.exchange}\n"
+            f"진행률: {state.completed}/{state.total_symbols}\n"
+            f"성공: {state.success_count}개\n"
+            f"마지막 심볼: {state.current_symbol}",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        self.optimizer = BatchOptimizer(
+            exchange=state.exchange,
+            timeframes=state.timeframes,
+            min_win_rate=state.min_win_rate,
+            min_trades=state.min_trades
+        )
+        self.optimizer.set_callbacks(
+            status_cb=self._status_callback,
+            progress_cb=self._progress_callback
+        )
+        
+        self.start_btn.setEnabled(False)
+        self.pause_btn.setEnabled(True)
+        self.stop_btn.setEnabled(True)
+        self.resume_btn.setEnabled(False)
+        
+        self._log("♻️ 이전 상태에서 이어서 진행...")
+        
+        self.opt_thread = threading.Thread(
+            target=self._run_optimizer,
+            kwargs={'resume': True},
+            daemon=True
+        )
+        self.opt_thread.start()
+    
+    def _on_open_folder(self):
+        """프리셋 폴더 열기"""
+        from pathlib import Path
+        import subprocess
+        
+        try:
+            from paths import Paths
+            preset_dir = Path(Paths.PRESETS)
+        except:
+            preset_dir = Path("config/presets")
+        
+        preset_dir.mkdir(parents=True, exist_ok=True)
+        
+        if sys.platform == 'win32':
+            subprocess.Popen(f'explorer "{preset_dir}"')
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', str(preset_dir)])
+        else:
+            subprocess.Popen(['xdg-open', str(preset_dir)])
+
+
+class OptimizationWidget(QWidget):
+    """최적화 메인 위젯 - 서브탭 컨테이너 (v1.7.0)"""
+    
+    # SingleOptimizerWidget의 시그널을 그대로 노출
+    settings_applied = pyqtSignal(dict)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_ui()
+    
+    def _init_ui(self):
+        from PyQt5.QtWidgets import QTabWidget
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 서브탭
+        self.sub_tabs = QTabWidget()
+        self.sub_tabs.setStyleSheet("""
+            QTabWidget::pane { 
+                border: 1px solid #444; 
+                border-radius: 4px; 
+            }
+            QTabBar::tab { 
+                background: #2b2b2b; 
+                color: #888; 
+                padding: 10px 25px; 
+                margin-right: 2px; 
+                font-weight: bold;
+            }
+            QTabBar::tab:selected { 
+                background: #3c3c3c; 
+                color: white; 
+                border-bottom: 2px solid #FF9800; 
+            }
+            QTabBar::tab:hover { 
+                background: #3c3c3c; 
+            }
+        """)
+        
+        # 싱글 최적화 탭 (기존 기능)
+        self.single_widget = SingleOptimizerWidget()
+        self.sub_tabs.addTab(self.single_widget, "🔧 싱글 심볼")
+        
+        # 배치 최적화 탭 (v1.7.0 신규)
+        self.batch_widget = BatchOptimizerWidget()
+        self.sub_tabs.addTab(self.batch_widget, "⚡ 배치 (전체)")
+        
+        layout.addWidget(self.sub_tabs)
+        
+        # 시그널 연결 (하위 호환성)
+        if hasattr(self.single_widget, 'settings_applied'):
+            self.single_widget.settings_applied.connect(self.settings_applied.emit)
+
+    def _load_data_sources(self):
+        """데이터 소스 새로고침 (수집 완료 시 호출)"""
+        if hasattr(self, 'single_widget'):
+            self.single_widget._load_data_sources()
+
+
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background: #0d1117; }")
     
     w = OptimizationWidget()
-    w.resize(800, 700)
+    w.resize(1200, 800)
     w.show()
     sys.exit(app.exec_())

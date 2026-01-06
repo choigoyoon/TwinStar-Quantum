@@ -2,6 +2,10 @@
 StarU 나우캐스트 설정 위젯
 - 기준 TF 선택
 - 나우캐스트 TF 체크박스 (1m ~ 1w)
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 """
 
 from PyQt5.QtWidgets import (
@@ -9,7 +13,7 @@ from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QLabel, QPushButton,
     QGridLayout, QFrame
 )
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal
 
 
 class NowcastWidget(QWidget):
@@ -310,10 +314,10 @@ if __name__ == "__main__":
     widget.setMinimumWidth(500)
     
     # 시그널 테스트
-    widget.base_tf_changed.connect(lambda tf: print(f"기준 TF: {tf}"))
-    widget.nowcast_tf_changed.connect(lambda tfs: print(f"선택된 TF: {tfs}"))
-    widget.connect_requested.connect(lambda: print("연결 요청"))
-    widget.disconnect_requested.connect(lambda: print("연결 해제 요청"))
+    widget.base_tf_changed.connect(lambda tf: logger.info(f"기준 TF: {tf}"))
+    widget.nowcast_tf_changed.connect(lambda tfs: logger.info(f"선택된 TF: {tfs}"))
+    widget.connect_requested.connect(lambda: logger.info("연결 요청"))
+    widget.disconnect_requested.connect(lambda: logger.info("연결 해제 요청"))
     
     widget.show()
     sys.exit(app.exec_())

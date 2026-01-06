@@ -5,6 +5,10 @@ from datetime import datetime
 from typing import List, Dict
 import sys
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 # 상위 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
@@ -25,7 +29,7 @@ class NewCoinDetector:
         try:
             self.exchange = getattr(ccxt, self.exchange_id)()
         except AttributeError:
-            print(f"Unsupported exchange: {self.exchange_id}")
+            logger.info(f"Unsupported exchange: {self.exchange_id}")
             self.exchange = None
 
     def _load_tracker(self) -> Dict:
@@ -74,7 +78,7 @@ class NewCoinDetector:
             
             return symbols
         except Exception as e:
-            print(f"Error fetching symbols: {e}")
+            logger.info(f"Error fetching symbols: {e}")
             return []
 
     def detect_new_coins(self) -> List[str]:

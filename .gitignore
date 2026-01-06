@@ -31,3 +31,13 @@ data/cache/
 # Executables
 *.exe
 keys.dat*
+
+# ========== 민감 정보 (추가) ==========
+user/
+credentials/
+encrypted_keys.dat
+api_keys*.json
+*.key
+*.pem
+*.secret
+

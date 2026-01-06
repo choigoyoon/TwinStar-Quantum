@@ -6,7 +6,6 @@ Bitget 거래소 어댑터
 - 심볼 형식: BTCUSDT_UMCBL
 """
 
-import os
 import time
 import logging
 import pandas as pd
@@ -52,13 +51,14 @@ class BitgetExchange(BaseExchange):
             self.exchange = ccxt.bitget({
                 'apiKey': self.api_key,
                 'secret': self.api_secret,
-                'password': self.passphrase,
+                'password': self.passphrase or 'dummy', # ccxt requires non-empty password
                 'enableRateLimit': True,
                 'options': {
                     'defaultType': 'swap',
                     'recvWindow': 60000,
                 }
             })
+
             
             if self.testnet:
                 self.exchange.set_sandbox_mode(True)
@@ -363,7 +363,7 @@ class BitgetExchange(BaseExchange):
             logging.error(f"[Bitget] sync_time error: {e}")
             return False
     
-    def get_positions(self) -> list:
+    def get_positions(self) -> Optional[list]:
         """모든 열린 포지션 조회 (긴급청산용)"""
         try:
             positions_data = self.exchange.fetch_positions()
@@ -386,7 +386,7 @@ class BitgetExchange(BaseExchange):
             
         except Exception as e:
             logging.error(f"포지션 조회 에러: {e}")
-            return []
+            return None
     
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
@@ -513,3 +513,21 @@ class BitgetExchange(BaseExchange):
             logging.warning(f"[Bitget] Trade history error: {e}")
             return super().get_trade_history(limit)
 
+    def get_realized_pnl(self, limit: int = 100) -> float:
+        """API로 실현 손익 조회"""
+        try:
+            trades = self.get_trade_history(limit=limit)
+            total_pnl = sum(t.get('pnl', 0) for t in trades)
+            logging.info(f"[Bitget] Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
+            return total_pnl
+        except Exception as e:
+            logging.error(f"[Bitget] get_realized_pnl error: {e}")
+            return 0.0
+
+    def get_compounded_capital(self, initial_capital: float) -> float:
+        """복리 자본 조회 (초기 자본 + 누적 수익)"""
+        realized_pnl = self.get_realized_pnl()
+        compounded = initial_capital + realized_pnl
+        # 최소 자본 보장 (초기의 10%)
+        min_capital = initial_capital * 0.1
+        return max(compounded, min_capital)

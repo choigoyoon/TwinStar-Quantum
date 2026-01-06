@@ -7,7 +7,6 @@ BingX 거래소 어댑터
 - 특이사항: recvWindow 설정 필요
 """
 
-import os
 import time
 import logging
 import pandas as pd
@@ -490,8 +489,27 @@ class BingXExchange(BaseExchange):
             return trades
             
         except Exception as e:
-            logging.warning(f"[BingX] Trade history error: {e}")
-            return super().get_trade_history(limit)
+            logging.error(f"[BingX] Trade history error: {e}")
+            return []
+
+    def get_realized_pnl(self, limit: int = 100) -> float:
+        """API로 실현 손익 조회"""
+        try:
+            trades = self.get_trade_history(limit=limit)
+            total_pnl = sum(t.get('pnl', 0) for t in trades)
+            logging.info(f"[BingX] Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
+            return total_pnl
+        except Exception as e:
+            logging.error(f"[BingX] get_realized_pnl error: {e}")
+            return 0.0
+
+    def get_compounded_capital(self, initial_capital: float) -> float:
+        """복리 자본 조회 (초기 자본 + 누적 수익)"""
+        realized_pnl = self.get_realized_pnl()
+        compounded = initial_capital + realized_pnl
+        # 최소 자본 보장 (초기의 10%)
+        min_capital = initial_capital * 0.1
+        return max(compounded, min_capital)
 
 
 BingxExchange = BingXExchange

@@ -11,9 +11,12 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QGridLayout, QProgressBar
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont
-from datetime import datetime
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+from PyQt5.QtCore import Qt, pyqtSignal
+from locales.lang_manager import t
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -45,12 +48,11 @@ class PositionCard(QFrame):
         
         self.setStyleSheet(f"""
             PositionCard {{
-                background: #1e2330;
                 border: 1px solid {color}40;
                 border-left: 4px solid {side_color};
                 border-radius: 8px;
             }}
-        """)
+        """) # Removed hardcoded background #1e2330
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 10, 15, 10)
@@ -82,7 +84,7 @@ class PositionCard(QFrame):
             }
             QPushButton:hover { background: #ef535060; }
         """)
-        close_btn.setToolTip("포지션 청산")
+        close_btn.setToolTip(t("dashboard.close_position_tip", "포지션 청산"))
         close_btn.clicked.connect(lambda: self.close_clicked.emit(self.symbol))
         header.addWidget(close_btn)
         
@@ -93,10 +95,10 @@ class PositionCard(QFrame):
         price_layout.setSpacing(5)
         
         labels = [
-            ("진입가", f"${self.entry_price:,.2f}"),
-            ("현재가", f"${current_price:,.2f}"),
-            ("손절가", f"${self.stop_loss:,.2f}"),
-            ("수량", f"{self.size:.4f}"),
+            (t("dashboard.entry_price", "진입가"), f"${self.entry_price:,.2f}"),
+            (t("dashboard.current_price", "현재가"), f"${current_price:,.2f}"),
+            (t("dashboard.stop_loss_price", "손절가"), f"${self.stop_loss:,.2f}"),
+            (t("dashboard.quantity", "수량"), f"{self.size:.4f}"),
         ]
         
         for i, (label, value) in enumerate(labels):
@@ -130,17 +132,16 @@ class PositionCard(QFrame):
         progress.setFixedHeight(6)
         progress.setStyleSheet(f"""
             QProgressBar {{
-                background: #131722;
                 border-radius: 3px;
             }}
             QProgressBar::chunk {{
                 background: {color};
                 border-radius: 3px;
             }}
-        """)
+        """) # Removed background: #131722
         layout.addWidget(progress)
         
-        sl_label = QLabel(f"손절까지 {sl_distance:.2f}%")
+        sl_label = QLabel(t("dashboard.distance_to_sl", "손절까지 {0}%").format(f"{sl_distance:.2f}"))
         sl_label.setStyleSheet("color: #787b86; font-size: 10px;")
         sl_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(sl_label)
@@ -168,11 +169,10 @@ class PositionStatusWidget(QFrame):
     def _init_ui(self):
         self.setStyleSheet("""
             PositionStatusWidget {
-                background: #131722;
                 border: 1px solid #2a2e3b;
                 border-radius: 12px;
             }
-        """)
+        """) # Removed background: #131722
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
@@ -181,13 +181,13 @@ class PositionStatusWidget(QFrame):
         # 헤더
         header = QHBoxLayout()
         
-        title = QLabel("📊 현재 포지션")
+        title = QLabel(t("dashboard.active_positions_title", "📊 현재 포지션"))
         title.setStyleSheet("color: white; font-weight: bold; font-size: 14px;")
         header.addWidget(title)
         
         header.addStretch()
         
-        self.status_label = QLabel("대기 중")
+        self.status_label = QLabel(t("common.waiting", "대기 중"))
         self.status_label.setStyleSheet("color: #787b86; font-size: 12px;")
         header.addWidget(self.status_label)
         
@@ -199,7 +199,7 @@ class PositionStatusWidget(QFrame):
         layout.addLayout(self.positions_layout)
         
         # 빈 상태 표시
-        self.empty_label = QLabel("🔍 포지션 없음\n\n신호 대기 중...")
+        self.empty_label = QLabel(t("dashboard.no_positions", "🔍 포지션 없음\n\n신호 대기 중..."))
         self.empty_label.setStyleSheet("color: #787b86; font-size: 13px;")
         self.empty_label.setAlignment(Qt.AlignCenter)
         self.positions_layout.addWidget(self.empty_label)
@@ -243,8 +243,8 @@ class PositionStatusWidget(QFrame):
         """포지션 청산 요청"""
         from PyQt5.QtWidgets import QMessageBox
         reply = QMessageBox.question(
-            self, "포지션 청산",
-            f"{symbol} 포지션을 청산하시겠습니까?",
+            self, t("dashboard.close_position_title", "포지션 청산"),
+            t("dashboard.close_position_ask", "{0} 포지션을 청산하시겠습니까?").format(symbol),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -295,19 +295,19 @@ class PositionStatusWidget(QFrame):
                     try:
                         # 청산 시도
                         if wrapper.close_position():
-                            QMessageBox.information(self, "청산 완료", f"{exchange_name}: {symbol} 청산 성공!")
+                            QMessageBox.information(self, t("common.success", "청산 완료"), f"{exchange_name}: {symbol} " + t("dashboard.close_success", "청산 성공!"))
                             closed = True
                             break
                     except Exception as e:
-                        print(f"청산 시도 실패 ({exchange_name}): {e}")
+                        logger.info(f"청산 시도 실패 ({exchange_name}): {e}")
                         
                 if not closed:
-                    QMessageBox.warning(self, "청산 실패", f"{symbol} 청산에 실패했습니다 (연결된 거래소 없음)")
+                    QMessageBox.warning(self, t("common.error", "청산 실패"), f"{symbol} " + t("dashboard.close_fail_no_exchange", "청산에 실패했습니다 (연결된 거래소 없음)"))
                     
             except Exception as e:
-                QMessageBox.critical(self, "오류", f"청산 오류: {e}")
+                QMessageBox.critical(self, t("common.error", "오류"), t("dashboard.close_error", "청산 오류") + f": {e}")
             except ImportError:
-                print(f"[Close] {symbol} 청산 요청 (exchange_manager 미사용)")
+                logger.info(f"[Close] {symbol} 청산 요청 (exchange_manager 미사용)")
             
             self.remove_position(symbol)
     

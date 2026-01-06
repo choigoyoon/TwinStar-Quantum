@@ -1,10 +1,12 @@
 # notification_manager.py - 알림 관리자 스텁 모듈
 
 from dataclasses import dataclass
-from typing import Optional, Dict
-from datetime import datetime
 import json
 from pathlib import Path
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,7 +47,7 @@ class NotificationManager:
                         if hasattr(self.settings, key):
                             setattr(self.settings, key, value)
         except Exception as e:
-            print(f"[NotificationManager] 설정 로드 실패: {e}")
+            logger.info(f"[NotificationManager] 설정 로드 실패: {e}")
     
     def save_settings(self, settings: NotificationSettings):
         """설정 저장"""
@@ -54,7 +56,7 @@ class NotificationManager:
             with open(self.SETTINGS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self.settings.__dict__, f, indent=2)
         except Exception as e:
-            print(f"[NotificationManager] 설정 저장 실패: {e}")
+            logger.info(f"[NotificationManager] 설정 저장 실패: {e}")
     
     def get_settings(self) -> NotificationSettings:
         """현재 설정 반환"""
@@ -66,7 +68,7 @@ class NotificationManager:
             return False
         
         if not self.settings.telegram_token or not self.settings.telegram_chat_id:
-            print("[Telegram] 토큰 또는 Chat ID 미설정")
+            logger.info("[Telegram] 토큰 또는 Chat ID 미설정")
             return False
         
         try:
@@ -80,7 +82,7 @@ class NotificationManager:
             response = requests.post(url, data=data, timeout=10)
             return response.status_code == 200
         except Exception as e:
-            print(f"[Telegram] 전송 실패: {e}")
+            logger.info(f"[Telegram] 전송 실패: {e}")
             return False
     
     def send_discord(self, message: str) -> bool:
@@ -89,7 +91,7 @@ class NotificationManager:
             return False
         
         if not self.settings.discord_webhook:
-            print("[Discord] 웹훅 링크 미설정")
+            logger.info("[Discord] 웹훅 링크 미설정")
             return False
         
         try:
@@ -102,7 +104,7 @@ class NotificationManager:
             )
             return response.status_code == 204
         except Exception as e:
-            print(f"[Discord] 전송 실패: {e}")
+            logger.info(f"[Discord] 전송 실패: {e}")
             return False
     
     def play_sound(self, sound_type: str = "signal"):
@@ -124,9 +126,9 @@ class NotificationManager:
             winsound.Beep(freq, max(50, duration))
         except ImportError:
             # winsound 없는 플랫폼 (Mac/Linux)
-            print(f"[Sound] {sound_type} (사운드 미지원 플랫폼)")
+            logger.info(f"[Sound] {sound_type} (사운드 미지원 플랫폼)")
         except Exception as e:
-            print(f"[Sound] 재생 실패: {e}")
+            logger.info(f"[Sound] 재생 실패: {e}")
     
     def notify(self, message: str, level: str = "info"):
         """통합 알림"""

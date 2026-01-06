@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QColor
-import pyqtgraph as pg
+
 
 from datetime import datetime
 import sys
@@ -24,7 +24,6 @@ import os
 import json
 from pathlib import Path
 import pandas as pd
-import numpy as np
 
 # Path setup for EXE compatibility
 if not getattr(sys, 'frozen', False):
@@ -38,14 +37,12 @@ if not getattr(sys, 'frozen', False):
 # Imports with fallbacks
 try:
     from utils.preset_manager import get_preset_manager, get_backtest_params, save_strategy_params
+    from constants import DEFAULT_PARAMS, EXCHANGE_INFO, TF_MAPPING, TF_RESAMPLE_MAP
 except ImportError:
     def get_preset_manager(): return None
     def get_backtest_params(name=None): return {}
     def save_strategy_params(params): pass
-
-try:
-    from constants import EXCHANGE_INFO, TF_MAPPING, TF_RESAMPLE_MAP, DEFAULT_PARAMS
-except ImportError:
+    DEFAULT_PARAMS = {}
     EXCHANGE_INFO = {
         "bybit": {"type": "CEX", "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]},
         "binance": {"type": "CEX", "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]}
@@ -55,7 +52,10 @@ except ImportError:
         '15min': '15min', '15m': '15min', '30min': '30min', '30m': '30min',
         '1h': '1h', '1H': '1h', '4h': '4h', '4H': '4h', '1d': '1D', '1D': '1D'
     }
-    DEFAULT_PARAMS = {'atr_mult': 1.25, 'slippage': 0.0005, 'fee': 0.00055}
+
+    # [REMOVED] Local DEFAULT_PARAMS removed in favor of constants.py
+
+
 
 try:
     from paths import Paths
@@ -70,6 +70,11 @@ try:
     from GUI.utils.data_utils import resample_data as shared_resample
 except ImportError:
     shared_resample = None
+
+from GUI.components.interactive_chart import InteractiveChart
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class BacktestWorker(QThread):
@@ -90,6 +95,7 @@ class BacktestWorker(QThread):
         self.direction = direction
         
         self.trades_detail = []
+        self.audit_logs = []
         self.df_15m = None
         self.result_stats = None
     
@@ -114,7 +120,7 @@ class BacktestWorker(QThread):
             }
             params.update(self.strategy_params)
             
-            print(f"[BT] tolerance={params.get('pattern_tolerance')}, validity={params.get('entry_validity_hours')}h")
+            logger.info(f"[BT] tolerance={params.get('pattern_tolerance')}, validity={params.get('entry_validity_hours')}h")
             
             if self.df_15m is None or self.df_15m.empty:
                 raise ValueError("No data available for backtest")
@@ -146,14 +152,14 @@ class BacktestWorker(QThread):
                 from indicator_generator import IndicatorGenerator
                 df_pattern = IndicatorGenerator.add_all_indicators(df_pattern)
             except Exception as e:
-                print(f"Indicator calculation failed: {e}")
+                logger.info(f"Indicator calculation failed: {e}")
             
             self.progress.emit(50)
             
             # Run backtest
             combined_slippage = self.slippage + self.fee
             
-            result = self.strategy.run_backtest(
+            result, audit_logs = self.strategy.run_backtest(
                 df_pattern=df_pattern,
                 df_entry=df_entry,
                 slippage=combined_slippage,
@@ -169,10 +175,16 @@ class BacktestWorker(QThread):
                 atr_period=params.get('atr_period', 14),
                 filter_tf=params.get('filter_tf', '4h'),
                 enable_pullback=self.use_pyramiding,
-                allowed_direction=self.direction  # [NEW] 방향성 필터링 전달
+                allowed_direction=self.direction,
+                macd_fast=params.get('macd_fast'),
+                macd_slow=params.get('macd_slow'),
+                macd_signal=params.get('macd_signal'),
+                ema_period=params.get('ema_period'),
+                collect_audit=True
             )
+            self.audit_logs = audit_logs
             
-            print(f"[BT] Result: {len(result) if result else 0} trades")
+            logger.info(f"[BT] Result: {len(result) if result else 0} trades")
             
             if result:
                 self.trades_detail = result
@@ -206,7 +218,9 @@ class BacktestWorker(QThread):
                     if drawdown > mdd:
                         mdd = drawdown
                 
-                win_count = len([p for p in pnls if p > 0])
+                # [FIX] raw_pnl 기준 승률 (수수료 무관, 순수 가격 움직임)
+                win_count = len([t for t in result if t.get('raw_pnl', t.get('pnl', 0)) > 0])
+
                 
                 self.result_stats = {
                     'count': len(result),
@@ -229,8 +243,8 @@ class BacktestWorker(QThread):
 
 
 
-class BacktestWidget(QWidget):
-    """Main Backtest Widget"""
+class SingleBacktestWidget(QWidget):
+    """싱글 심볼 백테스트 위젯 (기존 기능)"""
     
     backtest_finished = pyqtSignal(list, object, object)
     
@@ -275,24 +289,24 @@ class BacktestWidget(QWidget):
                         symbol = parts[1]
                         timeframe = parts[2]
                         
-                        print(f"Loading cached data from {latest_db}...")
+                        logger.info(f"Loading cached data from {latest_db}...")
                         df = dm.load_data(symbol, exchange, timeframe)
             except Exception as e:
-                print(f"Cache load failed: {e}")
+                logger.info(f"Cache load failed: {e}")
 
             from core.strategy_core import AlphaX7Core
             
             if df is not None and not df.empty:
                 self.strategy = AlphaX7Core()
                 self.strategy.df_15m = df
-                print(f"Alpha-X7 Core Loaded with {len(df)} candles")
+                logger.info(f"Alpha-X7 Core Loaded with {len(df)} candles")
             else:
                 self.strategy = AlphaX7Core()
                 self.strategy.df_15m = None
-                print("Alpha-X7 Core Loaded (No Data)")
+                logger.info("Alpha-X7 Core Loaded (No Data)")
                 
         except Exception as e:
-            print(f"Strategy load error: {e}")
+            logger.info(f"Strategy load error: {e}")
             self.strategy = None
     
     def _init_ui(self):
@@ -304,7 +318,7 @@ class BacktestWidget(QWidget):
         row1 = QHBoxLayout()
         row1.setSpacing(8)
         
-        row1.addWidget(QLabel("거래소:"))
+        row1.addWidget(QLabel(t("backtest.exchange") + ":"))
         self.exchange_combo = QComboBox()
         cex_list = [k for k, v in EXCHANGE_INFO.items() if v.get('type') == 'CEX']
         self.exchange_combo.addItems(cex_list if cex_list else ['bybit', 'binance'])
@@ -313,13 +327,13 @@ class BacktestWidget(QWidget):
         self.exchange_combo.currentTextChanged.connect(self._on_exchange_changed)
         row1.addWidget(self.exchange_combo)
         
-        row1.addWidget(QLabel("심볼:"))
+        row1.addWidget(QLabel(t("backtest.symbol") + ":"))
         self.symbol_combo = QComboBox()
         self.symbol_combo.setMinimumWidth(100)
         self.symbol_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
         row1.addWidget(self.symbol_combo)
         
-        row1.addWidget(QLabel("타임프레임:"))
+        row1.addWidget(QLabel(t("backtest.timeframe") + ":"))
         self.trend_tf_combo = QComboBox()
         self.trend_tf_combo.addItems(['1h', '4h', '1d'])
         self.trend_tf_combo.setMinimumWidth(60)
@@ -338,15 +352,15 @@ class BacktestWidget(QWidget):
         
         row1.addSpacing(20)
         
-        row1.addWidget(QLabel("프리셋:"))
+        row1.addWidget(QLabel(t("backtest.preset") + ":"))
         self.preset_combo = QComboBox()
         self.preset_combo.setMinimumWidth(200)
         self.preset_combo.setStyleSheet("QComboBox { background: #2b2b2b; color: white; padding: 5px; }")
         self.preset_combo.currentTextChanged.connect(self._on_preset_changed)
         row1.addWidget(self.preset_combo)
         
-        refresh_btn = QPushButton("🔄 새로고침")
-        refresh_btn.setToolTip("프리셋 새로고침")
+        refresh_btn = QPushButton("🔄 " + t("backtest.refresh"))
+        refresh_btn.setToolTip(t("backtest.refresh"))
         refresh_btn.setMinimumWidth(80)
         refresh_btn.setStyleSheet("""
             QPushButton {
@@ -362,7 +376,7 @@ class BacktestWidget(QWidget):
         row1.addWidget(refresh_btn)
         
         save_btn = QPushButton("💾 " + t("common.save"))
-        save_btn.setToolTip("프리셋 저장")
+        save_btn.setToolTip(t("common.save"))
         save_btn.setMinimumWidth(70)
         save_btn.setStyleSheet("""
             QPushButton {
@@ -377,8 +391,8 @@ class BacktestWidget(QWidget):
         save_btn.clicked.connect(self._save_preset)
         row1.addWidget(save_btn)
         
-        delete_btn = QPushButton("🗑 삭제")
-        delete_btn.setToolTip("프리셋 삭제")
+        delete_btn = QPushButton("🗑 " + t("common.delete"))
+        delete_btn.setToolTip(t("common.delete"))
         delete_btn.setMinimumWidth(60)
         delete_btn.setStyleSheet("""
             QPushButton {
@@ -412,7 +426,7 @@ class BacktestWidget(QWidget):
         
         # Row 0: Leverage, Slippage, Fee
         col = 0
-        param_grid.addWidget(self._make_label("레버리지:", lbl_style), 0, col)
+        param_grid.addWidget(self._make_label(t("backtest.leverage_label") + ":", lbl_style), 0, col)
         self.leverage_spin = QSpinBox()
         self.leverage_spin.setRange(1, 100)
         self.leverage_spin.setValue(3)
@@ -420,7 +434,7 @@ class BacktestWidget(QWidget):
         param_grid.addWidget(self.leverage_spin, 0, col + 1)
         
         col += 2
-        param_grid.addWidget(self._make_label("슬리피지%:", lbl_style), 0, col)
+        param_grid.addWidget(self._make_label(t("backtest.slippage_label") + ":", lbl_style), 0, col)
         self.slippage_spin = QDoubleSpinBox()
         self.slippage_spin.setRange(0, 5)
         self.slippage_spin.setValue(0.05)
@@ -429,7 +443,7 @@ class BacktestWidget(QWidget):
         param_grid.addWidget(self.slippage_spin, 0, col + 1)
         
         col += 2
-        param_grid.addWidget(self._make_label("수수료%:", lbl_style), 0, col)
+        param_grid.addWidget(self._make_label(t("backtest.fee_label") + ":", lbl_style), 0, col)
         self.fee_spin = QDoubleSpinBox()
         self.fee_spin.setRange(0, 1)
         self.fee_spin.setValue(0.055)
@@ -438,7 +452,7 @@ class BacktestWidget(QWidget):
         param_grid.addWidget(self.fee_spin, 0, col + 1)
         
         col += 2
-        param_grid.addWidget(self._make_label("방향:", lbl_style), 0, col)
+        param_grid.addWidget(self._make_label(t("backtest.direction_label") + ":", lbl_style), 0, col)
         self.direction_combo = QComboBox()
         self.direction_combo.addItems(["Both", "Long", "Short"])
         self.direction_combo.setStyleSheet("background: #2b2b2b; color: white; min-width: 80px; padding: 4px;")
@@ -469,7 +483,7 @@ class BacktestWidget(QWidget):
         row3 = QHBoxLayout()
         row3.setSpacing(10)
         
-        self._run_btn = QPushButton("백테스트 실행")
+        self._run_btn = QPushButton(t("backtest.run"))
         self._run_btn.clicked.connect(self._run_backtest)
         self._run_btn.setMinimumWidth(200)
         self._run_btn.setStyleSheet("""
@@ -515,11 +529,11 @@ class BacktestWidget(QWidget):
         stats_layout.setContentsMargins(15, 10, 15, 10)
         stats_layout.setSpacing(30)
         
-        self._stat_trades = self._create_stat_label("총 매매", "0")
-        self._stat_winrate = self._create_stat_label("승률", "0%")
-        self._stat_simple = self._create_stat_label("단리 수익", "0%")
-        self._stat_compound = self._create_stat_label("복리 수익", "0%")
-        self._stat_mdd = self._create_stat_label("MDD", "0%")
+        self._stat_trades = self._create_stat_label(t("backtest.stat_trades"), "0")
+        self._stat_winrate = self._create_stat_label(t("backtest.stat_winrate"), "0%")
+        self._stat_simple = self._create_stat_label(t("backtest.stat_simple"), "0%")
+        self._stat_compound = self._create_stat_label(t("backtest.stat_compound"), "0%")
+        self._stat_mdd = self._create_stat_label(t("backtest.stat_mdd"), "0%")
         
         stats_layout.addWidget(self._stat_trades)
         stats_layout.addWidget(self._stat_winrate)
@@ -529,13 +543,13 @@ class BacktestWidget(QWidget):
         stats_layout.addStretch()
         
         # 결과 저장 버튼
-        self.save_result_btn = QPushButton("💾 결과 저장")
+        self.save_result_btn = QPushButton("💾 " + t("backtest.save_result"))
         self.save_result_btn.setStyleSheet("""
             QPushButton { background: #4CAF50; color: white; padding: 8px 16px; border-radius: 4px; font-weight: bold; }
             QPushButton:hover { background: #388E3C; }
             QPushButton:disabled { background: #555; }
         """)
-        self.save_result_btn.setToolTip("백테스트 결과를 JSON/CSV로 저장")
+        self.save_result_btn.setToolTip(t("backtest.save_result"))
         self.save_result_btn.clicked.connect(self._save_result)
         self.save_result_btn.setEnabled(False)
         stats_layout.addWidget(self.save_result_btn)
@@ -602,7 +616,7 @@ class BacktestWidget(QWidget):
                     self.preset_combo.insertSeparator(1)
                     self.preset_combo.addItems(presets)
         except Exception as e:
-            print(f"Preset refresh error: {e}")
+            logger.info(f"Preset refresh error: {e}")
         
         idx = self.preset_combo.findText(current)
         if idx >= 0:
@@ -626,6 +640,30 @@ class BacktestWidget(QWidget):
             
             if 'leverage' in params:
                 self.leverage_spin.setValue(int(params['leverage']))
+            
+            # [NEW] 거래소 및 심볼 자동 선택
+            # 프리셋에는 'exchange' 또는 'symbol' 정보가 포함되어 있을 수 있음
+            preset_exchange = params.get('exchange')
+            preset_symbol = params.get('symbol')
+            
+            if preset_exchange:
+                idx = self.exchange_combo.findText(preset_exchange.lower())
+                if idx >= 0:
+                    self.exchange_combo.blockSignals(True)
+                    self.exchange_combo.setCurrentIndex(idx)
+                    self._on_exchange_changed(preset_exchange.lower()) # 심볼 리스트 갱신 강제
+                    self.exchange_combo.blockSignals(False)
+
+            if preset_symbol:
+                idx = self.symbol_combo.findText(preset_symbol.upper())
+                if idx < 0:
+                    # 혹시 리스트에 없으면 추가
+                    self.symbol_combo.addItem(preset_symbol.upper())
+                    idx = self.symbol_combo.findText(preset_symbol.upper())
+                
+                if idx >= 0:
+                    self.symbol_combo.setCurrentIndex(idx)
+
             # [FIX] trend_interval (기준 TF)을 우선으로 UI 업데이트
             tf_key = 'trend_interval' if 'trend_interval' in params else ('filter_tf' if 'filter_tf' in params else None)
             if tf_key:
@@ -640,17 +678,17 @@ class BacktestWidget(QWidget):
             # Update preset label
             if hasattr(self, 'preset_label'):
                 info = []
+                if preset_exchange: info.append(preset_exchange.upper())
+                if preset_symbol: info.append(preset_symbol.upper())
                 if 'filter_tf' in params:
-                    info.append(f"Filter:{params.get('filter_tf')}")
-                if 'entry_tf' in params:
-                    info.append(f"Entry:{params.get('entry_tf')}")
+                    info.append(f"F:{params.get('filter_tf')}")
                 if 'atr_mult' in params:
-                    info.append(f"ATR:{params.get('atr_mult')}")
+                    info.append(f"A:{params.get('atr_mult')}")
                 self.preset_label.setText(" | ".join(info) if info else "Loaded")
                 self.preset_label.setStyleSheet("color: #00e676; font-size: 11px;")
             
         except Exception as e:
-            print(f"Preset load error: {e}")
+            logger.info(f"Preset load error: {e}")
     
     def _update_fixed_labels(self, params):
         if 'atr_mult' in params:
@@ -683,7 +721,7 @@ class BacktestWidget(QWidget):
                         self.trend_tf_combo.setCurrentIndex(idx)
                         self.trend_tf_combo.blockSignals(False)
         except Exception as e:
-            print(f"JSON params load error: {e}")
+            logger.info(f"JSON params load error: {e}")
     
     def _reset_to_defaults(self):
         self.leverage_spin.setValue(3)
@@ -732,166 +770,88 @@ class BacktestWidget(QWidget):
         except Exception as e:
             self.data_status.setText("Load failed")
             self.data_status.setStyleSheet("color: #ef5350; font-size: 11px;")
-            print(f"Data load error: {e}")
+            logger.info(f"Data load error: {e}")
     
     def _init_result_area(self):
-        """결과 영역: 테이블(좌) + 차트(우)"""
-        # 스플리터 생성 (좌우 배치)
+        """결과 영역: 탭 구성 (Trades vs Logic Audit)"""
+        from PyQt5.QtWidgets import QTabWidget
+        
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.result_tabs = QTabWidget()
+        self.result_tabs.setStyleSheet("""
+            QTabWidget::pane { border: 1px solid #363a45; background: #131722; }
+            QTabBar::tab { background: #1e222d; color: #787b86; padding: 8px 20px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+            QTabBar::tab:selected { background: #2962ff; color: white; font-weight: bold; }
+        """)
+
+        # 1. Trades Tab
+        self.trades_tab = QWidget()
+        trades_layout = QVBoxLayout(self.trades_tab)
+        trades_layout.setContentsMargins(0, 0, 0, 0)
+        
         self.result_splitter = QSplitter(Qt.Horizontal)
         
         # 좌측: 결과 테이블
         self.result_table = QTableWidget()
         self.result_table.setColumnCount(8)
         self.result_table.setHorizontalHeaderLabels([
-            '#', '진입', '청산', '방향', '수익률', '잔고', 'MDD', '기간'
+            '#', t("trade.entry"), t("trade.exit"), t("trade.type"), 
+            t("trade.pnl_pct_header"), t("dashboard.balance"), t("backtest.mdd"), t("backtest.header_duration") if t("backtest.header_duration") != "backtest.header_duration" else "Duration"
         ])
-        
-        # 테이블 스타일링
-        self.result_table.setStyleSheet("""
-            QTableWidget {
-                background: #1e222d;
-                color: white;
-                border: 1px solid #363a45;
-                gridline-color: #363a45;
-            }
-            QTableWidget::item { padding: 8px; }
-            QTableWidget::item:selected { background: #2962ff; }
-            QHeaderView::section {
-                background: #131722;
-                color: white;
-                border: 1px solid #363a45;
-                padding: 8px;
-                font-weight: bold;
-            }
-        """)
-        # 컬럼 너비를 최소화하여 필요한 만큼만 차지하게 함
+        self.result_table.setStyleSheet(self._get_table_style())
         self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.result_table.verticalHeader().setDefaultSectionSize(36)
         self.result_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.result_table.setSelectionMode(QTableWidget.SingleSelection)
         self.result_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        
         self.result_table.itemSelectionChanged.connect(self._on_trade_selected)
         self.result_splitter.addWidget(self.result_table)
 
-        # 우측: 차트 박스
-        self.chart_box = QGroupBox("📊 매매 상세 차트")
-        self.chart_box.setStyleSheet("QGroupBox { color: white; font-weight: bold; border: 1px solid #363a45; margin-top: 5px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }")
-        chart_layout = QVBoxLayout(self.chart_box)
-        chart_layout.setContentsMargins(2, 8, 2, 2)
-        chart_layout.setSpacing(0)
+        # 우측: 차트
+        self.chart_box = QGroupBox(t("backtest.chart_title"))
+        self.chart_box.setStyleSheet("QGroupBox { color: white; font-weight: bold; border: 1px solid #363a45; margin-top: 5px; }")
+        chart_vbox = QVBoxLayout(self.chart_box)
         
-        self.chart_widget = pg.PlotWidget()
-        self.chart_widget.setBackground('#1a1a2e')
-        self.chart_widget.showGrid(x=True, y=True, alpha=0.3)
-        self.chart_widget.getAxis('bottom').setPen('#666')
-        self.chart_widget.getAxis('left').setPen('#666')
-        self.chart_widget.setAspectLocked(False)
-        self.chart_widget.enableAutoRange()
+        # [MOD] Use InteractiveChart component
+        self.chart_widget = InteractiveChart()
+        chart_vbox.addWidget(self.chart_widget)
         
-        chart_layout.addWidget(self.chart_widget)
         self.result_splitter.addWidget(self.chart_box)
         
-        # 비율 설정: 테이블 40%, 차트 60% (비율 유지)
         self.result_splitter.setStretchFactor(0, 4)
         self.result_splitter.setStretchFactor(1, 6)
-        self.result_splitter.setHandleWidth(1)
-        self.result_splitter.setSizes([400, 600])
+        trades_layout.addWidget(self.result_splitter)
         
-        return self.result_splitter
+        self.result_tabs.addTab(self.trades_tab, "📈 Trades")
+
+        # 2. Logic Audit Tab
+        self.audit_tab = QWidget()
+        audit_layout = QVBoxLayout(self.audit_tab)
+        
+        self.logic_table = QTableWidget()
+        self.logic_table.setColumnCount(5)
+        self.logic_table.setHorizontalHeaderLabels(['Timestamp', 'Signal/Logic', 'Action', 'PnL/Status', 'Details'])
+        self.logic_table.setStyleSheet(self._get_table_style())
+        self.logic_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.logic_table.horizontalHeader().setStretchLastSection(True)
+        
+        audit_layout.addWidget(self.logic_table)
+        self.result_tabs.addTab(self.audit_tab, "🔍 Logic Audit")
+        
+        return self.result_tabs
+
+    def _get_table_style(self):
+        return """
+            QTableWidget { background: #1e222d; color: white; border: none; gridline-color: #363a45; }
+            QHeaderView::section { background: #131722; color: #787b86; padding: 6px; border: 1px solid #363a45; }
+            QTableWidget::item { padding: 4px; }
+        """
 
     def _on_trade_selected(self):
-        """테이블 행 클릭 시 우측 차트 업데이트"""
-        selected = self.result_table.selectedItems()
-        if not selected:
-            return
-        
-        row = selected[0].row()
-        if hasattr(self, 'trades_detail') and row < len(self.trades_detail):
-            trade = self.trades_detail[row]
-            self._update_chart(trade)
+        """테이블 행 클릭 시 (현재는 기능 없음, 추후 줌 연동 가능)"""
+        pass
 
-    def _update_chart(self, trade: dict):
-        """선택된 거래의 차트 표시"""
-        self.chart_widget.clear()
-        
-        if not hasattr(self, 'candle_data') or self.candle_data is None:
-            return
-
-        # 캔들 데이터 추출 (entry 전후 50봉)
-        entry_idx = trade.get('entry_idx', 0)
-        start = max(0, int(entry_idx) - 25)
-        end = min(len(self.candle_data), int(entry_idx) + 25)
-        
-        candles = self.candle_data.iloc[start:end]
-        
-        if candles.empty:
-            return
-        
-        # 가격 범위 계산 (Y축 스케일링용)
-        price_min = candles['low'].min()
-        price_max = candles['high'].max()
-        price_margin = (price_max - price_min) * 0.1
-        
-        # 캔들 차트 그리기 (OHLC 바 스타일)
-        for i, (idx, c) in enumerate(candles.iterrows()):
-            color = '#00d26a' if c['close'] >= c['open'] else '#ff6b6b'
-            # High-Low (Wick)
-            self.chart_widget.plot([i, i], [c['low'], c['high']], pen=pg.mkPen(color, width=1))
-            # Open-Close (Body)
-            body_width = 4
-            self.chart_widget.plot([i, i], [c['open'], c['close']], pen=pg.mkPen(color, width=body_width))
-        
-        # === Trade Markers ===
-        direction = trade.get('type', trade.get('direction', 'Long'))
-        is_long = 'Long' in direction
-        
-        # Entry Marker (큰 화살표 + 라벨)
-        entry_val = trade.get('entry_price', trade.get('entry', 0))
-        entry_pos = int(entry_idx) - start
-        
-        if entry_val and 0 <= entry_pos < len(candles):
-            # 진입 마커 (위/아래 삼각형)
-            symbol = 't' if is_long else 't1'  # t=up, t1=down
-            self.chart_widget.plot([entry_pos], [entry_val], 
-                                   pen=None, symbol=symbol, symbolBrush='#00d26a', symbolSize=18)
-            # 텍스트 라벨
-            entry_label = pg.TextItem(f"Entry\n${entry_val:,.0f}", color='#00d26a', anchor=(0.5, 1.2 if is_long else -0.2))
-            entry_label.setPos(entry_pos, entry_val)
-            self.chart_widget.addItem(entry_label)
-        
-        # Exit Marker (있으면)
-        exit_val = trade.get('exit_price', trade.get('exit', 0))
-        exit_idx = trade.get('exit_idx', 0)
-        exit_pos = int(exit_idx) - start if exit_idx else -1
-        
-        if exit_val and 0 <= exit_pos < len(candles):
-            pnl = trade.get('pnl', 0)
-            exit_color = '#00d26a' if pnl >= 0 else '#ff6b6b'
-            symbol = 't1' if is_long else 't'  # 반대 방향
-            self.chart_widget.plot([exit_pos], [exit_val],
-                                   pen=None, symbol=symbol, symbolBrush=exit_color, symbolSize=18)
-            exit_label = pg.TextItem(f"Exit\n{pnl:+.1f}%", color=exit_color, anchor=(0.5, -0.2 if is_long else 1.2))
-            exit_label.setPos(exit_pos, exit_val)
-            self.chart_widget.addItem(exit_label)
-        
-        # SL Line (손절선 - 빨간 점선)
-        sl = trade.get('sl', trade.get('stop_loss', trade.get('initial_sl', 0)))
-        if sl and sl > 0 and price_min <= sl <= price_max * 1.1:
-            sl_line = pg.InfiniteLine(pos=sl, angle=0, pen=pg.mkPen('#ef5350', width=2, style=pg.QtCore.Qt.DashLine))
-            self.chart_widget.addItem(sl_line)
-            sl_label = pg.TextItem(f"SL ${sl:,.0f}", color='#ef5350', anchor=(0, 0.5))
-            sl_label.setPos(len(candles) - 1, sl)
-            self.chart_widget.addItem(sl_label)
-        
-        # Entry Line (진입 가격 수평선 - 녹색 점선)
-        if entry_val and entry_val > 0:
-            entry_line = pg.InfiniteLine(pos=entry_val, angle=0, pen=pg.mkPen('#00d26a', width=1, style=pg.QtCore.Qt.DotLine))
-            self.chart_widget.addItem(entry_line)
-        
-        # [FIX] X/Y 축 자동 피팅
-        self.chart_widget.setXRange(0, len(candles), padding=0.05)
-        self.chart_widget.setYRange(price_min - price_margin, price_max + price_margin, padding=0)
+    # _update_chart removed (moved to InteractiveChart)
 
     def _populate_result_table(self, trades):
         self.result_table.setRowCount(0)
@@ -995,9 +955,9 @@ class BacktestWidget(QWidget):
         if 'filter_tf' not in strategy_params:
             strategy_params['filter_tf'] = tf
         
-        print(f"[BT] Preset: {self.preset_combo.currentText()}")
-        print(f"[BT] Params: filter_tf={strategy_params.get('filter_tf')}, atr_mult={strategy_params.get('atr_mult')}")
-        print(f"[BT] Cost: slippage={slippage:.4f} + fee={fee:.4f} = total_cost={total_cost:.4f}")
+        logger.info(f"[BT] Preset: {self.preset_combo.currentText()}")
+        logger.info(f"[BT] Params: filter_tf={strategy_params.get('filter_tf')}, atr_mult={strategy_params.get('atr_mult')}")
+        logger.info(f"[BT] Cost: slippage={slippage:.4f} + fee={fee:.4f} = total_cost={total_cost:.4f}")
         
         self.worker = BacktestWorker(
             strategy=self.strategy,
@@ -1041,6 +1001,12 @@ class BacktestWidget(QWidget):
             self.trades_detail = trades
             self.candle_data = df_15m
             self._populate_result_table(trades)
+            self._populate_audit_table(self.worker.audit_logs)
+            
+            # [MOD] Update InteractiveChart
+            self.chart_widget.set_data(df_15m)
+            self.chart_widget.add_trades(trades)
+            
             self.backtest_finished.emit(trades, df_15m, None)
         else:
             QMessageBox.warning(self, "No Result", "No trades or error occurred.")
@@ -1086,6 +1052,40 @@ class BacktestWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "저장 실패", f"❌ 저장 중 오류 발생: {e}")
     
+    def _populate_audit_table(self, logs):
+        """로직 감사 테이블 채우기"""
+        if not logs:
+            self.logic_table.setRowCount(0)
+            return
+
+        self.logic_table.setRowCount(0)
+        self.logic_table.setRowCount(len(logs))
+        
+        for row, log in enumerate(logs):
+            ts = log.get('timestamp', '-')
+            if isinstance(ts, pd.Timestamp):
+                ts_str = ts.strftime('%m-%d %H:%M:%S')
+            else:
+                ts_str = str(ts)
+                
+            self.logic_table.setItem(row, 0, QTableWidgetItem(ts_str))
+            
+            logic_item = QTableWidgetItem(log.get('logic', '-'))
+            # 색상 코딩
+            if "SIGNAL DETECTED" in logic_item.text():
+                logic_item.setForeground(QColor('#4CAF50')) # Green
+            elif "SL UPDATE" in logic_item.text():
+                logic_item.setForeground(QColor('#2196F3')) # Blue
+            elif "STOP LOSS HIT" in logic_item.text() or "CLOSE" in logic_item.text():
+                logic_item.setForeground(QColor('#f44336')) # Red
+                
+            self.logic_table.setItem(row, 1, logic_item)
+            self.logic_table.setItem(row, 2, QTableWidgetItem(log.get('action', '-')))
+            self.logic_table.setItem(row, 3, QTableWidgetItem(log.get('pnl', '-')))
+            self.logic_table.setItem(row, 4, QTableWidgetItem(log.get('details', '-')))
+            
+        self.logic_table.scrollToBottom()
+
     def _on_error(self, message):
         self._progress.setVisible(False)
         self._run_btn.setEnabled(True)
@@ -1120,6 +1120,8 @@ class BacktestWidget(QWidget):
             pm = get_preset_manager()
             if pm:
                 params = {
+                    'exchange': self.exchange_combo.currentText(),
+                    'symbol': self.symbol_combo.currentText(),
                     'leverage': self.leverage_spin.value(),
                     'slippage_pct': self.slippage_spin.value(),
                     'fee_pct': self.fee_spin.value(),
@@ -1227,10 +1229,421 @@ class BacktestWidget(QWidget):
             if 'atr' not in resampled.columns and 'atr_14' in resampled.columns:
                 resampled['atr'] = resampled['atr_14']
         except Exception as e:
-            print(f"Indicator calculation failed: {e}")
+            logger.info(f"Indicator calculation failed: {e}")
             resampled['rsi'] = 50
         
         return resampled
+
+
+class MultiBacktestWidget(QWidget):
+    """멀티 심볼 백테스트 위젯 (v1.7.0)"""
+    
+    status_updated = pyqtSignal(str, float)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.backtest = None
+        self.bt_thread = None
+        self._init_ui()
+        self.status_updated.connect(self._on_status_update)
+    
+    def _init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        
+        # === 설정 영역 ===
+        settings = QGroupBox("⚙️ 멀티 심볼 백테스트 설정")
+        settings.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #444; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                padding-top: 10px;
+                font-weight: bold; 
+            }
+        """)
+        s_layout = QHBoxLayout(settings)
+        
+        s_layout.addWidget(QLabel("거래소:"))
+        self.exchange_combo = QComboBox()
+        self.exchange_combo.addItems(['bybit', 'binance', 'okx', 'bitget'])
+        self.exchange_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
+        s_layout.addWidget(self.exchange_combo)
+        
+        s_layout.addWidget(QLabel("TF:"))
+        self.tf_4h = QCheckBox("4H")
+        self.tf_4h.setChecked(True)
+        self.tf_1d = QCheckBox("1D")
+        self.tf_1d.setChecked(True)
+        s_layout.addWidget(self.tf_4h)
+        s_layout.addWidget(self.tf_1d)
+        
+        s_layout.addWidget(QLabel("시드:"))
+        self.seed_spin = QSpinBox()
+        self.seed_spin.setRange(10, 100000)
+        self.seed_spin.setValue(100)
+        self.seed_spin.setPrefix("$")
+        self.seed_spin.setStyleSheet("background: #2b2b2b; color: white;")
+        s_layout.addWidget(self.seed_spin)
+        
+        s_layout.addWidget(QLabel("레버리지:"))
+        self.lev_spin = QSpinBox()
+        self.lev_spin.setRange(1, 50)
+        self.lev_spin.setValue(5)
+        self.lev_spin.setSuffix("x")
+        self.lev_spin.setStyleSheet("background: #2b2b2b; color: white;")
+        s_layout.addWidget(self.lev_spin)
+        
+        s_layout.addStretch()
+        layout.addWidget(settings)
+        
+        # === 진행 상태 ===
+        progress_group = QGroupBox("📊 진행 상태")
+        progress_group.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #4CAF50; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                font-weight: bold; 
+                color: #4CAF50; 
+            }
+        """)
+        p_layout = QVBoxLayout(progress_group)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet("""
+            QProgressBar { 
+                border: 1px solid #333; 
+                border-radius: 5px; 
+                text-align: center; 
+                background: #1a1a2e; 
+                color: white; 
+                height: 25px; 
+            }
+            QProgressBar::chunk { 
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                    stop:0 #667eea, stop:1 #764ba2); 
+            }
+        """)
+        p_layout.addWidget(self.progress_bar)
+        
+        self.status_label = QLabel("대기 중 - 시작 버튼을 눌러주세요")
+        self.status_label.setStyleSheet("color: #888;")
+        p_layout.addWidget(self.status_label)
+        
+        layout.addWidget(progress_group)
+        
+        # === 결과 요약 ===
+        result_group = QGroupBox("📈 결과 요약")
+        result_group.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #2962ff; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                font-weight: bold; 
+                color: #2962ff; 
+            }
+        """)
+        r_layout = QVBoxLayout(result_group)
+        
+        self.result_table = QTableWidget()
+        self.result_table.setColumnCount(4)
+        self.result_table.setHorizontalHeaderLabels(['항목', '값', '항목', '값'])
+        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.result_table.setStyleSheet("""
+            QTableWidget { background: #1e222d; color: white; }
+            QHeaderView::section { background: #2b2b2b; color: white; }
+        """)
+        self.result_table.setMaximumHeight(150)
+        self.result_table.setRowCount(4)
+        r_layout.addWidget(self.result_table)
+        
+        layout.addWidget(result_group)
+        
+        # === 거래 내역 ===
+        trades_group = QGroupBox("📜 거래 내역")
+        trades_group.setStyleSheet("""
+            QGroupBox { 
+                border: 1px solid #FF9800; 
+                border-radius: 5px; 
+                margin-top: 10px; 
+                font-weight: bold; 
+                color: #FF9800; 
+            }
+        """)
+        t_layout = QVBoxLayout(trades_group)
+        
+        self.trades_table = QTableWidget()
+        self.trades_table.setColumnCount(7)
+        self.trades_table.setHorizontalHeaderLabels([
+            '심볼', '방향', '진입시간', '청산시간', '청산사유', 'PnL%', 'PnL$'
+        ])
+        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.trades_table.setStyleSheet("""
+            QTableWidget { background: #1e222d; color: white; }
+            QHeaderView::section { background: #2b2b2b; color: white; }
+        """)
+        t_layout.addWidget(self.trades_table)
+        
+        layout.addWidget(trades_group)
+        
+        # === 버튼 ===
+        btn_layout = QHBoxLayout()
+        
+        self.start_btn = QPushButton("▶ 멀티 백테스트 시작")
+        self.start_btn.setStyleSheet("""
+            QPushButton { 
+                background: #4CAF50; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+                font-size: 14px;
+            }
+            QPushButton:hover { background: #45a049; }
+            QPushButton:disabled { background: #555; }
+        """)
+        self.start_btn.clicked.connect(self._on_start)
+        btn_layout.addWidget(self.start_btn)
+        
+        self.stop_btn = QPushButton("⏹ 중지")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.setStyleSheet("""
+            QPushButton { 
+                background: #f44336; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background: #d32f2f; }
+            QPushButton:disabled { background: #555; }
+        """)
+        self.stop_btn.clicked.connect(self._on_stop)
+        btn_layout.addWidget(self.stop_btn)
+        
+        self.save_btn = QPushButton("💾 결과 저장")
+        self.save_btn.setEnabled(False)
+        self.save_btn.setStyleSheet("""
+            QPushButton { 
+                background: #2196F3; 
+                color: white; 
+                padding: 12px 30px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background: #1976D2; }
+            QPushButton:disabled { background: #555; }
+        """)
+        self.save_btn.clicked.connect(self._on_save)
+        btn_layout.addWidget(self.save_btn)
+        
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+    
+    def _on_status_update(self, message: str, progress: float):
+        """상태 업데이트 (UI 스레드)"""
+        self.status_label.setText(message)
+        self.progress_bar.setValue(int(progress))
+    
+    def _status_callback(self, message: str, progress: float):
+        """상태 콜백 (워커 스레드에서 호출)"""
+        self.status_updated.emit(message, progress)
+    
+    def _on_start(self):
+        """시작 버튼"""
+        import threading
+        
+        try:
+            from core.multi_symbol_backtest import MultiSymbolBacktest
+        except ImportError:
+            QMessageBox.critical(self, "오류", "MultiSymbolBacktest 모듈을 찾을 수 없습니다.")
+            return
+        
+        timeframes = []
+        if self.tf_4h.isChecked():
+            timeframes.append('4h')
+        if self.tf_1d.isChecked():
+            timeframes.append('1d')
+        
+        if not timeframes:
+            QMessageBox.warning(self, "경고", "최소 1개 타임프레임을 선택하세요.")
+            return
+        
+        self.backtest = MultiSymbolBacktest(
+            exchange=self.exchange_combo.currentText(),
+            timeframes=timeframes,
+            initial_capital=self.seed_spin.value(),
+            leverage=self.lev_spin.value()
+        )
+        self.backtest.set_status_callback(self._status_callback)
+        
+        self.start_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        self.save_btn.setEnabled(False)
+        self.progress_bar.setValue(0)
+        self.trades_table.setRowCount(0)
+        
+        self.bt_thread = threading.Thread(target=self._run_backtest, daemon=True)
+        self.bt_thread.start()
+    
+    def _run_backtest(self):
+        """백테스트 실행 (워커 스레드)"""
+        try:
+            result = self.backtest.run()
+            from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
+            QMetaObject.invokeMethod(
+                self, "_display_result",
+                Qt.QueuedConnection,
+                Q_ARG(dict, result)
+            )
+        except Exception as e:
+            self._status_callback(f"❌ 오류: {e}", 100)
+        finally:
+            from PyQt5.QtCore import QMetaObject, Qt
+            QMetaObject.invokeMethod(self, "_on_complete", Qt.QueuedConnection)
+    
+    def _on_complete(self):
+        """완료 후 UI 복원"""
+        self.start_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.save_btn.setEnabled(True)
+    
+    def _on_stop(self):
+        """중지 버튼"""
+        if self.backtest:
+            self.backtest.stop()
+            self.status_label.setText("⏹ 사용자에 의해 중지됨")
+    
+    def _on_save(self):
+        """결과 저장"""
+        if self.backtest:
+            filepath = self.backtest.save_result()
+            QMessageBox.information(self, "저장 완료", f"결과가 저장되었습니다:\n{filepath}")
+    
+    def _display_result(self, result: dict):
+        """결과 표시"""
+        data = [
+            ('총 거래', str(result.get('total_trades', 0)), 
+             '승률', f"{result.get('win_rate', 0):.1f}%"),
+            ('승리', str(result.get('wins', 0)), 
+             'PF', f"{result.get('profit_factor', 0):.2f}"),
+            ('패배', str(result.get('losses', 0)), 
+             'MDD', f"{result.get('max_drawdown', 0):.1f}%"),
+            ('초기자본', f"${result.get('initial_capital', 0):.2f}", 
+             '최종자본', f"${result.get('final_capital', 0):.2f}"),
+        ]
+        
+        for row, (k1, v1, k2, v2) in enumerate(data):
+            self.result_table.setItem(row, 0, QTableWidgetItem(k1))
+            self.result_table.setItem(row, 1, QTableWidgetItem(v1))
+            self.result_table.setItem(row, 2, QTableWidgetItem(k2))
+            self.result_table.setItem(row, 3, QTableWidgetItem(v2))
+        
+        trades = result.get('trades', [])
+        self.trades_table.setRowCount(len(trades))
+        
+        for row, t in enumerate(trades):
+            self.trades_table.setItem(row, 0, QTableWidgetItem(t.get('symbol', '')))
+            
+            dir_item = QTableWidgetItem(t.get('direction', ''))
+            if t.get('direction') == 'Long':
+                dir_item.setForeground(QColor('#4CAF50'))
+            else:
+                dir_item.setForeground(QColor('#f44336'))
+            self.trades_table.setItem(row, 1, dir_item)
+            
+            self.trades_table.setItem(row, 2, QTableWidgetItem(str(t.get('entry_time', ''))[:16]))
+            self.trades_table.setItem(row, 3, QTableWidgetItem(str(t.get('exit_time', ''))[:16]))
+            self.trades_table.setItem(row, 4, QTableWidgetItem(t.get('exit_reason', '')))
+            
+            pnl_pct = t.get('pnl_pct', 0)
+            pnl_item = QTableWidgetItem(f"{pnl_pct:+.2f}%")
+            if pnl_pct > 0:
+                pnl_item.setForeground(QColor('#4CAF50'))
+            else:
+                pnl_item.setForeground(QColor('#f44336'))
+            self.trades_table.setItem(row, 5, pnl_item)
+            
+            pnl_usd = t.get('pnl_usd', 0)
+            usd_item = QTableWidgetItem(f"${pnl_usd:+.2f}")
+            if pnl_usd > 0:
+                usd_item.setForeground(QColor('#4CAF50'))
+            else:
+                usd_item.setForeground(QColor('#f44336'))
+            self.trades_table.setItem(row, 6, usd_item)
+
+
+class BacktestWidget(QWidget):
+    """백테스트 메인 위젯 - 서브탭 컨테이너 (v1.7.0)"""
+    
+    # SingleBacktestWidget의 시그널을 그대로 노출
+    backtest_finished = pyqtSignal(list, object, object)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_ui()
+    
+    def _init_ui(self):
+        from PyQt5.QtWidgets import QTabWidget
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 서브탭
+        self.sub_tabs = QTabWidget()
+        self.sub_tabs.setStyleSheet("""
+            QTabWidget::pane { 
+                border: 1px solid #444; 
+                border-radius: 4px; 
+            }
+            QTabBar::tab { 
+                background: #2b2b2b; 
+                color: #888; 
+                padding: 10px 25px; 
+                margin-right: 2px; 
+                font-weight: bold;
+            }
+            QTabBar::tab:selected { 
+                background: #3c3c3c; 
+                color: white; 
+                border-bottom: 2px solid #4CAF50; 
+            }
+            QTabBar::tab:hover { 
+                background: #3c3c3c; 
+            }
+        """)
+        
+        # 싱글 백테스트 탭 (기존 기능)
+        self.single_widget = SingleBacktestWidget()
+        self.sub_tabs.addTab(self.single_widget, "📈 싱글 심볼")
+        
+        # 멀티 백테스트 탭 (v1.7.0 신규) - [HIDDEN]
+        # self.multi_widget = MultiBacktestWidget()
+        # self.sub_tabs.addTab(self.multi_widget, "📊 멀티 심볼")
+        
+        layout.addWidget(self.sub_tabs)
+        
+        # 시그널 연결 (하위 호환성)
+        if hasattr(self.single_widget, 'backtest_finished'):
+            self.single_widget.backtest_finished.connect(self.backtest_finished.emit)
+
+    def _refresh_data_sources(self):
+        """데이터 소스 새로고침 (수집 완료 시 호출)"""
+        if hasattr(self, 'single_widget'):
+            # 심볼 리스트 갱신을 위해 거래소 변경 이벤트를 다시 트리거
+            exchange = self.single_widget.exchange_combo.currentText()
+            self.single_widget._on_exchange_changed(exchange)
+
+    def load_strategy_params(self):
+        """파라미터 로드 (메인 윈도우에서 호출)"""
+        if hasattr(self, 'single_widget'):
+            self.single_widget.load_strategy_params()
+
+    def apply_params(self, params: dict):
+        """최적화 결과 적용"""
+        if hasattr(self, 'single_widget'):
+            self.single_widget.apply_params(params)
 
 
 if __name__ == "__main__":
@@ -1238,5 +1651,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background-color: #1e1e1e; }")
     w = BacktestWidget()
+    w.resize(1200, 800)
     w.show()
     sys.exit(app.exec_())

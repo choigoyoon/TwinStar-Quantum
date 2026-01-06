@@ -14,48 +14,15 @@ from dataclasses import dataclass, field
 from enum import Enum
 import glob
 
-from paths import Paths
-
-# 심볼 변환
-try:
-    from utils.symbol_converter import (
-        convert_symbol, extract_base, is_krw_exchange, 
-        get_quote_currency, normalize_symbol_for_storage
-    )
-except ImportError:
-    def extract_base(s): return s.replace("USDT", "").replace("KRW-", "").replace("_KRW", "")
-    def convert_symbol(b, e): return f"{b}USDT" if e not in ["upbit", "bithumb"] else f"KRW-{b}" if e == "upbit" else f"{b}_KRW"
-    def is_krw_exchange(e): return e in ["upbit", "bithumb"]
-    def get_quote_currency(e): return "KRW" if e in ["upbit", "bithumb"] else "USDT"
-
-
-class CoinStatus(Enum):
-    IDLE = "⚪ 대기"
-    WATCH = "🟡 감시"
-    READY = "🟢 준비"
-    IN_POSITION = "🔴 보유"
-
-
-@dataclass
-class CoinState:
-    symbol: str              # BTCUSDT, KRW-BTC 등 (거래소별)
-    base_symbol: str         # BTC (공통)
-    params: dict
-    filepath: str = ""
-    status: CoinStatus = CoinStatus.IDLE
-    readiness: float = 0.0
-    position: Optional[dict] = None
-    last_update: datetime = field(default_factory=datetime.now)
+from core.trade_common import CoinStatus, CoinState, CapitalMode, WS_LIMITS
+from core.capital_manager import CapitalManager
 
 
 class MultiTrader:
     """멀티 트레이더 - Premium 전용 (로테이션 방식)"""
     
-    # [NEW] 거래소별 제한
-    WS_LIMITS = {
-        'bybit': 100, 'binance': 100, 'okx': 80,
-        'bitget': 80, 'bingx': 50, 'upbit': 30, 'bithumb': 30
-    }
+    # [MODULAR]
+    WS_LIMITS = WS_LIMITS
     SCAN_INTERVALS = {
         'bybit': 0.5, 'binance': 0.5, 'okx': 1.0,
         'bitget': 1.0, 'bingx': 1.0, 'upbit': 1.0, 'bithumb': 1.0
@@ -76,7 +43,8 @@ class MultiTrader:
         self.timeframe = timeframe
         self.exchange = exchange.lower()
         
-        # [NEW] 거래소별 제한 적용
+        # [MODULAR] Capital Management
+        self.capital_manager = CapitalManager()
         self.WS_MAX = self.WS_LIMITS.get(self.exchange, 50)
         self.SCAN_INTERVAL = self.SCAN_INTERVALS.get(self.exchange, 1.0)
         
@@ -245,7 +213,7 @@ class MultiTrader:
             self.logger.error(f"기본 프리셋 생성 실패: {e}")
     
     def _allocate_seeds(self):
-        """시드 균등 배분"""
+        """CapitalManager를 통한 시드 배분"""
         if not self.all_coins:
             return
         
@@ -254,9 +222,13 @@ class MultiTrader:
         per_coin = available / len(self.all_coins)
         
         for state in self.all_coins.values():
-            state.params["seed"] = per_coin
+            # CapitalManager를 통해 시드 초기화/조회
+            seed = self.capital_manager.get_trade_size()
+            state.params["seed"] = seed
+            state.initial_seed = per_coin
+            state.current_seed = seed
         
-        self.logger.info(f"💵 시드 배분: ${per_coin:.2f}/코인")
+        self.logger.info(f"💵 CapitalManager 배분: Mode={self.capital_manager.mode.upper()}, Entry=${per_coin:.2f}")
     
     # === [NEW] 데이터 지속성 ===
     

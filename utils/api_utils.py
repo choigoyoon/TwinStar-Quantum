@@ -8,7 +8,7 @@ API 호출 유틸리티
 
 import time
 import logging
-from typing import Callable, Any, Optional
+from typing import Callable, Any
 from functools import wraps
 
 
@@ -164,15 +164,15 @@ if __name__ == "__main__":
             raise ConnectionError("Network error")
         return "Success!"
     
-    print("=== Retry Test ===")
+    logger.info("=== Retry Test ===")
     try:
         result = retry_api_call(flaky_api, max_retries=3, delay=0.5)
-        print(f"Result: {result}")
+        logger.info(f"Result: {result}")
     except Exception as e:
-        print(f"Failed: {e}")
+        logger.info(f"Failed: {e}")
     
     # 테스트: 데코레이터
-    print("\n=== Decorator Test ===")
+    logger.info("\n=== Decorator Test ===")
     
     @retry_decorator(max_retries=2, delay=0.3)
     def another_api():
@@ -181,14 +181,14 @@ if __name__ == "__main__":
         return "OK"
     
     try:
-        print(f"Result: {another_api()}")
+        logger.info(f"Result: {another_api()}")
     except Exception as e:
-        print(f"Failed: {e}")
+        logger.info(f"Failed: {e}")
     
     # 테스트: Rate Limiter
-    print("\n=== Rate Limiter Test ===")
+    logger.info("\n=== Rate Limiter Test ===")
     limiter = RateLimiter(calls_per_second=5)
     
     for i in range(5):
         with limiter:
-            print(f"Call {i+1} at {time.time():.3f}")
+            logger.info(f"Call {i+1} at {time.time():.3f}")

@@ -4,12 +4,15 @@ Preset Health Monitor
 - 성능 저하 시 경고/중지/재최적화 표시
 """
 
-import os
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from pathlib import Path
+
+# Logging
+from utils.logger import get_module_logger
+logger = get_module_logger(__name__)
 
 try:
     from paths import Paths
@@ -309,8 +312,8 @@ if __name__ == '__main__':
     
     # 헬스 체크
     health = monitor.check_health(test_preset)
-    print(f"Health: {health}")
+    logger.info(f"Health: {health}")
     
     # 거래 가능 여부
     can, reason = monitor.can_trade(test_preset)
-    print(f"Can trade: {can}, Reason: {reason}")
+    logger.info(f"Can trade: {can}, Reason: {reason}")

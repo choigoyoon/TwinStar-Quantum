@@ -1,0 +1,2249 @@
+# 웹소켓 시뮬레이션 검증 결과
+
+✅ Synthetic Data Generated: 1000 candles
+Time Range: 2024-01-01 00:00:00 ~ 2024-01-11 09:45:00
+
+## [1] 백테스트 기준 실행...
+DEBUG BT df_1h Tail:
+              timestamp  ...      volume
+247 2024-01-11 07:00:00  ...  381.646742
+248 2024-01-11 08:00:00  ...  385.657677
+249 2024-01-11 09:00:00  ...  417.806941
+
+[3 rows x 6 columns]
+DEBUG BT Params: {'rsi_period': 14, 'atr_period': 14, 'atr_mult': 1.0, 'leverage': 1, 'filter_tf': '1h', 'entry_tf': '15m', 'direction': 'Both', 'pattern_tolerance': 0.1, 'entry_validity_hours': 24, 'trail_start_r': 0.5, 'trail_dist_r': 0.2, 'max_adds': 1, 'slippage': 0.0006, 'use_websocket': False, 'pullback_rsi_long': 45, 'pullback_rsi_short': 55}
+📊 백테스트: 수익률 -1.0612%, 거래수 2, 승률 0.00%
+
+## [2] 웹소켓 시뮬레이션 실행...
+DEBUG Warmup: Candles=500, DF=500
+              timestamp  ...      volume
+498 2024-01-06 04:30:00  ...  121.767079
+499 2024-01-06 04:45:00  ...   95.775945
+
+[2 rows x 6 columns]
+🔄 시뮬레이션 시작 (500 candles)...
+DEBUG Loop 0 [2024-01-06 05:00:00]: Pending=0, Signal=None
+DEBUG Cond: RSI=81.92 (Long<45, Short>55), Trend=up
+DEBUG Loop 0: EntryLen=501, PatternLen=126
+DEBUG Loop 50 [2024-01-06 17:30:00]: Pending=0, Signal=None
+DEBUG Cond: RSI=85.64 (Long<45, Short>55), Trend=up
+DEBUG Loop 50: EntryLen=551, PatternLen=138
+DEBUG SIM df_pattern at 2024-01-07 00:00:00 (Target Match):
+              timestamp  ...  macd_hist
+142 2024-01-06 22:00:00  ...   9.383778
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   1.932755
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 0
+DEBUG SIM df_pattern at 2024-01-07 00:00:00 (Target Match):
+              timestamp  ...  macd_hist
+142 2024-01-06 22:00:00  ...   9.383778
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.021396
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 0
+DEBUG SIM df_pattern at 2024-01-07 00:00:00 (Target Match):
+              timestamp  ...  macd_hist
+142 2024-01-06 22:00:00  ...   9.383778
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.152735
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 0
+DEBUG SIM df_pattern at 2024-01-07 00:00:00 (Target Match):
+              timestamp  ...  macd_hist
+142 2024-01-06 22:00:00  ...   9.383778
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.017856
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 0
+DEBUG SIM df_pattern at 2024-01-07 01:00:00 (Target Match):
+              timestamp  ...  macd_hist
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...  -0.245147
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 00:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG AddPatterns Added: 1
+DEBUG Loop 80 [2024-01-07 01:00:00]: Pending=1, Signal=None
+DEBUG Cond: RSI=92.46 (Long<45, Short>55), Trend=up
+DEBUG Loop 80: EntryLen=581, PatternLen=146
+DEBUG SIM df_pattern at 2024-01-07 01:00:00 (Target Match):
+              timestamp  ...  macd_hist
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...  -0.447027
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 00:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 81 [2024-01-07 01:15:00]: Pending=1, Signal=None
+DEBUG Cond: RSI=93.52 (Long<45, Short>55), Trend=up
+DEBUG Loop 81: EntryLen=582, PatternLen=146
+DEBUG SIM df_pattern at 2024-01-07 01:00:00 (Target Match):
+              timestamp  ...  macd_hist
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...   1.337640
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 0
+DEBUG Loop 82 [2024-01-07 01:30:00]: Pending=1, Signal=None
+DEBUG Cond: RSI=93.43 (Long<45, Short>55), Trend=up
+DEBUG Loop 82: EntryLen=583, PatternLen=146
+DEBUG SIM df_pattern at 2024-01-07 01:00:00 (Target Match):
+              timestamp  ...  macd_hist
+143 2024-01-06 23:00:00  ...   5.689992
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...   0.330369
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 0
+DEBUG Loop 83 [2024-01-07 01:45:00]: Pending=1, Signal=None
+DEBUG Cond: RSI=80.71 (Long<45, Short>55), Trend=up
+DEBUG Loop 83: EntryLen=584, PatternLen=146
+DEBUG SIM df_pattern at 2024-01-07 02:00:00 (Target Match):
+              timestamp  ...  macd_hist
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -4.177051
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG AddPatterns Added: 1
+DEBUG Loop 84 [2024-01-07 02:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=77.28 (Long<45, Short>55), Trend=up
+DEBUG Loop 84: EntryLen=585, PatternLen=147
+DEBUG SIM df_pattern at 2024-01-07 02:00:00 (Target Match):
+              timestamp  ...  macd_hist
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -3.457948
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 85 [2024-01-07 02:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.45 (Long<45, Short>55), Trend=up
+DEBUG Loop 85: EntryLen=586, PatternLen=147
+DEBUG SIM df_pattern at 2024-01-07 02:00:00 (Target Match):
+              timestamp  ...  macd_hist
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -2.726376
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 86 [2024-01-07 02:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.01 (Long<45, Short>55), Trend=up
+DEBUG Loop 86: EntryLen=587, PatternLen=147
+DEBUG SIM df_pattern at 2024-01-07 02:00:00 (Target Match):
+              timestamp  ...  macd_hist
+144 2024-01-07 00:00:00  ...   3.017856
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -2.215231
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 87 [2024-01-07 02:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=82.09 (Long<45, Short>55), Trend=up
+DEBUG Loop 87: EntryLen=588, PatternLen=147
+DEBUG SIM df_pattern at 2024-01-07 03:00:00 (Target Match):
+              timestamp  ...  macd_hist
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -5.355594
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 88 [2024-01-07 03:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=82.10 (Long<45, Short>55), Trend=up
+DEBUG Loop 88: EntryLen=589, PatternLen=148
+DEBUG SIM df_pattern at 2024-01-07 03:00:00 (Target Match):
+              timestamp  ...  macd_hist
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -5.876332
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 89 [2024-01-07 03:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.21 (Long<45, Short>55), Trend=up
+DEBUG Loop 89: EntryLen=590, PatternLen=148
+DEBUG SIM df_pattern at 2024-01-07 03:00:00 (Target Match):
+              timestamp  ...  macd_hist
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -4.910525
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 90 [2024-01-07 03:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.40 (Long<45, Short>55), Trend=up
+DEBUG Loop 90: EntryLen=591, PatternLen=148
+DEBUG SIM df_pattern at 2024-01-07 03:00:00 (Target Match):
+              timestamp  ...  macd_hist
+145 2024-01-07 01:00:00  ...   0.330369
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -4.507735
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 91 [2024-01-07 03:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=76.81 (Long<45, Short>55), Trend=up
+DEBUG Loop 91: EntryLen=592, PatternLen=148
+DEBUG SIM df_pattern at 2024-01-07 04:00:00 (Target Match):
+              timestamp  ...  macd_hist
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -8.248323
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 92 [2024-01-07 04:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=76.08 (Long<45, Short>55), Trend=up
+DEBUG Loop 92: EntryLen=593, PatternLen=149
+DEBUG SIM df_pattern at 2024-01-07 04:00:00 (Target Match):
+              timestamp  ...  macd_hist
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.911999
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 93 [2024-01-07 04:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.02 (Long<45, Short>55), Trend=up
+DEBUG Loop 93: EntryLen=594, PatternLen=149
+DEBUG SIM df_pattern at 2024-01-07 04:00:00 (Target Match):
+              timestamp  ...  macd_hist
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.714552
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 94 [2024-01-07 04:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=75.76 (Long<45, Short>55), Trend=up
+DEBUG Loop 94: EntryLen=595, PatternLen=149
+DEBUG SIM df_pattern at 2024-01-07 04:00:00 (Target Match):
+              timestamp  ...  macd_hist
+146 2024-01-07 02:00:00  ...  -2.215231
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.298270
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 95 [2024-01-07 04:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.66 (Long<45, Short>55), Trend=up
+DEBUG Loop 95: EntryLen=596, PatternLen=149
+DEBUG SIM df_pattern at 2024-01-07 05:00:00 (Target Match):
+              timestamp  ...  macd_hist
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ... -10.651519
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 96 [2024-01-07 05:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=74.96 (Long<45, Short>55), Trend=up
+DEBUG Loop 96: EntryLen=597, PatternLen=150
+DEBUG SIM df_pattern at 2024-01-07 05:00:00 (Target Match):
+              timestamp  ...  macd_hist
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ... -10.825677
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 97 [2024-01-07 05:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=84.35 (Long<45, Short>55), Trend=up
+DEBUG Loop 97: EntryLen=598, PatternLen=150
+DEBUG SIM df_pattern at 2024-01-07 05:00:00 (Target Match):
+              timestamp  ...  macd_hist
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ... -12.094020
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 98 [2024-01-07 05:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.61 (Long<45, Short>55), Trend=up
+DEBUG Loop 98: EntryLen=599, PatternLen=150
+DEBUG SIM df_pattern at 2024-01-07 05:00:00 (Target Match):
+              timestamp  ...  macd_hist
+147 2024-01-07 03:00:00  ...  -4.507735
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ...  -9.624259
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 99 [2024-01-07 05:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.54 (Long<45, Short>55), Trend=up
+DEBUG Loop 99: EntryLen=600, PatternLen=150
+DEBUG SIM df_pattern at 2024-01-07 06:00:00 (Target Match):
+              timestamp  ...  macd_hist
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.525478
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 100 [2024-01-07 06:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.01 (Long<45, Short>55), Trend=up
+DEBUG Loop 100: EntryLen=601, PatternLen=151
+DEBUG SIM df_pattern at 2024-01-07 06:00:00 (Target Match):
+              timestamp  ...  macd_hist
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.913245
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 101 [2024-01-07 06:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.41 (Long<45, Short>55), Trend=up
+DEBUG Loop 101: EntryLen=602, PatternLen=151
+DEBUG SIM df_pattern at 2024-01-07 06:00:00 (Target Match):
+              timestamp  ...  macd_hist
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -13.078020
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 102 [2024-01-07 06:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=69.28 (Long<45, Short>55), Trend=up
+DEBUG Loop 102: EntryLen=603, PatternLen=151
+DEBUG SIM df_pattern at 2024-01-07 06:00:00 (Target Match):
+              timestamp  ...  macd_hist
+148 2024-01-07 04:00:00  ...  -7.298270
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.279660
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 103 [2024-01-07 06:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=76.31 (Long<45, Short>55), Trend=up
+DEBUG Loop 103: EntryLen=604, PatternLen=151
+DEBUG SIM df_pattern at 2024-01-07 07:00:00 (Target Match):
+              timestamp  ...  macd_hist
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -15.311947
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 104 [2024-01-07 07:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=74.69 (Long<45, Short>55), Trend=up
+DEBUG Loop 104: EntryLen=605, PatternLen=152
+DEBUG SIM df_pattern at 2024-01-07 07:00:00 (Target Match):
+              timestamp  ...  macd_hist
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -15.931329
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 105 [2024-01-07 07:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=67.88 (Long<45, Short>55), Trend=up
+DEBUG Loop 105: EntryLen=606, PatternLen=152
+DEBUG SIM df_pattern at 2024-01-07 07:00:00 (Target Match):
+              timestamp  ...  macd_hist
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -15.371784
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 106 [2024-01-07 07:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=70.29 (Long<45, Short>55), Trend=up
+DEBUG Loop 106: EntryLen=607, PatternLen=152
+DEBUG SIM df_pattern at 2024-01-07 07:00:00 (Target Match):
+              timestamp  ...  macd_hist
+149 2024-01-07 05:00:00  ...  -9.624259
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -16.890291
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 107 [2024-01-07 07:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=58.60 (Long<45, Short>55), Trend=up
+DEBUG Loop 107: EntryLen=608, PatternLen=152
+DEBUG SIM df_pattern at 2024-01-07 08:00:00 (Target Match):
+              timestamp  ...  macd_hist
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -19.570920
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 108 [2024-01-07 08:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=64.05 (Long<45, Short>55), Trend=up
+DEBUG Loop 108: EntryLen=609, PatternLen=153
+DEBUG SIM df_pattern at 2024-01-07 08:00:00 (Target Match):
+              timestamp  ...  macd_hist
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.904591
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 109 [2024-01-07 08:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=64.81 (Long<45, Short>55), Trend=up
+DEBUG Loop 109: EntryLen=610, PatternLen=153
+DEBUG SIM df_pattern at 2024-01-07 08:00:00 (Target Match):
+              timestamp  ...  macd_hist
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.326357
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 110 [2024-01-07 08:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=65.08 (Long<45, Short>55), Trend=up
+DEBUG Loop 110: EntryLen=611, PatternLen=153
+DEBUG SIM df_pattern at 2024-01-07 08:00:00 (Target Match):
+              timestamp  ...  macd_hist
+150 2024-01-07 06:00:00  ... -12.279660
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.761749
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 111 [2024-01-07 08:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=63.67 (Long<45, Short>55), Trend=up
+DEBUG Loop 111: EntryLen=612, PatternLen=153
+DEBUG SIM df_pattern at 2024-01-07 09:00:00 (Target Match):
+              timestamp  ...  macd_hist
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -20.156264
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 112 [2024-01-07 09:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.88 (Long<45, Short>55), Trend=up
+DEBUG Loop 112: EntryLen=613, PatternLen=154
+DEBUG SIM df_pattern at 2024-01-07 09:00:00 (Target Match):
+              timestamp  ...  macd_hist
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -19.677668
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 113 [2024-01-07 09:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=68.67 (Long<45, Short>55), Trend=up
+DEBUG Loop 113: EntryLen=614, PatternLen=154
+DEBUG SIM df_pattern at 2024-01-07 09:00:00 (Target Match):
+              timestamp  ...  macd_hist
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -20.304625
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 114 [2024-01-07 09:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=62.84 (Long<45, Short>55), Trend=up
+DEBUG Loop 114: EntryLen=615, PatternLen=154
+DEBUG SIM df_pattern at 2024-01-07 09:00:00 (Target Match):
+              timestamp  ...  macd_hist
+151 2024-01-07 07:00:00  ... -16.890291
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -21.825554
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 115 [2024-01-07 09:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=56.50 (Long<45, Short>55), Trend=up
+DEBUG Loop 115: EntryLen=616, PatternLen=154
+DEBUG SIM df_pattern at 2024-01-07 10:00:00 (Target Match):
+              timestamp  ...  macd_hist
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -24.282224
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 116 [2024-01-07 10:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=59.58 (Long<45, Short>55), Trend=up
+DEBUG Loop 116: EntryLen=617, PatternLen=155
+DEBUG SIM df_pattern at 2024-01-07 10:00:00 (Target Match):
+              timestamp  ...  macd_hist
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -23.734548
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 117 [2024-01-07 10:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=58.69 (Long<45, Short>55), Trend=up
+DEBUG Loop 117: EntryLen=618, PatternLen=155
+DEBUG SIM df_pattern at 2024-01-07 10:00:00 (Target Match):
+              timestamp  ...  macd_hist
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -24.110267
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 118 [2024-01-07 10:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=55.26 (Long<45, Short>55), Trend=up
+DEBUG Loop 118: EntryLen=619, PatternLen=155
+DEBUG SIM df_pattern at 2024-01-07 10:00:00 (Target Match):
+              timestamp  ...  macd_hist
+152 2024-01-07 08:00:00  ... -18.761749
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -22.984421
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 119 [2024-01-07 10:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=62.37 (Long<45, Short>55), Trend=up
+DEBUG Loop 119: EntryLen=620, PatternLen=155
+DEBUG SIM df_pattern at 2024-01-07 11:00:00 (Target Match):
+              timestamp  ...  macd_hist
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -24.888192
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 120 [2024-01-07 11:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=59.77 (Long<45, Short>55), Trend=up
+DEBUG Loop 120: EntryLen=621, PatternLen=156
+DEBUG SIM df_pattern at 2024-01-07 11:00:00 (Target Match):
+              timestamp  ...  macd_hist
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -25.808829
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 121 [2024-01-07 11:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=63.06 (Long<45, Short>55), Trend=up
+DEBUG Loop 121: EntryLen=622, PatternLen=156
+DEBUG SIM df_pattern at 2024-01-07 11:00:00 (Target Match):
+              timestamp  ...  macd_hist
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -26.103707
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 122 [2024-01-07 11:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=54.41 (Long<45, Short>55), Trend=up
+DEBUG Loop 122: EntryLen=623, PatternLen=156
+DEBUG SIM df_pattern at 2024-01-07 11:00:00 (Target Match):
+              timestamp  ...  macd_hist
+153 2024-01-07 09:00:00  ... -21.825554
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -26.332415
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 123 [2024-01-07 11:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=49.67 (Long<45, Short>55), Trend=up
+DEBUG Loop 123: EntryLen=624, PatternLen=156
+DEBUG SIM df_pattern at 2024-01-07 12:00:00 (Target Match):
+              timestamp  ...  macd_hist
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -27.797623
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 124 [2024-01-07 12:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=54.03 (Long<45, Short>55), Trend=up
+DEBUG Loop 124: EntryLen=625, PatternLen=157
+DEBUG SIM df_pattern at 2024-01-07 12:00:00 (Target Match):
+              timestamp  ...  macd_hist
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -27.861800
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 125 [2024-01-07 12:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=56.14 (Long<45, Short>55), Trend=up
+DEBUG Loop 125: EntryLen=626, PatternLen=157
+DEBUG SIM df_pattern at 2024-01-07 12:00:00 (Target Match):
+              timestamp  ...  macd_hist
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -28.457610
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 126 [2024-01-07 12:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=46.84 (Long<45, Short>55), Trend=up
+DEBUG Loop 126: EntryLen=627, PatternLen=157
+DEBUG SIM df_pattern at 2024-01-07 12:00:00 (Target Match):
+              timestamp  ...  macd_hist
+154 2024-01-07 10:00:00  ... -22.984421
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -26.917070
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 127 [2024-01-07 12:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=52.47 (Long<45, Short>55), Trend=up
+DEBUG Loop 127: EntryLen=628, PatternLen=157
+DEBUG SIM df_pattern at 2024-01-07 13:00:00 (Target Match):
+              timestamp  ...  macd_hist
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -29.998631
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 128 [2024-01-07 13:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=46.13 (Long<45, Short>55), Trend=up
+DEBUG Loop 128: EntryLen=629, PatternLen=158
+DEBUG SIM df_pattern at 2024-01-07 13:00:00 (Target Match):
+              timestamp  ...  macd_hist
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -29.606185
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 129 [2024-01-07 13:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=55.01 (Long<45, Short>55), Trend=up
+DEBUG Loop 129: EntryLen=630, PatternLen=158
+DEBUG SIM df_pattern at 2024-01-07 13:00:00 (Target Match):
+              timestamp  ...  macd_hist
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -29.473565
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 130 [2024-01-07 13:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=52.80 (Long<45, Short>55), Trend=up
+DEBUG Loop 130: EntryLen=631, PatternLen=158
+DEBUG SIM df_pattern at 2024-01-07 13:00:00 (Target Match):
+              timestamp  ...  macd_hist
+155 2024-01-07 11:00:00  ... -26.332415
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -28.807277
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 131 [2024-01-07 13:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=53.36 (Long<45, Short>55), Trend=up
+DEBUG Loop 131: EntryLen=632, PatternLen=158
+DEBUG SIM df_pattern at 2024-01-07 14:00:00 (Target Match):
+              timestamp  ...  macd_hist
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -30.586123
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 132 [2024-01-07 14:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=55.18 (Long<45, Short>55), Trend=up
+DEBUG Loop 132: EntryLen=633, PatternLen=159
+DEBUG SIM df_pattern at 2024-01-07 14:00:00 (Target Match):
+              timestamp  ...  macd_hist
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -30.759971
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 133 [2024-01-07 14:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=48.23 (Long<45, Short>55), Trend=up
+DEBUG Loop 133: EntryLen=634, PatternLen=159
+DEBUG SIM df_pattern at 2024-01-07 14:00:00 (Target Match):
+              timestamp  ...  macd_hist
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -31.529089
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 134 [2024-01-07 14:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=44.96 (Long<45, Short>55), Trend=up
+DEBUG Loop 134: EntryLen=635, PatternLen=159
+DEBUG SIM df_pattern at 2024-01-07 14:00:00 (Target Match):
+              timestamp  ...  macd_hist
+156 2024-01-07 12:00:00  ... -26.917070
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -31.204680
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 135 [2024-01-07 14:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=51.79 (Long<45, Short>55), Trend=up
+DEBUG Loop 135: EntryLen=636, PatternLen=159
+DEBUG SIM df_pattern at 2024-01-07 15:00:00 (Target Match):
+              timestamp  ...  macd_hist
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.502423
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 136 [2024-01-07 15:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=50.90 (Long<45, Short>55), Trend=up
+DEBUG Loop 136: EntryLen=637, PatternLen=160
+DEBUG SIM df_pattern at 2024-01-07 15:00:00 (Target Match):
+              timestamp  ...  macd_hist
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.629491
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 137 [2024-01-07 15:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=51.49 (Long<45, Short>55), Trend=up
+DEBUG Loop 137: EntryLen=638, PatternLen=160
+DEBUG SIM df_pattern at 2024-01-07 15:00:00 (Target Match):
+              timestamp  ...  macd_hist
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -34.692925
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 138 [2024-01-07 15:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=36.60 (Long<45, Short>55), Trend=up
+DEBUG Loop 138: EntryLen=639, PatternLen=160
+DEBUG SIM df_pattern at 2024-01-07 15:00:00 (Target Match):
+              timestamp  ...  macd_hist
+157 2024-01-07 13:00:00  ... -28.807277
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.548969
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 139 [2024-01-07 15:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=44.54 (Long<45, Short>55), Trend=up
+DEBUG Loop 139: EntryLen=640, PatternLen=160
+DEBUG SIM df_pattern at 2024-01-07 16:00:00 (Target Match):
+              timestamp  ...  macd_hist
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -36.093421
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 140 [2024-01-07 16:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=43.03 (Long<45, Short>55), Trend=up
+DEBUG Loop 140: EntryLen=641, PatternLen=161
+DEBUG SIM df_pattern at 2024-01-07 16:00:00 (Target Match):
+              timestamp  ...  macd_hist
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -35.187966
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 141 [2024-01-07 16:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=39.06 (Long<45, Short>55), Trend=up
+DEBUG Loop 141: EntryLen=642, PatternLen=161
+DEBUG SIM df_pattern at 2024-01-07 16:00:00 (Target Match):
+              timestamp  ...  macd_hist
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -36.128922
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 142 [2024-01-07 16:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=44.22 (Long<45, Short>55), Trend=up
+DEBUG Loop 142: EntryLen=643, PatternLen=161
+DEBUG SIM df_pattern at 2024-01-07 16:00:00 (Target Match):
+              timestamp  ...  macd_hist
+158 2024-01-07 14:00:00  ... -31.204680
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -34.212577
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 143 [2024-01-07 16:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=53.09 (Long<45, Short>55), Trend=up
+DEBUG Loop 143: EntryLen=644, PatternLen=161
+DEBUG SIM df_pattern at 2024-01-07 17:00:00 (Target Match):
+              timestamp  ...  macd_hist
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.951629
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 144 [2024-01-07 17:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=42.22 (Long<45, Short>55), Trend=up
+DEBUG Loop 144: EntryLen=645, PatternLen=162
+DEBUG SIM df_pattern at 2024-01-07 17:00:00 (Target Match):
+              timestamp  ...  macd_hist
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.591006
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 145 [2024-01-07 17:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=40.67 (Long<45, Short>55), Trend=up
+DEBUG Loop 145: EntryLen=646, PatternLen=162
+DEBUG SIM df_pattern at 2024-01-07 17:00:00 (Target Match):
+              timestamp  ...  macd_hist
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.891641
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 146 [2024-01-07 17:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=39.80 (Long<45, Short>55), Trend=up
+DEBUG Loop 146: EntryLen=647, PatternLen=162
+DEBUG SIM df_pattern at 2024-01-07 17:00:00 (Target Match):
+              timestamp  ...  macd_hist
+159 2024-01-07 15:00:00  ... -33.548969
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.934229
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 147 [2024-01-07 17:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=40.25 (Long<45, Short>55), Trend=up
+DEBUG Loop 147: EntryLen=648, PatternLen=162
+DEBUG SIM df_pattern at 2024-01-07 18:00:00 (Target Match):
+              timestamp  ...  macd_hist
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -40.118324
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 148 [2024-01-07 18:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=37.34 (Long<45, Short>55), Trend=up
+DEBUG Loop 148: EntryLen=649, PatternLen=163
+DEBUG SIM df_pattern at 2024-01-07 18:00:00 (Target Match):
+              timestamp  ...  macd_hist
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -40.031884
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 149 [2024-01-07 18:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=36.12 (Long<45, Short>55), Trend=up
+DEBUG Loop 149: EntryLen=650, PatternLen=163
+DEBUG SIM df_pattern at 2024-01-07 18:00:00 (Target Match):
+              timestamp  ...  macd_hist
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -39.698301
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 150 [2024-01-07 18:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=39.22 (Long<45, Short>55), Trend=up
+DEBUG Loop 150: EntryLen=651, PatternLen=163
+DEBUG SIM df_pattern at 2024-01-07 18:00:00 (Target Match):
+              timestamp  ...  macd_hist
+160 2024-01-07 16:00:00  ... -34.212577
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -39.232174
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 151 [2024-01-07 18:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=41.89 (Long<45, Short>55), Trend=up
+DEBUG Loop 151: EntryLen=652, PatternLen=163
+DEBUG SIM df_pattern at 2024-01-07 19:00:00 (Target Match):
+              timestamp  ...  macd_hist
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -41.074389
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 152 [2024-01-07 19:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=42.79 (Long<45, Short>55), Trend=up
+DEBUG Loop 152: EntryLen=653, PatternLen=164
+DEBUG SIM df_pattern at 2024-01-07 19:00:00 (Target Match):
+              timestamp  ...  macd_hist
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -41.023989
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 153 [2024-01-07 19:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=37.15 (Long<45, Short>55), Trend=up
+DEBUG Loop 153: EntryLen=654, PatternLen=164
+DEBUG SIM df_pattern at 2024-01-07 19:00:00 (Target Match):
+              timestamp  ...  macd_hist
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -40.165369
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 154 [2024-01-07 19:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=45.17 (Long<45, Short>55), Trend=up
+DEBUG Loop 154: EntryLen=655, PatternLen=164
+DEBUG SIM df_pattern at 2024-01-07 19:00:00 (Target Match):
+              timestamp  ...  macd_hist
+161 2024-01-07 17:00:00  ... -36.934229
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -42.428530
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 155 [2024-01-07 19:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=32.90 (Long<45, Short>55), Trend=up
+DEBUG Loop 155: EntryLen=656, PatternLen=164
+DEBUG SIM df_pattern at 2024-01-07 20:00:00 (Target Match):
+              timestamp  ...  macd_hist
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -43.249617
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 156 [2024-01-07 20:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=38.39 (Long<45, Short>55), Trend=up
+DEBUG Loop 156: EntryLen=657, PatternLen=165
+DEBUG SIM df_pattern at 2024-01-07 20:00:00 (Target Match):
+              timestamp  ...  macd_hist
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -44.433425
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 157 [2024-01-07 20:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=23.82 (Long<45, Short>55), Trend=up
+DEBUG Loop 157: EntryLen=658, PatternLen=165
+DEBUG SIM df_pattern at 2024-01-07 20:00:00 (Target Match):
+              timestamp  ...  macd_hist
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -44.549007
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 158 [2024-01-07 20:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=29.54 (Long<45, Short>55), Trend=up
+DEBUG Loop 158: EntryLen=659, PatternLen=165
+DEBUG SIM df_pattern at 2024-01-07 20:00:00 (Target Match):
+              timestamp  ...  macd_hist
+162 2024-01-07 18:00:00  ... -39.232174
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -45.012820
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 159 [2024-01-07 20:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.26 (Long<45, Short>55), Trend=up
+DEBUG Loop 159: EntryLen=660, PatternLen=165
+DEBUG SIM df_pattern at 2024-01-07 21:00:00 (Target Match):
+              timestamp  ...  macd_hist
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -45.535713
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 160 [2024-01-07 21:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.70 (Long<45, Short>55), Trend=up
+DEBUG Loop 160: EntryLen=661, PatternLen=166
+DEBUG SIM df_pattern at 2024-01-07 21:00:00 (Target Match):
+              timestamp  ...  macd_hist
+163 2024-01-07 19:00:00  ...  -42.42853
+164 2024-01-07 20:00:00  ...  -45.01282
+165 2024-01-07 21:00:00  ...  -46.12854
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 161 [2024-01-07 21:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=26.12 (Long<45, Short>55), Trend=up
+DEBUG Loop 161: EntryLen=662, PatternLen=166
+DEBUG SIM df_pattern at 2024-01-07 21:00:00 (Target Match):
+              timestamp  ...  macd_hist
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -47.257175
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 162 [2024-01-07 21:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.67 (Long<45, Short>55), Trend=up
+DEBUG Loop 162: EntryLen=663, PatternLen=166
+DEBUG SIM df_pattern at 2024-01-07 21:00:00 (Target Match):
+              timestamp  ...  macd_hist
+163 2024-01-07 19:00:00  ... -42.428530
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -47.354981
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 163 [2024-01-07 21:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=26.69 (Long<45, Short>55), Trend=up
+DEBUG Loop 163: EntryLen=664, PatternLen=166
+DEBUG SIM df_pattern at 2024-01-07 22:00:00 (Target Match):
+              timestamp  ...  macd_hist
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -46.400981
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 164 [2024-01-07 22:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=33.67 (Long<45, Short>55), Trend=up
+DEBUG Loop 164: EntryLen=665, PatternLen=167
+DEBUG SIM df_pattern at 2024-01-07 22:00:00 (Target Match):
+              timestamp  ...  macd_hist
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.498497
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 165 [2024-01-07 22:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=24.96 (Long<45, Short>55), Trend=up
+DEBUG Loop 165: EntryLen=666, PatternLen=167
+DEBUG SIM df_pattern at 2024-01-07 22:00:00 (Target Match):
+              timestamp  ...  macd_hist
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.189009
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 166 [2024-01-07 22:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=28.83 (Long<45, Short>55), Trend=up
+DEBUG Loop 166: EntryLen=667, PatternLen=167
+DEBUG SIM df_pattern at 2024-01-07 22:00:00 (Target Match):
+              timestamp  ...  macd_hist
+164 2024-01-07 20:00:00  ... -45.012820
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.486628
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 167 [2024-01-07 22:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.77 (Long<45, Short>55), Trend=up
+DEBUG Loop 167: EntryLen=668, PatternLen=167
+DEBUG SIM df_pattern at 2024-01-07 23:00:00 (Target Match):
+              timestamp  ...  macd_hist
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.486628
+167 2024-01-07 23:00:00  ... -48.234511
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 168 [2024-01-07 23:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=21.20 (Long<45, Short>55), Trend=up
+DEBUG Loop 168: EntryLen=669, PatternLen=168
+DEBUG SIM df_pattern at 2024-01-07 23:00:00 (Target Match):
+              timestamp  ...  macd_hist
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.486628
+167 2024-01-07 23:00:00  ... -50.765012
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 169 [2024-01-07 23:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.69 (Long<45, Short>55), Trend=up
+DEBUG Loop 169: EntryLen=670, PatternLen=168
+DEBUG SIM df_pattern at 2024-01-07 23:00:00 (Target Match):
+              timestamp  ...  macd_hist
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.486628
+167 2024-01-07 23:00:00  ... -49.488756
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 170 [2024-01-07 23:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.74 (Long<45, Short>55), Trend=up
+DEBUG Loop 170: EntryLen=671, PatternLen=168
+DEBUG SIM df_pattern at 2024-01-07 23:00:00 (Target Match):
+              timestamp  ...  macd_hist
+165 2024-01-07 21:00:00  ... -47.354981
+166 2024-01-07 22:00:00  ... -48.486628
+167 2024-01-07 23:00:00  ... -49.485712
+
+[3 rows x 11 columns]
+DEBUG SIM Params: Tol=0.1, Val=24
+DEBUG SIM Signals Found: 1
+DEBUG First Sig: {'time': Timestamp('2024-01-07 01:00:00'), 'type': 'Short', 'pattern': 'M'}
+DEBUG Loop 171 [2024-01-07 23:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=28.60 (Long<45, Short>55), Trend=up
+DEBUG Loop 171: EntryLen=672, PatternLen=168
+DEBUG Loop 172 [2024-01-08 00:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.27 (Long<45, Short>55), Trend=up
+DEBUG Loop 172: EntryLen=673, PatternLen=169
+DEBUG Loop 173 [2024-01-08 00:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=26.13 (Long<45, Short>55), Trend=up
+DEBUG Loop 173: EntryLen=674, PatternLen=169
+DEBUG Loop 174 [2024-01-08 00:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=23.22 (Long<45, Short>55), Trend=up
+DEBUG Loop 174: EntryLen=675, PatternLen=169
+DEBUG Loop 175 [2024-01-08 00:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=26.65 (Long<45, Short>55), Trend=up
+DEBUG Loop 175: EntryLen=676, PatternLen=169
+DEBUG Loop 176 [2024-01-08 01:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=30.46 (Long<45, Short>55), Trend=up
+DEBUG Loop 176: EntryLen=677, PatternLen=170
+DEBUG Loop 177 [2024-01-08 01:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.77 (Long<45, Short>55), Trend=up
+DEBUG Loop 177: EntryLen=678, PatternLen=170
+DEBUG Loop 178 [2024-01-08 01:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.82 (Long<45, Short>55), Trend=up
+DEBUG Loop 178: EntryLen=679, PatternLen=170
+DEBUG Loop 179 [2024-01-08 01:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=22.01 (Long<45, Short>55), Trend=up
+DEBUG Loop 179: EntryLen=680, PatternLen=170
+DEBUG Loop 180 [2024-01-08 02:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=21.59 (Long<45, Short>55), Trend=up
+DEBUG Loop 180: EntryLen=681, PatternLen=171
+DEBUG Loop 181 [2024-01-08 02:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.09 (Long<45, Short>55), Trend=up
+DEBUG Loop 181: EntryLen=682, PatternLen=171
+DEBUG Loop 182 [2024-01-08 02:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.64 (Long<45, Short>55), Trend=up
+DEBUG Loop 182: EntryLen=683, PatternLen=171
+DEBUG Loop 183 [2024-01-08 02:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.26 (Long<45, Short>55), Trend=up
+DEBUG Loop 183: EntryLen=684, PatternLen=171
+DEBUG Loop 184 [2024-01-08 03:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.65 (Long<45, Short>55), Trend=up
+DEBUG Loop 184: EntryLen=685, PatternLen=172
+DEBUG Loop 185 [2024-01-08 03:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.96 (Long<45, Short>55), Trend=up
+DEBUG Loop 185: EntryLen=686, PatternLen=172
+DEBUG Loop 186 [2024-01-08 03:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.85 (Long<45, Short>55), Trend=up
+DEBUG Loop 186: EntryLen=687, PatternLen=172
+DEBUG Loop 187 [2024-01-08 03:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=19.73 (Long<45, Short>55), Trend=up
+DEBUG Loop 187: EntryLen=688, PatternLen=172
+DEBUG Loop 188 [2024-01-08 04:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.37 (Long<45, Short>55), Trend=down
+DEBUG Loop 188: EntryLen=689, PatternLen=173
+DEBUG Loop 189 [2024-01-08 04:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.78 (Long<45, Short>55), Trend=down
+DEBUG Loop 189: EntryLen=690, PatternLen=173
+DEBUG Loop 190 [2024-01-08 04:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 190: EntryLen=691, PatternLen=173
+DEBUG Loop 191 [2024-01-08 04:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.42 (Long<45, Short>55), Trend=down
+DEBUG Loop 191: EntryLen=692, PatternLen=173
+DEBUG Loop 192 [2024-01-08 05:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.75 (Long<45, Short>55), Trend=down
+DEBUG Loop 192: EntryLen=693, PatternLen=174
+DEBUG Loop 193 [2024-01-08 05:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.47 (Long<45, Short>55), Trend=down
+DEBUG Loop 193: EntryLen=694, PatternLen=174
+DEBUG Loop 194 [2024-01-08 05:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.30 (Long<45, Short>55), Trend=down
+DEBUG Loop 194: EntryLen=695, PatternLen=174
+DEBUG Loop 195 [2024-01-08 05:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.66 (Long<45, Short>55), Trend=down
+DEBUG Loop 195: EntryLen=696, PatternLen=174
+DEBUG Loop 196 [2024-01-08 06:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.41 (Long<45, Short>55), Trend=down
+DEBUG Loop 196: EntryLen=697, PatternLen=175
+DEBUG Loop 197 [2024-01-08 06:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.54 (Long<45, Short>55), Trend=down
+DEBUG Loop 197: EntryLen=698, PatternLen=175
+DEBUG Loop 198 [2024-01-08 06:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=22.38 (Long<45, Short>55), Trend=down
+DEBUG Loop 198: EntryLen=699, PatternLen=175
+DEBUG Loop 199 [2024-01-08 06:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=22.92 (Long<45, Short>55), Trend=down
+DEBUG Loop 199: EntryLen=700, PatternLen=175
+DEBUG Loop 200 [2024-01-08 07:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.60 (Long<45, Short>55), Trend=down
+DEBUG Loop 200: EntryLen=701, PatternLen=176
+DEBUG Loop 201 [2024-01-08 07:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.26 (Long<45, Short>55), Trend=down
+DEBUG Loop 201: EntryLen=702, PatternLen=176
+DEBUG Loop 202 [2024-01-08 07:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.09 (Long<45, Short>55), Trend=down
+DEBUG Loop 202: EntryLen=703, PatternLen=176
+DEBUG Loop 203 [2024-01-08 07:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.75 (Long<45, Short>55), Trend=down
+DEBUG Loop 203: EntryLen=704, PatternLen=176
+DEBUG Loop 204 [2024-01-08 08:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=19.19 (Long<45, Short>55), Trend=down
+DEBUG Loop 204: EntryLen=705, PatternLen=177
+DEBUG Loop 205 [2024-01-08 08:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.07 (Long<45, Short>55), Trend=down
+DEBUG Loop 205: EntryLen=706, PatternLen=177
+DEBUG Loop 206 [2024-01-08 08:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.45 (Long<45, Short>55), Trend=down
+DEBUG Loop 206: EntryLen=707, PatternLen=177
+DEBUG Loop 207 [2024-01-08 08:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.78 (Long<45, Short>55), Trend=down
+DEBUG Loop 207: EntryLen=708, PatternLen=177
+DEBUG Loop 208 [2024-01-08 09:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.66 (Long<45, Short>55), Trend=down
+DEBUG Loop 208: EntryLen=709, PatternLen=178
+DEBUG Loop 209 [2024-01-08 09:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.47 (Long<45, Short>55), Trend=down
+DEBUG Loop 209: EntryLen=710, PatternLen=178
+DEBUG Loop 210 [2024-01-08 09:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.56 (Long<45, Short>55), Trend=down
+DEBUG Loop 210: EntryLen=711, PatternLen=178
+DEBUG Loop 211 [2024-01-08 09:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.62 (Long<45, Short>55), Trend=down
+DEBUG Loop 211: EntryLen=712, PatternLen=178
+DEBUG Loop 212 [2024-01-08 10:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.32 (Long<45, Short>55), Trend=down
+DEBUG Loop 212: EntryLen=713, PatternLen=179
+DEBUG Loop 213 [2024-01-08 10:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=4.84 (Long<45, Short>55), Trend=down
+DEBUG Loop 213: EntryLen=714, PatternLen=179
+DEBUG Loop 214 [2024-01-08 10:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.04 (Long<45, Short>55), Trend=down
+DEBUG Loop 214: EntryLen=715, PatternLen=179
+DEBUG Loop 215 [2024-01-08 10:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.45 (Long<45, Short>55), Trend=down
+DEBUG Loop 215: EntryLen=716, PatternLen=179
+DEBUG Loop 216 [2024-01-08 11:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.41 (Long<45, Short>55), Trend=down
+DEBUG Loop 216: EntryLen=717, PatternLen=180
+DEBUG Loop 217 [2024-01-08 11:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.71 (Long<45, Short>55), Trend=down
+DEBUG Loop 217: EntryLen=718, PatternLen=180
+DEBUG Loop 218 [2024-01-08 11:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.93 (Long<45, Short>55), Trend=down
+DEBUG Loop 218: EntryLen=719, PatternLen=180
+DEBUG Loop 219 [2024-01-08 11:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.21 (Long<45, Short>55), Trend=down
+DEBUG Loop 219: EntryLen=720, PatternLen=180
+DEBUG Loop 220 [2024-01-08 12:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.52 (Long<45, Short>55), Trend=down
+DEBUG Loop 220: EntryLen=721, PatternLen=181
+DEBUG Loop 221 [2024-01-08 12:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.08 (Long<45, Short>55), Trend=down
+DEBUG Loop 221: EntryLen=722, PatternLen=181
+DEBUG Loop 222 [2024-01-08 12:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.45 (Long<45, Short>55), Trend=down
+DEBUG Loop 222: EntryLen=723, PatternLen=181
+DEBUG Loop 223 [2024-01-08 12:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.88 (Long<45, Short>55), Trend=down
+DEBUG Loop 223: EntryLen=724, PatternLen=181
+DEBUG Loop 224 [2024-01-08 13:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.80 (Long<45, Short>55), Trend=down
+DEBUG Loop 224: EntryLen=725, PatternLen=182
+DEBUG Loop 225 [2024-01-08 13:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.39 (Long<45, Short>55), Trend=down
+DEBUG Loop 225: EntryLen=726, PatternLen=182
+DEBUG Loop 226 [2024-01-08 13:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.04 (Long<45, Short>55), Trend=down
+DEBUG Loop 226: EntryLen=727, PatternLen=182
+DEBUG Loop 227 [2024-01-08 13:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.50 (Long<45, Short>55), Trend=down
+DEBUG Loop 227: EntryLen=728, PatternLen=182
+DEBUG Loop 228 [2024-01-08 14:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.08 (Long<45, Short>55), Trend=down
+DEBUG Loop 228: EntryLen=729, PatternLen=183
+DEBUG Loop 229 [2024-01-08 14:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.76 (Long<45, Short>55), Trend=down
+DEBUG Loop 229: EntryLen=730, PatternLen=183
+DEBUG Loop 230 [2024-01-08 14:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=6.38 (Long<45, Short>55), Trend=down
+DEBUG Loop 230: EntryLen=731, PatternLen=183
+DEBUG Loop 231 [2024-01-08 14:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.99 (Long<45, Short>55), Trend=down
+DEBUG Loop 231: EntryLen=732, PatternLen=183
+DEBUG Loop 232 [2024-01-08 15:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.00 (Long<45, Short>55), Trend=down
+DEBUG Loop 232: EntryLen=733, PatternLen=184
+DEBUG Loop 233 [2024-01-08 15:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.83 (Long<45, Short>55), Trend=down
+DEBUG Loop 233: EntryLen=734, PatternLen=184
+DEBUG Loop 234 [2024-01-08 15:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.08 (Long<45, Short>55), Trend=down
+DEBUG Loop 234: EntryLen=735, PatternLen=184
+DEBUG Loop 235 [2024-01-08 15:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.80 (Long<45, Short>55), Trend=down
+DEBUG Loop 235: EntryLen=736, PatternLen=184
+DEBUG Loop 236 [2024-01-08 16:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.84 (Long<45, Short>55), Trend=down
+DEBUG Loop 236: EntryLen=737, PatternLen=185
+DEBUG Loop 237 [2024-01-08 16:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.42 (Long<45, Short>55), Trend=down
+DEBUG Loop 237: EntryLen=738, PatternLen=185
+DEBUG Loop 238 [2024-01-08 16:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 238: EntryLen=739, PatternLen=185
+DEBUG Loop 239 [2024-01-08 16:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.73 (Long<45, Short>55), Trend=down
+DEBUG Loop 239: EntryLen=740, PatternLen=185
+DEBUG Loop 240 [2024-01-08 17:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.94 (Long<45, Short>55), Trend=down
+DEBUG Loop 240: EntryLen=741, PatternLen=186
+DEBUG Loop 241 [2024-01-08 17:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.32 (Long<45, Short>55), Trend=down
+DEBUG Loop 241: EntryLen=742, PatternLen=186
+DEBUG Loop 242 [2024-01-08 17:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 242: EntryLen=743, PatternLen=186
+DEBUG Loop 243 [2024-01-08 17:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.27 (Long<45, Short>55), Trend=down
+DEBUG Loop 243: EntryLen=744, PatternLen=186
+DEBUG Loop 244 [2024-01-08 18:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.37 (Long<45, Short>55), Trend=down
+DEBUG Loop 244: EntryLen=745, PatternLen=187
+DEBUG Loop 245 [2024-01-08 18:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 245: EntryLen=746, PatternLen=187
+DEBUG Loop 246 [2024-01-08 18:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.00 (Long<45, Short>55), Trend=down
+DEBUG Loop 246: EntryLen=747, PatternLen=187
+DEBUG Loop 247 [2024-01-08 18:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.00 (Long<45, Short>55), Trend=down
+DEBUG Loop 247: EntryLen=748, PatternLen=187
+DEBUG Loop 248 [2024-01-08 19:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 248: EntryLen=749, PatternLen=188
+DEBUG Loop 249 [2024-01-08 19:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 249: EntryLen=750, PatternLen=188
+DEBUG Loop 250 [2024-01-08 19:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 250: EntryLen=751, PatternLen=188
+DEBUG Loop 251 [2024-01-08 19:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 251: EntryLen=752, PatternLen=188
+DEBUG Loop 252 [2024-01-08 20:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 252: EntryLen=753, PatternLen=189
+DEBUG Loop 253 [2024-01-08 20:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 253: EntryLen=754, PatternLen=189
+DEBUG Loop 254 [2024-01-08 20:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 254: EntryLen=755, PatternLen=189
+DEBUG Loop 255 [2024-01-08 20:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 255: EntryLen=756, PatternLen=189
+DEBUG Loop 256 [2024-01-08 21:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=0.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 256: EntryLen=757, PatternLen=190
+DEBUG Loop 257 [2024-01-08 21:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.92 (Long<45, Short>55), Trend=down
+DEBUG Loop 257: EntryLen=758, PatternLen=190
+DEBUG Loop 258 [2024-01-08 21:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.09 (Long<45, Short>55), Trend=down
+DEBUG Loop 258: EntryLen=759, PatternLen=190
+DEBUG Loop 259 [2024-01-08 21:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.06 (Long<45, Short>55), Trend=down
+DEBUG Loop 259: EntryLen=760, PatternLen=190
+DEBUG Loop 260 [2024-01-08 22:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=5.44 (Long<45, Short>55), Trend=down
+DEBUG Loop 260: EntryLen=761, PatternLen=191
+DEBUG Loop 261 [2024-01-08 22:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=4.99 (Long<45, Short>55), Trend=down
+DEBUG Loop 261: EntryLen=762, PatternLen=191
+DEBUG Loop 262 [2024-01-08 22:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.59 (Long<45, Short>55), Trend=down
+DEBUG Loop 262: EntryLen=763, PatternLen=191
+DEBUG Loop 263 [2024-01-08 22:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.07 (Long<45, Short>55), Trend=down
+DEBUG Loop 263: EntryLen=764, PatternLen=191
+DEBUG Loop 264 [2024-01-08 23:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.69 (Long<45, Short>55), Trend=down
+DEBUG Loop 264: EntryLen=765, PatternLen=192
+DEBUG Loop 265 [2024-01-08 23:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=7.73 (Long<45, Short>55), Trend=down
+DEBUG Loop 265: EntryLen=766, PatternLen=192
+DEBUG Loop 266 [2024-01-08 23:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=7.68 (Long<45, Short>55), Trend=down
+DEBUG Loop 266: EntryLen=767, PatternLen=192
+DEBUG Loop 267 [2024-01-08 23:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.55 (Long<45, Short>55), Trend=down
+DEBUG Loop 267: EntryLen=768, PatternLen=192
+DEBUG Loop 268 [2024-01-09 00:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.21 (Long<45, Short>55), Trend=down
+DEBUG Loop 268: EntryLen=769, PatternLen=193
+DEBUG Loop 269 [2024-01-09 00:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.60 (Long<45, Short>55), Trend=down
+DEBUG Loop 269: EntryLen=770, PatternLen=193
+DEBUG Loop 270 [2024-01-09 00:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.64 (Long<45, Short>55), Trend=down
+DEBUG Loop 270: EntryLen=771, PatternLen=193
+DEBUG Loop 271 [2024-01-09 00:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.85 (Long<45, Short>55), Trend=down
+DEBUG Loop 271: EntryLen=772, PatternLen=193
+DEBUG Loop 272 [2024-01-09 01:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.21 (Long<45, Short>55), Trend=down
+DEBUG Loop 272: EntryLen=773, PatternLen=194
+DEBUG Loop 273 [2024-01-09 01:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.70 (Long<45, Short>55), Trend=down
+DEBUG Loop 273: EntryLen=774, PatternLen=194
+DEBUG Loop 274 [2024-01-09 01:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.55 (Long<45, Short>55), Trend=down
+DEBUG Loop 274: EntryLen=775, PatternLen=194
+DEBUG Loop 275 [2024-01-09 01:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.41 (Long<45, Short>55), Trend=down
+DEBUG Loop 275: EntryLen=776, PatternLen=194
+DEBUG Loop 276 [2024-01-09 02:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.46 (Long<45, Short>55), Trend=down
+DEBUG Loop 276: EntryLen=777, PatternLen=195
+DEBUG Loop 277 [2024-01-09 02:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.33 (Long<45, Short>55), Trend=down
+DEBUG Loop 277: EntryLen=778, PatternLen=195
+DEBUG Loop 278 [2024-01-09 02:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.33 (Long<45, Short>55), Trend=down
+DEBUG Loop 278: EntryLen=779, PatternLen=195
+DEBUG Loop 279 [2024-01-09 02:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.86 (Long<45, Short>55), Trend=down
+DEBUG Loop 279: EntryLen=780, PatternLen=195
+DEBUG Loop 280 [2024-01-09 03:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 280: EntryLen=781, PatternLen=196
+DEBUG Loop 281 [2024-01-09 03:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 281: EntryLen=782, PatternLen=196
+DEBUG Loop 282 [2024-01-09 03:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.77 (Long<45, Short>55), Trend=down
+DEBUG Loop 282: EntryLen=783, PatternLen=196
+DEBUG Loop 283 [2024-01-09 03:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.80 (Long<45, Short>55), Trend=down
+DEBUG Loop 283: EntryLen=784, PatternLen=196
+DEBUG Loop 284 [2024-01-09 04:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.95 (Long<45, Short>55), Trend=down
+DEBUG Loop 284: EntryLen=785, PatternLen=197
+DEBUG Loop 285 [2024-01-09 04:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.06 (Long<45, Short>55), Trend=down
+DEBUG Loop 285: EntryLen=786, PatternLen=197
+DEBUG Loop 286 [2024-01-09 04:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=9.97 (Long<45, Short>55), Trend=down
+DEBUG Loop 286: EntryLen=787, PatternLen=197
+DEBUG Loop 287 [2024-01-09 04:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.16 (Long<45, Short>55), Trend=down
+DEBUG Loop 287: EntryLen=788, PatternLen=197
+DEBUG Loop 288 [2024-01-09 05:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=7.32 (Long<45, Short>55), Trend=down
+DEBUG Loop 288: EntryLen=789, PatternLen=198
+DEBUG Loop 289 [2024-01-09 05:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.07 (Long<45, Short>55), Trend=down
+DEBUG Loop 289: EntryLen=790, PatternLen=198
+DEBUG Loop 290 [2024-01-09 05:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.31 (Long<45, Short>55), Trend=down
+DEBUG Loop 290: EntryLen=791, PatternLen=198
+DEBUG Loop 291 [2024-01-09 05:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.58 (Long<45, Short>55), Trend=down
+DEBUG Loop 291: EntryLen=792, PatternLen=198
+DEBUG Loop 292 [2024-01-09 06:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.71 (Long<45, Short>55), Trend=down
+DEBUG Loop 292: EntryLen=793, PatternLen=199
+DEBUG Loop 293 [2024-01-09 06:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.89 (Long<45, Short>55), Trend=down
+DEBUG Loop 293: EntryLen=794, PatternLen=199
+DEBUG Loop 294 [2024-01-09 06:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.89 (Long<45, Short>55), Trend=down
+DEBUG Loop 294: EntryLen=795, PatternLen=199
+DEBUG Loop 295 [2024-01-09 06:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.68 (Long<45, Short>55), Trend=down
+DEBUG Loop 295: EntryLen=796, PatternLen=199
+DEBUG Loop 296 [2024-01-09 07:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.82 (Long<45, Short>55), Trend=down
+DEBUG Loop 296: EntryLen=797, PatternLen=200
+DEBUG Loop 297 [2024-01-09 07:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.25 (Long<45, Short>55), Trend=down
+DEBUG Loop 297: EntryLen=798, PatternLen=200
+DEBUG Loop 298 [2024-01-09 07:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.22 (Long<45, Short>55), Trend=down
+DEBUG Loop 298: EntryLen=799, PatternLen=200
+DEBUG Loop 299 [2024-01-09 07:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.65 (Long<45, Short>55), Trend=down
+DEBUG Loop 299: EntryLen=800, PatternLen=200
+DEBUG Loop 300 [2024-01-09 08:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.61 (Long<45, Short>55), Trend=down
+DEBUG Loop 300: EntryLen=801, PatternLen=201
+DEBUG Loop 301 [2024-01-09 08:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.68 (Long<45, Short>55), Trend=down
+DEBUG Loop 301: EntryLen=802, PatternLen=201
+DEBUG Loop 302 [2024-01-09 08:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.99 (Long<45, Short>55), Trend=down
+DEBUG Loop 302: EntryLen=803, PatternLen=201
+DEBUG Loop 303 [2024-01-09 08:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.92 (Long<45, Short>55), Trend=down
+DEBUG Loop 303: EntryLen=804, PatternLen=201
+DEBUG Loop 304 [2024-01-09 09:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.69 (Long<45, Short>55), Trend=down
+DEBUG Loop 304: EntryLen=805, PatternLen=202
+DEBUG Loop 305 [2024-01-09 09:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=3.51 (Long<45, Short>55), Trend=down
+DEBUG Loop 305: EntryLen=806, PatternLen=202
+DEBUG Loop 306 [2024-01-09 09:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.23 (Long<45, Short>55), Trend=down
+DEBUG Loop 306: EntryLen=807, PatternLen=202
+DEBUG Loop 307 [2024-01-09 09:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.33 (Long<45, Short>55), Trend=down
+DEBUG Loop 307: EntryLen=808, PatternLen=202
+DEBUG Loop 308 [2024-01-09 10:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.05 (Long<45, Short>55), Trend=down
+DEBUG Loop 308: EntryLen=809, PatternLen=203
+DEBUG Loop 309 [2024-01-09 10:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=12.16 (Long<45, Short>55), Trend=down
+DEBUG Loop 309: EntryLen=810, PatternLen=203
+DEBUG Loop 310 [2024-01-09 10:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.23 (Long<45, Short>55), Trend=down
+DEBUG Loop 310: EntryLen=811, PatternLen=203
+DEBUG Loop 311 [2024-01-09 10:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.34 (Long<45, Short>55), Trend=down
+DEBUG Loop 311: EntryLen=812, PatternLen=203
+DEBUG Loop 312 [2024-01-09 11:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.21 (Long<45, Short>55), Trend=down
+DEBUG Loop 312: EntryLen=813, PatternLen=204
+DEBUG Loop 313 [2024-01-09 11:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=11.45 (Long<45, Short>55), Trend=down
+DEBUG Loop 313: EntryLen=814, PatternLen=204
+DEBUG Loop 314 [2024-01-09 11:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=10.78 (Long<45, Short>55), Trend=down
+DEBUG Loop 314: EntryLen=815, PatternLen=204
+DEBUG Loop 315 [2024-01-09 11:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.80 (Long<45, Short>55), Trend=down
+DEBUG Loop 315: EntryLen=816, PatternLen=204
+DEBUG Loop 316 [2024-01-09 12:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.49 (Long<45, Short>55), Trend=down
+DEBUG Loop 316: EntryLen=817, PatternLen=205
+DEBUG Loop 317 [2024-01-09 12:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.10 (Long<45, Short>55), Trend=down
+DEBUG Loop 317: EntryLen=818, PatternLen=205
+DEBUG Loop 318 [2024-01-09 12:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.51 (Long<45, Short>55), Trend=down
+DEBUG Loop 318: EntryLen=819, PatternLen=205
+DEBUG Loop 319 [2024-01-09 12:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.97 (Long<45, Short>55), Trend=down
+DEBUG Loop 319: EntryLen=820, PatternLen=205
+DEBUG Loop 320 [2024-01-09 13:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.66 (Long<45, Short>55), Trend=down
+DEBUG Loop 320: EntryLen=821, PatternLen=206
+DEBUG Loop 321 [2024-01-09 13:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=8.05 (Long<45, Short>55), Trend=down
+DEBUG Loop 321: EntryLen=822, PatternLen=206
+DEBUG Loop 322 [2024-01-09 13:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=7.96 (Long<45, Short>55), Trend=down
+DEBUG Loop 322: EntryLen=823, PatternLen=206
+DEBUG Loop 323 [2024-01-09 13:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.26 (Long<45, Short>55), Trend=down
+DEBUG Loop 323: EntryLen=824, PatternLen=206
+DEBUG Loop 324 [2024-01-09 14:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.05 (Long<45, Short>55), Trend=down
+DEBUG Loop 324: EntryLen=825, PatternLen=207
+DEBUG Loop 325 [2024-01-09 14:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.50 (Long<45, Short>55), Trend=down
+DEBUG Loop 325: EntryLen=826, PatternLen=207
+DEBUG Loop 326 [2024-01-09 14:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=16.53 (Long<45, Short>55), Trend=down
+DEBUG Loop 326: EntryLen=827, PatternLen=207
+DEBUG Loop 327 [2024-01-09 14:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.60 (Long<45, Short>55), Trend=down
+DEBUG Loop 327: EntryLen=828, PatternLen=207
+DEBUG Loop 328 [2024-01-09 15:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=17.81 (Long<45, Short>55), Trend=down
+DEBUG Loop 328: EntryLen=829, PatternLen=208
+DEBUG Loop 329 [2024-01-09 15:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=13.53 (Long<45, Short>55), Trend=down
+DEBUG Loop 329: EntryLen=830, PatternLen=208
+DEBUG Loop 330 [2024-01-09 15:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=15.27 (Long<45, Short>55), Trend=down
+DEBUG Loop 330: EntryLen=831, PatternLen=208
+DEBUG Loop 331 [2024-01-09 15:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.14 (Long<45, Short>55), Trend=down
+DEBUG Loop 331: EntryLen=832, PatternLen=208
+DEBUG Loop 332 [2024-01-09 16:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=14.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 332: EntryLen=833, PatternLen=209
+DEBUG Loop 333 [2024-01-09 16:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.78 (Long<45, Short>55), Trend=down
+DEBUG Loop 333: EntryLen=834, PatternLen=209
+DEBUG Loop 334 [2024-01-09 16:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.39 (Long<45, Short>55), Trend=down
+DEBUG Loop 334: EntryLen=835, PatternLen=209
+DEBUG Loop 335 [2024-01-09 16:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=29.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 335: EntryLen=836, PatternLen=209
+DEBUG Loop 336 [2024-01-09 17:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=29.58 (Long<45, Short>55), Trend=down
+DEBUG Loop 336: EntryLen=837, PatternLen=210
+DEBUG Loop 337 [2024-01-09 17:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=18.89 (Long<45, Short>55), Trend=down
+DEBUG Loop 337: EntryLen=838, PatternLen=210
+DEBUG Loop 338 [2024-01-09 17:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=19.97 (Long<45, Short>55), Trend=down
+DEBUG Loop 338: EntryLen=839, PatternLen=210
+DEBUG Loop 339 [2024-01-09 17:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=19.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 339: EntryLen=840, PatternLen=210
+DEBUG Loop 340 [2024-01-09 18:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.08 (Long<45, Short>55), Trend=down
+DEBUG Loop 340: EntryLen=841, PatternLen=211
+DEBUG Loop 341 [2024-01-09 18:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=28.39 (Long<45, Short>55), Trend=down
+DEBUG Loop 341: EntryLen=842, PatternLen=211
+DEBUG Loop 342 [2024-01-09 18:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.39 (Long<45, Short>55), Trend=down
+DEBUG Loop 342: EntryLen=843, PatternLen=211
+DEBUG Loop 343 [2024-01-09 18:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=25.12 (Long<45, Short>55), Trend=down
+DEBUG Loop 343: EntryLen=844, PatternLen=211
+DEBUG Loop 344 [2024-01-09 19:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=23.28 (Long<45, Short>55), Trend=down
+DEBUG Loop 344: EntryLen=845, PatternLen=212
+DEBUG Loop 345 [2024-01-09 19:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=33.16 (Long<45, Short>55), Trend=down
+DEBUG Loop 345: EntryLen=846, PatternLen=212
+DEBUG Loop 346 [2024-01-09 19:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=33.95 (Long<45, Short>55), Trend=down
+DEBUG Loop 346: EntryLen=847, PatternLen=212
+DEBUG Loop 347 [2024-01-09 19:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=21.11 (Long<45, Short>55), Trend=down
+DEBUG Loop 347: EntryLen=848, PatternLen=212
+DEBUG Loop 348 [2024-01-09 20:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.46 (Long<45, Short>55), Trend=down
+DEBUG Loop 348: EntryLen=849, PatternLen=213
+DEBUG Loop 349 [2024-01-09 20:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.02 (Long<45, Short>55), Trend=down
+DEBUG Loop 349: EntryLen=850, PatternLen=213
+DEBUG Loop 350 [2024-01-09 20:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=19.15 (Long<45, Short>55), Trend=down
+DEBUG Loop 350: EntryLen=851, PatternLen=213
+DEBUG Loop 351 [2024-01-09 20:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=26.60 (Long<45, Short>55), Trend=down
+DEBUG Loop 351: EntryLen=852, PatternLen=213
+DEBUG Loop 352 [2024-01-09 21:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=32.02 (Long<45, Short>55), Trend=down
+DEBUG Loop 352: EntryLen=853, PatternLen=214
+DEBUG Loop 353 [2024-01-09 21:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=34.92 (Long<45, Short>55), Trend=down
+DEBUG Loop 353: EntryLen=854, PatternLen=214
+DEBUG Loop 354 [2024-01-09 21:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=28.01 (Long<45, Short>55), Trend=down
+DEBUG Loop 354: EntryLen=855, PatternLen=214
+DEBUG Loop 355 [2024-01-09 21:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=27.61 (Long<45, Short>55), Trend=down
+DEBUG Loop 355: EntryLen=856, PatternLen=214
+DEBUG Loop 356 [2024-01-09 22:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=30.60 (Long<45, Short>55), Trend=down
+DEBUG Loop 356: EntryLen=857, PatternLen=215
+DEBUG Loop 357 [2024-01-09 22:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=29.06 (Long<45, Short>55), Trend=down
+DEBUG Loop 357: EntryLen=858, PatternLen=215
+DEBUG Loop 358 [2024-01-09 22:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=30.46 (Long<45, Short>55), Trend=down
+DEBUG Loop 358: EntryLen=859, PatternLen=215
+DEBUG Loop 359 [2024-01-09 22:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=20.34 (Long<45, Short>55), Trend=down
+DEBUG Loop 359: EntryLen=860, PatternLen=215
+DEBUG Loop 360 [2024-01-09 23:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=40.76 (Long<45, Short>55), Trend=down
+DEBUG Loop 360: EntryLen=861, PatternLen=216
+DEBUG Loop 361 [2024-01-09 23:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=33.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 361: EntryLen=862, PatternLen=216
+DEBUG Loop 362 [2024-01-09 23:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=33.89 (Long<45, Short>55), Trend=down
+DEBUG Loop 362: EntryLen=863, PatternLen=216
+DEBUG Loop 363 [2024-01-09 23:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=32.05 (Long<45, Short>55), Trend=down
+DEBUG Loop 363: EntryLen=864, PatternLen=216
+DEBUG Loop 364 [2024-01-10 00:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=41.85 (Long<45, Short>55), Trend=down
+DEBUG Loop 364: EntryLen=865, PatternLen=217
+DEBUG Loop 365 [2024-01-10 00:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=38.72 (Long<45, Short>55), Trend=down
+DEBUG Loop 365: EntryLen=866, PatternLen=217
+DEBUG Loop 366 [2024-01-10 00:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=35.16 (Long<45, Short>55), Trend=down
+DEBUG Loop 366: EntryLen=867, PatternLen=217
+DEBUG Loop 367 [2024-01-10 00:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=43.76 (Long<45, Short>55), Trend=down
+DEBUG Loop 367: EntryLen=868, PatternLen=217
+DEBUG Loop 368 [2024-01-10 01:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=37.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 368: EntryLen=869, PatternLen=218
+DEBUG Loop 369 [2024-01-10 01:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=42.47 (Long<45, Short>55), Trend=down
+DEBUG Loop 369: EntryLen=870, PatternLen=218
+DEBUG Loop 370 [2024-01-10 01:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=42.35 (Long<45, Short>55), Trend=down
+DEBUG Loop 370: EntryLen=871, PatternLen=218
+DEBUG Loop 371 [2024-01-10 01:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=45.02 (Long<45, Short>55), Trend=down
+DEBUG Loop 371: EntryLen=872, PatternLen=218
+DEBUG Loop 372 [2024-01-10 02:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=45.34 (Long<45, Short>55), Trend=down
+DEBUG Loop 372: EntryLen=873, PatternLen=219
+DEBUG Loop 373 [2024-01-10 02:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=43.83 (Long<45, Short>55), Trend=down
+DEBUG Loop 373: EntryLen=874, PatternLen=219
+DEBUG Loop 374 [2024-01-10 02:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=29.79 (Long<45, Short>55), Trend=down
+DEBUG Loop 374: EntryLen=875, PatternLen=219
+DEBUG Loop 375 [2024-01-10 02:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=38.20 (Long<45, Short>55), Trend=down
+DEBUG Loop 375: EntryLen=876, PatternLen=219
+DEBUG Loop 376 [2024-01-10 03:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=50.72 (Long<45, Short>55), Trend=down
+DEBUG Loop 376: EntryLen=877, PatternLen=220
+DEBUG Loop 377 [2024-01-10 03:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=52.16 (Long<45, Short>55), Trend=down
+DEBUG Loop 377: EntryLen=878, PatternLen=220
+DEBUG Loop 378 [2024-01-10 03:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=46.04 (Long<45, Short>55), Trend=down
+DEBUG Loop 378: EntryLen=879, PatternLen=220
+DEBUG Loop 379 [2024-01-10 03:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=39.44 (Long<45, Short>55), Trend=down
+DEBUG Loop 379: EntryLen=880, PatternLen=220
+DEBUG Loop 380 [2024-01-10 04:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=47.00 (Long<45, Short>55), Trend=down
+DEBUG Loop 380: EntryLen=881, PatternLen=221
+DEBUG Loop 381 [2024-01-10 04:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=45.31 (Long<45, Short>55), Trend=down
+DEBUG Loop 381: EntryLen=882, PatternLen=221
+DEBUG Loop 382 [2024-01-10 04:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=51.15 (Long<45, Short>55), Trend=down
+DEBUG Loop 382: EntryLen=883, PatternLen=221
+DEBUG Loop 383 [2024-01-10 04:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=49.73 (Long<45, Short>55), Trend=down
+DEBUG Loop 383: EntryLen=884, PatternLen=221
+DEBUG Loop 384 [2024-01-10 05:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=46.37 (Long<45, Short>55), Trend=down
+DEBUG Loop 384: EntryLen=885, PatternLen=222
+DEBUG Loop 385 [2024-01-10 05:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=53.57 (Long<45, Short>55), Trend=down
+DEBUG Loop 385: EntryLen=886, PatternLen=222
+DEBUG Loop 386 [2024-01-10 05:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=49.49 (Long<45, Short>55), Trend=down
+DEBUG Loop 386: EntryLen=887, PatternLen=222
+DEBUG Loop 387 [2024-01-10 05:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=60.41 (Long<45, Short>55), Trend=down
+DEBUG Loop 387: EntryLen=888, PatternLen=222
+DEBUG Loop 388 [2024-01-10 06:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=54.96 (Long<45, Short>55), Trend=down
+DEBUG Loop 388: EntryLen=889, PatternLen=223
+DEBUG Loop 389 [2024-01-10 06:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=55.79 (Long<45, Short>55), Trend=down
+DEBUG Loop 389: EntryLen=890, PatternLen=223
+DEBUG Loop 390 [2024-01-10 06:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=52.50 (Long<45, Short>55), Trend=down
+DEBUG Loop 390: EntryLen=891, PatternLen=223
+DEBUG Loop 391 [2024-01-10 06:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=52.22 (Long<45, Short>55), Trend=down
+DEBUG Loop 391: EntryLen=892, PatternLen=223
+DEBUG Loop 392 [2024-01-10 07:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=55.81 (Long<45, Short>55), Trend=down
+DEBUG Loop 392: EntryLen=893, PatternLen=224
+DEBUG Loop 393 [2024-01-10 07:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=58.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 393: EntryLen=894, PatternLen=224
+DEBUG Loop 394 [2024-01-10 07:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=57.45 (Long<45, Short>55), Trend=down
+DEBUG Loop 394: EntryLen=895, PatternLen=224
+DEBUG Loop 395 [2024-01-10 07:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=52.38 (Long<45, Short>55), Trend=down
+DEBUG Loop 395: EntryLen=896, PatternLen=224
+DEBUG Loop 396 [2024-01-10 08:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=58.10 (Long<45, Short>55), Trend=down
+DEBUG Loop 396: EntryLen=897, PatternLen=225
+DEBUG Loop 397 [2024-01-10 08:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=58.11 (Long<45, Short>55), Trend=down
+DEBUG Loop 397: EntryLen=898, PatternLen=225
+DEBUG Loop 398 [2024-01-10 08:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=61.73 (Long<45, Short>55), Trend=down
+DEBUG Loop 398: EntryLen=899, PatternLen=225
+DEBUG Loop 399 [2024-01-10 08:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=58.57 (Long<45, Short>55), Trend=down
+DEBUG Loop 399: EntryLen=900, PatternLen=225
+DEBUG Loop 400 [2024-01-10 09:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=62.66 (Long<45, Short>55), Trend=down
+DEBUG Loop 400: EntryLen=901, PatternLen=226
+DEBUG Loop 401 [2024-01-10 09:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=47.89 (Long<45, Short>55), Trend=down
+DEBUG Loop 401: EntryLen=902, PatternLen=226
+DEBUG Loop 402 [2024-01-10 09:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=71.14 (Long<45, Short>55), Trend=down
+DEBUG Loop 402: EntryLen=903, PatternLen=226
+DEBUG Loop 403 [2024-01-10 09:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=67.59 (Long<45, Short>55), Trend=down
+DEBUG Loop 403: EntryLen=904, PatternLen=226
+DEBUG Loop 404 [2024-01-10 10:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=63.11 (Long<45, Short>55), Trend=down
+DEBUG Loop 404: EntryLen=905, PatternLen=227
+DEBUG Loop 405 [2024-01-10 10:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=70.84 (Long<45, Short>55), Trend=down
+DEBUG Loop 405: EntryLen=906, PatternLen=227
+DEBUG Loop 406 [2024-01-10 10:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=65.32 (Long<45, Short>55), Trend=down
+DEBUG Loop 406: EntryLen=907, PatternLen=227
+DEBUG Loop 407 [2024-01-10 10:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=64.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 407: EntryLen=908, PatternLen=227
+DEBUG Loop 408 [2024-01-10 11:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=66.95 (Long<45, Short>55), Trend=down
+DEBUG Loop 408: EntryLen=909, PatternLen=228
+DEBUG Loop 409 [2024-01-10 11:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=71.90 (Long<45, Short>55), Trend=down
+DEBUG Loop 409: EntryLen=910, PatternLen=228
+DEBUG Loop 410 [2024-01-10 11:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=75.06 (Long<45, Short>55), Trend=down
+DEBUG Loop 410: EntryLen=911, PatternLen=228
+DEBUG Loop 411 [2024-01-10 11:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=59.89 (Long<45, Short>55), Trend=down
+DEBUG Loop 411: EntryLen=912, PatternLen=228
+DEBUG Loop 412 [2024-01-10 12:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=64.82 (Long<45, Short>55), Trend=down
+DEBUG Loop 412: EntryLen=913, PatternLen=229
+DEBUG Loop 413 [2024-01-10 12:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=62.49 (Long<45, Short>55), Trend=down
+DEBUG Loop 413: EntryLen=914, PatternLen=229
+DEBUG Loop 414 [2024-01-10 12:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=66.63 (Long<45, Short>55), Trend=down
+DEBUG Loop 414: EntryLen=915, PatternLen=229
+DEBUG Loop 415 [2024-01-10 12:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=70.38 (Long<45, Short>55), Trend=down
+DEBUG Loop 415: EntryLen=916, PatternLen=229
+DEBUG Loop 416 [2024-01-10 13:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=65.80 (Long<45, Short>55), Trend=down
+DEBUG Loop 416: EntryLen=917, PatternLen=230
+DEBUG Loop 417 [2024-01-10 13:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=64.10 (Long<45, Short>55), Trend=down
+DEBUG Loop 417: EntryLen=918, PatternLen=230
+DEBUG Loop 418 [2024-01-10 13:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=68.80 (Long<45, Short>55), Trend=down
+DEBUG Loop 418: EntryLen=919, PatternLen=230
+DEBUG Loop 419 [2024-01-10 13:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=68.18 (Long<45, Short>55), Trend=down
+DEBUG Loop 419: EntryLen=920, PatternLen=230
+DEBUG Loop 420 [2024-01-10 14:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=69.52 (Long<45, Short>55), Trend=down
+DEBUG Loop 420: EntryLen=921, PatternLen=231
+DEBUG Loop 421 [2024-01-10 14:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.38 (Long<45, Short>55), Trend=down
+DEBUG Loop 421: EntryLen=922, PatternLen=231
+DEBUG Loop 422 [2024-01-10 14:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=71.03 (Long<45, Short>55), Trend=down
+DEBUG Loop 422: EntryLen=923, PatternLen=231
+DEBUG Loop 423 [2024-01-10 14:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.05 (Long<45, Short>55), Trend=down
+DEBUG Loop 423: EntryLen=924, PatternLen=231
+DEBUG Loop 424 [2024-01-10 15:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=67.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 424: EntryLen=925, PatternLen=232
+DEBUG Loop 425 [2024-01-10 15:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=88.79 (Long<45, Short>55), Trend=down
+DEBUG Loop 425: EntryLen=926, PatternLen=232
+DEBUG Loop 426 [2024-01-10 15:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=87.02 (Long<45, Short>55), Trend=down
+DEBUG Loop 426: EntryLen=927, PatternLen=232
+DEBUG Loop 427 [2024-01-10 15:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.36 (Long<45, Short>55), Trend=down
+DEBUG Loop 427: EntryLen=928, PatternLen=232
+DEBUG Loop 428 [2024-01-10 16:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=83.15 (Long<45, Short>55), Trend=down
+DEBUG Loop 428: EntryLen=929, PatternLen=233
+DEBUG Loop 429 [2024-01-10 16:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=84.29 (Long<45, Short>55), Trend=down
+DEBUG Loop 429: EntryLen=930, PatternLen=233
+DEBUG Loop 430 [2024-01-10 16:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.75 (Long<45, Short>55), Trend=down
+DEBUG Loop 430: EntryLen=931, PatternLen=233
+DEBUG Loop 431 [2024-01-10 16:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=84.74 (Long<45, Short>55), Trend=down
+DEBUG Loop 431: EntryLen=932, PatternLen=233
+DEBUG Loop 432 [2024-01-10 17:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=74.64 (Long<45, Short>55), Trend=down
+DEBUG Loop 432: EntryLen=933, PatternLen=234
+DEBUG Loop 433 [2024-01-10 17:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=74.14 (Long<45, Short>55), Trend=down
+DEBUG Loop 433: EntryLen=934, PatternLen=234
+DEBUG Loop 434 [2024-01-10 17:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=77.04 (Long<45, Short>55), Trend=down
+DEBUG Loop 434: EntryLen=935, PatternLen=234
+DEBUG Loop 435 [2024-01-10 17:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=80.03 (Long<45, Short>55), Trend=up
+DEBUG Loop 435: EntryLen=936, PatternLen=234
+DEBUG Loop 436 [2024-01-10 18:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.38 (Long<45, Short>55), Trend=up
+DEBUG Loop 436: EntryLen=937, PatternLen=235
+DEBUG Loop 437 [2024-01-10 18:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=80.27 (Long<45, Short>55), Trend=up
+DEBUG Loop 437: EntryLen=938, PatternLen=235
+DEBUG Loop 438 [2024-01-10 18:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=75.13 (Long<45, Short>55), Trend=up
+DEBUG Loop 438: EntryLen=939, PatternLen=235
+DEBUG Loop 439 [2024-01-10 18:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.33 (Long<45, Short>55), Trend=up
+DEBUG Loop 439: EntryLen=940, PatternLen=235
+DEBUG Loop 440 [2024-01-10 19:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=72.45 (Long<45, Short>55), Trend=up
+DEBUG Loop 440: EntryLen=941, PatternLen=236
+DEBUG Loop 441 [2024-01-10 19:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.47 (Long<45, Short>55), Trend=up
+DEBUG Loop 441: EntryLen=942, PatternLen=236
+DEBUG Loop 442 [2024-01-10 19:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=71.73 (Long<45, Short>55), Trend=up
+DEBUG Loop 442: EntryLen=943, PatternLen=236
+DEBUG Loop 443 [2024-01-10 19:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=73.52 (Long<45, Short>55), Trend=up
+DEBUG Loop 443: EntryLen=944, PatternLen=236
+DEBUG Loop 444 [2024-01-10 20:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.41 (Long<45, Short>55), Trend=up
+DEBUG Loop 444: EntryLen=945, PatternLen=237
+DEBUG Loop 445 [2024-01-10 20:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=71.32 (Long<45, Short>55), Trend=up
+DEBUG Loop 445: EntryLen=946, PatternLen=237
+DEBUG Loop 446 [2024-01-10 20:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.84 (Long<45, Short>55), Trend=up
+DEBUG Loop 446: EntryLen=947, PatternLen=237
+DEBUG Loop 447 [2024-01-10 20:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.02 (Long<45, Short>55), Trend=up
+DEBUG Loop 447: EntryLen=948, PatternLen=237
+DEBUG Loop 448 [2024-01-10 21:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.65 (Long<45, Short>55), Trend=up
+DEBUG Loop 448: EntryLen=949, PatternLen=238
+DEBUG Loop 449 [2024-01-10 21:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=74.11 (Long<45, Short>55), Trend=up
+DEBUG Loop 449: EntryLen=950, PatternLen=238
+DEBUG Loop 450 [2024-01-10 21:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=75.68 (Long<45, Short>55), Trend=up
+DEBUG Loop 450: EntryLen=951, PatternLen=238
+DEBUG Loop 451 [2024-01-10 21:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=71.47 (Long<45, Short>55), Trend=up
+DEBUG Loop 451: EntryLen=952, PatternLen=238
+DEBUG Loop 452 [2024-01-10 22:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.31 (Long<45, Short>55), Trend=up
+DEBUG Loop 452: EntryLen=953, PatternLen=239
+DEBUG Loop 453 [2024-01-10 22:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.36 (Long<45, Short>55), Trend=up
+DEBUG Loop 453: EntryLen=954, PatternLen=239
+DEBUG Loop 454 [2024-01-10 22:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=78.26 (Long<45, Short>55), Trend=up
+DEBUG Loop 454: EntryLen=955, PatternLen=239
+DEBUG Loop 455 [2024-01-10 22:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=79.47 (Long<45, Short>55), Trend=up
+DEBUG Loop 455: EntryLen=956, PatternLen=239
+DEBUG Loop 456 [2024-01-10 23:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.46 (Long<45, Short>55), Trend=up
+DEBUG Loop 456: EntryLen=957, PatternLen=240
+DEBUG Loop 457 [2024-01-10 23:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.27 (Long<45, Short>55), Trend=up
+DEBUG Loop 457: EntryLen=958, PatternLen=240
+DEBUG Loop 458 [2024-01-10 23:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=77.55 (Long<45, Short>55), Trend=up
+DEBUG Loop 458: EntryLen=959, PatternLen=240
+DEBUG Loop 459 [2024-01-10 23:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=88.06 (Long<45, Short>55), Trend=up
+DEBUG Loop 459: EntryLen=960, PatternLen=240
+DEBUG Loop 460 [2024-01-11 00:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=87.11 (Long<45, Short>55), Trend=up
+DEBUG Loop 460: EntryLen=961, PatternLen=241
+DEBUG Loop 461 [2024-01-11 00:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=89.33 (Long<45, Short>55), Trend=up
+DEBUG Loop 461: EntryLen=962, PatternLen=241
+DEBUG Loop 462 [2024-01-11 00:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=86.94 (Long<45, Short>55), Trend=up
+DEBUG Loop 462: EntryLen=963, PatternLen=241
+DEBUG Loop 463 [2024-01-11 00:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=94.19 (Long<45, Short>55), Trend=up
+DEBUG Loop 463: EntryLen=964, PatternLen=241
+DEBUG Loop 464 [2024-01-11 01:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=94.15 (Long<45, Short>55), Trend=up
+DEBUG Loop 464: EntryLen=965, PatternLen=242
+DEBUG Loop 465 [2024-01-11 01:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.56 (Long<45, Short>55), Trend=up
+DEBUG Loop 465: EntryLen=966, PatternLen=242
+DEBUG Loop 466 [2024-01-11 01:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.36 (Long<45, Short>55), Trend=up
+DEBUG Loop 466: EntryLen=967, PatternLen=242
+DEBUG Loop 467 [2024-01-11 01:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.48 (Long<45, Short>55), Trend=up
+DEBUG Loop 467: EntryLen=968, PatternLen=242
+DEBUG Loop 468 [2024-01-11 02:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.51 (Long<45, Short>55), Trend=up
+DEBUG Loop 468: EntryLen=969, PatternLen=243
+DEBUG Loop 469 [2024-01-11 02:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.35 (Long<45, Short>55), Trend=up
+DEBUG Loop 469: EntryLen=970, PatternLen=243
+DEBUG Loop 470 [2024-01-11 02:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=99.77 (Long<45, Short>55), Trend=up
+DEBUG Loop 470: EntryLen=971, PatternLen=243
+DEBUG Loop 471 [2024-01-11 02:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=99.77 (Long<45, Short>55), Trend=up
+DEBUG Loop 471: EntryLen=972, PatternLen=243
+DEBUG Loop 472 [2024-01-11 03:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=99.01 (Long<45, Short>55), Trend=up
+DEBUG Loop 472: EntryLen=973, PatternLen=244
+DEBUG Loop 473 [2024-01-11 03:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=99.01 (Long<45, Short>55), Trend=up
+DEBUG Loop 473: EntryLen=974, PatternLen=244
+DEBUG Loop 474 [2024-01-11 03:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.32 (Long<45, Short>55), Trend=up
+DEBUG Loop 474: EntryLen=975, PatternLen=244
+DEBUG Loop 475 [2024-01-11 03:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.15 (Long<45, Short>55), Trend=up
+DEBUG Loop 475: EntryLen=976, PatternLen=244
+DEBUG Loop 476 [2024-01-11 04:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.20 (Long<45, Short>55), Trend=up
+DEBUG Loop 476: EntryLen=977, PatternLen=245
+DEBUG Loop 477 [2024-01-11 04:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.19 (Long<45, Short>55), Trend=up
+DEBUG Loop 477: EntryLen=978, PatternLen=245
+DEBUG Loop 478 [2024-01-11 04:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.18 (Long<45, Short>55), Trend=up
+DEBUG Loop 478: EntryLen=979, PatternLen=245
+DEBUG Loop 479 [2024-01-11 04:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.18 (Long<45, Short>55), Trend=up
+DEBUG Loop 479: EntryLen=980, PatternLen=245
+DEBUG Loop 480 [2024-01-11 05:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=98.51 (Long<45, Short>55), Trend=up
+DEBUG Loop 480: EntryLen=981, PatternLen=246
+DEBUG Loop 481 [2024-01-11 05:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=91.78 (Long<45, Short>55), Trend=up
+DEBUG Loop 481: EntryLen=982, PatternLen=246
+DEBUG Loop 482 [2024-01-11 05:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=92.46 (Long<45, Short>55), Trend=up
+DEBUG Loop 482: EntryLen=983, PatternLen=246
+DEBUG Loop 483 [2024-01-11 05:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=92.38 (Long<45, Short>55), Trend=up
+DEBUG Loop 483: EntryLen=984, PatternLen=246
+DEBUG Loop 484 [2024-01-11 06:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=92.07 (Long<45, Short>55), Trend=up
+DEBUG Loop 484: EntryLen=985, PatternLen=247
+DEBUG Loop 485 [2024-01-11 06:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=92.88 (Long<45, Short>55), Trend=up
+DEBUG Loop 485: EntryLen=986, PatternLen=247
+DEBUG Loop 486 [2024-01-11 06:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=92.20 (Long<45, Short>55), Trend=up
+DEBUG Loop 486: EntryLen=987, PatternLen=247
+DEBUG Loop 487 [2024-01-11 06:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=91.63 (Long<45, Short>55), Trend=up
+DEBUG Loop 487: EntryLen=988, PatternLen=247
+DEBUG Loop 488 [2024-01-11 07:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=93.51 (Long<45, Short>55), Trend=up
+DEBUG Loop 488: EntryLen=989, PatternLen=248
+DEBUG Loop 489 [2024-01-11 07:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=93.70 (Long<45, Short>55), Trend=up
+DEBUG Loop 489: EntryLen=990, PatternLen=248
+DEBUG Loop 490 [2024-01-11 07:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=93.46 (Long<45, Short>55), Trend=up
+DEBUG Loop 490: EntryLen=991, PatternLen=248
+DEBUG Loop 491 [2024-01-11 07:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=93.38 (Long<45, Short>55), Trend=up
+DEBUG Loop 491: EntryLen=992, PatternLen=248
+DEBUG Loop 492 [2024-01-11 08:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=93.44 (Long<45, Short>55), Trend=up
+DEBUG Loop 492: EntryLen=993, PatternLen=249
+DEBUG Loop 493 [2024-01-11 08:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=94.47 (Long<45, Short>55), Trend=up
+DEBUG Loop 493: EntryLen=994, PatternLen=249
+DEBUG Loop 494 [2024-01-11 08:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=81.17 (Long<45, Short>55), Trend=up
+DEBUG Loop 494: EntryLen=995, PatternLen=249
+DEBUG Loop 495 [2024-01-11 08:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=87.54 (Long<45, Short>55), Trend=up
+DEBUG Loop 495: EntryLen=996, PatternLen=249
+DEBUG Loop 496 [2024-01-11 09:00:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=87.65 (Long<45, Short>55), Trend=up
+DEBUG Loop 496: EntryLen=997, PatternLen=250
+DEBUG Loop 497 [2024-01-11 09:15:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=87.08 (Long<45, Short>55), Trend=up
+DEBUG Loop 497: EntryLen=998, PatternLen=250
+DEBUG Loop 498 [2024-01-11 09:30:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=88.08 (Long<45, Short>55), Trend=up
+DEBUG Loop 498: EntryLen=999, PatternLen=250
+DEBUG Loop 499 [2024-01-11 09:45:00]: Pending=2, Signal=None
+DEBUG Cond: RSI=86.23 (Long<45, Short>55), Trend=up
+DEBUG Loop 499: EntryLen=1000, PatternLen=250
+
+✅ 시뮬레이션 완료. 소요시간: 0:00:08.559116
+✅ Report written to sim_report.md

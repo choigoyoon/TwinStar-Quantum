@@ -1,6 +1,5 @@
 
 import pandas as pd
-import numpy as np
 
 class IndicatorGenerator:
     """기술적 지표 계산 클래스"""

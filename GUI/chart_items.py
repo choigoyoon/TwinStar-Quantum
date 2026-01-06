@@ -2,8 +2,7 @@
 
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QRectF, QPointF
-from PyQt5.QtGui import QPainter, QPicture, QColor, QPen, QBrush, QFont
-import numpy as np
+from PyQt5.QtGui import QPainter, QPicture
 
 
 class CandlestickItem(pg.GraphicsObject):

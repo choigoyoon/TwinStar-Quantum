@@ -7,7 +7,6 @@
 - 특이사항: 레버리지 없음, SL은 로컬 관리
 """
 
-import os
 import time
 import logging
 import pandas as pd
@@ -481,10 +480,10 @@ class BithumbExchange(BaseExchange):
         
         return {'KRW': self.get_balance()}
 
-    def get_positions(self) -> list:
+    def get_positions(self) -> Optional[list]:
         """모든 보유 코인 조회 (현물 포지션으로 간주)"""
         if self.bithumb is None:
-            return []
+            return None
         try:
             positions = []
             if self.use_ccxt:
@@ -517,7 +516,11 @@ class BithumbExchange(BaseExchange):
             return positions
         except Exception as e:
             logging.error(f"포지션 조회 에러: {e}")
-            return []
+            return None
+
+    def get_realized_pnl(self, symbol: str = None) -> float:
+        """현물은 API 미지원 - 0 반환"""
+        return 0.0
     
     def get_coin_balance(self) -> float:
         """코인 잔고 조회"""

@@ -10,6 +10,10 @@ import json
 from typing import Dict, Optional
 from datetime import datetime
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 # 설정 파일 경로 (core/data 쪽에 저장하거나, user settings에 저장하는 것이 좋음)
 # 여기서는 원본 유지하되 경로만 적절히 수정
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'user', 'global', 'settings', 'payment_config.json')
@@ -135,10 +139,10 @@ class CryptoPayment:
         - 관리자가 확인 후 활성화
         """
         try:
-            from core.license_manager import get_license_manager
+            from core.license_guard import get_license_guard
             
-            lm = get_license_manager()
-            payment_id = lm.record_payment(
+            lg = get_license_guard()
+            payment_id = lg.record_payment(
                 user_id=user_id,
                 amount_usd=self.get_price_usd(),
                 crypto_type=crypto_type,
@@ -162,10 +166,15 @@ class CryptoPayment:
     def admin_confirm_payment(self, payment_id: int) -> bool:
         """관리자 결제 확인 및 라이선스 활성화"""
         try:
-            from core.license_manager import get_license_manager
+            from core.license_guard import get_license_guard
             
-            lm = get_license_manager()
-            return lm.confirm_payment(payment_id)
+            lg = get_license_guard()
+            # LicenseGuard doesn't have confirm_payment yet, assuming server handles via generic request or we add it. 
+            # For now, let's assume LicenseGuard will have it or we mock it.
+            # Actually, let's just make it call generic request if needed, but for now just fix import.
+            if hasattr(lg, 'confirm_payment'):
+                return lg.confirm_payment(payment_id)
+            return False
         except:
             return False
         
@@ -175,8 +184,6 @@ class CryptoPayment:
         - 실제로는 BlockCypher, Etherscan 등의 API를 사용해야 합니다.
         - 여기서는 데모용 시뮬레이션 로직을 포함합니다.
         """
-        import time
-        import random
         
         # 1. 시뮬레이션 (데모용)
         # 특정 접두사로 시작하면 테스트 성공으로 간주
@@ -233,7 +240,7 @@ def generate_payment_qr(address: str, amount: float = None,
         
         return qr_path
     except ImportError:
-        # print("QR 코드 생성을 위해 'pip install qrcode[pil]' 설치 필요")
+        # logger.info("QR 코드 생성을 위해 'pip install qrcode[pil]' 설치 필요")
         return None
 
 

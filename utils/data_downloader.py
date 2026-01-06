@@ -1,7 +1,5 @@
-import os
 import sys
 import shutil
-import pandas as pd
 import logging
 from pathlib import Path
 from typing import List
@@ -14,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # 기존 모듈 임포트
 from GUI.data_manager import DataManager
 from GUI.symbol_cache import SymbolCache
-from utils.symbol_converter import extract_base, convert_symbol
+from utils.symbol_converter import extract_base
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -153,5 +151,5 @@ if __name__ == "__main__":
         tf = sys.argv[2] if len(sys.argv) > 2 else '1h'
         download_all(ex, tf)
     else:
-        print("Usage: py utils/data_downloader.py [exchange] [timeframe]")
-        print("Example: py utils/data_downloader.py bithumb 1h")
+        logger.info("Usage: py utils/data_downloader.py [exchange] [timeframe]")
+        logger.info("Example: py utils/data_downloader.py bithumb 1h")

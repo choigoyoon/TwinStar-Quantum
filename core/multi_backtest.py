@@ -5,14 +5,15 @@ Multi Time-Series Backtester
 - 동시 포지션 제한 및 자본 관리
 """
 
-import os
 import json
 import logging
 import pandas as pd
-import numpy as np
-from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+
+# Logging
+from utils.logger import get_module_logger
+logger = get_module_logger(__name__)
 
 try:
     from paths import Paths
@@ -261,16 +262,17 @@ if __name__ == '__main__':
     result = bt.execute_all()
     
     if result.get('error'):
-        print(f"Error: {result.get('error')}")
+        logger.error(f"Error: {result.get('error')}")
     else:
         s = result.get('summary', {})
-        print("\n" + "="*40)
-        print("통합 시계열 백테스트 결과")
-        print("="*40)
-        print(f"총 거래 수: {s['total_trades']}")
-        print(f"승률: {s['win_rate']*100:.1f}%")
-        print(f"최종 알트 자본: ${s['final_alt_capital']:.2f}")
-        print(f"총 BTC 수익: ${s['total_btc_pnl']:.2f}")
-        print(f"전체 수익: ${s['total_pnl_usd']:.2f} ({s['total_return_pct']:.1f}%)")
-        print(f"최대 낙폭 (MDD): {s['max_drawdown']:.1f}%")
-        print("="*40)
+        logger.info("\n" + "="*40)
+        logger.info("통합 시계열 백테스트 결과")
+        logger.info("="*40)
+        logger.info(f"총 거래 수: {s['total_trades']}")
+        logger.info(f"승률: {s['win_rate']*100:.1f}%")
+        logger.info(f"최종 알트 자본: ${s['final_alt_capital']:.2f}")
+        logger.info(f"총 BTC 수익: ${s['total_btc_pnl']:.2f}")
+        logger.info(f"전체 수익: ${s['total_pnl_usd']:.2f} ({s['total_return_pct']:.1f}%)")
+        logger.info(f"최대 낙폭 (MDD): {s['max_drawdown']:.1f}%")
+        logger.info("="*40)
+

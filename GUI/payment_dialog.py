@@ -10,8 +10,12 @@ from PyQt5.QtWidgets import (
     QPushButton, QLineEdit, QComboBox, QMessageBox,
     QFrame, QGridLayout, QApplication
 )
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from locales.lang_manager import t
 
 
 class PaymentDialog(QDialog):
@@ -29,7 +33,7 @@ class PaymentDialog(QDialog):
         self.prices = {}
         self.wallet = ""
         
-        self.setWindowTitle("💎 업그레이드")
+        self.setWindowTitle("💎 " + t("license.upgrade"))
         self.setFixedSize(600, 680)
         self.setModal(True)
         
@@ -51,7 +55,7 @@ class PaymentDialog(QDialog):
             if not self.wallet:
                 self.wallet = 'TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3'
         except Exception as e:
-            print(f"[PAYMENT] 데이터 로드 오류: {e}")
+            logger.info(f"[PAYMENT] 데이터 로드 오류: {e}")
             import traceback
             traceback.print_exc()
             # [FIX] 예외 시에도 Fallback 적용
@@ -100,7 +104,7 @@ class PaymentDialog(QDialog):
         layout.setContentsMargins(25, 20, 25, 20)
         
         # 타이틀
-        title = QLabel("💎 등급 업그레이드")
+        title = QLabel("💎 " + t("license.upgrade_title"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
@@ -112,15 +116,15 @@ class PaymentDialog(QDialog):
         current_frame = QFrame()
         current_frame.setStyleSheet("QFrame { background: #0b0e14; border-radius: 8px; padding: 10px; }")
         current_layout = QHBoxLayout(current_frame)
-        current_layout.addWidget(QLabel(f"현재 등급: {current_tier}"))
+        current_layout.addWidget(QLabel(f"{t('license.current_tier')}: {current_tier}"))
         current_layout.addStretch()
-        current_layout.addWidget(QLabel(f"남은 기간: {days_left}일"))
+        current_layout.addWidget(QLabel(f"{t('backtest.period')}: {days_left}" + (t("data.days") if t("data.days") != "data.days" else "d")))
         layout.addWidget(current_frame)
         
         layout.addSpacing(5)
         
         # 등급 선택
-        layout.addWidget(QLabel("업그레이드 등급"))
+        layout.addWidget(QLabel(t("license.upgrade_tier")))
         self.tier_combo = QComboBox()
         for tier, info in self.TIER_INFO.items():
             self.tier_combo.addItem(f"{info['name']} - {info['desc']}", tier)
@@ -128,12 +132,12 @@ class PaymentDialog(QDialog):
         layout.addWidget(self.tier_combo)
         
         # 기간 선택
-        layout.addWidget(QLabel("이용 기간"))
+        layout.addWidget(QLabel(t("license.period")))
         self.period_combo = QComboBox()
-        self.period_combo.addItem("1개월", 1)
-        self.period_combo.addItem("3개월 (10% 할인)", 3)
-        self.period_combo.addItem("6개월 (15% 할인)", 6)
-        self.period_combo.addItem("12개월 (20% 할인)", 12)
+        self.period_combo.addItem(t("license.month_1"), 1)
+        self.period_combo.addItem(t("license.month_3"), 3)
+        self.period_combo.addItem(t("license.month_6"), 6)
+        self.period_combo.addItem(t("license.month_12"), 12)
         self.period_combo.currentIndexChanged.connect(self._update_price)
         layout.addWidget(self.period_combo)
         
@@ -146,7 +150,7 @@ class PaymentDialog(QDialog):
         layout.addSpacing(5)
         
         # 지갑 주소
-        layout.addWidget(QLabel("📮 입금 주소 (USDT TRC20)"))
+        layout.addWidget(QLabel("📮 " + t("license.deposit_address")))
         
         wallet_layout = QHBoxLayout()
         self.wallet_input = QLineEdit(self.wallet)
@@ -165,9 +169,9 @@ class PaymentDialog(QDialog):
         layout.addLayout(wallet_layout)
         
         # TX Hash 입력
-        layout.addWidget(QLabel("🔗 TX Hash"))
+        layout.addWidget(QLabel("🔗 " + t("license.tx_hash")))
         self.tx_input = QLineEdit()
-        self.tx_input.setPlaceholderText("예) 85d4e10... (입금 후 생성된 TXID 입력)")
+        self.tx_input.setPlaceholderText("예) 85d4e10... (TXID)")
         layout.addWidget(self.tx_input)
         
         layout.addSpacing(10)
@@ -175,7 +179,7 @@ class PaymentDialog(QDialog):
         # 버튼
         btn_layout = QHBoxLayout()
         
-        cancel_btn = QPushButton("취소")
+        cancel_btn = QPushButton(t("common.cancel"))
         cancel_btn.setStyleSheet("""
             QPushButton { background: #3a3f4b; }
             QPushButton:hover { background: #4a4f5b; }
@@ -183,14 +187,14 @@ class PaymentDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         
-        self.submit_btn = QPushButton("✅ 결제 확인")
+        self.submit_btn = QPushButton("✅ " + t("license.submit_payment"))
         self.submit_btn.clicked.connect(self._on_submit)
         btn_layout.addWidget(self.submit_btn)
         
         layout.addLayout(btn_layout)
         
         # 안내
-        note = QLabel("※ 입금 확인 후 관리자가 승인하면 즉시 활성화됩니다.")
+        note = QLabel(t("license.note"))
         note.setStyleSheet("font-size: 11px; color: #787b86;")
         note.setAlignment(Qt.AlignCenter)
         layout.addWidget(note)
@@ -215,7 +219,7 @@ class PaymentDialog(QDialog):
         """지갑 주소 복사"""
         clipboard = QApplication.clipboard()
         clipboard.setText(self.wallet_input.text())
-        QMessageBox.information(self, "복사 완료", "지갑 주소가 클립보드에 복사되었습니다.")
+        QMessageBox.information(self, t("license.copy_success"), t("license.copy_success_msg"))
     
     def _on_submit(self):
         """결제 제출"""
@@ -245,12 +249,8 @@ class PaymentDialog(QDialog):
             if result.get('success'):
                 QMessageBox.information(
                     self,
-                    "✅ 제출 완료",
-                    f"입금 신청이 완료되었습니다.\n\n"
-                    f"등급: {tier}\n"
-                    f"기간: {months}개월\n\n"
-                    f"관리자 확인 후 즉시 활성화됩니다.\n"
-                    f"(평균 1~24시간 이내)"
+                    "✅ " + t("license.submit_success"),
+                    t("license.submit_success_msg").replace("{tier}", str(tier)).replace("{months}", str(months))
                 )
                 self.accept()
             else:

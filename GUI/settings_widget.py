@@ -1,4 +1,8 @@
 # settings_widget.py - Exchange Settings Widget (v3 - Simplified)
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 # API key settings only (Trading settings handled in trading_dashboard.py)
 
 import sys
@@ -47,7 +51,15 @@ except ImportError:
             pass
 
 try:
-    from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection
+    from locales import t, set_language, get_lang_manager
+    from locales.lang_manager import t, set_language
+except ImportError:
+    def t(key, default=None):
+        return default if default else key.split('.')[-1]
+    def set_language(l): pass
+
+try:
+    from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection, ExchangeManager
 except ImportError:
     def connect_exchange(*args, **kwargs):
         return (False, "exchange_manager module load failed")
@@ -55,13 +67,6 @@ except ImportError:
         return None
     def test_connection(*args, **kwargs):
         return False
-
-# 다국어 지원
-try:
-    from locales import t, set_language, get_lang_manager
-except ImportError:
-    def t(key, default=None):
-        return default if default else key.split('.')[-1]
     def set_language(lang): pass
     def get_lang_manager(): return None
 
@@ -251,7 +256,7 @@ class TelegramCard(QFrame):
             with open(config_path, 'w') as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
-            print(f"Telegram config save error: {e}")
+            logger.info(f"Telegram config save error: {e}")
     
     def _test_message(self):
         try:
@@ -673,18 +678,19 @@ class SettingsWidget(QWidget):
         layout.addWidget(desc)
         
         
-        # Telegram card (top)
-        self.telegram_card = TelegramCard()
-        self.telegram_card.setStyleSheet("""
-            TelegramCard {
-                background: #1a237e;
-                border: 2px solid #5c6bc0;
-                border-radius: 10px;
-                padding: 15px;
-            }
-        """)
-        self.telegram_card.setMinimumHeight(180)
-        layout.addWidget(self.telegram_card)
+        # [HIDDEN] Telegram card - 나중에 다시 활성화 가능
+        # self.telegram_card = TelegramCard()
+        # self.telegram_card.setStyleSheet("""
+        #     TelegramCard {
+        #         background: #1a237e;
+        #         border: 2px solid #5c6bc0;
+        #         border-radius: 10px;
+        #         padding: 15px;
+        #     }
+        # """)
+        # self.telegram_card.setMinimumHeight(180)
+        # layout.addWidget(self.telegram_card)
+        self.telegram_card = None  # 비활성화
 
         # Language note (moved to header bar)
         lang_note = QLabel("💡 언어 설정은 상단 바에서 변경할 수 있습니다 / Language can be changed in the header bar")
@@ -789,7 +795,8 @@ class SettingsWidget(QWidget):
     
     def _save_all(self):
         """Save all settings"""
-        self.telegram_card.save_config()
+        if self.telegram_card:
+            self.telegram_card.save_config()
         
         # Preserve unchecked exchange configs
         config = load_api_keys() or {}
@@ -824,7 +831,7 @@ class SettingsWidget(QWidget):
     def _show_tier_comparison(self):
         """등급 비교표 다이얼로그 표시"""
         try:
-            from license_tiers import get_tier_comparison, LICENSE_TIERS
+            from license_tiers import LICENSE_TIERS
             
             # 비교표 다이얼로그 생성
             from PyQt5.QtWidgets import QDialog, QTextEdit

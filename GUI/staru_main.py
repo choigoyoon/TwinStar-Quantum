@@ -8,6 +8,16 @@ import sys
 import os
 import io
 import traceback
+import logging
+import warnings
+
+# 라이브러리 경고(DeprecationWarning) 및 불필요한 노이즈 억제
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message="websockets.*is deprecated")
+
+# Logger
+logger = logging.getLogger(__name__)
+
 
 # Windows 콘솔 UTF-8 강제 (UnicodeEncodeError 방지)
 if sys.platform == 'win32':
@@ -34,14 +44,14 @@ try:
     from paths import Paths
     Paths.ensure_all()
 except Exception as e:
-    print(f"⚠️ Paths 초기화 실패: {e}")
+    logger.info(f"⚠️ Paths 초기화 실패: {e}")
 
 # ============ 자동 에러 리포트 설정 ============
 try:
     from utils.error_reporter import setup_global_handler
     setup_global_handler()
 except Exception as e:
-    print(f"⚠️ 에러 리포터 초기화 실패: {e}")
+    logger.info(f"⚠️ 에러 리포터 초기화 실패: {e}")
 
 
 # ============ 필수 모듈 체크 (EXE 사전진단) ============
@@ -66,7 +76,7 @@ def _check_dependencies():
     
     # [ADD] exchange_manager 체크 (ccxt 의존성 포함)
     try:
-        from exchanges.exchange_manager import connect_exchange
+        from exchanges.exchange_manager import ExchangeManager
     except ImportError as e:
         errors.append(f"exchange_manager ({e})")
     
@@ -74,12 +84,11 @@ def _check_dependencies():
         try:
             from PyQt5.QtWidgets import QMessageBox, QApplication
             app = QApplication([])
-            QMessageBox.critical(None, "필수 모듈 누락", 
-                f"다음 모듈이 설치되지 않았습니다:\n\n{', '.join(errors)}\n\n"
-                f"pip install {' '.join(errors)} 명령어로 설치하세요.")
+            msg = t("app.missing_modules_msg").replace("{modules}", ", ".join(errors))
+            QMessageBox.critical(None, t("app.missing_modules"), msg)
             sys.exit(1)
         except Exception as e:
-            print(f"[ERROR] 필수 모듈 누락: {', '.join(errors)} - {e}")
+            logger.info(f"[ERROR] 필수 모듈 누락: {', '.join(errors)} - {e}")
             sys.exit(1)
 
 _check_dependencies()
@@ -137,7 +146,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QMessageBox, QApplication, QLabel, QTextEdit
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
 # 다국어 지원
@@ -156,17 +165,18 @@ SettingsWidget_Pkg = load_widget('settings_widget', 'SettingsWidget')
 DataCollectorWidget_Pkg = load_widget('data_collector_widget', 'DataCollectorWidget')
 OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget')
 TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
+AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget')
 
 
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "v1.5.5"
+    VERSION = "v1.7.1"
     
     def __init__(self, user_tier='admin'):
         super().__init__()
         self.user_tier = user_tier
-        self.setWindowTitle(t("TwinStar Quantum - Advanced Algorithm Trading System"))
+        self.setWindowTitle(t("app.full_title"))
         
         # 작업표시줄 아이콘 설정
         from PyQt5.QtGui import QIcon
@@ -191,29 +201,84 @@ class StarUWindow(QMainWindow):
         self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
         
         # 위젯 초기화 (Lazy Loading 제거 - 모두 미리 생성)
-        print("=" * 60)
-        print("🚀 TwinStar Quantum 초기화 시작...")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("🚀 TwinStar Quantum 초기화 시작...")
+        logger.info("=" * 60)
+
         self.init_widgets()
         self.init_ui()
         self.connect_signals()
         
-        print("\n✅ TwinStar Quantum 초기화 완료!\n")
+        logger.info("\n✅ TwinStar Quantum 초기화 완료!\n")
+    
+    def closeEvent(self, event):
+        """종료 시 모든 프로세스 정리"""
+        logger.info("🔄 프로그램 종료 중...")
         
+        import signal
+        import os
+        import multiprocessing
+        
+        try:
+            # 1) 최적화 엔진 정리
+            if hasattr(self, 'optimization') and self.optimization:
+                widget = self.optimization
+                if hasattr(widget, 'engine') and widget.engine:
+                    if hasattr(widget.engine, '_cleanup_executor'):
+                        widget.engine._cleanup_executor()
+                    if hasattr(widget.engine, 'cancel'):
+                        widget.engine.cancel()
+                        
+            # 2) 워커 스레드 정리
+            if hasattr(self, 'optimization') and hasattr(self.optimization, 'worker'):
+                if self.optimization.worker:
+                    self.optimization.worker.cancel()
+            
+            # 3) 모든 자식 프로세스 종료
+            for child in multiprocessing.active_children():
+                try:
+                    child.terminate()
+                    child.join(timeout=0.5)
+                except:
+                    pass
+            
+            # 4) 현재 프로세스의 자식들 강제 종료
+            import subprocess
+            current_pid = os.getpid()
+            try:
+                # Windows에서 자식 프로세스 강제 종료
+                subprocess.run(
+                    ['taskkill', '/F', '/T', '/PID', str(current_pid)],
+                    capture_output=True,
+                    timeout=2
+                )
+            except:
+                pass
+                
+        except Exception as e:
+            logger.info(f"종료 정리 중 오류: {e}")
+        
+        logger.info("✅ 종료 완료")
+        event.accept()
+        
+        # 강제 종료
+        os._exit(0)
+        
+
     def init_widgets(self):
         """모든 위젯 미리 생성 (Lazy Loading 제거)"""
-        print("\n📦 위젯 초기화 중...\n")
+        logger.info("\n📦 위젯 초기화 중...\n")
         
         # 1. Dashboard
         cls, err = TradingDashboard_Pkg
         try:
             if cls:
                 self.dashboard = cls()
-                print("  ✅ Dashboard 생성 완료")
+                logger.info("  ✅ Dashboard 생성 완료")
             else:
                 raise ImportError(f"TradingDashboard not available.\n{err}")
         except Exception as e:
-            print(f"  ❌ Dashboard 생성 실패: {e}")
+            logger.info(f"  ❌ Dashboard 생성 실패: {e}")
             self.dashboard = self._create_error_widget("Dashboard", e)
             
         # 2. Backtest Widget
@@ -221,23 +286,34 @@ class StarUWindow(QMainWindow):
         try:
             if cls:
                 self.backtest_widget = cls()
-                print("  ✅ Backtest 생성 완료")
+                logger.info("  ✅ Backtest 생성 완료")
             else:
                 raise ImportError(f"BacktestWidget not available.\n{err}")
         except Exception as e:
-            print(f"  ❌ Backtest 생성 실패: {e}")
+            logger.info(f"  ❌ Backtest 생성 실패: {e}")
             self.backtest_widget = self._create_error_widget("Backtest", e)
+
+        # Auto Pipeline (New)
+        if AutoPipelineWidget_Pkg[0]:
+            self.auto_pipeline_widget = AutoPipelineWidget_Pkg[0]()
+            logger.info("  ✅ AutoPipeline 생성 완료")
+            # [NEW] Integrate into Dashboard
+            if hasattr(self.dashboard, 'set_auto_scanner'):
+                self.dashboard.set_auto_scanner(self.auto_pipeline_widget)
+        else:
+            self.auto_pipeline_widget = self._create_error_widget("자동매매", AutoPipelineWidget_Pkg[1])
+            logger.info(f"  ❌ AutoPipeline 생성 실패: {AutoPipelineWidget_Pkg[1]}")
             
         # 3. History Widget
         cls, err = HistoryWidget_Pkg
         try:
             if cls:
                 self.history_widget = cls()
-                print("  ✅ History 생성 완료")
+                logger.info("  ✅ History 생성 완료")
             else:
                 raise ImportError(f"HistoryWidget not available.\n{err}")
         except Exception as e:
-            print(f"  ❌ History 생성 실패: {e}")
+            logger.info(f"  ❌ History 생성 실패: {e}")
             self.history_widget = self._create_error_widget("History", e)
             
         # 4. Settings Widget
@@ -245,11 +321,11 @@ class StarUWindow(QMainWindow):
         try:
             if cls:
                 self.settings_widget = cls()
-                print("  ✅ Settings 생성 완료")
+                logger.info("  ✅ Settings 생성 완료")
             else:
                 raise ImportError(f"SettingsWidget not available.\n{err}")
         except Exception as e:
-            print(f"  ❌ Settings 생성 실패: {e}")
+            logger.info(f"  ❌ Settings 생성 실패: {e}")
             self.settings_widget = self._create_error_widget("Settings", e)
             
         # 5. Data Collector Widget
@@ -257,11 +333,11 @@ class StarUWindow(QMainWindow):
         try:
             if cls:
                 self.data_collector_widget = cls()
-                print("  ✅ DataCollector 생성 완료")
+                logger.info("  ✅ DataCollector 생성 완료")
             else:
                 raise ImportError(f"DataCollectorWidget not available.\n{err}")
         except Exception as e:
-            print(f"  ❌ DataCollector 생성 실패: {e}")
+            logger.info(f"  ❌ DataCollector 생성 실패: {e}")
             self.data_collector_widget = self._create_error_widget("DataCollector", e)
             
         # 6. Optimization Widget
@@ -269,11 +345,11 @@ class StarUWindow(QMainWindow):
         try:
             if cls:
                 self.optimization_widget = cls()
-                print("  ✅ Optimization 생성 완료")
+                logger.info("  ✅ Optimization 생성 완료")
             else:
                 raise ImportError(f"OptimizationWidget not available.\n{err}")
         except Exception as e:
-            print(f"  ❌ Optimization 생성 실패: {e}")
+            logger.info(f"  ❌ Optimization 생성 실패: {e}")
             self.optimization_widget = self._create_error_widget("Optimization", e)
 
         # 7. Trade History Widget
@@ -281,12 +357,12 @@ class StarUWindow(QMainWindow):
         try:
             if cls:
                 self.trade_history_widget = cls()
-                print("  ✅ TradeHistory 생성 완료")
+                logger.info("  ✅ TradeHistory 생성 완료")
             else:
                 self.trade_history_widget = self._create_error_widget("TradeHistory", err) # 필수 아님
-                print(f"  ⚠️ TradeHistory 생성 실패: {err}")
+                logger.info(f"  ⚠️ TradeHistory 생성 실패: {err}")
         except Exception as e:
-            print(f"  ❌ TradeHistory 생성 실패: {e}")
+            logger.info(f"  ❌ TradeHistory 생성 실패: {e}")
             self.trade_history_widget = self._create_error_widget("TradeHistory", e)
         
     def _create_error_widget(self, title, e):
@@ -381,9 +457,9 @@ class StarUWindow(QMainWindow):
         header_layout.addWidget(help_btn)
         
         # 📖 용어집 버튼
-        glossary_btn = QPushButton("📖 용어집")
+        glossary_btn = QPushButton("📖 " + t("license.glossary"))
         glossary_btn.setFixedWidth(80)  # [FIX] 크기 통일
-        glossary_btn.setToolTip("용어집")
+        glossary_btn.setToolTip(t("license.glossary"))
         glossary_btn.setStyleSheet("""
             QPushButton { 
                 background: #2d3748; color: white; 
@@ -395,20 +471,20 @@ class StarUWindow(QMainWindow):
         glossary_btn.clicked.connect(self._show_glossary)
         header_layout.addWidget(glossary_btn)
         
-        # 📱 텔레그램 버튼
-        telegram_btn = QPushButton("📱 알림")
-        telegram_btn.setFixedWidth(80)  # [FIX] 크기 통일
-        telegram_btn.setToolTip("텔레그램 알림 설정")
-        telegram_btn.setStyleSheet("""
-            QPushButton { 
-                background: #2d3748; color: white; 
-                border: 1px solid #4a5568; border-radius: 4px; 
-                padding: 4px 10px; font-size: 12px;
-            }
-            QPushButton:hover { background: #4a5568; }
-        """)
-        telegram_btn.clicked.connect(self._show_telegram)
-        header_layout.addWidget(telegram_btn)
+        # [HIDDEN] 📱 텔레그램 버튼
+        # telegram_btn = QPushButton("📱 알림")
+        # telegram_btn.setFixedWidth(80)  # [FIX] 크기 통일
+        # telegram_btn.setToolTip("텔레그램 알림 설정")
+        # telegram_btn.setStyleSheet("""
+        #     QPushButton { 
+        #         background: #2d3748; color: white; 
+        #         border: 1px solid #4a5568; border-radius: 4px; 
+        #         padding: 4px 10px; font-size: 12px;
+        #     }
+        #     QPushButton:hover { background: #4a5568; }
+        # # """)
+        # telegram_btn.clicked.connect(self._show_telegram)
+        # header_layout.addWidget(telegram_btn)
         
         # 🔄 업데이트 버튼
         try:
@@ -420,9 +496,9 @@ class StarUWindow(QMainWindow):
             logging.debug(f"[UPDATER] 버전 확인 실패: {e}")
             update_ver = "1.2.6"
         
-        update_btn = QPushButton(f"🔄 업데이트")
+        update_btn = QPushButton("🔄 " + t("license.update"))
         update_btn.setMinimumWidth(80)  # [FIX] 글자 크기에 맞춰지도록 조정
-        update_btn.setToolTip("업데이트 확인")
+        update_btn.setToolTip(t("license.update"))
         update_btn.setStyleSheet("""
             QPushButton { 
                 background: rgba(76, 175, 80, 0.2); color: #4CAF50; 
@@ -485,13 +561,13 @@ class StarUWindow(QMainWindow):
             self.tier_label.setStyleSheet(f"color: {tier_color}; font-weight: bold; padding: 3px 10px; background: rgba(255,255,255,0.05); border-radius: 3px; margin-left: 10px;")
             header_layout.addWidget(self.tier_label)
             
-            self.days_label = QLabel(f"📅 {days}일 남음")
+            self.days_label = QLabel(t("license.days_left").replace("{days}", str(days)))
             days_color = "#4caf50" if days > 7 else ("#ff9800" if days > 3 else "#f44336")
             self.days_label.setStyleSheet(f"color: {days_color}; margin-left: 10px;")
             header_layout.addWidget(self.days_label)
             
             # 업그레이드 버튼
-            upgrade_btn = QPushButton("💳 라이센스")
+            upgrade_btn = QPushButton("💳 " + t("license.upgrade"))
             upgrade_btn.setStyleSheet("""
                 QPushButton { 
                     background: #7c4dff; color: white; border: none; 
@@ -503,7 +579,7 @@ class StarUWindow(QMainWindow):
             header_layout.addWidget(upgrade_btn)
             
         except Exception as e:
-            print(f"⚠️ 등급 표시 실패: {e}")
+            logger.info(f"⚠️ 등급 표시 실패: {e}")
             self.tier_label = QLabel("🏷️ -")
             header_layout.addWidget(self.tier_label)
         
@@ -531,6 +607,7 @@ class StarUWindow(QMainWindow):
         
         # 탭 추가 (다국어 지원)
         self.tabs.addTab(self.dashboard, f"📊 {t('tabs.trading', '매매')}")
+        # self.tabs.addTab(self.auto_pipeline_widget, "자동매매") # [MOVED] Integrated into Trading Dashboard
         self.tabs.addTab(self.settings_widget, f"⚙️ {t('tabs.settings', '설정')}")
         self.tabs.addTab(self.data_collector_widget, f"📥 {t('tabs.data', '수집')}")
         self.tabs.addTab(self.backtest_widget, f"🔬 {t('tabs.backtest', '백테스트')}")
@@ -544,38 +621,38 @@ class StarUWindow(QMainWindow):
         
     def connect_signals(self):
         """시그널 연결 - 모든 위젯이 이미 생성되어 있음"""
-        print("\n🔗 시그널 연결 중...\n")
+        logger.info("\n🔗 시그널 연결 중...\n")
         
         # 1. 백테스트 완료 시그널
         if hasattr(self.backtest_widget, 'backtest_finished'):
             self.backtest_widget.backtest_finished.connect(self.on_backtest_finished)
-            print("  ✅ backtest_finished 시그널 연결")
+            logger.info("  ✅ backtest_finished 시그널 연결")
         else:
-            print("  ⚠️ backtest_finished 시그널 없음")
+            logger.info("  ⚠️ backtest_finished 시그널 없음")
         
         # 2. Dashboard 시그널
         if hasattr(self.dashboard, 'start_trading_clicked'):
             self.dashboard.start_trading_clicked.connect(self.on_start_trading)
-            print("  ✅ start_trading_clicked 시그널 연결")
+            logger.info("  ✅ start_trading_clicked 시그널 연결")
             
         if hasattr(self.dashboard, 'stop_trading_clicked'):
             self.dashboard.stop_trading_clicked.connect(self.on_stop_trading)
-            print("  ✅ stop_trading_clicked 시그널 연결")
+            logger.info("  ✅ stop_trading_clicked 시그널 연결")
             
         # 3. DataCollector 시그널
         if hasattr(self.data_collector_widget, 'download_finished'):
             self.data_collector_widget.download_finished.connect(self.on_data_downloaded)
-            print("  ✅ download_finished 시그널 연결")
+            logger.info("  ✅ download_finished 시그널 연결")
 
         # 4. Optimization 시그널
         if hasattr(self.optimization_widget, 'settings_applied'):
             self.optimization_widget.settings_applied.connect(self.on_settings_optimized)
-            print("  ✅ settings_applied 시그널 연결")
+            logger.info("  ✅ settings_applied 시그널 연결")
         
         # 5. Dashboard go_to_tab 시그널 (빠른 실행 버튼)
         if hasattr(self.dashboard, 'go_to_tab'):
             self.dashboard.go_to_tab.connect(self.tabs.setCurrentIndex)
-            print("  ✅ go_to_tab 시그널 연결 (빠른 실행 버튼)")
+            logger.info("  ✅ go_to_tab 시그널 연결 (빠른 실행 버튼)")
             
         # 6. 탭 변경 시그널
         self.tabs.currentChanged.connect(self.on_tab_changed)
@@ -584,42 +661,42 @@ class StarUWindow(QMainWindow):
         """탭 변경 핸들러"""
         # 백테스트 탭(3)으로 진입 시 파라미터 리로드
         if index == 3 and hasattr(self.backtest_widget, 'load_strategy_params'):
-            print("📊 백테스트 탭 진입: 파라미터 갱신")
+            logger.info("📊 백테스트 탭 진입: 파라미터 갱신")
             self.backtest_widget.load_strategy_params()
             
     def on_backtest_finished(self, trades, candle_data, timestamps=None):
         """백테스트 완료 핸들러"""
-        print(f"\n{'='*60}")
-        print(f"📊 백테스트 완료 수신")
-        print(f"{'='*60}")
-        print(f"  - Trades: {len(trades)}건")
-        print(f"  - Candles: {len(candle_data)}건")
-        print(f"  - Timestamps: {len(timestamps) if timestamps else 'None'}건")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"📊 백테스트 완료 수신")
+        logger.info(f"{'='*60}")
+        logger.info(f"  - Trades: {len(trades)}건")
+        logger.info(f"  - Candles: {len(candle_data)}건")
+        logger.info(f"  - Timestamps: {len(timestamps) if timestamps else 'None'}건")
         
         if trades:
             executed = [t for t in trades if t.get('status') == 'EXECUTED']
             rejected = [t for t in trades if t.get('status') != 'EXECUTED']
-            print(f"  - Executed: {len(executed)}건")
-            print(f"  - Rejected: {len(rejected)}건")
-        print(f"{'='*60}\n")
+            logger.info(f"  - Executed: {len(executed)}건")
+            logger.info(f"  - Rejected: {len(rejected)}건")
+        logger.info(f"{'='*60}\n")
         
         # History 탭으로 전환
-        print("→ 결과 탭으로 전환...")
+        logger.info("→ 결과 탭으로 전환...")
         if hasattr(self.history_widget, 'refresh_trades'):
             self.history_widget.refresh_trades()
         
     def on_start_trading(self):
         """트레이딩 시작 - Dashboard에서 처리"""
-        print("▶️ 트레이딩 시작...")
+        logger.info("▶️ 트레이딩 시작...")
         self.tabs.setCurrentIndex(0)
         
     def on_stop_trading(self):
         """트레이딩 중지 - Dashboard에서 처리"""
-        print("⏹️ 트레이딩 중지...")
+        logger.info("⏹️ 트레이딩 중지...")
 
     def on_settings_optimized(self, params):
         """최적화된 설정 적용 핸들러"""
-        print("⚙️ 최적화 설정 적용됨")
+        logger.info("⚙️ 최적화 설정 적용됨")
         if hasattr(self.backtest_widget, 'apply_params'):
             self.backtest_widget.apply_params(params)
         elif hasattr(self.backtest_widget, 'load_strategy_params'):
@@ -629,7 +706,7 @@ class StarUWindow(QMainWindow):
 
     def on_data_downloaded(self, symbol, count):
         """데이터 다운로드 완료 핸들러"""
-        print(f"📥 데이터 수신 확인: {symbol} ({count:,}건)")
+        logger.info(f"📥 데이터 수신 확인: {symbol} ({count:,}건)")
         
         if hasattr(self.backtest_widget, '_refresh_data_sources'):
             self.backtest_widget._refresh_data_sources()
@@ -640,11 +717,11 @@ class StarUWindow(QMainWindow):
     def apply_styles(self):
         """스타일 적용"""
         try:
-            from styles import StarUTheme
-            self.setStyleSheet(StarUTheme.get_stylesheet())
-            print("  ✅ StarU 테마 적용 (v2.0)")
+            from GUI.legacy_styles import MAIN_STYLE
+            self.setStyleSheet(MAIN_STYLE)
+            logger.info("  ✅ TradingView 스타일 적용 완료")
         except ImportError:
-            print("  ⚠️ styles.py 없음 - 기본 스타일 적용")
+            logger.info("  ⚠️ legacy_styles.py 없음 - 기본 스타일 적용")
             self.setStyleSheet("""
                 QMainWindow {
                     background-color: #0d1117;
@@ -670,7 +747,7 @@ class StarUWindow(QMainWindow):
                 if hasattr(self, 'tier_label'):
                     self.tier_label.setText(f"🏷️ {tier}")
                 if hasattr(self, 'days_label'):
-                    self.days_label.setText(f"📅 {days}일 남음")
+                    self.days_label.setText(t("license.days_left").replace("{days}", str(days)))
             else:
                 QMessageBox.warning(self, "오류", "결제 다이얼로그를 로드할 수 없습니다.")
         except Exception as e:
@@ -688,7 +765,7 @@ class StarUWindow(QMainWindow):
                 "Language changed. Please restart.\n언어가 변경되었습니다. 재시작해주세요."
             )
         except Exception as e:
-            print(f"Language change error: {e}")
+            logger.info(f"Language change error: {e}")
     
     def _on_title_click(self, event):
         """로고 클릭 시 도움말 팝업"""
@@ -697,7 +774,7 @@ class StarUWindow(QMainWindow):
             popup = HelpPopup(self)
             popup.exec_()
         except Exception as e:
-            print(f"Help popup error: {e}")
+            logger.info(f"Help popup error: {e}")
     
     def _show_glossary(self):
         """용어집 팝업"""
@@ -713,7 +790,7 @@ class StarUWindow(QMainWindow):
             popup = GlossaryPopup(self, lang=lang)
             popup.exec_()
         except Exception as e:
-            print(f"Glossary popup error: {e}")
+            logger.info(f"Glossary popup error: {e}")
     
     def _show_telegram(self):
         """텔레그램 설정 팝업"""
@@ -722,7 +799,7 @@ class StarUWindow(QMainWindow):
             popup = TelegramPopup(self)
             popup.exec_()
         except Exception as e:
-            print(f"Telegram popup error: {e}")
+            logger.info(f"Telegram popup error: {e}")
     
     def _show_update(self):
         """업데이트 팝업"""
@@ -731,7 +808,7 @@ class StarUWindow(QMainWindow):
             popup = UpdatePopup(self)
             popup.exec_()
         except Exception as e:
-            print(f"Update popup error: {e}")
+            logger.info(f"Update popup error: {e}")
     
     def closeEvent(self, event):
         """안전한 종료 - 봇 정지 및 포지션 경고"""
@@ -798,9 +875,10 @@ def main():
     font = QFont("Segoe UI", 10)
     app.setFont(font)
     
-    print("\n" + "=" * 60)
-    print("🌟 TwinStar Quantum v1.5.8 시작")
-    print("=" * 60 + "\n")
+    logger.info("\n" + "=" * 60)
+
+    logger.info("🌟 TwinStar Quantum v1.6.1 시작")
+    logger.info("=" * 60 + "\n")
     
     # 캐시 자동 삭제 (개발 환경 전용)
     if not getattr(sys, 'frozen', False):
@@ -816,18 +894,19 @@ def main():
             if os.path.exists(folder):
                 try:
                     shutil.rmtree(folder)
-                    print(f"🧹 캐시 삭제: {os.path.basename(os.path.dirname(folder))}/__pycache__")
+                    logger.info(f"🧹 캐시 삭제: {os.path.basename(os.path.dirname(folder))}/__pycache__")
                 except Exception as e:
-                    print(f"⚠️ 캐시 삭제 실패: {folder} - {e}")
+                    logger.info(f"⚠️ 캐시 삭제 실패: {folder} - {e}")
     
     # 시스템 자동 점검
     try:
         from system_doctor import auto_startup_check
-        print("🔍 시스템 자동 점검 중...")
+        logger.info("🔍 시스템 자동 점검 중...")
         check_result = auto_startup_check()
         
         if check_result.get('fixed'):
-            print("🔧 자동 수정 완료:", check_result.get('fixed'))
+            logger.info(f"🔧 자동 수정 완료: {check_result.get('fixed')}")
+
         
         if check_result.get('issues'):
             QMessageBox.warning(
@@ -836,7 +915,7 @@ def main():
                 "\n".join(f"• {issue}" for issue in check_result.get('issues', []))
             )
     except Exception as e:
-        print(f"시스템 점검 건너뜀: {e}")
+        logger.info(f"시스템 점검 건너뜀: {e}")
     
     # 온보딩 튜토리얼 (첫 실행 시)
     try:
@@ -844,7 +923,7 @@ def main():
         if show_onboarding:
             show_onboarding()
     except Exception as e:
-        print(f"온보딩 건너뜀: {e}")
+        logger.info(f"온보딩 건너뜀: {e}")
     
     # 라이선스 확인
     try:
@@ -853,50 +932,50 @@ def main():
         
         lm = get_license_manager()
         
-        print("🔐 로그인 인증 시작...")
+        logger.info("🔐 로그인 인증 시작...")
         
         LoginDialog = safe_import('login_dialog', 'LoginDialog')
         
         if LoginDialog:
             dlg = LoginDialog()
             if dlg.exec_() != 1:
-                print("❌ 로그인 취소 - 종료")
+                logger.info("❌ 로그인 취소 - 종료")
                 sys.exit(0)
             
-            print("✅ 로그인 완료 -> 실행")
+            logger.info("✅ 로그인 완료 -> 실행")
         else:
-            print("❌ LoginDialog 로드 실패 - 실행 불가")
+            logger.info("❌ LoginDialog 로드 실패 - 실행 불가")
             sys.exit(1)
         
         try:
             lm.refresh()
-            print(f"🏷️ 라이선스 상태: {lm.get_tier()} (잔여기간: {lm.get_days_left()}일)")
+            logger.info(f"🏷️ 라이선스 상태: {lm.get_tier()} (잔여기간: {lm.get_days_left()}일)")
         except Exception as e:
-            print(f"⚠️ 라이선스 서버 확인 실패 (캐시 사용): {e}")
+            logger.info(f"⚠️ 라이선스 서버 확인 실패 (캐시 사용): {e}")
 
         try:
             tier = lm.get_tier()
             days = lm.get_days_left()
             
             if days <= 3:
-                print(f"💳 결제 안내 표시 (Days: {days})")
+                logger.info(f"💳 결제 안내 표시 (Days: {days})")
                 PaymentDialog = safe_import('payment_dialog', 'PaymentDialog')
                 
                 if PaymentDialog:
                     try:
                         pay_dlg = PaymentDialog(lm)
                         result = pay_dlg.exec_()
-                        print(f"🏷️ 결제 팝업 종료 코드: {result}")
+                        logger.info(f"🏷️ 결제 팝업 종료 코드: {result}")
                         pay_dlg.deleteLater()
                     except Exception as e:
-                        print(f"⚠️ 결제 팝업 실행 중 오류 (무시됨): {e}")
+                        logger.info(f"⚠️ 결제 팝업 실행 중 오류 (무시됨): {e}")
                         import traceback
                         traceback.print_exc()
         except Exception as e:
-            print(f"⚠️ 결제 안내 로직 오류: {e}")
+            logger.info(f"⚠️ 결제 안내 로직 오류: {e}")
 
     except Exception as e:
-        print(f"❌ 라이선스 시스템 초기화 오류: {e}")
+        logger.info(f"❌ 라이선스 시스템 초기화 오류: {e}")
         QMessageBox.critical(None, "라이선스 오류", f"라이선스 시스템 초기화 실패: {e}\n앱을 종료합니다.")
         sys.exit(1)
     
@@ -907,12 +986,21 @@ def main():
         lm = get_license_manager()
         if hasattr(lm, 'is_admin') and lm.is_admin():
             user_tier = 'admin'
-            print("👑 관리자 권한 확인")
+            logger.info("👑 관리자 권한 확인")
     except Exception as e:
-        print(f"티어 확인 중 오류: {e}")
+        logger.info(f"티어 확인 중 오류: {e}")
 
     # 메인 윈도우 실행
     window = StarUWindow(user_tier=user_tier)
+    
+    # 세련된 스타일 적용
+    try:
+        from GUI.legacy_styles import apply_style
+        apply_style(app)
+        logger.info("  ✅ legacy_styles 적용 완료")
+    except ImportError:
+        logger.info("  ⚠️ legacy_styles.py 없음 - 기본 스타일 적용")
+    
     window.show()
     
     sys.exit(app.exec_())

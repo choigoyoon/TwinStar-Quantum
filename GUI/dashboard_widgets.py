@@ -1,7 +1,12 @@
 
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QBrush
+from PyQt5.QtGui import QColor
+from locales.lang_manager import t
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 class ExternalPositionTable(QTableWidget):
     """외부 거래소 포지션 테이블 (읽기 전용)"""
@@ -11,7 +16,15 @@ class ExternalPositionTable(QTableWidget):
         
     def _init_ui(self):
         # 컬럼: 거래소, 심볼, Side, Size, 진입가, PnL, 레버리지
-        columns = ["Exchange", "Symbol", "Side", "Size", "Entry", "PnL (%)", "Lev"]
+        columns = [
+            t("dashboard.exchange_header", "Exchange"),
+            t("dashboard.symbol_header", "Symbol"),
+            t("dashboard.side_header", "Side"),
+            t("dashboard.size_header", "Size"),
+            t("dashboard.entry_header", "Entry"),
+            t("trade.pnl_pct_header", "PnL (%)"),
+            t("dashboard.lev_header", "Lev")
+        ]
         self.setColumnCount(len(columns))
         self.setHorizontalHeaderLabels(columns)
         
@@ -77,7 +90,14 @@ class TradeHistoryTable(QTableWidget):
         self._init_ui()
         
     def _init_ui(self):
-        columns = ["Time", "Symbol", "Side", "PnL ($)", "PnL (%)", "Reason"]
+        columns = [
+            t("trade.time_header", "Time"),
+            t("dashboard.symbol_header", "Symbol"),
+            t("dashboard.side_header", "Side"),
+            t("trade.pnl_usd_header", "PnL ($)"),
+            t("trade.pnl_pct_header", "PnL (%)"),
+            t("trade.reason_header", "Reason")
+        ]
         self.setColumnCount(len(columns))
         self.setHorizontalHeaderLabels(columns)
         
@@ -175,7 +195,6 @@ class EquityCurveWidget(QWidget):
     def update_data(self, trades: list):
         """거래 기록으로 수익금 그래프 그리기"""
         import pandas as pd
-        import numpy as np
         
         self.ax.clear()
         self.ax.grid(True, color='#333333', linestyle='--', alpha=0.5)
@@ -219,9 +238,90 @@ class EquityCurveWidget(QWidget):
             plt.setp(self.ax.get_xticklabels(), rotation=30, ha='right')
             
             # 타이틀 등
-            self.ax.set_title(f"Cumulative PnL: ${final_pnl:+.2f}", color=line_color, fontsize=10, fontweight='bold')
+            title_text = t("trade.cumulative", "Cumulative PnL")
+            self.ax.set_title(f"{title_text}: ${final_pnl:+.2f}", color=line_color, fontsize=10, fontweight='bold')
             
         except Exception as e:
-            print(f"[Graph] Error: {e}")
+            logger.info(f"[Graph] Error: {e}")
             
         self.canvas.draw()
+
+
+class PositionTable(QTableWidget):
+    """활성 봇 포지션 테이블 (관리 중인 포지션)"""
+    def __init__(self):
+        super().__init__()
+        self._init_ui()
+        
+    def _init_ui(self):
+        # 컬럼: 심볼, Side, 진입가, 현재가, PnL, 전략
+        columns = [
+            t("dashboard.symbol_header", "Symbol"),
+            t("dashboard.side_header", "Side"),
+            t("dashboard.entry_header", "Entry"),
+            t("trade.curr_price_header", "Current"),
+            t("trade.pnl_pct_header", "PnL (%)"),
+            "UPnL ($)", # Unrealized PnL Value
+            t("dashboard.strategy_header", "Strategy")
+        ]
+        self.setColumnCount(len(columns))
+        self.setHorizontalHeaderLabels(columns)
+        
+        self.setStyleSheet("""
+            QTableWidget {
+                background-color: #1e222d;
+                color: #e0e0e0;
+                gridline-color: #333;
+                border: 1px solid #333;
+            }
+            QHeaderView::section {
+                background-color: #2b2b2b;
+                color: #a0a0a0;
+                padding: 4px;
+                border: 1px solid #333;
+            }
+        """)
+        self.verticalHeader().setVisible(False)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+
+    def update_position(self, symbol, data):
+        """특정 심볼 포지션 업데이트"""
+        # 기존 행 찾기
+        row = -1
+        for r in range(self.rowCount()):
+            item = self.item(r, 0)
+            if item and item.text() == symbol:
+                row = r
+                break
+        
+        if row == -1:
+            row = self.rowCount()
+            self.insertRow(row)
+            self.setItem(row, 0, QTableWidgetItem(symbol))
+            
+        # 데이터 매핑
+        side = data.get('side', '-')
+        entry = f"{float(data.get('entry_price', 0)):.4f}"
+        curr = f"{float(data.get('current_price', 0)):.4f}"
+        pnl = float(data.get('unrealized_pnl_pct', 0))
+        upnl = float(data.get('unrealized_pnl', 0))
+        strategy = data.get('strategy', 'Unknown')
+        
+        items = [symbol, side, entry, curr, f"{pnl:.2f}%", f"${upnl:.2f}", strategy]
+        
+        for col, text in enumerate(items):
+            item = QTableWidgetItem(str(text))
+            item.setTextAlignment(Qt.AlignCenter)
+            
+            # Styles
+            if col == 1: # Side
+                if side == 'Long': item.setForeground(QColor("#4CAF50"))
+                elif side == 'Short': item.setForeground(QColor("#FF5252"))
+            
+            if col == 4 or col == 5: # PnL
+                if pnl > 0: item.setForeground(QColor("#4CAF50"))
+                elif pnl < 0: item.setForeground(QColor("#FF5252"))
+                
+            self.setItem(row, col, item)

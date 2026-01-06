@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (
     QStackedWidget, QWidget, QFrame
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
 
 
 class OnboardingDialog(QDialog):

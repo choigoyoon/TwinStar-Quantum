@@ -1,3 +1,7 @@
+
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 """
 TwinStar Quantum - 거래소별 심볼 변환
 Bybit/Binance: BTCUSDT
@@ -146,22 +150,22 @@ def convert_all_symbols(symbols: list, from_exchange: str, to_exchange: str) -> 
 
 # 테스트용
 if __name__ == "__main__":
-    print("=== Symbol Converter Test ===")
+    logger.info("=== Symbol Converter Test ===")
     
     # 기본 변환
-    print(f"BTC → bybit: {convert_symbol('BTC', 'bybit')}")
-    print(f"BTC → upbit: {convert_symbol('BTC', 'upbit')}")
-    print(f"BTC → bithumb: {convert_symbol('BTC', 'bithumb')}")
+    logger.info(f"BTC → bybit: {convert_symbol('BTC', 'bybit')}")
+    logger.info(f"BTC → upbit: {convert_symbol('BTC', 'upbit')}")
+    logger.info(f"BTC → bithumb: {convert_symbol('BTC', 'bithumb')}")
     
     # 역변환
-    print(f"BTCUSDT → base: {extract_base('BTCUSDT')}")
-    print(f"KRW-BTC → base: {extract_base('KRW-BTC')}")
-    print(f"BTC_KRW → base: {extract_base('BTC_KRW')}")
+    logger.info(f"BTCUSDT → base: {extract_base('BTCUSDT')}")
+    logger.info(f"KRW-BTC → base: {extract_base('KRW-BTC')}")
+    logger.info(f"BTC_KRW → base: {extract_base('BTC_KRW')}")
     
     # 거래소 체크
-    print(f"upbit is KRW: {is_krw_exchange('upbit')}")
-    print(f"bybit is KRW: {is_krw_exchange('bybit')}")
+    logger.info(f"upbit is KRW: {is_krw_exchange('upbit')}")
+    logger.info(f"bybit is KRW: {is_krw_exchange('bybit')}")
     
     # 일괄 변환
     symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
-    print(f"bybit → upbit: {convert_all_symbols(symbols, 'bybit', 'upbit')}")
+    logger.info(f"bybit → upbit: {convert_all_symbols(symbols, 'bybit', 'upbit')}")

@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QComboBox, QDateEdit, QSplitter, QGroupBox, QGridLayout,
     QFileDialog, QMessageBox, QTabWidget, QDialog
 )
-from PyQt5.QtCore import Qt, QDate, QTimer, QMimeData
+from PyQt5.QtCore import Qt, QDate, QTimer
 from PyQt5.QtGui import QFont, QColor, QDragEnterEvent, QDropEvent
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -226,7 +226,7 @@ class HistoryWidget(QWidget):
         
         # 헤더
         header_layout = QHBoxLayout()
-        header = QLabel("📜 거래 내역")
+        header = QLabel("📜 " + t("history.title"))
         header.setFont(QFont("Arial", 18, QFont.Bold))
         header.setStyleSheet("color: white;")
         header_layout.addWidget(header)
@@ -234,7 +234,7 @@ class HistoryWidget(QWidget):
         header_layout.addStretch()
         
         # CSV 임포트 버튼
-        import_btn = QPushButton("📂 CSV 가져오기")
+        import_btn = QPushButton("📂 " + t("history.import_csv"))
         import_btn.clicked.connect(self._import_csv)
         import_btn.setStyleSheet("""
             QPushButton {
@@ -248,7 +248,7 @@ class HistoryWidget(QWidget):
         """)
         header_layout.addWidget(import_btn)
         
-        refresh_btn = QPushButton("🔄 새로고침")
+        refresh_btn = QPushButton("🔄 " + t("common.refresh"))
         refresh_btn.clicked.connect(self.load_history)
         refresh_btn.setStyleSheet("""
             QPushButton {
@@ -273,22 +273,22 @@ class HistoryWidget(QWidget):
         # 통계 카드 (확장)
         stats_layout = QHBoxLayout()
         
-        self.total_trades_card = self._create_stat_card("총 거래", "0")
+        self.total_trades_card = self._create_stat_card(t("backtest.total_trades"), "0")
         stats_layout.addWidget(self.total_trades_card)
         
-        self.win_rate_card = self._create_stat_card("승률", "0%")
+        self.win_rate_card = self._create_stat_card(t("backtest.win_rate"), "0%")
         stats_layout.addWidget(self.win_rate_card)
         
-        self.total_pnl_card = self._create_stat_card("총 손익", "$0.00")
+        self.total_pnl_card = self._create_stat_card(t("history.total_profit"), "$0.00")
         stats_layout.addWidget(self.total_pnl_card)
         
-        self.profit_factor_card = self._create_stat_card("수익 팩터", "0.00")
+        self.profit_factor_card = self._create_stat_card(t("history.profit_factor"), "0.00")
         stats_layout.addWidget(self.profit_factor_card)
         
-        self.avg_pnl_card = self._create_stat_card("평균 손익", "$0.00")
+        self.avg_pnl_card = self._create_stat_card(t("history.avg_profit"), "$0.00")
         stats_layout.addWidget(self.avg_pnl_card)
         
-        self.max_dd_card = self._create_stat_card("최대 낙폭", "0%")
+        self.max_dd_card = self._create_stat_card(t("history.max_drawdown"), "0%")
         stats_layout.addWidget(self.max_dd_card)
         
         layout.addLayout(stats_layout)
@@ -296,22 +296,22 @@ class HistoryWidget(QWidget):
         # 추가 통계 카드
         stats_layout2 = QHBoxLayout()
         
-        self.best_trade_card = self._create_stat_card("최고 수익", "$0.00")
+        self.best_trade_card = self._create_stat_card(t("history.best_trade"), "$0.00")
         stats_layout2.addWidget(self.best_trade_card)
         
-        self.worst_trade_card = self._create_stat_card("최대 손실", "$0.00")
+        self.worst_trade_card = self._create_stat_card(t("history.worst_trade"), "$0.00")
         stats_layout2.addWidget(self.worst_trade_card)
         
-        self.win_streak_card = self._create_stat_card("최대 연승", "0")
+        self.win_streak_card = self._create_stat_card(t("history.win_streak"), "0")
         stats_layout2.addWidget(self.win_streak_card)
         
-        self.lose_streak_card = self._create_stat_card("최대 연패", "0")
+        self.lose_streak_card = self._create_stat_card(t("history.lose_streak"), "0")
         stats_layout2.addWidget(self.lose_streak_card)
         
-        self.be_rate_card = self._create_stat_card("BE 발동률", "0%")
+        self.be_rate_card = self._create_stat_card(t("history.be_rate"), "0%")
         stats_layout2.addWidget(self.be_rate_card)
         
-        self.capital_card = self._create_stat_card("현재 자본", "$0.00")
+        self.capital_card = self._create_stat_card(t("history.current_capital"), "$0.00")
         stats_layout2.addWidget(self.capital_card)
         
         layout.addLayout(stats_layout2)
@@ -353,7 +353,7 @@ class HistoryWidget(QWidget):
         
         filter_layout.addStretch()
         
-        export_btn = QPushButton("📥 CSV 내보내기")
+        export_btn = QPushButton("📥 " + t("optimization.export_csv_btn"))
         export_btn.clicked.connect(self._export_csv)
         export_btn.setStyleSheet("""
             QPushButton {
@@ -382,14 +382,15 @@ class HistoryWidget(QWidget):
         table_layout = QVBoxLayout(table_widget)
         
         # 더블클릭 안내
-        hint_label = QLabel("💡 # 컬럼을 더블클릭하면 차트를 볼 수 있습니다")
+        hint_label = QLabel("💡 " + (t("history.hint") if t("history.hint") != "history.hint" else "Double click # column to view chart"))
         hint_label.setStyleSheet("color: #787b86; font-size: 11px;")
         table_layout.addWidget(hint_label)
         
         self.table = QTableWidget()
         self.table.setColumnCount(10)
         self.table.setHorizontalHeaderLabels([
-            "번호", "날짜/시간", "코인", "구분", "진입", "청산", "수량", "손익 ($)", "손익 (%)", "BE"
+            t("common.num_header"), t("common.date_time"), t("trade.coin"), t("common.category"), 
+            t("trade.entry"), t("trade.exit"), t("common.amount"), t("common.profit_usd"), t("common.profit_pct"), t("common.be")
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setColumnWidth(0, 50)  # # 컬럼 좁게
@@ -413,7 +414,7 @@ class HistoryWidget(QWidget):
         """)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         table_layout.addWidget(self.table)
-        tabs.addTab(table_widget, "📋 테이블")
+        tabs.addTab(table_widget, "📋 " + t("common.analysis_table"))
         
         # 차트 탭 (Equity Curve)
         chart_widget = QWidget()
@@ -436,7 +437,7 @@ class HistoryWidget(QWidget):
         self.equity_text.setWordWrap(True)
         chart_layout.addWidget(self.equity_text)
         
-        tabs.addTab(chart_widget, "📈 자산곡선")
+        tabs.addTab(chart_widget, "📈 " + t("trade.cumulative"))
         
         layout.addWidget(tabs)
     
@@ -707,7 +708,7 @@ class HistoryWidget(QWidget):
             self._apply_filter()
             
         except Exception as e:
-            print(f"History load error: {e}")
+            logger.info(f"History load error: {e}")
             self._trades = []
             self._filtered_trades = []
             self._update_table()

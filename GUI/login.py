@@ -3,11 +3,14 @@
 from locales.lang_manager import t
 import sys
 import os
+import logging
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QCheckBox, QMessageBox,
                              QStackedWidget, QFrame, QApplication)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QClipboard
+from PyQt5.QtGui import QFont
+
+logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -386,6 +389,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     dialog = AuthDialog()
     if dialog.exec_() == QDialog.Accepted:
-        print(f"Logged in: {dialog.user_info}")
+        logger.info(f"Logged in: {dialog.user_info}")
     else:
-        print("Login cancelled")
+        logger.info("Login cancelled")

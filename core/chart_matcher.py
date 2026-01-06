@@ -9,6 +9,10 @@ import os
 import sys
 from typing import Dict, List, Optional, Tuple
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
+
 # 상위 경로 추가
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -61,13 +65,13 @@ class ChartMatcher:
         # 신규 코인 프로파일 추출
         new_profile = self.profiler.extract_profile(new_coin_df)
         if not new_profile:
-            print(f"[ChartMatcher] ❌ {symbol} 프로파일 추출 실패")
+            logger.error(f"[ChartMatcher] ❌ {symbol} 프로파일 추출 실패")
             return None
         
         # 활성 프리셋 목록
         active_presets = self.storage.get_active_presets()
         if not active_presets:
-            print(f"[ChartMatcher] ⚠️ 활성 프리셋 없음")
+            logger.warning(f"[ChartMatcher] ⚠️ 활성 프리셋 없음")
             return None
         
         # 유사도 계산
@@ -88,14 +92,13 @@ class ChartMatcher:
                 })
         
         if not matches:
-            print(f"[ChartMatcher] ⚠️ {symbol}: 유사 프리셋 없음 (threshold: {threshold})")
+            logger.warning(f"[ChartMatcher] ⚠️ {symbol}: 유사 프리셋 없음 (threshold: {threshold})")
             return None
         
         # 가장 유사한 프리셋 선택
         best_match = max(matches, key=lambda x: x['similarity'])
         
-        print(f"[ChartMatcher] ✅ {symbol} → {best_match['preset']['symbol']} "
-              f"({best_match['similarity']*100:.1f}% 유사)")
+        logger.info(f"[ChartMatcher] ✅ {symbol} → {best_match['preset']['symbol']} ({best_match['similarity']*100:.1f}% 유사)")
         
         return best_match['preset']
     
@@ -168,7 +171,7 @@ class ChartMatcher:
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(preset, f, indent=2, ensure_ascii=False)
             
-            print(f"[ChartMatcher] 📝 매칭 등록: {new_symbol} → {matched_symbol}")
+            logger.info(f"[ChartMatcher] 📝 매칭 등록: {new_symbol} → {matched_symbol}")
         
         return True
     
@@ -305,4 +308,4 @@ if __name__ == "__main__":
     
     # 분석 테스트
     result = matcher.analyze_new_coin('NEWCOIN', '4h', dummy_df)
-    print("분석 결과:", result)
+    logger.info(f"분석 결과: {result}")

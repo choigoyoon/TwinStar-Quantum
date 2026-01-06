@@ -21,6 +21,7 @@ a = Analysis(
         # Config (필수 정의 파일만, 민감 정보 제외)
         ('config/parameters.py', 'config'),
         ('config/settings.json', 'config'), 
+        ('config/presets', 'config/presets'), 
         
         # Locales (다국어)
         ('locales', 'locales'),
@@ -44,6 +45,10 @@ a = Analysis(
         # Strategies
         'strategies', 'strategies.strategy_loader',
         
+        # Root-level modules
+        'system_doctor',
+        'notification_manager',
+        
         # Exchange Adapters
         'exchanges', 'exchanges.binance_exchange', 'exchanges.bybit_exchange', 
         'exchanges.okx_exchange', 'exchanges.bitget_exchange', 'exchanges.upbit_exchange',
@@ -55,7 +60,7 @@ a = Analysis(
         'ccxt', 'pandas', 'numpy', 'requests', 'cryptography', 'psutil', 'plotly',
         
         # GUI Package
-        'GUI',
+        'GUI', 'GUI.__init__',
         'GUI.login', 'GUI.login_dialog', 'GUI.multi_session_popup', 'GUI.multi_system_widget',
         'GUI.notification_manager', 'GUI.notification_widget', 'GUI.nowcast_widget',
         'GUI.onboarding_dialog', 'GUI.optimization_widget', 'GUI.payment_dialog',
@@ -76,15 +81,15 @@ a = Analysis(
         'GUI.single_trade_widget', 'GUI.multi_trade_widget', 'GUI.trading_tab_widget',
         'GUI.trade_history_widget', 'GUI.result_widget',
         
-        # GUI Subpackages
-        'GUI.components', 'GUI.components.bot_control_card', 'GUI.components.collapsible',
+        # GUI Subpackages (with __init__)
+        'GUI.components', 'GUI.components.__init__', 'GUI.components.bot_control_card', 'GUI.components.collapsible',
         'GUI.components.interactive_chart', 'GUI.components.market_status',
         'GUI.components.position_table', 'GUI.components.status_card', 'GUI.components.workers',
         'GUI.components.trade_panel',
-        'GUI.pages', 'GUI.pages.step1_backtest', 'GUI.pages.step2_optimize',
+        'GUI.pages', 'GUI.pages.__init__', 'GUI.pages.step1_backtest', 'GUI.pages.step2_optimize',
         'GUI.pages.step3_trade', 'GUI.pages.step4_monitor', 'GUI.pages.step5_results',
-        'GUI.dashboard', 'GUI.dashboard.multi_explorer',
-        'GUI.styles.theme',
+        'GUI.dashboard', 'GUI.dashboard.__init__', 'GUI.dashboard.multi_explorer',
+        'GUI.styles', 'GUI.styles.__init__', 'GUI.styles.theme',
         
         # ========== core 모듈 (17) ==========
         'core', 'core.__init__',
@@ -118,7 +123,7 @@ a = Analysis(
         
         # ========== strategies 모듈 (8) ==========
         'strategies', 'strategies.__init__',
-        'strategies.common', 'strategies.common.backtest_engine', 'strategies.common.strategy_interface',
+        'strategies.common', 'strategies.common.__init__', 'strategies.common.backtest_engine', 'strategies.common.strategy_interface',
         'strategies.example_strategy', 'strategies.parameter_optimizer',
         'strategies.strategy_loader', 'strategies.wm_pattern_strategy',
         
@@ -165,14 +170,16 @@ a = Analysis(
         'GUI.glossary_popup', 'GUI.help_dialog', 'GUI.help_popup',
         'GUI.help_widget', 'GUI.i18n', 'GUI.indicator_generator',
         'GUI.legacy_styles', 'GUI.live_trading_manager',
+        'GUI.cache_manager_widget', 'GUI.debug_import_gui', 'GUI.experimental_main_window',
         
         # Core & Utils 누락
         'core.async_scanner', 'core.unified_backtest',
         'utils.crypto', 'utils.health_check', 'utils.retry',
         'utils.state_manager', 'utils.updater', 'utils.validators',
+        'utils.cache_manager', 'utils.logger',
         'strategies.base_strategy',
-        'locales', 'locales.lang_manager',
-        'config.parameters',
+        'locales', 'locales.__init__', 'locales.lang_manager',
+        'config', 'config.__init__', 'config.parameters',
 
         # 데이터베이스
         'sqlalchemy', 'sqlalchemy.sql.default_comparator', 'sqlite3', 'orjson',
@@ -184,12 +191,18 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'tkinter', 'IPython', 'jupyter', 'pytest', 'test',
+        'tkinter', 'IPython', 'jupyter', 'jupyter_rfb', 'pyqtgraph.jupyter',
+        'pytest', 'test',
         '_backup_2025', 'dist', 'build', 'node_modules', '.venv',
         '*.log', '*.parquet', '.env',
         'tools', 'tools.*', 'backups', 'backups.*',
         'add_t_import', 'append_binance_ws', 'apply_hotfixes',
         'cleanup_project', 'collect_btc_data', 'compare_live_bt',
+        # 개발 스크립트 제외
+        'apply_logging_fix', 'compare_logic', 'compare_pattern_logic',
+        'core_quality_scanner', 'exchanges_quality_scanner', 'execute_phase_2_3',
+        'extract_bt_logic', 'full_duplicate_scan', 'gui_quality_scanner',
+        'quote_fix', 'read_log', 'restore_ws_methods', 'run_batch_full', 'run_gui',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

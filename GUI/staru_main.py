@@ -10,6 +10,7 @@ import io
 import traceback
 import logging
 import warnings
+import multiprocessing
 
 # 라이브러리 경고(DeprecationWarning) 및 불필요한 노이즈 억제
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -887,6 +888,10 @@ class StarUWindow(QMainWindow):
 
 def main():
     """메인 실행 - 라이선스 검사 포함"""
+    # [FIX] EXE 환경에서 멀티프로세싱 자식 프로세스 무한 루프 방지
+    if getattr(sys, 'frozen', False):
+        multiprocessing.freeze_support()
+        
     from PyQt5.QtCore import Qt
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
@@ -899,7 +904,7 @@ def main():
     
     logger.info("\n" + "=" * 60)
 
-    logger.info("🌟 TwinStar Quantum v1.6.1 시작")
+    logger.info("🌟 TwinStar Quantum v1.8.3 시작")
     logger.info("=" * 60 + "\n")
     
     # 캐시 자동 삭제 (개발 환경 전용)

@@ -4,7 +4,7 @@
   "release_date": "2026-01-06",
   "download_url": "https://github.com/choigoyoon/TwinStar-Quantum/releases/latest",
   "changelog": [
-    "v1.8.3: 레버리지 자동 조정(Auto-Adjustment) 연구 반영 - JSON 프리셋 내 최적화 배율 최우선 연동",
+    "v1.8.3: 레버리지 자동 연동 및 최적화 엔진/로그인 루프 Hotfix 반영",
     "v1.8.2: PyInstaller 빌드 경고 완전 해결(tbb, jupyter, notification, system_doctor 등), Spec 파일 최신화 및 누락 모듈 100% 반영",
     "v1.8.1: 선택형 프리셋 UI 추가 (싱글 스나이퍼 전략 선택 기능 복구) 및 config/presets 내장",
     "v1.8.0: 보안 빌드 시스템 적용(API키/캐시 제외), UI 프리미엄 폰트/테마 완성, 3D 차트 엔진 탑재",

@@ -477,7 +477,8 @@ class OptimizationEngine:
         df,
         param_grid: List[Dict],
         max_workers: int = 4,
-        task_callback: Callable[[OptimizationResult], None] = None
+        task_callback: Callable[[OptimizationResult], None] = None,
+        capital_mode: str = 'COMPOUND'
     ) -> List[OptimizationResult]:
         """전체 최적화 실행"""
         results = []
@@ -563,12 +564,12 @@ class OptimizationEngine:
         if not results:
             return []
         
-        # sort_by mapping might be needed if metric names differ (e.g. 'Return' -> 'total_return')
+        # sort_by mapping
         key_map = {
-            'Return': 'total_return',
+            'Return': 'compound_return' if kwargs.get('capital_mode', '').upper() == 'COMPOUND' else 'simple_return',
             'WinRate': 'win_rate',
-            'Sharpe': 'sharpe',
-            'MDD': 'mdd',
+            'Sharpe': 'sharpe_ratio',
+            'MDD': 'max_drawdown',
             'ProfitFactor': 'profit_factor'
         }
         sort_key = key_map.get(sort_by, sort_by)
@@ -587,7 +588,8 @@ class OptimizationEngine:
         target_mdd: float = 20.0,
         max_workers: int = 4,
         stage_callback: Callable[[int, str, dict], None] = None,
-        mode: str = 'standard'
+        mode: str = 'standard',
+        capital_mode: str = 'COMPOUND'
     ) -> Dict:
         """
         4단계 순차 최적화 실행 (모드별 Grid 크기)
@@ -626,10 +628,12 @@ class OptimizationEngine:
         # === 품질 균형 전략 (MDD + 수익률) ===
         def balanced_score(r):
             """MDD가 낮으면서 수익률도 좋은지 평가"""
+            # capital_mode에 따른 수익률 선택
+            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.simple_return
             # MDD 페널티: 15% 초과분에 대해 강한 페널티
             mdd_penalty = max(0, r.max_drawdown - 12) * 5.0
             # 수익률 보너스 (로그 수익률로 과적합 방지하며 점진적 보너스)
-            return r.simple_return * 0.01 - mdd_penalty
+            return ret * 0.01 - mdd_penalty
         
         def get_top_n(results, n):
             """MDD가 낮으면서 수익률이 좋은 Top N 선택 (Staged Fallback)"""
@@ -651,8 +655,9 @@ class OptimizationEngine:
             if relaxed:
                 return sorted(relaxed, key=balanced_score, reverse=True)[:n]
             
-            # 4. 최후 Fallback: 가장 나은 1개 (단리 수익 - MDD 기준)
-            return [max(results, key=lambda x: x.simple_return - x.max_drawdown * 2)]
+            # 4. 최후 Fallback: 가장 나은 1개 (단리/복리 수익 - MDD 기준)
+            ret_key = lambda x: x.compound_return if capital_mode.upper() == 'COMPOUND' else x.simple_return
+            return [max(results, key=lambda x: ret_key(x) - x.max_drawdown * 2)]
         
         # ===== 1단계: 핵심 파라미터 (Top N 유지) =====
         notify(1, f"{mode_label} 핵심 파라미터 최적화 시작...")
@@ -666,7 +671,7 @@ class OptimizationEngine:
                 params[key] = combo[i]
             stage1_grid.append(params)
         
-        stage1_results = self.run_optimization(df, stage1_grid, max_workers)
+        stage1_results = self.run_optimization(df, stage1_grid, max_workers, capital_mode=capital_mode)
         if not stage1_results:
             notify(1, "결과 없음 - 필터 기준 확인 필요")
             return {'params': fixed_params, 'final_result': None, 'stages': [], 'mdd': 0, 'leverage': 1, 'total_combinations': 0}
@@ -690,7 +695,7 @@ class OptimizationEngine:
                     params[key] = combo[i]
                 stage2_grid.append(params)
             
-            s2_results = self.run_optimization(df, stage2_grid, max_workers)
+            s2_results = self.run_optimization(df, stage2_grid, max_workers, capital_mode=capital_mode)
             if s2_results:
                 all_stage2_results.extend(s2_results)
         
@@ -717,7 +722,7 @@ class OptimizationEngine:
                     params[key] = combo[i]
                 stage3_grid.append(params)
             
-            s3_results = self.run_optimization(df, stage3_grid, max_workers)
+            s3_results = self.run_optimization(df, stage3_grid, max_workers, capital_mode=capital_mode)
             if s3_results:
                 all_stage3_results.extend(s3_results)
         

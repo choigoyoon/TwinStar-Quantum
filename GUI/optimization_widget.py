@@ -1104,7 +1104,8 @@ class SingleOptimizerWidget(QWidget):
                 target_mdd=20.0,
                 max_workers=self.current_cores,
                 stage_callback=stage_callback,
-                mode=mode
+                mode=mode,
+                capital_mode=self.capital_mode_combo.currentText() # [NEW]
             )
             
             # 결과 표시

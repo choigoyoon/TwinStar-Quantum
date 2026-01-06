@@ -158,7 +158,8 @@ except ImportError:
 
 
 # ============ 위젯 import (safe_import 사용) ============
-TradingDashboard_Pkg = load_widget('trading_dashboard', 'TradingDashboard')
+TradingDashboard_Pkg = load_widget('trading_dashboard_v3', 'TradingDashboardV3')
+TradingTabWidget_Pkg = load_widget('trading_tab_widget', 'TradingTabWidget')
 BacktestWidget_Pkg = load_widget('backtest_widget', 'BacktestWidget')
 HistoryWidget_Pkg = load_widget('history_widget', 'HistoryWidget')
 SettingsWidget_Pkg = load_widget('settings_widget', 'SettingsWidget')
@@ -167,6 +168,9 @@ OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget'
 TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
 AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget')
 
+
+from GUI.styles.fonts import FontSystem
+from GUI.styles.premium_theme import PremiumTheme
 
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
@@ -180,6 +184,12 @@ class StarUWindow(QMainWindow):
         
         # 작업표시줄 아이콘 설정
         from PyQt5.QtGui import QIcon
+        from PyQt5.QtWidgets import QApplication
+        
+        # 폰트 시스템 초기화 및 적용
+        app = QApplication.instance()
+        if app:
+            FontSystem.apply_to_app(app)
         
         # EXE/개발 환경 전환 경로 처리
         if getattr(sys, 'frozen', False):
@@ -190,6 +200,9 @@ class StarUWindow(QMainWindow):
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
+        
+        # [v4.6] 프리미엄 테마(폰트 통합) 적용
+        self.setStyleSheet(PremiumTheme.get_stylesheet())
         
         # 화면 해상도 처리
         screen = QApplication.primaryScreen().geometry()
@@ -293,16 +306,25 @@ class StarUWindow(QMainWindow):
             logger.info(f"  ❌ Backtest 생성 실패: {e}")
             self.backtest_widget = self._create_error_widget("Backtest", e)
 
-        # Auto Pipeline (New)
+        # 2.5 Auto Pipeline (New)
         if AutoPipelineWidget_Pkg[0]:
             self.auto_pipeline_widget = AutoPipelineWidget_Pkg[0]()
             logger.info("  ✅ AutoPipeline 생성 완료")
-            # [NEW] Integrate into Dashboard
-            if hasattr(self.dashboard, 'set_auto_scanner'):
-                self.dashboard.set_auto_scanner(self.auto_pipeline_widget)
         else:
             self.auto_pipeline_widget = self._create_error_widget("자동매매", AutoPipelineWidget_Pkg[1])
             logger.info(f"  ❌ AutoPipeline 생성 실패: {AutoPipelineWidget_Pkg[1]}")
+
+        # 2.6 Trading Tab Widget (New)
+        cls, err = TradingTabWidget_Pkg
+        try:
+            if cls:
+                self.trading_tab = cls(self.dashboard, self.auto_pipeline_widget)
+                logger.info("  ✅ TradingTab 생성 완료")
+            else:
+                self.trading_tab = self.dashboard # Fallback
+        except Exception as e:
+            logger.info(f"  ❌ TradingTab 생성 실패: {e}")
+            self.trading_tab = self.dashboard
             
         # 3. History Widget
         cls, err = HistoryWidget_Pkg
@@ -606,7 +628,7 @@ class StarUWindow(QMainWindow):
         """)
         
         # 탭 추가 (다국어 지원)
-        self.tabs.addTab(self.dashboard, f"📊 {t('tabs.trading', '매매')}")
+        self.tabs.addTab(self.trading_tab, f"📊 {t('tabs.trading', '매매')}")
         # self.tabs.addTab(self.auto_pipeline_widget, "자동매매") # [MOVED] Integrated into Trading Dashboard
         self.tabs.addTab(self.settings_widget, f"⚙️ {t('tabs.settings', '설정')}")
         self.tabs.addTab(self.data_collector_widget, f"📥 {t('tabs.data', '수집')}")

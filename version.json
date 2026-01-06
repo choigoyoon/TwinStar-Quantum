@@ -1,16 +1,14 @@
 {
-  "version": "1.7.1",
-  "latest_version": "1.7.1",
+  "version": "4.8.0",
+  "latest_version": "4.8.0",
   "release_date": "2026-01-06",
-  "download_url": "https://youngstreet.co.kr/update/TwinStar_Quantum_Setup_v1.7.1.exe",
+  "download_url": "https://youngstreet.co.kr/update/TwinStar_Quantum_Setup_v4.8.0.exe",
   "changelog": [
+    "v4.8.0: 보안 빌드 시스템 적용(API키/캐시 제외), UI 프리미엄 폰트/테마 완성, 3D 차트 엔진 탑재",
+    "v4.7.0: 탭 메뉴 폰트 가독성 최적화 및 용어(거래내역/결과) 재정립",
+    "v4.6.0: 프리미엄 폰트 시스템(Pretendard/Inter) 도입",
+    "v4.0.0: UI 전면 리뉴얼 (Vivid/Premium Theme)",
     "v1.7.1: 시스템 무결성 검증 완료 및 Deep Clean 적용, 자동 업데이트 로직 강화, 자산 관리 모드(CapitalManager) 정식 통합",
-    "v1.7.0: 멀티 심볼 백테스트 엔진 도입, 배치 최적화 및 프리셋 자동 생성",
-    "v1.6.3: 복리 잔액 상시 표시, 시드 잠금/해제 UI, 실시간 수익률 색상 표시",
-    "v1.6.2: PnL 레버리지 반영, SL 실시간 업데이트 최적화, 포지션 동기화 보강",
-    "v1.6.1: 시드 관리 기능 추가 (± 실시간 입출금, ↺ PnL 리셋)",
-    "v1.6.0: PnL 수식 정밀화 (수량 기반) 및 부호 오류 수정 완결판",
-    "v1.5.9: 매매 이어가기(Persistence) 긴급 수정",
-    "v1.5.7: 로그 콘솔(cmd) 복구 및 좌측 패널 상시 노출"
+    "v1.7.0: 멀티 심볼 백테스트 엔진 도입, 배치 최적화 및 프리셋 자동 생성"
   ]
 }

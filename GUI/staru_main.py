@@ -175,7 +175,7 @@ from GUI.styles.premium_theme import PremiumTheme
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
     
-    VERSION = "v1.7.1"
+    VERSION = "v1.8.3"
     
     def __init__(self, user_tier='admin'):
         super().__init__()

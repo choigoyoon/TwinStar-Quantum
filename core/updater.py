@@ -17,7 +17,7 @@ class Updater:
     """앱 내 자동 업데이트 관리 (Silent Install 방식)"""
     
     VERSION_URL = "https://raw.githubusercontent.com/choigoyoon/TwinStar-Quantum/main/version.json"
-    CURRENT_VERSION = "1.7.1"
+    CURRENT_VERSION = "1.8.3"
     
     def __init__(self):
         self.base_path = self._get_base_path()

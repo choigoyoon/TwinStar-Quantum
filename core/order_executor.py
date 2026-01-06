@@ -338,8 +338,9 @@ class OrderExecutor:
                         try: balance = self.exchange.get_balance()
                         except: pass
             # 5. 레버리지 및 수량 계산
-            # [FIX] UI에서 설정한 레버리지(exchange.leverage)를 프리셋 값보다 우선시함
-            leverage = getattr(self.exchange, 'leverage', self.strategy_params.get('leverage', 1))
+            # [FIX] 프리셋(strategy_params)에 레버리지가 있으면 최우선 적용 (Auto-Adjustment 지원)
+            # 만약 프리셋에 없으면 UI에서 설정한 값(exchange.leverage)을 사용함
+            leverage = self.strategy_params.get('leverage', getattr(self.exchange, 'leverage', 1))
             order_value = balance * 0.98 * leverage
             
             if order_value < 10 or current_price <= 0:

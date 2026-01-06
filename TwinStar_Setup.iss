@@ -2,7 +2,7 @@
 ; Run with Inno Setup Compiler
 
 #define MyAppName "TwinStar Quantum"
-#define MyAppVersion "1.8.2"
+#define MyAppVersion "1.8.3"
 #define MyAppPublisher "TwinStar"
 #define MyAppExeName "TwinStar_Quantum.exe"
 

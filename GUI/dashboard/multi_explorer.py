@@ -1,16 +1,18 @@
 """
 MultiExplorer - 전체 심볼 자동 수집 + 분석 (v2.0)
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
 Extracted from trading_dashboard.py for Phase 10.2.2
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 import sys
+import requests
 from typing import Optional, Dict, List
 from datetime import datetime
+
 
 from PyQt5.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox,

@@ -1,4 +1,3 @@
-"""Styles module"""
-from .theme import COLORS, SPACING, FONTS, STYLESHEET
+from .theme import Theme
 
-__all__ = ['COLORS', 'SPACING', 'FONTS', 'STYLESHEET']
+__all__ = ['Theme']

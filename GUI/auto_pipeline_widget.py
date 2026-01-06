@@ -29,10 +29,7 @@ project_root = os.path.dirname(current_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-try:
-    from core.exchange_factory import ExchangeFactory
-except ImportError:
-    pass
+# from core.exchange_factory import ExchangeFactory  # [REMOVED]
 
 class StepWidget(QWidget):
     """Base class for pipeline steps"""
@@ -635,25 +632,95 @@ class AutoPipelineWidget(QWidget):
         
         step.content_layout.addLayout(h_layout)
         
-        # Metrics Grid
+        # Metrics Grid with Progress Bars
         m_group = QGroupBox("Pipeline Metrics")
         m_layout = QGridLayout(m_group)
         
+        # Stage 1 Progress Bar
         self.metric_targets = QLabel("0")
-        self.metric_stage2 = QLabel("0")
-        self.metric_active = QLabel("0")
+        self.metric_targets.setStyleSheet("color: white; font-weight: bold; font-size: 14px; min-width: 30px;")
+        self.stage1_progress = QProgressBar()
+        self.stage1_progress.setRange(0, 50)
+        self.stage1_progress.setValue(0)
+        self.stage1_progress.setFormat("%v / 50")
+        self.stage1_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #4a5568;
+                border-radius: 5px;
+                background: #2d3748;
+                height: 20px;
+                text-align: center;
+                color: white;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00d4aa, stop:1 #00b894);
+                border-radius: 4px;
+            }
+        """)
         
-        for l in [self.metric_targets, self.metric_stage2, self.metric_active]:
-            l.setStyleSheet("color: white; font-weight: bold; font-size: 14px;")
-            
+        # Stage 2 Progress Bar
+        self.metric_stage2 = QLabel("0")
+        self.metric_stage2.setStyleSheet("color: white; font-weight: bold; font-size: 14px; min-width: 30px;")
+        self.stage2_progress = QProgressBar()
+        self.stage2_progress.setRange(0, 10)
+        self.stage2_progress.setValue(0)
+        self.stage2_progress.setFormat("%v / 10")
+        self.stage2_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #4a5568;
+                border-radius: 5px;
+                background: #2d3748;
+                height: 20px;
+                text-align: center;
+                color: white;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #ffd93d, stop:1 #f39c12);
+                border-radius: 4px;
+            }
+        """)
+        
+        # Active Positions Progress Bar
+        self.metric_active = QLabel("0")
+        self.metric_active.setStyleSheet("color: white; font-weight: bold; font-size: 14px; min-width: 30px;")
+        self.position_progress = QProgressBar()
+        self.position_progress.setRange(0, 5)
+        self.position_progress.setValue(0)
+        self.position_progress.setFormat("%v / 5")
+        self.position_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #4a5568;
+                border-radius: 5px;
+                background: #2d3748;
+                height: 20px;
+                text-align: center;
+                color: white;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #ff6b6b, stop:1 #ee5a24);
+                border-radius: 4px;
+            }
+        """)
+        
+        # Layout with Progress Bars
         m_layout.addWidget(QLabel("Stage 1 Targets (4H):"), 0, 0)
-        m_layout.addWidget(self.metric_targets, 0, 1)
-        m_layout.addWidget(QLabel("Stage 2 Monitors (15m):"), 0, 2)
-        m_layout.addWidget(self.metric_stage2, 0, 3)
-        m_layout.addWidget(QLabel("Active Positions:"), 1, 0)
-        m_layout.addWidget(self.metric_active, 1, 1)
+        m_layout.addWidget(self.stage1_progress, 0, 1)
+        m_layout.addWidget(self.metric_targets, 0, 2)
+        
+        m_layout.addWidget(QLabel("Stage 2 Monitors (15m):"), 1, 0)
+        m_layout.addWidget(self.stage2_progress, 1, 1)
+        m_layout.addWidget(self.metric_stage2, 1, 2)
+        
+        m_layout.addWidget(QLabel("Active Positions:"), 2, 0)
+        m_layout.addWidget(self.position_progress, 2, 1)
+        m_layout.addWidget(self.metric_active, 2, 2)
         
         step.content_layout.addWidget(m_group)
+        
+
         
         # Active Positions
         step.content_layout.addWidget(QLabel("Active Positions Table"))
@@ -698,18 +765,22 @@ class AutoPipelineWidget(QWidget):
             # Stage 1 Count
             targets = len(self.scanner.verified_symbols)
             self.metric_targets.setText(str(targets))
+            self.stage1_progress.setValue(min(targets, 50))
             
             # Stage 2 Count
             monitors = len(self.scanner.monitoring_candidates)
             self.metric_stage2.setText(str(monitors))
+            self.stage2_progress.setValue(min(monitors, 10))
             
             # Active Count
             active = len(self.scanner.active_positions)
             self.metric_active.setText(str(active))
+            self.position_progress.setValue(min(active, 5))
             
             # Status
             self.dashboard_status.setText("RUNNING (Stage 1 & 2 Active)")
             
+
     def _update_active_table(self, data):
         row = self.pos_table.rowCount()
         self.pos_table.insertRow(row)

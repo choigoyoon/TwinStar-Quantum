@@ -1,0 +1,56 @@
+{
+  "passed": 10,
+  "failed": 0,
+  "details": [
+    {
+      "name": "거래소 선택",
+      "ok": true,
+      "msg": "bybit → binance → 복귀 OK"
+    },
+    {
+      "name": "심볼 선택",
+      "ok": true,
+      "msg": "심볼: All → ETHUSDT"
+    },
+    {
+      "name": "레버리지 조절",
+      "ok": true,
+      "msg": "레버리지: 3 → 10"
+    },
+    {
+      "name": "시드 입력",
+      "ok": true,
+      "msg": "시드: 10.0 → 100.0"
+    },
+    {
+      "name": "자본 모드",
+      "ok": true,
+      "msg": "모드: COMPOUND → FIXED"
+    },
+    {
+      "name": "멀티 스캔",
+      "ok": true,
+      "msg": "스캔 시작 → 로그 53664자"
+    },
+    {
+      "name": "싱글 시작",
+      "ok": true,
+      "msg": "시작 클릭 → 로그 +0자"
+    },
+    {
+      "name": "설정 저장",
+      "ok": true,
+      "msg": "설정 탭 이동 OK (저장 버튼 없거나 비활성)"
+    },
+    {
+      "name": "백테스트 탭",
+      "ok": true,
+      "msg": "백테스트 탭 OK, 실행 버튼: '백테스트 실행'"
+    },
+    {
+      "name": "종료",
+      "ok": true,
+      "msg": "정상 종료 및 메모리 정리"
+    }
+  ]
+}

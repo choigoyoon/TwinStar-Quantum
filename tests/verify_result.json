@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-01-06T12:19:49.480865",
+  "results": {
+    "모듈 검증": {
+      "passed": 17,
+      "failed": 0,
+      "errors": []
+    },
+    "메서드 검증": {
+      "passed": 20,
+      "failed": 0,
+      "errors": []
+    },
+    "임포트 검증": {
+      "passed": 91,
+      "failed": 0,
+      "errors": []
+    },
+    "경로 검증": {
+      "passed": 5,
+      "failed": 0,
+      "errors": []
+    },
+    "GUI 검증": {
+      "passed": 4,
+      "failed": 0,
+      "errors": []
+    },
+    "실시간 검증": {
+      "passed": 5,
+      "failed": 0,
+      "errors": []
+    }
+  },
+  "summary": {
+    "total_passed": 142,
+    "total_failed": 0
+  }
+}

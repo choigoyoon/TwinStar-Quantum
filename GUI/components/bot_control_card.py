@@ -124,13 +124,13 @@ class BotControlCard(QWidget):
         self.pnl_label.setToolTip(t("dashboard.pnl_tip", "누적 수익률"))
         layout.addWidget(self.pnl_label)
         
-        # [NEW] 모드 표시기
-        self.mode_indicator = QLabel("C") # C=Compound, F=Fixed
-        self.mode_indicator.setFixedWidth(20)
-        self.mode_indicator.setAlignment(Qt.AlignCenter)
-        self.mode_indicator.setStyleSheet("color: #FF9800; font-weight: bold; border: 1px solid #555; border-radius: 10px;")
-        self.mode_indicator.setToolTip("Capital Mode: Compound")
-        layout.addWidget(self.mode_indicator)
+        # [NEW] 모드 선택 드롭다운 (Compound/Fixed)
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["C", "F"]) # C=Compound, F=Fixed
+        self.mode_combo.setFixedWidth(40)
+        self.mode_combo.setToolTip("Capital Mode: C(Compound), F(Fixed)")
+        self.mode_combo.setStyleSheet("color: #FF9800; font-weight: bold;")
+        layout.addWidget(self.mode_combo)
         
         # 잠금 버튼
         self.lock_btn = QPushButton("🔒")
@@ -406,7 +406,8 @@ class BotControlCard(QWidget):
             'leverage': self.leverage_spin.value(),
             'preset_file': self.preset_combo.currentData(),
             'direction': self.direction_combo.currentText(),
-            'timeframe': '1h'
+            'timeframe': '1h',
+            'capital_mode': 'compound' if self.mode_combo.currentText() == 'C' else 'fixed'
         }
     
     def _toggle_lock(self):

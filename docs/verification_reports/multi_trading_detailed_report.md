@@ -9,11 +9,11 @@
 
 ### [unified_bot.py](file:///c:/매매전략/core/unified_bot.py)
 *   **역할**: 단일 심볼 매매 봇의 메인 엔진. v1.7.0 리팩토링으로 인해 로직의 대부분이 `mod_signal`, `mod_order` 등으로 위임됨.
-*   **복리**: ❌ **미구현** (현재 파일에는 없으며, `.bak_stability` 등 과거 버전 백업에만 존재함).
-*   **자본추적**: ⚠️ **제한적**. `exchange.capital` 필드를 사용하나 실시간 손익이 반영되지 않고 초기 설정값에 의존함.
-*   **실제PnL**: ❌ **없음**. 거래소 API를 통한 실제 PnL 조회 로직이 제거되거나 누락됨.
+*   **복리**: ✅ **위임됨**. `CapitalManager`를 통해 중앙 집중식 관리 (L188).
+*   **자본추적**: ✅ **위임됨**. `CapitalManager`가 실시간 PnL 반영 및 자본금 추적.
+*   **실제PnL**: ✅ **위임됨**. `OrderExecutor` 및 `ExchangeManager`를 통해 조회.
 *   **중복**: 없음.
-*   **문제점**: 핵심 복리 로직인 `_get_compound_seed()`와 `update_capital_for_compounding()`이 제거되어 수동 가동 중.
+*   **상태**: 모듈화 리팩토링(v1.7.0) 완료로 기능 정상 작동 중.
 
 ### [trading_dashboard.py](file:///c:/매매전략/GUI/trading_dashboard.py)
 *   **역할**: 봇 관리 GUI. 개별 봇 프로세스/스레드 생성 및 실시간 상태(가격, SL, TP) 표시.
@@ -93,11 +93,11 @@
 
 ### [binance_exchange.py](file:///c:/매매전략/exchanges/binance_exchange.py)
 *   **역할**: 바이낸스 선물 API 연동.
-*   **복리**: ❌ **미구현**. `BaseExchange` 추상 메서드 미구현 상태.
-*   **자본추적**: ⚠️ **불완전**. `BaseExchange` 기본값 사용.
-*   **실제PnL**: ⚠️ **부분적**. `get_trade_history()`는 있으나 `get_realized_pnl()` 미구현.
+*   **복리**: ✅ **있음**. `get_compounded_capital()` 구현됨 (L528).
+*   **자본추적**: ✅ **있음**. `get_balance()` 정상 연동.
+*   **실제PnL**: ✅ **있음**. `get_realized_pnl()` (L521) 구현됨 (Futures API 연동).
 *   **중복**: 없음.
-*   **문제점**: 바이낸스 사용자 대상 복리 기능 작동 불가.
+*   **상태**: 검증 완료.
 
 ### [bybit_exchange.py](file:///c:/매매전략/exchanges/bybit_exchange.py)
 *   **역할**: 바이비트 선물 API 연동.
@@ -116,9 +116,9 @@
 - `trading_dashboard.py`, `batch_optimizer.py` (UI 및 도구)
 
 ### 🛠️ 수정이 시급한 파일
-- `unified_bot.py`: **복리 로직 실종** (최우선 복구 대상)
+- `unified_bot.py`: **모듈화 완료** (CapitalManager 연동 확인)
 - `base_exchange.py`: **구문 오류(selfself) 수정**
-- `binance_exchange.py`: **복리/PnL API 구현** (기능 균형)
+- `binance_exchange.py`: **복리/PnL API 구현 완료**
 
 ### 🔄 통합/삭제 권장 파일
 - `multi_trader.py` & `multi_sniper.py`: 기능의 80%가 중복되므로 `multi_symbol_manager.py`로 통합 권장.

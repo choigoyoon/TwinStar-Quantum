@@ -56,13 +56,13 @@ try:
     from paths import Paths
 except ImportError:
     try:
-        from core.paths import Paths
+        from paths import Paths
     except ImportError:
         class Paths:
-            CACHE = "data/cache"
-            CONFIG = "config"
-            PRESETS = "config/presets"
-
+            BASE = os.getcwd()
+            CONFIG = os.path.join(BASE, 'config')
+            PRESETS = os.path.join(CONFIG, 'presets')
+            CACHE = os.path.join(BASE, 'data/cache')
 
 # 다국어 지원
 try:

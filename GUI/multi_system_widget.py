@@ -293,8 +293,11 @@ class MultiSystemWidget(QWidget):
             try:
                 # 실제 구동을 위한 더미 클라이언트 또는 실교환 객체 생성
                 # 여기서는 GUI의 기본 설정을 따르거나 빗썸/바이낸스 등 연동 가능
-                from exchanges.bybit_adapter import BybitAdapter
-                client = BybitAdapter(symbol='BTCUSDT') # 기본 BTC
+                try:
+                    from exchanges.bybit_exchange import BybitExchange
+                except ImportError:
+                    pass
+                client = BybitExchange(symbol='BTCUSDT') # 기본 BTC
                 
                 self.trader = DualTrackTrader(exchange_client=client) 
                 self.trader.start_monitoring(symbols=['BTCUSDT']) 

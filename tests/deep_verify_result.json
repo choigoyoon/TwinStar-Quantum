@@ -1,0 +1,242 @@
+{
+  "timestamp": "2026-01-06T15:38:11.631492",
+  "passed": 45,
+  "failed": 0,
+  "details": {
+    "exchange_api": [
+      {
+        "name": "bybit 어댑터 로드",
+        "status": true,
+        "detail": "BybitExchange"
+      },
+      {
+        "name": "bybit.get_balance()",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "bybit.get_klines()",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "bybit.get_current_price()",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "bybit.place_market_order()",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "bybit.get_positions()",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "bybit.set_leverage()",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "bybit 잔고 조회",
+        "status": true,
+        "detail": "$1160.57715377"
+      },
+      {
+        "name": "binance 어댑터 (미연결)",
+        "status": true,
+        "detail": "설정 필요"
+      },
+      {
+        "name": "okx 어댑터 (미연결)",
+        "status": true,
+        "detail": "설정 필요"
+      },
+      {
+        "name": "bitget 어댑터 (미연결)",
+        "status": true,
+        "detail": "설정 필요"
+      }
+    ],
+    "data_collector": [
+      {
+        "name": "DataManager 로드",
+        "status": true,
+        "detail": ""
+      },
+      {
+        "name": "download() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "load() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "get_cache_list() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "캐시 폴더",
+        "status": true,
+        "detail": "1095개 파일"
+      },
+      {
+        "name": "캐시 데이터 구조",
+        "status": true,
+        "detail": "컬럼: ['timestamp', 'open', 'high', 'low', 'close']"
+      },
+      {
+        "name": "데이터 행 수",
+        "status": true,
+        "detail": "5행"
+      }
+    ],
+    "backtest": [
+      {
+        "name": "BacktestEngine 로드",
+        "status": true,
+        "detail": ""
+      },
+      {
+        "name": "run() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "BacktestResult 클래스",
+        "status": true,
+        "detail": "로드 성공"
+      },
+      {
+        "name": "Long PnL 계산 (10% 상승, 10x)",
+        "status": true,
+        "detail": "예상 수익: $100.00"
+      },
+      {
+        "name": "Short PnL 계산 (10% 하락, 10x)",
+        "status": true,
+        "detail": "예상 수익: $100.00"
+      },
+      {
+        "name": "수수료 계산 (0.06% x 2)",
+        "status": true,
+        "detail": "예상 수수료: $1.20"
+      },
+      {
+        "name": "승률 계산",
+        "status": true,
+        "detail": "60승/100전 = 60.0%"
+      },
+      {
+        "name": "MDD 계산",
+        "status": true,
+        "detail": "최대 낙폭: 16.7%"
+      }
+    ],
+    "optimizer": [
+      {
+        "name": "AutoOptimizer 로드",
+        "status": true,
+        "detail": ""
+      },
+      {
+        "name": "DEFAULT_PARAMS 존재",
+        "status": true,
+        "detail": "{'atr_mult': 1.5, 'trail_start_r': 0.8, 'trail_dis"
+      },
+      {
+        "name": "run_quick_optimize() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "load_preset() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "save_preset() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "ensure_preset() 메서드",
+        "status": true,
+        "detail": "존재"
+      },
+      {
+        "name": "atr_mult 범위",
+        "status": true,
+        "detail": "0.5 ~ 3.0"
+      },
+      {
+        "name": "trail_start_r 범위",
+        "status": true,
+        "detail": "0.3 ~ 1.5"
+      },
+      {
+        "name": "trail_dist_r 범위",
+        "status": true,
+        "detail": "0.2 ~ 1.0"
+      },
+      {
+        "name": "leverage 범위",
+        "status": true,
+        "detail": "1 ~ 25"
+      },
+      {
+        "name": "rsi_period 범위",
+        "status": true,
+        "detail": "7 ~ 21"
+      }
+    ],
+    "calculation": [
+      {
+        "name": "복리 계산 (1000, 10% x 5회)",
+        "status": true,
+        "detail": "$1000 → $1610.51"
+      },
+      {
+        "name": "고정 계산 (1000, 10% x 5회)",
+        "status": true,
+        "detail": "$1000 → $1500.00"
+      },
+      {
+        "name": "5x 레버리지 청산가",
+        "status": true,
+        "detail": "Long: $80.00, Short: $120.00"
+      },
+      {
+        "name": "10x 레버리지 청산가",
+        "status": true,
+        "detail": "Long: $90.00, Short: $110.00"
+      },
+      {
+        "name": "20x 레버리지 청산가",
+        "status": true,
+        "detail": "Long: $95.00, Short: $105.00"
+      },
+      {
+        "name": "25x 레버리지 청산가",
+        "status": true,
+        "detail": "Long: $96.00, Short: $104.00"
+      },
+      {
+        "name": "ATR 손절가 (ATR=500, mult=1.5)",
+        "status": true,
+        "detail": "Long SL: $49250.0, Short SL: $50750.0"
+      },
+      {
+        "name": "포지션 사이즈 (2% 리스크, 1% 손절)",
+        "status": true,
+        "detail": "$2000.00"
+      }
+    ]
+  }
+}

@@ -67,7 +67,7 @@ except ImportError:
 
 # Shared resample import
 try:
-    from GUI.utils.data_utils import resample_data as shared_resample
+    from utils.data_utils import resample_data as shared_resample
 except ImportError:
     shared_resample = None
 

@@ -73,10 +73,29 @@ var
 begin
   Result := '';
   sKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}_is1';
-  if RegQueryStringValue(HKCU, sKey, 'UninstallString', sUns) then
-    Result := sUns
-  else if RegQueryStringValue(HKLM, sKey, 'UninstallString', sUns) then
-    Result := sUns;
+  
+  // Try 64-bit registry first
+  if RegQueryStringValue(HKCU64, sKey, 'UninstallString', sUns) then Result := sUns
+  else if RegQueryStringValue(HKLM64, sKey, 'UninstallString', sUns) then Result := sUns
+  // Then 32-bit registry
+  else if RegQueryStringValue(HKCU32, sKey, 'UninstallString', sUns) then Result := sUns
+  else if RegQueryStringValue(HKLM32, sKey, 'UninstallString', sUns) then Result := sUns;
+end;
+
+function IsAppRunning(const FileName: String): Boolean;
+var
+  FSWBemLocator: Variant;
+  FWMIService: Variant;
+  FWbemObjectSet: Variant;
+begin
+  Result := False;
+  try
+    FSWBemLocator := CreateOleObject('WbemScripting.SWbemLocator');
+    FWMIService := FSWBemLocator.ConnectServer('', 'root\CIMV2', '', '');
+    FWbemObjectSet := FWMIService.ExecQuery(Format('SELECT Name FROM Win32_Process WHERE Name = ''%s''', [FileName]));
+    Result := (FWbemObjectSet.Count > 0);
+  except
+  end;
 end;
 
 function InitializeSetup(): Boolean;
@@ -85,14 +104,16 @@ var
   sUnInstallString: String;
 begin
   Result := True;
+  
+  // Check if uninstaller exists
   sUnInstallString := GetUninstallString();
   if sUnInstallString <> '' then
   begin
     sUnInstallString := RemoveQuotes(sUnInstallString);
-    // [FIX] 삭제 후 재설치 (사용자 확인 없이 Silent 처리)
-    if Exec(sUnInstallString, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+    if FileExists(sUnInstallString) then
     begin
-      // Uninstall success
+      // Run uninstaller very silently
+      Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
     end;
   end;
 end;

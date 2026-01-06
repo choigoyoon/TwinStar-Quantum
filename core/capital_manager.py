@@ -37,6 +37,10 @@ class CapitalManager:
                 self.logger.info(f"🔄 자본 관리 모출 전환: {self.mode.upper()}")
             else:
                 self.logger.warning(f"⚠️ 잘못된 모드 요청: {mode}")
+    
+    def set_mode(self, mode: str) -> None:
+        """switch_mode의 별칭"""
+        self.switch_mode(mode)
 
     def reset(self) -> None:
         """자본 데이터 초기화"""

@@ -1,0 +1,92 @@
+{
+  "target": "GUI/staru_main.py",
+  "passed": 17,
+  "failed": 0,
+  "details": [
+    {
+      "name": "Core 모듈",
+      "ok": true,
+      "msg": "5개 core 모듈 OK"
+    },
+    {
+      "name": "Exchange 모듈",
+      "ok": true,
+      "msg": "3개 exchange 모듈 OK"
+    },
+    {
+      "name": "GUI 모듈",
+      "ok": true,
+      "msg": "3개 GUI 모듈 OK"
+    },
+    {
+      "name": "Util 모듈",
+      "ok": true,
+      "msg": "3개 util 모듈 OK"
+    },
+    {
+      "name": "MultiTrader 메서드",
+      "ok": true,
+      "msg": "10개 메서드 OK"
+    },
+    {
+      "name": "AutoOptimizer 메서드",
+      "ok": true,
+      "msg": "4개 메서드 OK"
+    },
+    {
+      "name": "CapitalManager 메서드",
+      "ok": true,
+      "msg": "3개 메서드 OK"
+    },
+    {
+      "name": "Paths 검증",
+      "ok": true,
+      "msg": "4개 경로 OK (pathlib.Path)"
+    },
+    {
+      "name": "PyQt5 초기화",
+      "ok": true,
+      "msg": "QApplication 준비"
+    },
+    {
+      "name": "staru_main 임포트",
+      "ok": true,
+      "msg": "StarUWindow 클래스 로드 OK"
+    },
+    {
+      "name": "MainWindow 생성",
+      "ok": true,
+      "msg": "StarUWindow 인스턴스 생성 OK"
+    },
+    {
+      "name": "MainWindow 표시",
+      "ok": true,
+      "msg": "화면 표시 OK (1728x1177)"
+    },
+    {
+      "name": "타이머 상태",
+      "ok": true,
+      "msg": "타이머 0/0 활성"
+    },
+    {
+      "name": "스레드 상태",
+      "ok": true,
+      "msg": "스레드 0/0 실행"
+    },
+    {
+      "name": "장기 실행",
+      "ok": true,
+      "msg": "10초 유지 성공"
+    },
+    {
+      "name": "종료 처리",
+      "ok": true,
+      "msg": "정상 종료"
+    },
+    {
+      "name": "메모리 정리",
+      "ok": true,
+      "msg": "메모리 정리 완료"
+    }
+  ]
+}

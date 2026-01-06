@@ -64,6 +64,11 @@ a = Analysis(
         'GUI.trade_chart_dialog', 'GUI.trade_detail_popup', 'GUI.trade_executor',
         'GUI.trading_dashboard', 'GUI.update_popup', 'GUI.websocket_manager',
         'GUI.test_history_widget', 'GUI.verify_all_modules',
+        'GUI.data_collector_widget', 'GUI.backtest_widget', 'GUI.history_widget',
+        'GUI.auto_pipeline_widget', 'GUI.backtest_result_widget',
+        'GUI.capital_management_widget', 'GUI.dashboard_widgets',
+        'GUI.single_trade_widget', 'GUI.multi_trade_widget', 'GUI.trading_tab_widget',
+        'GUI.trade_history_widget', 'GUI.result_widget',
         
         # GUI Subpackages
         'GUI.components', 'GUI.components.bot_control_card', 'GUI.components.collapsible',

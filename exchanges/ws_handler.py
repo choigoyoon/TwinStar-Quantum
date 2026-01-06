@@ -336,15 +336,45 @@ class WebSocketHandler:
              # We rely on price update.
 
     def disconnect(self):
-        """연결 종료"""
+        """연결 종료 (동기/비동기 모두 지원)"""
         self.running = False
-        if self.ws:
-            asyncio.create_task(self.ws.close())
+        self.is_connected = False
+        
+        if self.ws is None:
+            return
+        
+        try:
+            # 방법 1: 실행 중인 루프가 있으면 태스크로 실행
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.ws.close())
+            else:
+                loop.run_until_complete(self.ws.close())
+        except Exception:
+            # 방법 2: 루프가 없거나 문제 발생 시 새 스레드에서 강제 종료
+            try:
+                import threading
+                def _force_close():
+                    try:
+                        new_loop = asyncio.new_event_loop()
+                        new_loop.run_until_complete(self.ws.close())
+                        new_loop.close()
+                    except: pass
+                t = threading.Thread(target=_force_close, daemon=True)
+                t.start()
+                t.join(timeout=1)
+            except: pass
+        
+        self.ws = None
 
     def run_sync(self):
         """동기 실행 (스레드용)"""
         try:
-            asyncio.run(self.connect())
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.connect())
         except Exception as e:
-            logging.error(f"[WS] Sync run error: {e}")
+            logger.error(f"[WS-SYNC] Fatal Error: {e}")
+        finally:
+            self.disconnect()
 

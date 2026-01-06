@@ -1,0 +1,46 @@
+{
+  "passed": 8,
+  "failed": 0,
+  "details": [
+    {
+      "name": "최적화 → 프리셋",
+      "ok": true,
+      "msg": "저장 → 로드 값 일치 ✓"
+    },
+    {
+      "name": "프리셋 구조",
+      "ok": true,
+      "msg": "필수 필드 5개 OK"
+    },
+    {
+      "name": "MultiTrader 프리셋",
+      "ok": true,
+      "msg": "MultiTrader 로드 값 일치 ✓"
+    },
+    {
+      "name": "자본 계산",
+      "ok": true,
+      "msg": "복리: 1000→1100, 고정: 100 ✓"
+    },
+    {
+      "name": "PnL 계산",
+      "ok": true,
+      "msg": "Long/Short PnL 계산 정확 ✓"
+    },
+    {
+      "name": "레버리지 차등",
+      "ok": true,
+      "msg": "BTC:10, ETH:10, DOGE:16 ✓"
+    },
+    {
+      "name": "백테스트 결과",
+      "ok": true,
+      "msg": "백테스트 결과 저장/로드 일치 ✓"
+    },
+    {
+      "name": "전체 파이프라인",
+      "ok": true,
+      "msg": "최적화→프리셋→로드→계산 일관성 ✓"
+    }
+  ]
+}

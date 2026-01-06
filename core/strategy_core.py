@@ -346,7 +346,7 @@ class AlphaX7Core:
         if ema_period is None:
             ema_period = ACTIVE_PARAMS.get('ema_period', 20)
         
-        logger.info(f"[SIGNAL] Using: tolerance={pattern_tolerance*100:.1f}%, validity={entry_validity_hours}h, MTF={self.USE_MTF_FILTER}")
+        logger.debug(f"[SIGNAL] Using: tolerance={pattern_tolerance*100:.1f}%, validity={entry_validity_hours}h, MTF={self.USE_MTF_FILTER}")
         
         # 적응형 파라미터 계산
         if self.adaptive_params is None:
@@ -415,8 +415,17 @@ class AlphaX7Core:
                     continue
                 
                 # 유효시간 검사
-                last_time = df_1h.iloc[-1]['timestamp']
-                hours_since = (last_time - L2['confirmed_time']).total_seconds() / 3600
+                # [FIX] Robust datetime conversion for numpy and other types
+                def _to_dt(ts):
+                    if isinstance(ts, (datetime, pd.Timestamp)): return ts
+                    if isinstance(ts, (int, float, np.integer, np.floating)):
+                        unit = 'ms' if ts > 1e12 else 's'
+                        return pd.to_datetime(ts, unit=unit)
+                    return pd.to_datetime(ts)
+                
+                confirmed_time = _to_dt(L2['confirmed_time'])
+                last_time = _to_dt(df_1h.iloc[-1]['timestamp'])
+                hours_since = (last_time - confirmed_time).total_seconds() / 3600
                 
                 if hours_since > entry_validity_hours:
                     logger.error(f"[SIGNAL] ❌ W Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
@@ -462,8 +471,17 @@ class AlphaX7Core:
                     continue
                 
                 # 유효시간 검사
-                last_time = df_1h.iloc[-1]['timestamp']
-                hours_since = (last_time - H2['confirmed_time']).total_seconds() / 3600
+                # [FIX] Robust datetime conversion for numpy and other types
+                def _to_dt_m(ts):
+                    if isinstance(ts, (datetime, pd.Timestamp)): return ts
+                    if isinstance(ts, (int, float, np.integer, np.floating)):
+                        unit = 'ms' if ts > 1e12 else 's'
+                        return pd.to_datetime(ts, unit=unit)
+                    return pd.to_datetime(ts)
+                
+                confirmed_time = _to_dt_m(H2['confirmed_time'])
+                last_time = _to_dt_m(df_1h.iloc[-1]['timestamp'])
+                hours_since = (last_time - confirmed_time).total_seconds() / 3600
                 
                 if hours_since > entry_validity_hours:
                     logger.error(f"[SIGNAL] ❌ M Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
@@ -495,7 +513,7 @@ class AlphaX7Core:
                     timestamp=datetime.now()
                 )
         
-        logger.info(f"[SIGNAL] ⏳ No valid W/M pattern (H/L points: {len(points)})")
+        logger.debug(f"[SIGNAL] ⏳ No valid W/M pattern (H/L points: {len(points)})")
         return None
     
     def should_add_position(self, direction: str, current_rsi: float) -> bool:

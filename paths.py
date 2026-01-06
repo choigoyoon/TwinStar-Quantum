@@ -7,6 +7,7 @@ import sys
 import os
 from typing import Optional
 from datetime import datetime
+from pathlib import Path
 
 
 def get_base_path() -> str:
@@ -27,85 +28,86 @@ class Paths:
     """모든 경로를 중앙 관리하는 클래스"""
     
     # ========== 기초 경로 ==========
-    BASE = get_base_path()
-    INTERNAL_BASE = get_internal_path()
+    BASE = Path(get_base_path())
+    INTERNAL_BASE = Path(get_internal_path())
+    ROOT = BASE  # [Alias] 전문 검증 시스템(v2.2) 호환성용
     
     # ========== 고정 경로 ==========
     # 배포 시 EXE 내부에 포함되는 자원은 INTERNAL_BASE 사용
-    CONFIG = os.path.join(INTERNAL_BASE, 'config')           # 번들된 설정 예시
-    USER_CONFIG = os.path.join(BASE, 'config')               # 사용자 수정가능 설정 (EXE 옆)
-    USER = os.path.join(BASE, 'user')                        # 사용자 데이터 루트
-    LOGS = os.path.join(BASE, 'logs')                        # 로그 폴더
-    DATA = os.path.join(BASE, 'data')                        # 데이터 폴더
+    CONFIG = INTERNAL_BASE / 'config'                        # 번들된 설정 예시
+    USER_CONFIG = BASE / 'config'                            # 사용자 수정가능 설정 (EXE 옆)
+    USER = BASE / 'user'                                     # 사용자 데이터 루트
+    LOGS = BASE / 'logs'                                     # 로그 폴더
+    DATA = BASE / 'data'                                     # 데이터 폴더
     USER_DATA = USER                                         # [Alias] 호환성용
-    CACHE = os.path.join(DATA, 'cache')                      # 캐시
-    PRESETS = os.path.join(USER_CONFIG, 'presets')           # 프리셋 폴더
+    CACHE = DATA / 'cache'                                   # 캐시
+    PRESETS = USER_CONFIG / 'presets'                        # 프리셋 폴더
     
     # ========== 전역 경로 ==========
-    GLOBAL = os.path.join(USER, 'global')
-    CREDENTIALS = os.path.join(GLOBAL, 'credentials')   # 인증 정보
-    SETTINGS = os.path.join(GLOBAL, 'settings')         # 앱 설정
-    BACKUP = os.path.join(USER, 'backup')               # 자동 백업
+    GLOBAL = USER / 'global'
+    CREDENTIALS = GLOBAL / 'credentials'                     # 인증 정보
+    SETTINGS = GLOBAL / 'settings'                           # 앱 설정
+    BACKUP = USER / 'backup'                                 # 자동 백업
     
     # ========== 거래소/심볼별 경로 ==========
-    EXCHANGES = os.path.join(USER, 'exchanges')
+    EXCHANGES = USER / 'exchanges'
     
     # ========== 단일 파일 경로 ==========
     @classmethod
     def encrypted_keys(cls) -> str:
         """API 키 암호화 파일"""
-        return os.path.join(cls.CREDENTIALS, 'encrypted_keys.dat')
+        return str(cls.CREDENTIALS / 'encrypted_keys.dat')
     
     @classmethod
     def license_db(cls) -> str:
         """라이선스 DB"""
-        return os.path.join(cls.CREDENTIALS, 'license.db')
+        return str(cls.CREDENTIALS / 'license.db')
     
     @classmethod
     def app_config(cls) -> str:
         """앱 설정 파일"""
-        return os.path.join(cls.SETTINGS, 'app_config.json')
+        return str(cls.SETTINGS / 'app_config.json')
     
     @classmethod
     def telegram_config(cls) -> str:
         """텔레그램 설정 파일"""
-        return os.path.join(cls.SETTINGS, 'telegram.json')
+        return str(cls.SETTINGS / 'telegram.json')
     
     @classmethod
     def payment_config(cls) -> str:
         """결제 설정 (배포 시 포함)"""
-        return os.path.join(cls.CONFIG, 'payment_config.json')
+        return str(cls.CONFIG / 'payment_config.json')
     
     @classmethod
     def cumulative_stats(cls) -> str:
         """누적 통계"""
-        return os.path.join(cls.GLOBAL, 'cumulative.json')
+        return str(cls.GLOBAL / 'cumulative.json')
     
     # ========== 거래소/심볼별 경로 ==========
     @classmethod
     def exchange_dir(cls, exchange: str) -> str:
         """거래소 폴더 경로"""
-        return os.path.join(cls.EXCHANGES, exchange.lower())
+        return str(cls.EXCHANGES / exchange.lower())
     
     @classmethod
     def symbol_dir(cls, exchange: str, symbol: str) -> str:
         """심볼 폴더 경로"""
-        return os.path.join(cls.exchange_dir(exchange), symbol.upper().replace('/', '_'))
+        return str(Path(cls.exchange_dir(exchange)) / symbol.upper().replace('/', '_'))
     
     @classmethod
     def history(cls, exchange: str, symbol: str) -> str:
         """거래 기록 파일"""
-        return os.path.join(cls.symbol_dir(exchange, symbol), 'history.json')
+        return str(Path(cls.symbol_dir(exchange, symbol)) / 'history.json')
     
     @classmethod
     def state(cls, exchange: str, symbol: str) -> str:
         """현재 상태 파일"""
-        return os.path.join(cls.symbol_dir(exchange, symbol), 'state.json')
+        return str(Path(cls.symbol_dir(exchange, symbol)) / 'state.json')
     
     @classmethod
     def stats(cls, exchange: str, symbol: str) -> str:
         """심볼 통계 파일"""
-        return os.path.join(cls.symbol_dir(exchange, symbol), 'stats.json')
+        return str(Path(cls.symbol_dir(exchange, symbol)) / 'stats.json')
     
     # ========== 로그 경로 ==========
     @classmethod
@@ -113,18 +115,18 @@ class Paths:
         """일별 로그 파일"""
         if date_str is None:
             date_str = datetime.now().strftime('%Y-%m-%d')
-        return os.path.join(cls.LOGS, f'{date_str}.log')
+        return str(cls.LOGS / f'{date_str}.log')
     
     @classmethod
     def error_log(cls) -> str:
         """에러 로그 파일"""
-        return os.path.join(cls.LOGS, 'error.log')
+        return str(cls.LOGS / 'error.log')
     
     # ========== 캐시 경로 ==========
     @classmethod
     def backtest_data(cls, filename: str = 'btc_5m_bybit.csv') -> str:
         """백테스트 데이터"""
-        return os.path.join(cls.CACHE, filename)
+        return str(cls.CACHE / filename)
     
     # ========== 유틸리티 ==========
     @classmethod

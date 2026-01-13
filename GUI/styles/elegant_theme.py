@@ -1,9 +1,25 @@
 """
 세련된 테마 - 기존 구조에 적용
+
+[DEPRECATED] 이 모듈은 ui.design_system.theme으로 대체되었습니다.
+
+마이그레이션:
+    # Before
+    from GUI.styles.elegant_theme import ElegantTheme
+    
+    # After
+    from ui.design_system import ThemeGenerator
 """
 
+import warnings
+
+
 class ElegantTheme:
-    """고급스러운 다크 테마"""
+    """
+    [DEPRECATED] 고급스러운 다크 테마
+    
+    ui.design_system.ThemeGenerator를 사용하세요.
+    """
     
     # === 배경 (그라데이션) ===
     BG_GRADIENT = """

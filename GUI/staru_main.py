@@ -171,7 +171,14 @@ AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget
 
 
 from GUI.styles.fonts import FontSystem
-from GUI.styles.premium_theme import PremiumTheme
+
+# 새 디자인 시스템 우선 사용, 실패 시 레거시 폴백
+try:
+    from ui.design_system import ThemeGenerator
+    _USE_NEW_THEME = True
+except ImportError:
+    from GUI.styles.premium_theme import PremiumTheme
+    _USE_NEW_THEME = False
 
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
@@ -202,8 +209,13 @@ class StarUWindow(QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         
-        # [v4.6] 프리미엄 테마(폰트 통합) 적용
-        self.setStyleSheet(PremiumTheme.get_stylesheet())
+        # [v5.0] 새 디자인 시스템 적용 (Phase 1)
+        if _USE_NEW_THEME:
+            self.setStyleSheet(ThemeGenerator.generate())
+            logger.info("🎨 새 디자인 시스템 (ThemeGenerator) 적용됨")
+        else:
+            self.setStyleSheet(PremiumTheme.get_stylesheet())
+            logger.info("🎨 레거시 테마 (PremiumTheme) 적용됨")
         
         # 화면 해상도 처리
         screen = QApplication.primaryScreen().geometry()

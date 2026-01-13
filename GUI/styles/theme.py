@@ -1,9 +1,25 @@
 """
 TwinStar Quantum - 프리미엄 테마 시스템
+
+[DEPRECATED] 이 모듈은 ui.design_system.theme으로 대체되었습니다.
+
+마이그레이션:
+    # Before
+    from GUI.styles.theme import Theme
+    
+    # After  
+    from ui.design_system import ThemeGenerator, Colors
 """
 
+import warnings
+
+
 class Theme:
-    """다크 프리미엄 테마"""
+    """
+    [DEPRECATED] 다크 프리미엄 테마
+    
+    ui.design_system.ThemeGenerator를 사용하세요.
+    """
     
     # === 배경색 ===
     BG_DARK = "#0d1117"      # 최상위 배경

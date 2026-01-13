@@ -1,9 +1,26 @@
 """
 생동감 + 고가독성 프리미엄 테마 (v4.5)
 가독성 문제를 해결하기 위해 명도 대비를 극대화하고 투명도를 줄였습니다.
+
+[DEPRECATED] 이 모듈은 ui.design_system.theme으로 대체되었습니다.
+
+마이그레이션:
+    # Before
+    from GUI.styles.vivid_theme import VividTheme
+    
+    # After
+    from ui.design_system import ThemeGenerator
 """
 
+import warnings
+
+
 class VividTheme:
+    """
+    [DEPRECATED] 생동감 + 고가독성 테마
+    
+    ui.design_system.ThemeGenerator를 사용하세요.
+    """
     
     @classmethod
     def get_stylesheet(cls) -> str:

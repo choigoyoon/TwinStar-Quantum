@@ -1,15 +1,53 @@
 """
 프리미엄 테마 + 폰트 시스템
+
+[DEPRECATED] 이 모듈은 ui.design_system.theme으로 대체되었습니다.
+
+마이그레이션:
+    # Before
+    from GUI.styles.premium_theme import PremiumTheme
+    
+    # After
+    from ui.design_system import ThemeGenerator
 """
 
-from GUI.styles.fonts import FontSystem
+import warnings
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class PremiumTheme:
-    """폰트 + 스타일 통합 테마"""
+    """
+    [DEPRECATED] 폰트 + 스타일 통합 테마
+    
+    ui.design_system.ThemeGenerator를 사용하세요.
+    
+    현재는 호환성을 위해 ThemeGenerator로 위임합니다.
+    """
+    
+    _USE_NEW_THEME = True  # 새 테마 사용 플래그
     
     @classmethod
     def get_stylesheet(cls) -> str:
-        # 사용 가능한 폰트 확인
+        """
+        스타일시트 반환 (새 디자인 시스템으로 위임)
+        """
+        if cls._USE_NEW_THEME:
+            try:
+                from ui.design_system import ThemeGenerator
+                logger.debug("✅ PremiumTheme → ThemeGenerator 위임")
+                return ThemeGenerator.generate()
+            except ImportError as e:
+                logger.warning(f"⚠️ ThemeGenerator import 실패, 레거시 사용: {e}")
+                return cls._get_legacy_stylesheet()
+        else:
+            return cls._get_legacy_stylesheet()
+    
+    @classmethod
+    def _get_legacy_stylesheet(cls) -> str:
+        """레거시 스타일시트 (폴백용)"""
+        from GUI.styles.fonts import FontSystem
         main_font = FontSystem.get_best_font()
         mono_font = FontSystem.get_mono_font()
         
@@ -253,3 +291,9 @@ class PremiumTheme:
             border: 1px solid #00d4aa;
         }}
         """
+    
+    @classmethod
+    def use_new_theme(cls, enable: bool = True):
+        """새 테마 사용 여부 설정 (테스트/디버깅용)"""
+        cls._USE_NEW_THEME = enable
+        logger.info(f"🎨 PremiumTheme: {'새 테마' if enable else '레거시 테마'} 사용")

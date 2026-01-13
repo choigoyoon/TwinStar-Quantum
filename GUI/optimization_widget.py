@@ -246,6 +246,15 @@ class SingleOptimizerWidget(QWidget):
             self.worker.wait(3000)
         super().closeEvent(event)
     
+    def _get_current_tier(self) -> str:
+        """현재 사용자 등급 반환 (ADMIN만 모든 최적화 모드 사용 가능)"""
+        try:
+            from core.license_guard import LicenseGuard
+            guard = LicenseGuard()
+            return guard.get_tier() or 'FREE'
+        except Exception:
+            # 라이선스 모듈 없으면 FREE 취급
+            return 'FREE'
     
     def _init_control_area(self):
         """컨트롤 영역: 모드 + 실행 버튼 한 줄"""
@@ -254,27 +263,51 @@ class SingleOptimizerWidget(QWidget):
         layout.setContentsMargins(10, 5, 10, 5)
         layout.setSpacing(15)
         
-        # 모드 선택 (라디오 버튼 가로 배치)
-        mode_label = QLabel(t("optimization.search_mode") + ":")
-        mode_label.setStyleSheet("font-weight: bold; color: #00d4ff;")
-        layout.addWidget(mode_label)
+        # 현재 사용자 등급 확인
+        current_tier = self._get_current_tier()
+        is_admin = (current_tier == 'ADMIN')
         
+        # 모드 선택 (ADMIN만 모든 모드 표시, 일반 사용자는 Standard만)
         self.mode_group = QButtonGroup()
-        modes = [
-            (t("optimization.quick"), "~36 combinations", 0),
-            (t("optimization.standard"), "~3,600 combinations", 1),
-            (t("optimization.deep"), "~12,800 combinations", 2),
-            ("🎯 순차", "4단계 자동 (~135 combinations)", 3)  # Staged mode
-        ]
+        self.mode_radios = []  # 라디오 버튼 참조 저장
         
-        for text, tooltip, mode_id in modes:
-            radio = QRadioButton(text)
-            radio.setToolTip(tooltip)
+        if is_admin:
+            # ADMIN: 모든 모드 표시
+            mode_label = QLabel(t("optimization.search_mode") + " [ADMIN]:")
+            mode_label.setStyleSheet("font-weight: bold; color: #ff5252;")
+            layout.addWidget(mode_label)
+            
+            modes = [
+                (t("optimization.quick"), "~36 combinations", 0),
+                (t("optimization.standard"), "~3,600 combinations", 1),
+                (t("optimization.deep"), "~12,800 combinations", 2),
+                ("🎯 순차", "4단계 자동 (~135 combinations)", 3)
+            ]
+            
+            for text, tooltip, mode_id in modes:
+                radio = QRadioButton(text)
+                radio.setToolTip(tooltip)
+                radio.setStyleSheet("color: white;")
+                radio.mode_id = mode_id
+                if mode_id == 1:  # Standard 기본 선택
+                    radio.setChecked(True)
+                self.mode_group.addButton(radio, mode_id)
+                self.mode_radios.append(radio)
+                layout.addWidget(radio)
+        else:
+            # 일반 사용자: Standard 모드만 (선택 불가, 고정)
+            mode_label = QLabel(t("optimization.search_mode") + ":")
+            mode_label.setStyleSheet("font-weight: bold; color: #00d4ff;")
+            layout.addWidget(mode_label)
+            
+            radio = QRadioButton(t("optimization.standard"))
+            radio.setToolTip("~3,600 combinations")
             radio.setStyleSheet("color: white;")
-            radio.mode_id = mode_id
-            if mode_id == 1:  # Standard 기본 선택
-                radio.setChecked(True)
-            self.mode_group.addButton(radio, mode_id)
+            radio.mode_id = 1
+            radio.setChecked(True)
+            radio.setEnabled(False)  # 변경 불가
+            self.mode_group.addButton(radio, 1)
+            self.mode_radios.append(radio)
             layout.addWidget(radio)
         
         # [NEW] Capital Mode Selection

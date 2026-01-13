@@ -308,12 +308,19 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="text-sm text-gray-400 block mb-1">최적화 모드</label>
-                                <select v-model="optimization.mode" class="input-field w-full px-4 py-2 rounded-lg">
+                                <label class="text-sm text-gray-400 block mb-1">
+                                    최적화 모드 
+                                    <span v-if="userTier === 'ADMIN'" class="text-red-400 text-xs">[ADMIN]</span>
+                                </label>
+                                <select v-model="optimization.mode" class="input-field w-full px-4 py-2 rounded-lg"
+                                        :disabled="userTier !== 'ADMIN'">
                                     <option value="single">싱글 최적화</option>
-                                    <option value="batch">배치 최적화</option>
-                                    <option value="walk_forward">Walk-Forward</option>
+                                    <option v-if="userTier === 'ADMIN'" value="batch">배치 최적화</option>
+                                    <option v-if="userTier === 'ADMIN'" value="walk_forward">Walk-Forward</option>
                                 </select>
+                                <p v-if="userTier !== 'ADMIN'" class="text-xs text-gray-500 mt-1">
+                                    * ADMIN 등급만 다른 모드 사용 가능
+                                </p>
                             </div>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">

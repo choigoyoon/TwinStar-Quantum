@@ -368,15 +368,15 @@ class BacktestOptimizer:
         self.progress_callback: Optional[Callable] = None
         self.cancelled = False
     
-    def set_data(self, df: pd.DataFrame):
+    def set_data(self, df: pd.DataFrame) -> None:
         """데이터 설정"""
         self.df = df
     
-    def set_progress_callback(self, callback: Callable):
+    def set_progress_callback(self, callback: Callable) -> None:
         """진행률 콜백 설정"""
         self.progress_callback = callback
     
-    def cancel(self):
+    def cancel(self) -> None:
         """최적화 취소"""
         self.cancelled = True
         

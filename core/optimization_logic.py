@@ -777,6 +777,22 @@ class OptimizationEngine:
         
         total_combos = len(stage1_grid) + len(stage2_combos) * len(stage1_top) + len(stage3_combos) * len(stage2_top)
         
+        # ===== 5단계: 영향도 분석 리포트 자동 생성 =====
+        all_results = stage1_results + all_stage2_results + all_stage3_results
+        report_path = None
+        if len(all_results) >= 20:
+            try:
+                from utils.optimization_impact_report import generate_impact_report_from_results
+                report_path = generate_impact_report_from_results(
+                    all_results,
+                    symbol="Unknown",
+                    timeframe=f"filter_tf={fixed_params.get('filter_tf', '4h')}"
+                )
+                if report_path:
+                    notify(4, f"영향도 리포트 생성: {report_path}")
+            except Exception as e:
+                logger.debug(f"영향도 리포트 생성 실패: {e}")
+        
         return {
             'params': fixed_params,
             'final_result': best_result,
@@ -785,5 +801,6 @@ class OptimizationEngine:
             'mdd': mdd,
             'leverage': optimal_leverage,
             'total_combinations': total_combos,
-            'grade': grade if best_result else "🥉C"
+            'grade': grade if best_result else "🥉C",
+            'impact_report': report_path  # 영향도 리포트 경로
         }

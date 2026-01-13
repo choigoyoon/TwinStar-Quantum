@@ -307,6 +307,27 @@ class SingleOptimizerWidget(QWidget):
             self.mode_radios.append(radio)
             layout.addWidget(radio)
         
+        # [NEW] 전략 선택 체크박스
+        strategy_label = QLabel("전략:")
+        strategy_label.setStyleSheet("font-weight: bold; color: #4CAF50;")
+        layout.addWidget(strategy_label)
+        
+        self.strategy_macd_cb = QCheckBox("MACD")
+        self.strategy_macd_cb.setChecked(True)  # 기본 선택
+        self.strategy_macd_cb.setStyleSheet("color: #4CAF50;")
+        self.strategy_macd_cb.setToolTip("MACD 히스토그램 W/M 패턴")
+        layout.addWidget(self.strategy_macd_cb)
+        
+        self.strategy_adxdi_cb = QCheckBox("ADX/DI")
+        self.strategy_adxdi_cb.setChecked(False)
+        self.strategy_adxdi_cb.setStyleSheet("color: #2196F3;")
+        self.strategy_adxdi_cb.setToolTip("+DI/-DI 크로스오버 W/M 패턴")
+        layout.addWidget(self.strategy_adxdi_cb)
+        
+        # 최소 1개는 선택되어야 함
+        self.strategy_macd_cb.stateChanged.connect(self._validate_strategy_selection)
+        self.strategy_adxdi_cb.stateChanged.connect(self._validate_strategy_selection)
+        
         # [NEW] Capital Mode Selection
         mode_select_label = QLabel("자본 모드:")
         mode_select_label.setStyleSheet("font-weight: bold; color: #ff9800;")
@@ -397,6 +418,32 @@ class SingleOptimizerWidget(QWidget):
         layout.addWidget(self.status_label)
         
         return control_widget
+    
+    def _validate_strategy_selection(self):
+        """최소 1개 전략 선택 검증"""
+        macd_checked = self.strategy_macd_cb.isChecked()
+        adxdi_checked = self.strategy_adxdi_cb.isChecked()
+        
+        # 둘 다 해제하려 하면 마지막 체크된 것 유지
+        if not macd_checked and not adxdi_checked:
+            # sender()로 어떤 체크박스가 변경됐는지 확인
+            sender = self.sender()
+            if sender == self.strategy_macd_cb:
+                self.strategy_adxdi_cb.setChecked(True)
+            else:
+                self.strategy_macd_cb.setChecked(True)
+        
+        # 선택된 전략 수에 따라 예상 시간 업데이트
+        self._update_estimate()
+    
+    def _get_selected_strategies(self) -> list:
+        """선택된 전략 목록 반환"""
+        strategies = []
+        if self.strategy_macd_cb.isChecked():
+            strategies.append('macd')
+        if self.strategy_adxdi_cb.isChecked():
+            strategies.append('adxdi')
+        return strategies
 
     def _init_result_area(self):
         """결과 영역: Top 20 한 페이지 표시"""
@@ -777,14 +824,22 @@ class SingleOptimizerWidget(QWidget):
                     grid['leverage'] = [1]
                     mode_text += " (Long Only)"
             except Exception:
-
                 pass
             
             total, est_min = estimate_combinations(grid)
+            
+            # [NEW] 선택된 전략 수 반영 (2개 선택 시 x2)
+            selected_strategies = self._get_selected_strategies()
+            strategy_count = len(selected_strategies)
+            total *= strategy_count
+            est_min *= strategy_count
+            
+            strategy_text = " + ".join([s.upper() for s in selected_strategies])
+            
             # 코어 수에 따른 조정 (실제 체감 시간은 더 걸릴 수 있음)
             adj_time = max(1, est_min * 8 // self.current_cores)
             
-            self.estimate_label.setText(f"Estimate: {total:,} combos / ~{adj_time} min ({mode_text})")
+            self.estimate_label.setText(f"⏱️ {total:,} combos / ~{adj_time} min ({mode_text}) [{strategy_text}]")
         except Exception as e:
             self.estimate_label.setText(f"Estimate: error ({e})")
     

@@ -322,6 +322,27 @@
                                     * ADMIN 등급만 다른 모드 사용 가능
                                 </p>
                             </div>
+                            <!-- [NEW] 전략 선택 체크박스 -->
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-2">전략 선택</label>
+                                <div class="flex gap-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" v-model="optimization.strategies.macd" 
+                                               @change="validateStrategySelection"
+                                               class="w-4 h-4 rounded border-gray-500 bg-gray-700 text-green-500 focus:ring-green-500">
+                                        <span class="text-green-400 font-medium">📊 MACD</span>
+                                        <span class="text-xs text-gray-500">(히스토그램 W/M)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" v-model="optimization.strategies.adxdi"
+                                               @change="validateStrategySelection"
+                                               class="w-4 h-4 rounded border-gray-500 bg-gray-700 text-blue-500 focus:ring-blue-500">
+                                        <span class="text-blue-400 font-medium">📈 ADX/DI</span>
+                                        <span class="text-xs text-gray-500">(+DI/-DI 크로스오버)</span>
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">* 최소 1개 이상 선택 필요</p>
+                            </div>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-400">진행률</span>
@@ -392,6 +413,7 @@
                                     <thead>
                                         <tr class="text-gray-500 text-left">
                                             <th class="py-2 px-2">#</th>
+                                            <th class="py-2 px-2">전략</th>
                                             <th class="py-2 px-2">ATR</th>
                                             <th class="py-2 px-2">승률</th>
                                             <th class="py-2 px-2">수익률</th>
@@ -402,6 +424,11 @@
                                     <tbody>
                                         <tr v-for="(r, idx) in optimization.topResults" :key="idx" class="border-t border-gray-700">
                                             <td class="py-2 px-2">{{ idx + 1 }}</td>
+                                            <td class="py-2 px-2">
+                                                <span :class="r.strategy === 'adxdi' ? 'text-blue-400' : 'text-green-400'">
+                                                    {{ r.strategy === 'adxdi' ? '📈 ADX/DI' : '📊 MACD' }}
+                                                </span>
+                                            </td>
                                             <td class="py-2 px-2">{{ r.atr }}</td>
                                             <td class="py-2 px-2 text-blue-400">{{ r.win_rate }}%</td>
                                             <td class="py-2 px-2" :class="r.return >= 0 ? 'positive' : 'negative'">{{ r.return >= 0 ? '+' : '' }}{{ r.return }}%</td>
@@ -834,7 +861,12 @@
                 
                 const optimization = reactive({ 
                     symbol: 'BTCUSDT', timeframe: '1h', mode: 'single', running: false, progress: 0, result: null,
-                    topResults: []  // 상위 5개 결과
+                    topResults: [],  // 상위 5개 결과
+                    // [NEW] 전략 선택
+                    strategies: {
+                        macd: true,    // MACD 히스토그램 W/M 패턴
+                        adxdi: false   // ADX/DI 크로스오버 W/M 패턴
+                    }
                 });
                 const settings = reactive({
                     telegram: { enabled: false, token: '', chatId: '' },
@@ -964,11 +996,41 @@
                 const clearBacktestResult = () => { backtestResult.value = null; addLog('백테스트 결과가 초기화되었습니다', 'info'); };
                 
                 // ========== 최적화 탭 기능 ==========
+                
+                // [NEW] 전략 선택 검증 함수
+                const validateStrategySelection = () => {
+                    const { macd, adxdi } = optimization.strategies;
+                    // 둘 다 해제하려 하면 하나 유지
+                    if (!macd && !adxdi) {
+                        // 둘 다 false면 MACD 강제 선택
+                        optimization.strategies.macd = true;
+                        showToast('최소 1개 전략을 선택해야 합니다', 'warning');
+                    }
+                };
+                
+                // [NEW] 선택된 전략 목록 반환
+                const getSelectedStrategies = () => {
+                    const strategies = [];
+                    if (optimization.strategies.macd) strategies.push('macd');
+                    if (optimization.strategies.adxdi) strategies.push('adxdi');
+                    return strategies;
+                };
+                
                 const startOptimization = () => {
+                    // [NEW] 전략 선택 검증
+                    const selectedStrategies = getSelectedStrategies();
+                    if (selectedStrategies.length === 0) {
+                        showToast('최소 1개 전략을 선택해주세요', 'error');
+                        return;
+                    }
+                    
                     optimization.running = true; optimization.progress = 0;
                     optimization.result = null;
                     optimization.topResults = [];
-                    addLog(`최적화 시작: ${optimization.symbol} ${optimization.timeframe} (${optimization.mode} 모드)`, 'info');
+                    
+                    // [NEW] 전략 정보 로그에 포함
+                    const strategyNames = selectedStrategies.map(s => s === 'macd' ? 'MACD' : 'ADX/DI').join(' + ');
+                    addLog(`최적화 시작: ${optimization.symbol} ${optimization.timeframe} (${optimization.mode} 모드) [전략: ${strategyNames}]`, 'info');
                     
                     const interval = setInterval(() => {
                         optimization.progress += 5;
@@ -977,13 +1039,17 @@
                             clearInterval(interval);
                             optimization.running = false;
                             
-                            // 시뮬레이션: 상위 5개 결과 생성
+                            // 시뮬레이션: 상위 5개 결과 생성 (선택된 전략 기반)
+                            const strategies = getSelectedStrategies();
+                            const useMacd = strategies.includes('macd');
+                            const useAdxdi = strategies.includes('adxdi');
+                            
                             optimization.topResults = [
-                                { atr: 1.5, win_rate: 72.3, return: 245.6, mdd: 8.5, params: { macd_fast: 5, macd_slow: 20, atr_mult: 1.5, rsi_period: 12, leverage: 10 } },
-                                { atr: 1.25, win_rate: 70.1, return: 198.2, mdd: 10.2, params: { macd_fast: 6, macd_slow: 18, atr_mult: 1.25, rsi_period: 14, leverage: 10 } },
-                                { atr: 1.75, win_rate: 68.5, return: 175.8, mdd: 12.1, params: { macd_fast: 5, macd_slow: 22, atr_mult: 1.75, rsi_period: 10, leverage: 8 } },
-                                { atr: 1.3, win_rate: 67.2, return: 156.3, mdd: 9.8, params: { macd_fast: 7, macd_slow: 19, atr_mult: 1.3, rsi_period: 12, leverage: 10 } },
-                                { atr: 2.0, win_rate: 65.8, return: 142.1, mdd: 14.5, params: { macd_fast: 4, macd_slow: 24, atr_mult: 2.0, rsi_period: 16, leverage: 5 } },
+                                { strategy: useMacd ? 'macd' : 'adxdi', atr: 1.5, win_rate: 72.3, return: 245.6, mdd: 8.5, params: { macd_fast: 5, macd_slow: 20, atr_mult: 1.5, rsi_period: 12, leverage: 10 } },
+                                { strategy: useAdxdi ? 'adxdi' : 'macd', atr: 1.25, win_rate: 70.1, return: 198.2, mdd: 10.2, params: { macd_fast: 6, macd_slow: 18, atr_mult: 1.25, rsi_period: 14, leverage: 10 } },
+                                { strategy: useMacd ? 'macd' : 'adxdi', atr: 1.75, win_rate: 68.5, return: 175.8, mdd: 12.1, params: { macd_fast: 5, macd_slow: 22, atr_mult: 1.75, rsi_period: 10, leverage: 8 } },
+                                { strategy: useAdxdi ? 'adxdi' : 'macd', atr: 1.3, win_rate: 67.2, return: 156.3, mdd: 9.8, params: { macd_fast: 7, macd_slow: 19, atr_mult: 1.3, rsi_period: 12, leverage: 10 } },
+                                { strategy: useMacd ? 'macd' : 'adxdi', atr: 2.0, win_rate: 65.8, return: 142.1, mdd: 14.5, params: { macd_fast: 4, macd_slow: 24, atr_mult: 2.0, rsi_period: 16, leverage: 5 } },
                             ];
                             
                             // 최적 결과 (1위)
@@ -1023,6 +1089,8 @@
                             exchange: 'bybit',
                             timeframe: optimization.timeframe,
                             created: new Date().toISOString(),
+                            // [NEW] 전략 정보 포함
+                            strategies: getSelectedStrategies()
                         },
                         _result: {
                             win_rate: optimization.result.win_rate,
@@ -1237,7 +1305,7 @@
                     formatCurrency, formatPnl, formatUptime, showToast, addLog, clearLogs, switchTab,
                     onExchangeChange, onSymbolChange, executeTrade, refreshBalance, connectExchange, addTestPosition, closePosition,
                     runBacktest, loadDefaultParams, saveBacktestResult, clearBacktestResult,
-                    startOptimization, stopOptimization, applyOptimalParams, applyResultParams,
+                    startOptimization, stopOptimization, applyOptimalParams, applyResultParams, validateStrategySelection, getSelectedStrategies,
                     toggleApiKey, testAllConnections, toggleTelegram, testTelegram, saveTelegramSettings, changeTheme, changeLanguage, exportSettings, importSettings, resetSettings,
                     verifyLicenseCode,  // 라이선스 검증 함수
                     filteredHistory, filterHistory, refreshHistory, exportHistory, addTestTrade, clearHistory,

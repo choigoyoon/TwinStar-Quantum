@@ -859,6 +859,215 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ==================== 도움말 탭 ==================== -->
+            <div v-show="activeTab === 'guide'" class="space-y-6">
+                <!-- 도움말 서브탭 -->
+                <div class="card p-4">
+                    <div class="flex gap-2 flex-wrap">
+                        <button v-for="sub in guideTabs" :key="sub.id"
+                                @click="guideActiveTab = sub.id"
+                                class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                :class="guideActiveTab === sub.id ? 'bg-blue-500 text-white' : 'bg-[#1a1a24] text-gray-400 hover:bg-[#2a2a34]'">
+                            {{ sub.icon }} {{ sub.name }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 빠른 시작 가이드 -->
+                <div v-show="guideActiveTab === 'quickstart'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">🚀 빠른 시작 가이드</h3>
+                    <div class="space-y-4">
+                        <div v-for="(step, idx) in guideData.quickStart" :key="idx"
+                             class="flex items-start gap-4 bg-[#1a1a24] p-4 rounded-lg">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold text-lg">
+                                {{ step.num }}
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-lg">{{ step.icon }} {{ step.title }}</div>
+                                <div class="text-gray-400 text-sm mt-1">{{ step.desc }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                        <span class="text-yellow-400">💡</span> 
+                        <span class="text-gray-300 text-sm">초기 1회 설정 후에는 6번(매매 시작)만 수행하면 됩니다.</span>
+                    </div>
+                </div>
+
+                <!-- 각 탭 기능 -->
+                <div v-show="guideActiveTab === 'tabs'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">📑 각 탭 기능</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div v-for="(tab, idx) in guideData.tabFeatures" :key="idx"
+                             class="bg-[#1a1a24] p-4 rounded-lg">
+                            <div class="font-semibold text-lg text-blue-400 mb-2">{{ tab.name }}</div>
+                            <div class="text-gray-400 text-sm mb-3">{{ tab.desc }}</div>
+                            <div class="space-y-1">
+                                <div v-for="(feat, fidx) in tab.features" :key="fidx" class="text-xs text-gray-500">
+                                    • {{ feat }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 거래소별 매매법 -->
+                <div v-show="guideActiveTab === 'trading'" class="space-y-6">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">📈 선물 매매법 (Bybit/Binance)</h3>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-green-400 font-semibold mb-3">✅ 특징</h4>
+                                <div class="space-y-2 text-sm text-gray-300">
+                                    <div>• 롱/숏 양방향 매매</div>
+                                    <div>• 레버리지 사용 가능 (기본 3x)</div>
+                                    <div>• W 패턴 → 롱 진입</div>
+                                    <div>• M 패턴 → 숏 진입</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-blue-400 font-semibold mb-3">📊 전략 파라미터</h4>
+                                <div class="space-y-2 text-sm text-gray-300">
+                                    <div>• ATR 배수: 1.5 (손절)</div>
+                                    <div>• 트레일링 시작: 1.0R</div>
+                                    <div>• 트레일링 거리: 0.2R</div>
+                                    <div>• RSI 기간: 21</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm">
+                            <span class="text-red-400">⚠️ 주의:</span> 
+                            <span class="text-gray-300">청산가 확인 필수 / 높은 레버리지 = 높은 리스크</span>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">📈 현물 매매법 (업비트/빗썸)</h3>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-green-400 font-semibold mb-3">✅ 특징</h4>
+                                <div class="space-y-2 text-sm text-gray-300">
+                                    <div>• 롱만 가능 (매수 → 매도)</div>
+                                    <div>• 레버리지 없음 (1x)</div>
+                                    <div>• W 패턴만 감지</div>
+                                    <div>• 청산 위험 없음</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-yellow-400 font-semibold mb-3">💰 자금 관리</h4>
+                                <div class="space-y-2 text-sm text-gray-300">
+                                    <div>• 매매당 자본금 직접 설정</div>
+                                    <div>• 기본 100,000원</div>
+                                    <div>• 분산 투자 권장</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm">
+                            <span class="text-yellow-400">⚠️ 주의:</span> 
+                            <span class="text-gray-300">업비트: IP 화이트리스트 필수! / 빗썸: 고객인증 완료 필요</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 텔레그램 설정 -->
+                <div v-show="guideActiveTab === 'telegram'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">📱 텔레그램 알림 설정 가이드</h3>
+                    <div class="space-y-4">
+                        <div v-for="(step, idx) in guideData.telegramSteps" :key="idx"
+                             class="flex items-start gap-4 bg-[#1a1a24] p-4 rounded-lg">
+                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center font-bold">
+                                {{ step.num }}
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-semibold">{{ step.title }}</div>
+                                <div class="text-gray-400 text-sm">{{ step.desc }}</div>
+                                <div class="text-xs text-gray-500 mt-1 font-mono">{{ step.detail }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="text-lg font-semibold mt-6 mb-4">🔔 알림 종류</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div v-for="(notif, idx) in guideData.notificationTypes" :key="idx"
+                             class="bg-[#1a1a24] p-3 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium">{{ notif.label }}</span>
+                                <span class="text-xs" :class="notif.default ? 'text-green-400' : 'text-gray-500'">
+                                    {{ notif.default ? '기본 ON' : '기본 OFF' }}
+                                </span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">{{ notif.desc }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 거래소 가입 혜택 -->
+                <div v-show="guideActiveTab === 'referral'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">🎁 거래소 가입 혜택</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div v-for="(ex, idx) in guideData.referrals" :key="idx"
+                             class="bg-[#1a1a24] p-4 rounded-lg">
+                            <div class="font-semibold text-lg text-blue-400 mb-2">{{ ex.name }}</div>
+                            <div class="space-y-1 mb-3">
+                                <div v-for="(benefit, bidx) in ex.benefits" :key="bidx" class="text-green-400 text-sm">
+                                    ✅ {{ benefit }}
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 whitespace-pre-line mb-3">{{ ex.guide }}</div>
+                            <a v-if="ex.link" :href="ex.link" target="_blank" 
+                               class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm transition-colors">
+                                🔗 {{ ex.name }} 가입하기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ -->
+                <div v-show="guideActiveTab === 'faq'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">❓ 자주 묻는 질문</h3>
+                    <div class="space-y-4">
+                        <div v-for="(item, idx) in guideData.faq" :key="idx"
+                             class="bg-[#1a1a24] p-4 rounded-lg">
+                            <div class="font-semibold text-blue-400 mb-2">Q. {{ item.q }}</div>
+                            <div class="text-gray-300 text-sm">A. {{ item.a }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 에러 해결 -->
+                <div v-show="guideActiveTab === 'errors'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">❌ 주요 에러 해결</h3>
+                    <div class="space-y-4">
+                        <div v-for="(item, idx) in guideData.errors" :key="idx"
+                             class="bg-[#1a1a24] p-4 rounded-lg">
+                            <div class="font-semibold text-red-400 mb-2">{{ item.error }}</div>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500">원인:</span>
+                                    <span class="text-gray-300 ml-2">{{ item.cause }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">해결:</span>
+                                    <span class="text-green-400 ml-2">{{ item.solution }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 주의사항 -->
+                <div v-show="guideActiveTab === 'warnings'" class="card p-6">
+                    <h3 class="text-xl font-bold mb-6">⚠️ 주의사항</h3>
+                    <div class="space-y-3">
+                        <div v-for="(warn, idx) in guideData.warnings" :key="idx"
+                             class="flex items-center gap-3 bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
+                            <span class="text-red-400 text-xl">❗</span>
+                            <span class="text-gray-300">{{ warn }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -874,6 +1083,79 @@
                 const currentTime = ref('');
                 const activeTab = ref('trading');
                 const logs = ref([]);
+                
+                // 도움말 탭 상태
+                const guideActiveTab = ref('quickstart');
+                const guideTabs = [
+                    { id: 'quickstart', name: '빠른 시작', icon: '🚀' },
+                    { id: 'tabs', name: '탭 기능', icon: '📑' },
+                    { id: 'trading', name: '매매법', icon: '📈' },
+                    { id: 'telegram', name: '텔레그램', icon: '📱' },
+                    { id: 'referral', name: '가입 혜택', icon: '🎁' },
+                    { id: 'faq', name: 'FAQ', icon: '❓' },
+                    { id: 'errors', name: '에러 해결', icon: '❌' },
+                    { id: 'warnings', name: '주의사항', icon: '⚠️' },
+                ];
+                
+                // 가이드 데이터
+                const guideData = reactive({
+                    quickStart: [
+                        { num: 1, title: 'API 설정', desc: '설정 탭에서 거래소 API 키 등록 및 연결 테스트', icon: '🔑' },
+                        { num: 2, title: '데이터 수집', desc: '데이터 탭에서 원하는 심볼/기간 데이터 다운로드', icon: '📥' },
+                        { num: 3, title: '백테스트', desc: '백테스트 탭에서 전략 성과 검증', icon: '📊' },
+                        { num: 4, title: '파라미터 최적화', desc: '최적화 탭에서 최적의 파라미터 자동 탐색', icon: '🎯' },
+                        { num: 5, title: '프리셋 적용', desc: '검증된 설정을 프리셋으로 저장', icon: '💾' },
+                        { num: 6, title: '실매매 시작', desc: '자동매매 탭에서 봇 실행', icon: '🤖' },
+                    ],
+                    tabFeatures: [
+                        { name: '📊 매매', desc: '실시간 거래 실행, 포지션 관리', features: ['단일 거래 (롱/숏)', '활성 포지션 모니터링', '잔고 새로고침'] },
+                        { name: '🔬 백테스트', desc: '과거 데이터로 전략 검증', features: ['기간 설정', '레버리지 설정', '수익률/승률/MDD 분석'] },
+                        { name: '🎯 최적화', desc: '최적의 파라미터 탐색', features: ['빠른/표준/심층 검색', 'MACD/ADX-DI 전략 선택', '프리셋 자동 저장'] },
+                        { name: '⚙️ 설정', desc: 'API 키, 텔레그램 설정', features: ['거래소 API 연동', '텔레그램 알림', '다크/라이트 테마'] },
+                        { name: '📜 거래내역', desc: '매매 기록 조회 및 분석', features: ['필터링 (기간/심볼)', '손익 통계', 'CSV 내보내기'] },
+                        { name: '📥 데이터', desc: '과거 캔들 데이터 다운로드', features: ['심볼/기간 선택', '다운로드 진행률', '파일 관리'] },
+                        { name: '🤖 자동매매', desc: '다중 코인 자동 매매 봇', features: ['복리/고정 모드', '감시 대상 설정', '실시간 모니터링'] },
+                    ],
+                    telegramSteps: [
+                        { num: 1, title: '봇 생성', desc: '텔레그램에서 @BotFather 검색', detail: '/newbot 입력 → 봇 이름 설정' },
+                        { num: 2, title: 'Bot Token 복사', desc: '봇 생성 완료 시 표시되는 토큰 복사', detail: '예: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz' },
+                        { num: 3, title: 'Chat ID 확인', desc: '@userinfobot 검색 → /start 입력', detail: '표시되는 숫자가 Chat ID (예: 987654321)' },
+                        { num: 4, title: '설정 입력', desc: '설정 탭에서 Bot Token과 Chat ID 입력', detail: '테스트 전송으로 연결 확인 후 저장' },
+                    ],
+                    notificationTypes: [
+                        { label: '💰 진입/청산', desc: '매매 진입 및 청산 시', default: true },
+                        { label: '📊 신호 감지', desc: 'W/M 패턴 신호 발생 시', default: true },
+                        { label: '⚙️ 시스템', desc: '봇 시작/중지/에러 알림', default: true },
+                        { label: '📈 일일 요약', desc: '매일 23:59 수익 요약', default: false },
+                    ],
+                    referrals: [
+                        { name: 'Bybit', benefits: ['수수료 20% 평생 할인', '최대 $30,000 보너스'], guide: '1. 링크로 가입\n2. KYC 인증 완료\n3. 첫 입금 시 보너스', link: 'https://www.bybit.com' },
+                        { name: 'Binance', benefits: ['수수료 10% 평생 할인', 'BNB 추가 할인'], guide: '1. 링크로 가입\n2. 신원 인증 완료\n3. BNB 보유 시 추가 할인', link: 'https://www.binance.com' },
+                        { name: 'OKX', benefits: ['수수료 20% 할인', '미스터리 박스'], guide: '1. 링크로 가입\n2. 거래 시작 시 미스터리 박스', link: 'https://www.okx.com' },
+                        { name: '업비트', benefits: ['국내 1위 거래소', '원화 입출금'], guide: '1. 업비트 앱 설치\n2. 본인인증 완료\n3. 은행 계좌 연동', link: 'https://upbit.com' },
+                    ],
+                    faq: [
+                        { q: '라이선스는 어떻게 구매하나요?', a: '앱 실행 시 표시되는 USDT 주소로 $100 입금 후 "수동 활성화" 버튼을 클릭하세요.' },
+                        { q: '업비트에서 API가 안 되요.', a: '업비트는 고정 IP 등록이 필수입니다. VPS나 고정 IP 서비스를 이용하세요.' },
+                        { q: '봇이 매매를 안 해요.', a: '패턴이 감지되지 않으면 대기합니다. W/M 패턴은 자주 발생하지 않으니 인내심을 가지세요.' },
+                        { q: '손절이 너무 빨라요.', a: 'ATR 배수를 조정하세요. 기본 1.5에서 2.0으로 늘리면 여유가 생깁니다.' },
+                        { q: '테스트넷으로 먼저 해보고 싶어요.', a: 'Bybit/Binance는 Testnet 지원합니다. 설정에서 "Testnet Mode" 체크하세요.' },
+                        { q: '여러 코인을 동시에 거래할 수 있나요?', a: '자동매매 탭에서 감시 대상 수를 설정하면 다중 코인 매매가 가능합니다.' },
+                    ],
+                    errors: [
+                        { error: 'Insufficient Balance', cause: '계좌에 잔고 부족', solution: '거래소에 자금 입금 후 재시도' },
+                        { error: 'Invalid Signature', cause: 'API 키 또는 시크릿 부정확', solution: 'API 키 재확인 및 재입력' },
+                        { error: 'Connectivity Error', cause: '네트워크 또는 서버 불안정', solution: '네트워크 확인 후 재시도' },
+                        { error: 'Rate Limit Exceeded', cause: 'API 호출 횟수 초과', solution: '잠시 대기 후 재시도 (1분)' },
+                    ],
+                    warnings: [
+                        '반드시 Testnet에서 먼저 테스트하세요!',
+                        '투자 금액은 잃어도 되는 금액만 사용하세요!',
+                        'API 키 권한은 최소한으로 설정 (출금 비활성화)',
+                        '24시간 봇 운영 시 서버 사용을 권장합니다',
+                        '과거 성과가 미래 수익을 보장하지 않습니다',
+                    ],
+                });
                 
                 // 사용자 등급 (ADMIN이면 라이선스 검증 UI 표시)
                 const userTier = ref('ADMIN');  // 테스트용: 'ADMIN' / 실제: API에서 조회
@@ -893,6 +1175,7 @@
                     { id: 'history', name: '거래 내역', icon: '📜' },
                     { id: 'data', name: '데이터 수집', icon: '📥' },
                     { id: 'auto', name: '자동매매', icon: '🤖' },
+                    { id: 'guide', name: '도움말', icon: '📚' },
                 ];
                 
                 const exchanges = ref(['bybit', 'binance', 'okx', 'bitget', 'bingx', 'upbit', 'bithumb']);
@@ -1372,6 +1655,7 @@
                     exchanges, symbols, timeframes, positions, tradeHistory, downloadedFiles,
                     dashboard, trade, backtest, backtestResult, optimization, settings, historyFilter, dataCollection, autoTrading,
                     userTier, licenseVerify,  // 라이선스 검증
+                    guideActiveTab, guideTabs, guideData,  // 도움말 탭
                     formatCurrency, formatPnl, formatUptime, showToast, addLog, clearLogs, switchTab,
                     onExchangeChange, onSymbolChange, executeTrade, refreshBalance, connectExchange, addTestPosition, closePosition,
                     runBacktest, loadDefaultParams, saveBacktestResult, clearBacktestResult,

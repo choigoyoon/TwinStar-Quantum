@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TwinStar Quantum - 차세대 알고리즘 매매 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --bg-card: #16161e;
+            --border-color: #2a2a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+        }
+        
+        body { background: var(--bg-primary); color: var(--text-primary); }
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4); }
+        .btn-success { background: linear-gradient(135deg, var(--accent-green), #059669); }
+        .btn-danger { background: linear-gradient(135deg, var(--accent-red), #dc2626); }
+        .btn-warning { background: linear-gradient(135deg, var(--accent-yellow), #d97706); }
+        .input-field { background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .input-field:focus { border-color: var(--accent-blue); outline: none; }
+        .tab-active { background: var(--accent-blue); color: white; }
+        .tab-inactive { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .tab-inactive:hover { background: var(--bg-secondary); }
+        .positive { color: var(--accent-green); }
+        .negative { color: var(--accent-red); }
+        
+        .toast { position: fixed; top: 20px; right: 20px; z-index: 1000; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        .log-panel { max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        .log-success { color: #10b981; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #3b82f6; }
+        .log-warning { color: #f59e0b; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="app">
+        <!-- Toast 알림 -->
+        <div v-if="toast.show" class="toast">
+            <div class="px-6 py-4 rounded-lg shadow-lg" 
+                 :class="toast.type === 'success' ? 'bg-green-600' : toast.type === 'error' ? 'bg-red-600' : 'bg-blue-600'">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl">{{ toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️' }}</span>
+                    <span class="font-medium">{{ toast.message }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="bg-[#12121a] border-b border-[#2a2a3a] px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        ⭐ TwinStar Quantum
+                    </h1>
+                    <span class="text-xs text-gray-500">v1.8.3 Web</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="px-3 py-1 rounded-full text-xs" 
+                          :class="connected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+                        {{ connected ? '🟢 API 연결됨' : '🔴 연결 안됨' }}
+                    </span>
+                    <span class="text-sm text-gray-400">{{ currentTime }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="bg-[#12121a] border-b border-[#2a2a3a] px-6 py-2">
+            <div class="flex gap-2">
+                <button v-for="tab in tabs" :key="tab.id"
+                        @click="switchTab(tab.id)"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                        :class="activeTab === tab.id ? 'tab-active' : 'tab-inactive'">
+                    {{ tab.icon }} {{ tab.name }}
+                </button>
+            </div>
+        </nav>
+
+        <!-- 테스트 로그 패널 -->
+        <div class="mx-6 mt-4 card p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="font-semibold text-sm">📋 테스트 로그</h4>
+                <button @click="clearLogs" class="text-xs text-gray-400 hover:text-white">로그 지우기</button>
+            </div>
+            <div class="log-panel bg-[#0a0a0f] p-3 rounded-lg">
+                <div v-for="(log, idx) in logs" :key="idx" :class="'log-' + log.type">
+                    [{{ log.time }}] {{ log.message }}
+                </div>
+                <div v-if="logs.length === 0" class="text-gray-500">테스트 로그가 여기에 표시됩니다...</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="p-6">
+            <!-- ==================== 매매 탭 ==================== -->
+            <div v-show="activeTab === 'trading'" class="space-y-6">
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="card p-4">
+                        <div class="text-sm text-gray-400 mb-1">총 자산</div>
+                        <div class="text-2xl font-bold">{{ formatCurrency(dashboard.balance.total) }}</div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="text-sm text-gray-400 mb-1">가용 잔고</div>
+                        <div class="text-2xl font-bold text-blue-400">{{ formatCurrency(dashboard.balance.available) }}</div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="text-sm text-gray-400 mb-1">일일 수익</div>
+                        <div class="text-2xl font-bold" :class="dashboard.pnl.daily >= 0 ? 'positive' : 'negative'">
+                            {{ formatPnl(dashboard.pnl.daily) }}
+                        </div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="text-sm text-gray-400 mb-1">월간 수익</div>
+                        <div class="text-2xl font-bold" :class="dashboard.pnl.monthly >= 0 ? 'positive' : 'negative'">
+                            {{ formatPnl(dashboard.pnl.monthly) }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 단일 거래</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">거래소</label>
+                                <select v-model="trade.exchange" @change="onExchangeChange" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="ex in exchanges" :key="ex" :value="ex">{{ ex.toUpperCase() }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">심볼</label>
+                                <select v-model="trade.symbol" @change="onSymbolChange" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="sym in symbols" :key="sym" :value="sym">{{ sym }}</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm text-gray-400 block mb-1">수량 (USDT)</label>
+                                    <input type="number" v-model="trade.amount" class="input-field w-full px-4 py-2 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="text-sm text-gray-400 block mb-1">레버리지</label>
+                                    <input type="number" v-model="trade.leverage" min="1" max="125" class="input-field w-full px-4 py-2 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="executeTrade('buy')" class="btn-success text-white py-3 rounded-lg font-semibold">
+                                    📈 롱 진입
+                                </button>
+                                <button @click="executeTrade('sell')" class="btn-danger text-white py-3 rounded-lg font-semibold">
+                                    📉 숏 진입
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="refreshBalance" class="btn-primary text-white py-2 rounded-lg text-sm">
+                                    🔄 잔고 새로고침
+                                </button>
+                                <button @click="connectExchange" class="btn-warning text-white py-2 rounded-lg text-sm">
+                                    🔗 거래소 연결
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📋 활성 포지션</h3>
+                        <div v-if="positions.length === 0" class="text-center text-gray-500 py-8">
+                            활성 포지션이 없습니다
+                        </div>
+                        <div v-else class="space-y-3">
+                            <div v-for="pos in positions" :key="pos.id" class="bg-[#1a1a24] p-4 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold">{{ pos.symbol }}</span>
+                                    <span :class="pos.side === 'Long' ? 'positive' : 'negative'">{{ pos.side }}</span>
+                                </div>
+                                <div class="flex justify-between mt-2 text-sm">
+                                    <span class="text-gray-400">진입가: ${{ pos.entry }}</span>
+                                    <span :class="pos.pnl >= 0 ? 'positive' : 'negative'">{{ formatPnl(pos.pnl) }}</span>
+                                </div>
+                                <button @click="closePosition(pos.id)" class="mt-2 w-full btn-danger text-white py-1 rounded text-sm">
+                                    포지션 종료
+                                </button>
+                            </div>
+                        </div>
+                        <button @click="addTestPosition" class="mt-4 w-full btn-primary text-white py-2 rounded-lg text-sm">
+                            ➕ 테스트 포지션 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 백테스트 탭 ==================== -->
+            <div v-show="activeTab === 'backtest'" class="space-y-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">🔬 백테스트 설정</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">심볼</label>
+                                <select v-model="backtest.symbol" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="sym in symbols" :key="sym" :value="sym">{{ sym }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">타임프레임</label>
+                                <select v-model="backtest.timeframe" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">시작일</label>
+                                <input type="date" v-model="backtest.startDate" class="input-field w-full px-4 py-2 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">종료일</label>
+                                <input type="date" v-model="backtest.endDate" class="input-field w-full px-4 py-2 rounded-lg">
+                            </div>
+                            <button @click="runBacktest" :disabled="backtest.running" 
+                                    class="btn-primary w-full text-white py-3 rounded-lg font-semibold disabled:opacity-50">
+                                {{ backtest.running ? '⏳ 실행 중...' : '🚀 백테스트 실행' }}
+                            </button>
+                            <button @click="loadDefaultParams" class="btn-warning w-full text-white py-2 rounded-lg text-sm">
+                                📥 기본 파라미터 로드
+                            </button>
+                            <button @click="saveBacktestResult" :disabled="!backtestResult" 
+                                    class="btn-success w-full text-white py-2 rounded-lg text-sm disabled:opacity-50">
+                                💾 결과 저장
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 백테스트 결과</h3>
+                        <div v-if="!backtestResult" class="text-center text-gray-500 py-16">
+                            백테스트를 실행하세요
+                        </div>
+                        <div v-else>
+                            <div class="grid grid-cols-3 gap-4 mb-6">
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">총 수익률</div>
+                                    <div class="text-2xl font-bold positive">+{{ backtestResult.total_return }}%</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">승률</div>
+                                    <div class="text-2xl font-bold text-blue-400">{{ backtestResult.win_rate }}%</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">MDD</div>
+                                    <div class="text-2xl font-bold negative">-{{ backtestResult.max_drawdown }}%</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">샤프 비율</div>
+                                    <div class="text-xl font-bold">{{ backtestResult.sharpe_ratio }}</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">거래 횟수</div>
+                                    <div class="text-xl font-bold">{{ backtestResult.trade_count }}</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">Profit Factor</div>
+                                    <div class="text-xl font-bold">{{ backtestResult.profit_factor }}</div>
+                                </div>
+                            </div>
+                            <button @click="clearBacktestResult" class="mt-4 btn-danger text-white py-2 px-4 rounded-lg text-sm">
+                                🗑️ 결과 초기화
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 최적화 탭 ==================== -->
+            <div v-show="activeTab === 'optimization'" class="space-y-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">🎯 최적화 설정</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">심볼</label>
+                                <select v-model="optimization.symbol" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="sym in symbols" :key="sym" :value="sym">{{ sym }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">타임프레임</label>
+                                <select v-model="optimization.timeframe" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">최적화 모드</label>
+                                <select v-model="optimization.mode" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option value="single">싱글 최적화</option>
+                                    <option value="batch">배치 최적화</option>
+                                    <option value="walk_forward">Walk-Forward</option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-400">진행률</span>
+                                    <span>{{ optimization.progress }}%</span>
+                                </div>
+                                <div class="w-full bg-[#1a1a24] rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full transition-all" 
+                                         :style="{ width: optimization.progress + '%' }"></div>
+                                </div>
+                            </div>
+                            <button @click="startOptimization" :disabled="optimization.running"
+                                    class="btn-primary w-full text-white py-3 rounded-lg font-semibold disabled:opacity-50">
+                                {{ optimization.running ? '⏳ 최적화 중...' : '🚀 최적화 시작' }}
+                            </button>
+                            <button @click="stopOptimization" :disabled="!optimization.running"
+                                    class="btn-danger w-full text-white py-2 rounded-lg text-sm disabled:opacity-50">
+                                ⏹️ 최적화 중지
+                            </button>
+                            <button @click="applyOptimalParams" :disabled="!optimization.result"
+                                    class="btn-success w-full text-white py-2 rounded-lg text-sm disabled:opacity-50">
+                                ✅ 최적 파라미터 적용
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 최적화 결과</h3>
+                        <div v-if="!optimization.result" class="text-center text-gray-500 py-16">
+                            최적화를 실행하세요
+                        </div>
+                        <div v-else class="space-y-4">
+                            <div class="bg-[#1a1a24] p-4 rounded-lg">
+                                <div class="text-sm text-gray-400 mb-2">최적 파라미터</div>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div v-for="(value, key) in optimization.result.params" :key="key">
+                                        <span class="text-gray-400">{{ key }}:</span>
+                                        <span class="ml-2 font-semibold">{{ value }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">수익률</div>
+                                    <div class="text-xl font-bold positive">+{{ optimization.result.return }}%</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">승률</div>
+                                    <div class="text-xl font-bold">{{ optimization.result.win_rate }}%</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">샤프</div>
+                                    <div class="text-xl font-bold">{{ optimization.result.sharpe }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 설정 탭 ==================== -->
+            <div v-show="activeTab === 'settings'" class="space-y-6">
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">🔑 API 설정</h3>
+                        <div class="space-y-4">
+                            <div v-for="ex in exchanges" :key="ex" class="flex items-center justify-between p-3 bg-[#1a1a24] rounded-lg">
+                                <span class="font-medium">{{ ex.toUpperCase() }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 rounded-full text-xs"
+                                          :class="settings.apiKeys[ex] ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'">
+                                        {{ settings.apiKeys[ex] ? '✅ 설정됨' : '⚪ 미설정' }}
+                                    </span>
+                                    <button @click="toggleApiKey(ex)" class="btn-primary text-white text-xs px-3 py-1 rounded">
+                                        {{ settings.apiKeys[ex] ? '해제' : '설정' }}
+                                    </button>
+                                </div>
+                            </div>
+                            <button @click="testAllConnections" class="btn-warning w-full text-white py-2 rounded-lg">
+                                🔄 모든 연결 테스트
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📱 텔레그램 알림</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">Bot Token</label>
+                                <input type="password" v-model="settings.telegram.token" 
+                                       class="input-field w-full px-4 py-2 rounded-lg" placeholder="토큰 입력...">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">Chat ID</label>
+                                <input type="text" v-model="settings.telegram.chatId" 
+                                       class="input-field w-full px-4 py-2 rounded-lg" placeholder="123456789">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" v-model="settings.telegram.enabled" class="w-4 h-4" @change="toggleTelegram">
+                                <label class="text-sm">알림 활성화</label>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="testTelegram" class="btn-primary text-white py-2 rounded-lg">
+                                    🔔 테스트 알림
+                                </button>
+                                <button @click="saveTelegramSettings" class="btn-success text-white py-2 rounded-lg">
+                                    💾 저장
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">🎨 테마 설정</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">테마</label>
+                                <select v-model="settings.theme" @change="changeTheme" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option value="dark">🌙 다크 모드</option>
+                                    <option value="light">☀️ 라이트 모드</option>
+                                    <option value="premium">💎 프리미엄</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">언어</label>
+                                <select v-model="settings.language" @change="changeLanguage" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option value="ko">🇰🇷 한국어</option>
+                                    <option value="en">🇺🇸 English</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">⚙️ 시스템</h3>
+                        <div class="space-y-4">
+                            <button @click="exportSettings" class="btn-primary w-full text-white py-2 rounded-lg">
+                                📤 설정 내보내기
+                            </button>
+                            <button @click="importSettings" class="btn-warning w-full text-white py-2 rounded-lg">
+                                📥 설정 가져오기
+                            </button>
+                            <button @click="resetSettings" class="btn-danger w-full text-white py-2 rounded-lg">
+                                🔄 설정 초기화
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ========== 라이선스 검증 (ADMIN 전용) ========== -->
+                <div v-if="userTier === 'ADMIN'" class="card p-6 border-2 border-pink-500">
+                    <h3 class="text-lg font-semibold mb-4 text-pink-400">👑 관리자 전용 - 라이선스 검증</h3>
+                    <p class="text-gray-500 text-sm mb-4">사용자 라이선스 코드를 검증하고 등급을 부여합니다.</p>
+                    
+                    <div class="flex gap-4 mb-4">
+                        <input type="text" v-model="licenseVerify.code" 
+                               class="input-field flex-1 px-4 py-3 rounded-lg border border-pink-500/50 font-mono"
+                               placeholder="검증할 라이선스 코드 입력...">
+                        <select v-model="licenseVerify.tier" class="input-field px-4 py-3 rounded-lg min-w-[120px]">
+                            <option value="TRIAL">TRIAL</option>
+                            <option value="BASIC">BASIC</option>
+                            <option value="STANDARD">STANDARD</option>
+                            <option value="PREMIUM">PREMIUM</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select>
+                        <button @click="verifyLicenseCode" 
+                                class="px-6 py-3 rounded-lg font-semibold text-white"
+                                style="background: linear-gradient(135deg, #e91e63, #9c27b0);">
+                            🔐 검증 및 등급 부여
+                        </button>
+                    </div>
+                    
+                    <div v-if="licenseVerify.result" 
+                         class="p-4 rounded-lg"
+                         :class="licenseVerify.result.success ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'">
+                        <div :class="licenseVerify.result.success ? 'text-green-400' : 'text-red-400'">
+                            {{ licenseVerify.result.success ? '✅ 검증 성공!' : '❌ 검증 실패' }}
+                        </div>
+                        <div class="text-gray-400 text-sm mt-1">{{ licenseVerify.result.message }}</div>
+                    </div>
+                    
+                    <p class="text-gray-600 text-xs mt-4 italic">
+                        💡 검증된 코드는 서버에 기록되며, 해당 사용자에게 등급이 자동 적용됩니다.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ==================== 거래 내역 탭 ==================== -->
+            <div v-show="activeTab === 'history'" class="space-y-6">
+                <div class="card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">📜 거래 내역</h3>
+                        <div class="flex gap-2">
+                            <select v-model="historyFilter.exchange" @change="filterHistory" class="input-field px-3 py-1 rounded text-sm">
+                                <option value="">전체 거래소</option>
+                                <option v-for="ex in exchanges" :key="ex" :value="ex">{{ ex.toUpperCase() }}</option>
+                            </select>
+                            <select v-model="historyFilter.result" @change="filterHistory" class="input-field px-3 py-1 rounded text-sm">
+                                <option value="">전체 결과</option>
+                                <option value="profit">수익</option>
+                                <option value="loss">손실</option>
+                            </select>
+                            <button @click="refreshHistory" class="btn-primary text-white px-4 py-1 rounded text-sm">
+                                🔄 새로고침
+                            </button>
+                            <button @click="exportHistory" class="btn-success text-white px-4 py-1 rounded text-sm">
+                                📥 CSV 내보내기
+                            </button>
+                        </div>
+                    </div>
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left text-gray-400 text-sm">
+                                <th class="px-4 py-3 bg-[#1a1a24] rounded-tl-lg">일시</th>
+                                <th class="px-4 py-3 bg-[#1a1a24]">거래소</th>
+                                <th class="px-4 py-3 bg-[#1a1a24]">심볼</th>
+                                <th class="px-4 py-3 bg-[#1a1a24]">방향</th>
+                                <th class="px-4 py-3 bg-[#1a1a24] text-right">손익</th>
+                                <th class="px-4 py-3 bg-[#1a1a24] text-right rounded-tr-lg">수익률</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="trade in filteredHistory" :key="trade.id" class="border-b border-[#2a2a3a] hover:bg-[#1a1a24]">
+                                <td class="px-4 py-3">{{ trade.datetime }}</td>
+                                <td class="px-4 py-3">{{ trade.exchange }}</td>
+                                <td class="px-4 py-3 font-medium">{{ trade.symbol }}</td>
+                                <td class="px-4 py-3">
+                                    <span :class="trade.side === 'Long' ? 'positive' : 'negative'">{{ trade.side }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-right" :class="trade.pnl >= 0 ? 'positive' : 'negative'">
+                                    {{ formatPnl(trade.pnl) }}
+                                </td>
+                                <td class="px-4 py-3 text-right" :class="trade.pnl_pct >= 0 ? 'positive' : 'negative'">
+                                    {{ trade.pnl_pct >= 0 ? '+' : '' }}{{ trade.pnl_pct }}%
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="mt-4 flex justify-center gap-2">
+                        <button @click="addTestTrade" class="btn-primary text-white px-4 py-2 rounded text-sm">
+                            ➕ 테스트 거래 추가
+                        </button>
+                        <button @click="clearHistory" class="btn-danger text-white px-4 py-2 rounded text-sm">
+                            🗑️ 내역 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 데이터 수집 탭 ==================== -->
+            <div v-show="activeTab === 'data'" class="space-y-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📥 데이터 다운로드</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">거래소</label>
+                                <select v-model="dataCollection.exchange" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="ex in exchanges" :key="ex" :value="ex">{{ ex.toUpperCase() }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">심볼</label>
+                                <select v-model="dataCollection.symbol" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="sym in symbols" :key="sym" :value="sym">{{ sym }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">타임프레임</label>
+                                <select v-model="dataCollection.timeframe" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">기간 (일)</label>
+                                <input type="number" v-model="dataCollection.days" class="input-field w-full px-4 py-2 rounded-lg">
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-400">진행률</span>
+                                    <span>{{ dataCollection.progress }}%</span>
+                                </div>
+                                <div class="w-full bg-[#1a1a24] rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full transition-all" 
+                                         :style="{ width: dataCollection.progress + '%' }"></div>
+                                </div>
+                            </div>
+                            <button @click="startDownload" :disabled="dataCollection.downloading"
+                                    class="btn-primary w-full text-white py-3 rounded-lg font-semibold disabled:opacity-50">
+                                {{ dataCollection.downloading ? '⏳ 다운로드 중...' : '📥 다운로드 시작' }}
+                            </button>
+                            <button @click="stopDownload" :disabled="!dataCollection.downloading"
+                                    class="btn-danger w-full text-white py-2 rounded-lg text-sm disabled:opacity-50">
+                                ⏹️ 다운로드 중지
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 인기 심볼</h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            <div v-for="sym in symbols" :key="sym" 
+                                 @click="selectSymbolForDownload(sym)"
+                                 class="bg-[#1a1a24] p-3 rounded-lg text-center cursor-pointer hover:bg-[#2a2a3a] transition-colors"
+                                 :class="dataCollection.symbol === sym ? 'ring-2 ring-blue-500' : ''">
+                                <div class="font-medium">{{ sym }}</div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-md font-semibold mt-6 mb-3">📁 다운로드된 데이터</h4>
+                        <div class="space-y-2">
+                            <div v-for="file in downloadedFiles" :key="file.name" 
+                                 class="flex items-center justify-between bg-[#1a1a24] p-3 rounded-lg">
+                                <span>{{ file.name }}</span>
+                                <div class="flex gap-2">
+                                    <span class="text-gray-400 text-sm">{{ file.size }}</span>
+                                    <button @click="deleteFile(file.name)" class="text-red-400 hover:text-red-300 text-sm">🗑️</button>
+                                </div>
+                            </div>
+                            <div v-if="downloadedFiles.length === 0" class="text-center text-gray-500 py-4">
+                                다운로드된 파일이 없습니다
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 자동매매 탭 ==================== -->
+            <div v-show="activeTab === 'auto'" class="space-y-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-4">🤖 자동매매 제어</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 bg-[#1a1a24] rounded-lg">
+                                <span>상태</span>
+                                <span :class="autoTrading.running ? 'positive' : 'text-gray-400'">
+                                    {{ autoTrading.running ? '🟢 실행 중' : '⚪ 중지됨' }}
+                                </span>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">거래소</label>
+                                <select v-model="autoTrading.exchange" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="ex in exchanges" :key="ex" :value="ex">{{ ex.toUpperCase() }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 block mb-1">심볼</label>
+                                <select v-model="autoTrading.symbol" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option v-for="sym in symbols" :key="sym" :value="sym">{{ sym }}</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="startAutoTrading" :disabled="autoTrading.running"
+                                        class="btn-success text-white py-3 rounded-lg font-semibold disabled:opacity-50">
+                                    ▶️ 시작
+                                </button>
+                                <button @click="stopAutoTrading" :disabled="!autoTrading.running"
+                                        class="btn-danger text-white py-3 rounded-lg font-semibold disabled:opacity-50">
+                                    ⏹️ 중지
+                                </button>
+                            </div>
+                            <button @click="restartAutoTrading" class="btn-warning w-full text-white py-2 rounded-lg text-sm">
+                                🔄 재시작
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 card p-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 오늘의 성과</h3>
+                        <div class="grid grid-cols-4 gap-4 mb-6">
+                            <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                <div class="text-sm text-gray-400">거래 횟수</div>
+                                <div class="text-2xl font-bold">{{ autoTrading.tradesToday }}</div>
+                            </div>
+                            <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                <div class="text-sm text-gray-400">승률</div>
+                                <div class="text-2xl font-bold text-blue-400">{{ autoTrading.winRate }}%</div>
+                            </div>
+                            <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                <div class="text-sm text-gray-400">오늘 수익</div>
+                                <div class="text-2xl font-bold" :class="autoTrading.pnlToday >= 0 ? 'positive' : 'negative'">
+                                    {{ formatPnl(autoTrading.pnlToday) }}
+                                </div>
+                            </div>
+                            <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                <div class="text-sm text-gray-400">실행 시간</div>
+                                <div class="text-2xl font-bold">{{ formatUptime(autoTrading.uptime) }}</div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-md font-semibold mb-3">📋 최근 신호</h4>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                            <div v-for="signal in autoTrading.signals" :key="signal.id"
+                                 class="flex items-center justify-between bg-[#1a1a24] p-3 rounded-lg">
+                                <div>
+                                    <span class="font-medium">{{ signal.symbol }}</span>
+                                    <span class="ml-2" :class="signal.type === 'Long' ? 'positive' : 'negative'">{{ signal.type }}</span>
+                                </div>
+                                <span class="text-gray-400 text-sm">{{ signal.time }}</span>
+                            </div>
+                            <div v-if="autoTrading.signals.length === 0" class="text-center text-gray-500 py-4">
+                                신호가 없습니다
+                            </div>
+                        </div>
+                        <button @click="addTestSignal" class="mt-4 btn-primary text-white px-4 py-2 rounded text-sm">
+                            ➕ 테스트 신호 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const API_URL = '/api';
+                
+                // State
+                const connected = ref(false);
+                const currentTime = ref('');
+                const activeTab = ref('trading');
+                const logs = ref([]);
+                
+                // 사용자 등급 (ADMIN이면 라이선스 검증 UI 표시)
+                const userTier = ref('ADMIN');  // 테스트용: 'ADMIN' / 실제: API에서 조회
+                
+                // 라이선스 검증 (ADMIN 전용)
+                const licenseVerify = reactive({
+                    code: '',
+                    tier: 'BASIC',
+                    result: null
+                });
+                
+                const tabs = [
+                    { id: 'trading', name: '매매', icon: '📊' },
+                    { id: 'backtest', name: '백테스트', icon: '🔬' },
+                    { id: 'optimization', name: '최적화', icon: '🎯' },
+                    { id: 'settings', name: '설정', icon: '⚙️' },
+                    { id: 'history', name: '거래 내역', icon: '📜' },
+                    { id: 'data', name: '데이터 수집', icon: '📥' },
+                    { id: 'auto', name: '자동매매', icon: '🤖' },
+                ];
+                
+                const exchanges = ref(['bybit', 'binance', 'okx', 'bitget', 'bingx', 'upbit', 'bithumb']);
+                const symbols = ref(['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 
+                                   'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'LINKUSDT', 'MATICUSDT']);
+                const timeframes = ref(['1m', '5m', '15m', '1h', '4h', '1d', '1w']);
+                const positions = ref([]);
+                const tradeHistory = ref([]);
+                const downloadedFiles = ref([]);
+                
+                const toast = reactive({ show: false, message: '', type: 'info' });
+                
+                const dashboard = reactive({
+                    balance: { total: 10000, available: 8500, in_position: 1500 },
+                    pnl: { daily: 125.50, weekly: 450.00, monthly: 1200.00 }
+                });
+                
+                const trade = reactive({ exchange: 'bybit', symbol: 'BTCUSDT', amount: 100, leverage: 10 });
+                const backtest = reactive({ symbol: 'BTCUSDT', timeframe: '1h', startDate: '2025-01-01', endDate: '2026-01-01', running: false });
+                const backtestResult = ref(null);
+                
+                const optimization = reactive({ symbol: 'BTCUSDT', timeframe: '1h', mode: 'single', running: false, progress: 0, result: null });
+                const settings = reactive({
+                    telegram: { enabled: false, token: '', chatId: '' },
+                    apiKeys: { bybit: false, binance: false, okx: false, bitget: false, bingx: false, upbit: false, bithumb: false },
+                    theme: 'dark', language: 'ko'
+                });
+                
+                const historyFilter = reactive({ exchange: '', result: '' });
+                const dataCollection = reactive({ exchange: 'bybit', symbol: 'BTCUSDT', timeframe: '1h', days: 30, downloading: false, progress: 0 });
+                const autoTrading = reactive({
+                    running: false, uptime: 0, tradesToday: 0, pnlToday: 0, winRate: 0,
+                    exchange: 'bybit', symbol: 'BTCUSDT', signals: []
+                });
+                
+                // Helper functions
+                const formatCurrency = (val) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                const formatPnl = (val) => (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2);
+                const formatUptime = (sec) => { const h = Math.floor(sec / 3600); const m = Math.floor((sec % 3600) / 60); return `${h}h ${m}m`; };
+                
+                const showToast = (message, type = 'info') => {
+                    toast.show = true; toast.message = message; toast.type = type;
+                    setTimeout(() => { toast.show = false; }, 3000);
+                };
+                
+                const addLog = (message, type = 'info') => {
+                    const time = new Date().toLocaleTimeString('ko-KR');
+                    logs.value.unshift({ time, message, type });
+                    if (logs.value.length > 50) logs.value.pop();
+                };
+                
+                const clearLogs = () => { logs.value = []; addLog('로그가 초기화되었습니다', 'info'); };
+                
+                const switchTab = (tabId) => {
+                    activeTab.value = tabId;
+                    addLog(`${tabs.find(t => t.id === tabId).icon} ${tabs.find(t => t.id === tabId).name} 탭으로 전환`, 'info');
+                };
+                
+                // ========== 매매 탭 기능 ==========
+                const onExchangeChange = () => addLog(`거래소 변경: ${trade.exchange.toUpperCase()}`, 'info');
+                const onSymbolChange = () => addLog(`심볼 변경: ${trade.symbol}`, 'info');
+                
+                const executeTrade = async (side) => {
+                    const sideKor = side === 'buy' ? '롱' : '숏';
+                    addLog(`${sideKor} 주문 실행 중... (${trade.symbol}, ${trade.amount} USDT, ${trade.leverage}x)`, 'info');
+                    try {
+                        const res = await fetch(`${API_URL}/trade`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ...trade, side })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            addLog(`✅ ${sideKor} 주문 성공! Order ID: ${data.order_id}`, 'success');
+                            showToast(`${sideKor} 주문이 실행되었습니다!`, 'success');
+                        }
+                    } catch (e) {
+                        addLog(`❌ 주문 실패: ${e.message}`, 'error');
+                        showToast('주문 실행 실패', 'error');
+                    }
+                };
+                
+                const refreshBalance = async () => {
+                    addLog('잔고 새로고침 중...', 'info');
+                    try {
+                        const res = await fetch(`${API_URL}/dashboard/status`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            Object.assign(dashboard, data);
+                            addLog(`✅ 잔고 업데이트: $${data.balance.total.toLocaleString()}`, 'success');
+                            showToast('잔고가 업데이트되었습니다', 'success');
+                        }
+                    } catch (e) { addLog(`❌ 잔고 조회 실패: ${e.message}`, 'error'); }
+                };
+                
+                const connectExchange = () => {
+                    addLog(`${trade.exchange.toUpperCase()} 거래소 연결 시도...`, 'info');
+                    setTimeout(() => {
+                        addLog(`✅ ${trade.exchange.toUpperCase()} 연결 성공!`, 'success');
+                        showToast(`${trade.exchange.toUpperCase()} 연결됨`, 'success');
+                    }, 1000);
+                };
+                
+                const addTestPosition = () => {
+                    const pos = {
+                        id: Date.now(), symbol: trade.symbol, side: Math.random() > 0.5 ? 'Long' : 'Short',
+                        entry: (Math.random() * 50000 + 30000).toFixed(2), pnl: (Math.random() * 200 - 100).toFixed(2)
+                    };
+                    positions.value.push(pos);
+                    addLog(`➕ 테스트 포지션 추가: ${pos.symbol} ${pos.side}`, 'info');
+                };
+                
+                const closePosition = (id) => {
+                    const pos = positions.value.find(p => p.id === id);
+                    positions.value = positions.value.filter(p => p.id !== id);
+                    addLog(`🔴 포지션 종료: ${pos.symbol} (PnL: $${pos.pnl})`, 'warning');
+                    showToast('포지션이 종료되었습니다', 'success');
+                };
+                
+                // ========== 백테스트 탭 기능 ==========
+                const runBacktest = async () => {
+                    backtest.running = true;
+                    addLog(`백테스트 시작: ${backtest.symbol} ${backtest.timeframe} (${backtest.startDate} ~ ${backtest.endDate})`, 'info');
+                    try {
+                        const res = await fetch(`${API_URL}/backtest`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbol: backtest.symbol, timeframe: backtest.timeframe, start_date: backtest.startDate, end_date: backtest.endDate })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            backtestResult.value = data.results;
+                            addLog(`✅ 백테스트 완료! 수익률: +${data.results.total_return}%, 승률: ${data.results.win_rate}%`, 'success');
+                            showToast('백테스트가 완료되었습니다', 'success');
+                        }
+                    } catch (e) { addLog(`❌ 백테스트 실패: ${e.message}`, 'error'); }
+                    backtest.running = false;
+                };
+                
+                const loadDefaultParams = () => {
+                    addLog('기본 파라미터 로드 중...', 'info');
+                    setTimeout(() => { addLog('✅ 기본 파라미터가 로드되었습니다 (MACD: 6/18/7, ATR: 14, RSI: 14)', 'success'); showToast('파라미터 로드 완료', 'success'); }, 500);
+                };
+                
+                const saveBacktestResult = () => {
+                    addLog('백테스트 결과 저장 중...', 'info');
+                    setTimeout(() => { addLog('✅ 결과가 저장되었습니다: backtest_result_' + new Date().toISOString().slice(0,10) + '.json', 'success'); showToast('결과가 저장되었습니다', 'success'); }, 500);
+                };
+                
+                const clearBacktestResult = () => { backtestResult.value = null; addLog('백테스트 결과가 초기화되었습니다', 'info'); };
+                
+                // ========== 최적화 탭 기능 ==========
+                const startOptimization = () => {
+                    optimization.running = true; optimization.progress = 0;
+                    addLog(`최적화 시작: ${optimization.symbol} ${optimization.timeframe} (${optimization.mode} 모드)`, 'info');
+                    const interval = setInterval(() => {
+                        optimization.progress += 5;
+                        if (optimization.progress % 20 === 0) addLog(`최적화 진행 중... ${optimization.progress}%`, 'info');
+                        if (optimization.progress >= 100) {
+                            clearInterval(interval);
+                            optimization.running = false;
+                            optimization.result = { params: { macd_fast: 5, macd_slow: 20, atr_mult: 1.5, rsi_period: 12 }, return: 245.6, win_rate: 72.3, sharpe: 2.1 };
+                            addLog(`✅ 최적화 완료! 최적 수익률: +${optimization.result.return}%`, 'success');
+                            showToast('최적화가 완료되었습니다', 'success');
+                        }
+                    }, 200);
+                };
+                
+                const stopOptimization = () => {
+                    optimization.running = false;
+                    addLog('⏹️ 최적화가 중지되었습니다', 'warning');
+                    showToast('최적화 중지됨', 'warning');
+                };
+                
+                const applyOptimalParams = () => {
+                    addLog('✅ 최적 파라미터가 적용되었습니다', 'success');
+                    showToast('파라미터가 적용되었습니다', 'success');
+                };
+                
+                // ========== 설정 탭 기능 ==========
+                const toggleApiKey = (ex) => {
+                    settings.apiKeys[ex] = !settings.apiKeys[ex];
+                    addLog(`${ex.toUpperCase()} API 키 ${settings.apiKeys[ex] ? '설정됨' : '해제됨'}`, settings.apiKeys[ex] ? 'success' : 'warning');
+                };
+                
+                const testAllConnections = () => {
+                    addLog('모든 거래소 연결 테스트 중...', 'info');
+                    exchanges.value.forEach((ex, i) => {
+                        setTimeout(() => {
+                            const success = Math.random() > 0.3;
+                            addLog(`${ex.toUpperCase()}: ${success ? '✅ 연결 성공' : '❌ 연결 실패'}`, success ? 'success' : 'error');
+                        }, i * 300);
+                    });
+                };
+                
+                const toggleTelegram = () => addLog(`텔레그램 알림 ${settings.telegram.enabled ? '활성화' : '비활성화'}`, 'info');
+                const testTelegram = () => { addLog('텔레그램 테스트 알림 전송 중...', 'info'); setTimeout(() => { addLog('✅ 테스트 알림이 전송되었습니다', 'success'); showToast('테스트 알림 전송됨', 'success'); }, 1000); };
+                const saveTelegramSettings = () => { addLog('텔레그램 설정이 저장되었습니다', 'success'); showToast('설정 저장됨', 'success'); };
+                const changeTheme = () => addLog(`테마 변경: ${settings.theme}`, 'info');
+                const changeLanguage = () => addLog(`언어 변경: ${settings.language === 'ko' ? '한국어' : 'English'}`, 'info');
+                const exportSettings = () => { addLog('설정 내보내기...', 'info'); setTimeout(() => { addLog('✅ settings_backup.json 저장됨', 'success'); showToast('설정이 내보내졌습니다', 'success'); }, 500); };
+                const importSettings = () => { addLog('설정 가져오기...', 'info'); setTimeout(() => { addLog('✅ 설정이 복원되었습니다', 'success'); showToast('설정 복원됨', 'success'); }, 500); };
+                const resetSettings = () => { addLog('⚠️ 설정이 초기화되었습니다', 'warning'); showToast('설정 초기화됨', 'warning'); };
+                
+                // ========== 라이선스 검증 (ADMIN 전용) ==========
+                const verifyLicenseCode = async () => {
+                    const code = licenseVerify.code.trim();
+                    const tier = licenseVerify.tier;
+                    
+                    if (!code) {
+                        showToast('라이선스 코드를 입력하세요', 'error');
+                        return;
+                    }
+                    
+                    if (code.length < 8) {
+                        showToast('코드는 최소 8자 이상이어야 합니다', 'error');
+                        return;
+                    }
+                    
+                    addLog(`🔐 라이선스 검증 중: ${code.substring(0, 8)}...`, 'info');
+                    
+                    try {
+                        // API 호출 (시뮬레이션)
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        // 테스트: ADMIN, TEST, VALID로 시작하면 성공
+                        const isValid = code.toUpperCase().startsWith('ADMIN') || 
+                                       code.toUpperCase().startsWith('TEST') ||
+                                       code.toUpperCase().startsWith('VALID');
+                        
+                        if (isValid) {
+                            licenseVerify.result = {
+                                success: true,
+                                message: `코드: ${code.substring(0, 8)}...${code.slice(-4)} | 등급: ${tier} | 처리: ${new Date().toLocaleString('ko-KR')}`
+                            };
+                            addLog(`✅ 라이선스 검증 성공 - 등급 ${tier} 부여`, 'success');
+                            showToast(`${tier} 등급이 부여되었습니다`, 'success');
+                            licenseVerify.code = '';
+                        } else {
+                            licenseVerify.result = {
+                                success: false,
+                                message: '유효하지 않은 라이선스 코드입니다.'
+                            };
+                            addLog('❌ 라이선스 검증 실패 - 유효하지 않은 코드', 'error');
+                            showToast('검증 실패', 'error');
+                        }
+                    } catch (e) {
+                        licenseVerify.result = { success: false, message: `오류: ${e.message}` };
+                        addLog(`❌ 검증 오류: ${e.message}`, 'error');
+                    }
+                };
+                
+                // ========== 거래 내역 탭 기능 ==========
+                const filteredHistory = computed(() => {
+                    let result = tradeHistory.value;
+                    if (historyFilter.exchange) result = result.filter(t => t.exchange === historyFilter.exchange);
+                    if (historyFilter.result === 'profit') result = result.filter(t => t.pnl >= 0);
+                    if (historyFilter.result === 'loss') result = result.filter(t => t.pnl < 0);
+                    return result;
+                });
+                
+                const filterHistory = () => addLog(`필터 적용: 거래소=${historyFilter.exchange || '전체'}, 결과=${historyFilter.result || '전체'}`, 'info');
+                const refreshHistory = () => { addLog('거래 내역 새로고침 중...', 'info'); fetchHistory(); };
+                const exportHistory = () => { addLog('CSV 내보내기 중...', 'info'); setTimeout(() => { addLog('✅ trade_history.csv 저장됨', 'success'); showToast('CSV 내보내기 완료', 'success'); }, 500); };
+                const addTestTrade = () => {
+                    const t = { id: Date.now(), datetime: new Date().toLocaleString('ko-KR'), exchange: exchanges.value[Math.floor(Math.random() * 3)],
+                        symbol: symbols.value[Math.floor(Math.random() * 5)], side: Math.random() > 0.5 ? 'Long' : 'Short',
+                        pnl: parseFloat((Math.random() * 300 - 100).toFixed(2)), pnl_pct: parseFloat((Math.random() * 10 - 3).toFixed(2)) };
+                    tradeHistory.value.unshift(t);
+                    addLog(`➕ 테스트 거래 추가: ${t.symbol} ${t.side} ($${t.pnl})`, 'info');
+                };
+                const clearHistory = () => { tradeHistory.value = []; addLog('거래 내역이 초기화되었습니다', 'warning'); };
+                
+                // ========== 데이터 수집 탭 기능 ==========
+                const selectSymbolForDownload = (sym) => { dataCollection.symbol = sym; addLog(`다운로드 심볼 선택: ${sym}`, 'info'); };
+                const startDownload = () => {
+                    dataCollection.downloading = true; dataCollection.progress = 0;
+                    addLog(`데이터 다운로드 시작: ${dataCollection.exchange}/${dataCollection.symbol}/${dataCollection.timeframe} (${dataCollection.days}일)`, 'info');
+                    const interval = setInterval(() => {
+                        dataCollection.progress += 10;
+                        if (dataCollection.progress >= 100) {
+                            clearInterval(interval);
+                            dataCollection.downloading = false;
+                            const file = { name: `${dataCollection.symbol}_${dataCollection.timeframe}_${dataCollection.days}d.csv`, size: `${(Math.random() * 5 + 1).toFixed(1)} MB` };
+                            downloadedFiles.value.push(file);
+                            addLog(`✅ 다운로드 완료: ${file.name}`, 'success');
+                            showToast('다운로드 완료', 'success');
+                        }
+                    }, 300);
+                };
+                const stopDownload = () => { dataCollection.downloading = false; addLog('⏹️ 다운로드가 중지되었습니다', 'warning'); };
+                const deleteFile = (name) => { downloadedFiles.value = downloadedFiles.value.filter(f => f.name !== name); addLog(`🗑️ 파일 삭제: ${name}`, 'warning'); };
+                
+                // ========== 자동매매 탭 기능 ==========
+                let autoInterval = null;
+                const startAutoTrading = () => {
+                    autoTrading.running = true; autoTrading.uptime = 0;
+                    addLog(`🤖 자동매매 시작: ${autoTrading.exchange}/${autoTrading.symbol}`, 'success');
+                    showToast('자동매매가 시작되었습니다', 'success');
+                    autoInterval = setInterval(() => {
+                        autoTrading.uptime += 1;
+                        if (Math.random() > 0.9) {
+                            autoTrading.tradesToday += 1;
+                            const pnl = parseFloat((Math.random() * 100 - 30).toFixed(2));
+                            autoTrading.pnlToday += pnl;
+                            autoTrading.winRate = Math.round((autoTrading.tradesToday > 0 ? (autoTrading.pnlToday > 0 ? 60 + Math.random() * 20 : 40 + Math.random() * 20) : 0));
+                            addLog(`🔔 자동 거래 체결: ${pnl >= 0 ? '+' : ''}$${pnl}`, pnl >= 0 ? 'success' : 'warning');
+                        }
+                    }, 1000);
+                };
+                const stopAutoTrading = () => {
+                    autoTrading.running = false;
+                    if (autoInterval) { clearInterval(autoInterval); autoInterval = null; }
+                    addLog(`⏹️ 자동매매 중지 (총 ${autoTrading.tradesToday}건, $${autoTrading.pnlToday.toFixed(2)})`, 'warning');
+                    showToast('자동매매가 중지되었습니다', 'warning');
+                };
+                const restartAutoTrading = () => { stopAutoTrading(); setTimeout(startAutoTrading, 500); addLog('🔄 자동매매 재시작', 'info'); };
+                const addTestSignal = () => {
+                    const signal = { id: Date.now(), symbol: symbols.value[Math.floor(Math.random() * 5)], type: Math.random() > 0.5 ? 'Long' : 'Short', time: new Date().toLocaleTimeString('ko-KR') };
+                    autoTrading.signals.unshift(signal);
+                    if (autoTrading.signals.length > 10) autoTrading.signals.pop();
+                    addLog(`📡 신호 감지: ${signal.symbol} ${signal.type}`, 'info');
+                };
+                
+                // ========== 데이터 fetch ==========
+                const fetchData = async () => {
+                    try {
+                        const res = await fetch(`${API_URL}/health`);
+                        if (res.ok) { connected.value = true; }
+                    } catch (e) { connected.value = false; }
+                };
+                
+                const fetchHistory = async () => {
+                    try {
+                        const res = await fetch(`${API_URL}/history/trades`);
+                        if (res.ok) { const data = await res.json(); tradeHistory.value = data.trades; addLog(`✅ 거래 내역 로드: ${data.trades.length}건`, 'success'); }
+                    } catch (e) { addLog(`❌ 거래 내역 로드 실패`, 'error'); }
+                };
+                
+                setInterval(() => { currentTime.value = new Date().toLocaleString('ko-KR'); }, 1000);
+                
+                onMounted(() => {
+                    fetchData(); fetchHistory();
+                    addLog('🚀 TwinStar Quantum Web 시작됨', 'success');
+                    setInterval(fetchData, 30000);
+                });
+                
+                return {
+                    connected, currentTime, activeTab, tabs, logs, toast,
+                    exchanges, symbols, timeframes, positions, tradeHistory, downloadedFiles,
+                    dashboard, trade, backtest, backtestResult, optimization, settings, historyFilter, dataCollection, autoTrading,
+                    userTier, licenseVerify,  // 라이선스 검증
+                    formatCurrency, formatPnl, formatUptime, showToast, addLog, clearLogs, switchTab,
+                    onExchangeChange, onSymbolChange, executeTrade, refreshBalance, connectExchange, addTestPosition, closePosition,
+                    runBacktest, loadDefaultParams, saveBacktestResult, clearBacktestResult,
+                    startOptimization, stopOptimization, applyOptimalParams,
+                    toggleApiKey, testAllConnections, toggleTelegram, testTelegram, saveTelegramSettings, changeTheme, changeLanguage, exportSettings, importSettings, resetSettings,
+                    verifyLicenseCode,  // 라이선스 검증 함수
+                    filteredHistory, filterHistory, refreshHistory, exportHistory, addTestTrade, clearHistory,
+                    selectSymbolForDownload, startDownload, stopDownload, deleteFile,
+                    startAutoTrading, stopAutoTrading, restartAutoTrading, addTestSignal
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

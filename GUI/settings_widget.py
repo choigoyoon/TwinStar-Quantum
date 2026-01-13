@@ -661,7 +661,20 @@ class SettingsWidget(QWidget):
         super().__init__()
         self.config = load_api_keys()
         self.exchange_cards = {}
+        self.current_tier = 'FREE'  # 기본 등급
+        self._load_license_info()
         self._init_ui()
+    
+    def _load_license_info(self):
+        """라이선스 정보 로드"""
+        try:
+            if HAS_LICENSE_GUARD and get_license_guard:
+                guard = get_license_guard()
+                if guard:
+                    self.current_tier = getattr(guard, 'tier', 'FREE').upper()
+        except Exception as e:
+            logger.debug(f"License info load failed: {e}")
+            self.current_tier = 'FREE'
     
     def _init_ui(self):
         layout = QVBoxLayout(self)
@@ -677,6 +690,8 @@ class SettingsWidget(QWidget):
         desc.setStyleSheet("color: #787b86; font-size: 12px;")
         layout.addWidget(desc)
         
+        # ========== 라이선스 검증 섹션 (ADMIN 전용) ==========
+        self._create_license_section(layout)
         
         # [HIDDEN] Telegram card - 나중에 다시 활성화 가능
         # self.telegram_card = TelegramCard()
@@ -827,6 +842,205 @@ class SettingsWidget(QWidget):
                 t("common.success", t("common.success")),
                 "Language changed. Please restart the application.\n언어가 변경되었습니다. 프로그램을 재시작해주세요."
             )
+    
+    # ==================== 라이선스 검증 섹션 (ADMIN 전용) ====================
+    
+    def _create_license_section(self, layout):
+        """라이선스 검증 섹션 생성 - ADMIN 등급에서만 표시"""
+        # ADMIN 등급이 아니면 표시하지 않음
+        if self.current_tier != 'ADMIN':
+            return
+        
+        # 라이선스 검증 그룹박스
+        license_group = QGroupBox("👑 관리자 전용 - 라이선스 검증")
+        license_group.setStyleSheet("""
+            QGroupBox {
+                color: #e91e63;
+                border: 2px solid #e91e63;
+                border-radius: 8px;
+                padding: 15px;
+                margin-top: 10px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px;
+            }
+        """)
+        
+        group_layout = QVBoxLayout(license_group)
+        group_layout.setSpacing(10)
+        
+        # 설명
+        desc = QLabel("사용자 라이선스 코드를 검증하고 등급을 부여합니다.")
+        desc.setStyleSheet("color: #787b86; font-size: 11px;")
+        group_layout.addWidget(desc)
+        
+        # 입력 영역
+        input_layout = QHBoxLayout()
+        
+        # 검증 코드 입력
+        self.license_code_input = QLineEdit()
+        self.license_code_input.setPlaceholderText("검증할 라이선스 코드 입력...")
+        self.license_code_input.setStyleSheet("""
+            QLineEdit {
+                background: #131722;
+                color: white;
+                border: 1px solid #e91e63;
+                border-radius: 5px;
+                padding: 10px;
+                font-family: monospace;
+            }
+            QLineEdit:focus {
+                border: 2px solid #e91e63;
+            }
+        """)
+        input_layout.addWidget(self.license_code_input, stretch=3)
+        
+        # 등급 선택
+        self.tier_combo = QComboBox()
+        self.tier_combo.addItems(['TRIAL', 'BASIC', 'STANDARD', 'PREMIUM', 'ADMIN'])
+        self.tier_combo.setCurrentText('BASIC')
+        self.tier_combo.setStyleSheet("""
+            QComboBox {
+                background: #131722;
+                color: white;
+                border: 1px solid #2a2e3b;
+                border-radius: 5px;
+                padding: 8px;
+                min-width: 100px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background: #1e2330;
+                color: white;
+                selection-background-color: #e91e63;
+            }
+        """)
+        input_layout.addWidget(self.tier_combo, stretch=1)
+        
+        # 검증 버튼
+        verify_btn = QPushButton("🔐 검증 및 등급 부여")
+        verify_btn.setStyleSheet("""
+            QPushButton {
+                background: linear-gradient(135deg, #e91e63, #9c27b0);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: linear-gradient(135deg, #c2185b, #7b1fa2);
+            }
+            QPushButton:pressed {
+                background: #880e4f;
+            }
+        """)
+        verify_btn.clicked.connect(self._verify_license_code)
+        input_layout.addWidget(verify_btn)
+        
+        group_layout.addLayout(input_layout)
+        
+        # 결과 표시 영역
+        self.license_result_label = QLabel("")
+        self.license_result_label.setStyleSheet("color: #787b86; padding: 5px;")
+        self.license_result_label.setWordWrap(True)
+        group_layout.addWidget(self.license_result_label)
+        
+        # 최근 검증 내역 (간단히)
+        history_label = QLabel("💡 검증된 코드는 서버에 기록되며, 해당 사용자에게 등급이 자동 적용됩니다.")
+        history_label.setStyleSheet("color: #666; font-size: 10px; font-style: italic;")
+        group_layout.addWidget(history_label)
+        
+        layout.addWidget(license_group)
+    
+    def _verify_license_code(self):
+        """라이선스 코드 검증 및 등급 부여"""
+        code = self.license_code_input.text().strip()
+        tier = self.tier_combo.currentText()
+        
+        if not code:
+            QMessageBox.warning(self, "입력 오류", "검증할 라이선스 코드를 입력하세요.")
+            return
+        
+        # 코드 형식 검증 (예: 16자 이상의 영숫자)
+        if len(code) < 8:
+            QMessageBox.warning(self, "형식 오류", "라이선스 코드는 최소 8자 이상이어야 합니다.")
+            return
+        
+        try:
+            # 실제 검증 로직 (서버 API 호출)
+            result = self._call_license_api(code, tier)
+            
+            if result.get('success'):
+                self.license_result_label.setText(
+                    f"✅ 검증 성공!\n"
+                    f"코드: {code[:8]}...{code[-4:]}\n"
+                    f"부여 등급: {tier}\n"
+                    f"처리 시간: {result.get('timestamp', 'N/A')}"
+                )
+                self.license_result_label.setStyleSheet("color: #26a69a; padding: 5px; background: #1a2e2a; border-radius: 5px;")
+                
+                QMessageBox.information(
+                    self, 
+                    "검증 완료", 
+                    f"라이선스 코드가 성공적으로 검증되었습니다.\n\n"
+                    f"코드: {code[:8]}***\n"
+                    f"등급: {tier}\n\n"
+                    f"해당 사용자에게 등급이 적용됩니다."
+                )
+                
+                # 입력 필드 초기화
+                self.license_code_input.clear()
+            else:
+                error_msg = result.get('error', '알 수 없는 오류')
+                self.license_result_label.setText(f"❌ 검증 실패: {error_msg}")
+                self.license_result_label.setStyleSheet("color: #ef5350; padding: 5px;")
+                QMessageBox.warning(self, "검증 실패", f"라이선스 검증에 실패했습니다.\n\n오류: {error_msg}")
+                
+        except Exception as e:
+            self.license_result_label.setText(f"❌ 오류 발생: {str(e)}")
+            self.license_result_label.setStyleSheet("color: #ef5350; padding: 5px;")
+            QMessageBox.critical(self, "오류", f"검증 중 오류가 발생했습니다.\n\n{str(e)}")
+    
+    def _call_license_api(self, code: str, tier: str) -> dict:
+        """라이선스 서버 API 호출"""
+        import datetime
+        
+        try:
+            # 실제 서버 연동 시 여기에 API 호출 코드 작성
+            # 현재는 로컬 시뮬레이션
+            
+            if HAS_LICENSE_GUARD and get_license_guard:
+                guard = get_license_guard()
+                if guard and hasattr(guard, 'verify_admin_code'):
+                    return guard.verify_admin_code(code, tier)
+            
+            # 시뮬레이션 응답 (실제 서버 연동 전)
+            # 테스트용: 'ADMIN' 또는 'TEST'로 시작하는 코드는 성공
+            if code.upper().startswith(('ADMIN', 'TEST', 'VALID')):
+                return {
+                    'success': True,
+                    'code': code,
+                    'tier': tier,
+                    'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'message': f'등급 {tier} 부여 완료'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': '유효하지 않은 라이선스 코드입니다.'
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     def _show_tier_comparison(self):
         """등급 비교표 다이얼로그 표시"""

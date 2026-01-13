@@ -115,12 +115,10 @@ class BaseExchange(ABC):
     @abstractmethod
     def name(self) -> str:
         """거래소 이름"""
-        pass
     
     @abstractmethod
     def connect(self) -> bool:
         """API 연결"""
-        pass
     
     @abstractmethod
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
@@ -129,12 +127,10 @@ class BaseExchange(ABC):
         interval: '1', '5', '15', '60' (분 단위)
         returns: DataFrame with columns [timestamp, open, high, low, close, volume]
         """
-        pass
     
     @abstractmethod
     def get_current_price(self) -> float:
         """현재 가격"""
-        pass
     
     @abstractmethod
     def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
@@ -145,32 +141,26 @@ class BaseExchange(ABC):
         stop_loss: 손절가
         take_profit: 익절가
         """
-        pass
     
     @abstractmethod
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
-        pass
     
     @abstractmethod
     def close_position(self) -> bool:
         """포지션 청산"""
-        pass
 
     @abstractmethod
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (불타기)"""
-        pass
     
     @abstractmethod
     def get_balance(self) -> float:
         """잔고 조회"""
-        pass
     
     @abstractmethod
     def sync_time(self) -> bool:
         """서버 시간 동기화"""
-        pass
     
     # ========== 공통 메서드 ==========
     

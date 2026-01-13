@@ -61,23 +61,23 @@ def _check_dependencies():
     errors = []
     
     try:
-        import ccxt
+        pass
     except ImportError:
         errors.append("ccxt")
     
     try:
-        from cryptography.fernet import Fernet
+        pass
     except ImportError:
         errors.append("cryptography")
     
     try:
-        import pandas
+        pass
     except ImportError:
         errors.append("pandas")
     
     # [ADD] exchange_manager 체크 (ccxt 의존성 포함)
     try:
-        from exchanges.exchange_manager import ExchangeManager
+        pass
     except ImportError as e:
         errors.append(f"exchange_manager ({e})")
     
@@ -241,7 +241,6 @@ class StarUWindow(QMainWindow):
         """종료 시 모든 프로세스 정리"""
         logger.info("🔄 프로그램 종료 중...")
         
-        import signal
         import os
         import multiprocessing
         

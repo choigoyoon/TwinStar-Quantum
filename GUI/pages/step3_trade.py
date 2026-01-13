@@ -7,12 +7,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QComboBox, QLineEdit, QSpinBox,
     QDoubleSpinBox, QFrame, QCheckBox, QMessageBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import pyqtSignal
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
-from GUI.components.status_card import StatusCard
 
 
 class TradePage(QWidget):

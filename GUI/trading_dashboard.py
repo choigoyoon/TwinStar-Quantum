@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 from locales.lang_manager import t
 from GUI.single_trade_widget import SingleTradeWidget
 from GUI.multi_trade_widget import MultiTradeWidget
-from GUI.trade_history_widget import TradeHistoryWidget as TradeHistoryTabWidget
 from core.multi_trader import MultiTrader
 
 import os
@@ -18,7 +17,7 @@ import json
 import threading
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Dict
 
 from PyQt5.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
@@ -29,8 +28,8 @@ from PyQt5.QtWidgets import (
 )
 from GUI.dashboard_widgets import ExternalPositionTable, TradeHistoryTable, PositionTable
 from GUI.position_widget import PositionStatusWidget
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot, QThread, QObject
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot, QThread
+from PyQt5.QtGui import QFont
 
 # Path setup
 if not getattr(sys, 'frozen', False):
@@ -78,7 +77,6 @@ except ImportError:
 # [NEW] Session restore popups
 try:
     from GUI.sniper_session_popup import SniperSessionPopup
-    from GUI.multi_session_popup import MultiSessionPopup
     HAS_SESSION_POPUP = True
 except ImportError:
     HAS_SESSION_POPUP = False
@@ -108,7 +106,6 @@ from GUI.components.workers import ExternalDataWorker
 from GUI.components.bot_control_card import BotControlCard
 
 
-from GUI.dashboard.multi_explorer import MultiExplorer
 
 
 
@@ -839,8 +836,6 @@ class TradingDashboard(QWidget):
         try:
             from core.unified_bot import create_bot
             from GUI.crypto_manager import load_api_keys
-            import json
-            import os
             
             # [FIX] crypto_manager에서 암호화된 키 로드 (Settings에서 저장한 것과 동일)
             all_keys = load_api_keys()
@@ -881,7 +876,6 @@ class TradingDashboard(QWidget):
                 
                 # 메시지 박스 표시 (메인 스레드에서)
                 from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
-                from PyQt5.QtWidgets import QMessageBox
                 QMetaObject.invokeMethod(self, "_show_api_key_error", Qt.QueuedConnection,
                                         Q_ARG(str, config['exchange']))
                 return

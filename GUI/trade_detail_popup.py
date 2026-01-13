@@ -7,7 +7,7 @@ import sys
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
     QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
-    QSplitter, QWidget, QFrame
+    QWidget, QFrame
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor

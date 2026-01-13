@@ -4,7 +4,7 @@ TwinStar Quantum - 프리미엄 트레이딩 대시보드 v2.0
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
-    QGroupBox, QLabel, QTextEdit, QPushButton
+    QGroupBox, QLabel, QTextEdit
 )
 from PyQt5.QtCore import Qt, QTimer
 
@@ -99,7 +99,6 @@ class TradingDashboardV2(QWidget):
     def _update_status(self):
         """상태 업데이트"""
         # NOTE: v2는 레거시 - v3 사용 권장
-        pass
     
     def _on_single_start(self, config):
         self.add_log(f"🎯 싱글 매매 시작: {config['symbol']}")

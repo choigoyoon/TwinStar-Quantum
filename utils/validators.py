@@ -4,7 +4,7 @@ utils/validators.py - 입력 검증 유틸리티
 """
 import re
 import os
-from typing import Optional, Tuple
+from typing import Tuple
 
 # Logging
 import logging

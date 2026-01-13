@@ -5,9 +5,9 @@ import sys
 import os
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QComboBox, QDateEdit, QSpinBox, QProgressBar,
-    QTextEdit, QGridLayout, QMessageBox, QCheckBox, QListWidget,
-    QListWidgetItem, QTabWidget, QLineEdit
+    QGroupBox, QComboBox, QDateEdit, QProgressBar, QTextEdit,
+    QMessageBox, QCheckBox, QListWidget, QListWidgetItem, QTabWidget,
+    QLineEdit
 )
 
 # Logging

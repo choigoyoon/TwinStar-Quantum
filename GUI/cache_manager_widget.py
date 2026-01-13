@@ -3,8 +3,7 @@
 from locales.lang_manager import t
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QProgressBar
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
 )
 
 # Logging

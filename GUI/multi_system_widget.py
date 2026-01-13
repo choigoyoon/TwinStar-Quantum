@@ -16,8 +16,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QProgressBar, QTableWidget, QTableWidgetItem,
-    QHeaderView, QTabWidget, QTextEdit, QMessageBox, QFileDialog,
-    QDoubleSpinBox, QSpinBox, QCheckBox
+    QHeaderView, QTabWidget, QTextEdit, QDoubleSpinBox, QCheckBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 

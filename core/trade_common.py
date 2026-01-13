@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 class CapitalMode(Enum):
     """자본 관리 모드 (Enum)"""

@@ -4,7 +4,6 @@ Silent Install 방식 - Setup.exe 다운로드 후 자동 설치
 """
 
 import sys
-import json
 import logging
 import requests
 import subprocess

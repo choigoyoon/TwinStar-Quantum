@@ -11,7 +11,6 @@
     from ui.design_system import ThemeGenerator
 """
 
-import warnings
 import logging
 
 logger = logging.getLogger(__name__)

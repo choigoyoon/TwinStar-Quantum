@@ -2,7 +2,7 @@
 타임프레임 관련 상수
 """
 
-from typing import Optional, List
+from typing import List
 
 # ============ 지원 타임프레임 ============
 TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w']

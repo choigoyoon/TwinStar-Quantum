@@ -4,12 +4,11 @@ Step 2: 파라미터 찾기 (최적화)
 """
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QComboBox, QProgressBar, QFrame,
-    QTableWidget, QTableWidgetItem, QHeaderView,
-    QSpinBox, QDoubleSpinBox, QCheckBox
+    QPushButton, QProgressBar, QFrame, QTableWidget,
+    QTableWidgetItem, QHeaderView, QSpinBox,
+    QDoubleSpinBox, QCheckBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QThread
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import pyqtSignal, QThread
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -470,4 +469,3 @@ class OptimizePage(QWidget):
     
     def set_backtest_result(self, result: dict):
         """이전 단계 결과 수신"""
-        pass

@@ -9,10 +9,8 @@ import os
 import json
 from datetime import datetime
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field
-from enum import Enum
 
-from core.trade_common import CoinStatus, CoinState, CapitalMode, WS_LIMITS
+from core.trade_common import CoinStatus, CoinState, WS_LIMITS
 from core.capital_manager import CapitalManager
 
 
@@ -124,7 +122,6 @@ class MultiCoinSniper:
     def _get_top_by_volume(self, exchange: str) -> List[str]:
         """거래량 Top N 조회 (TOP_COINS_LIMIT 사용)"""
         import requests
-        import time
         
         limit = self.TOP_COINS_LIMIT
         
@@ -928,7 +925,7 @@ class MultiCoinSniper:
     def _check_exit_condition(self, symbol: str, candle: dict, pos: dict, params: dict) -> tuple:
         """청산 조건 체크 (AlphaX7Core 중앙 로직 연동)"""
         try:
-            from core.strategy_core import AlphaX7Core
+            pass
             
             entry_price = pos.get('entry_price', 0)
             direction = pos.get('direction', 'Long')

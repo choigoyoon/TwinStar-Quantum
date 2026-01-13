@@ -7,7 +7,6 @@
 - 특이사항: 레버리지 없음, SL은 로컬 관리
 """
 
-import time
 import logging
 import pandas as pd
 from datetime import datetime

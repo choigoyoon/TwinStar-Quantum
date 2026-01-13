@@ -167,7 +167,6 @@ class EquityCurveWidget(QWidget):
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
         from matplotlib.figure import Figure
         import matplotlib.pyplot as plt
-        import matplotlib.dates as mdates
         
         # 다크 테마 설정
         plt.style.use('dark_background')

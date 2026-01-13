@@ -10,8 +10,8 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
-    QComboBox, QDateEdit, QSplitter, QGroupBox, QGridLayout,
-    QFileDialog, QMessageBox, QTabWidget, QDialog
+    QComboBox, QDateEdit, QFileDialog, QMessageBox, QTabWidget,
+    QDialog
 )
 from PyQt5.QtCore import Qt, QDate, QTimer
 from PyQt5.QtGui import QFont, QColor, QDragEnterEvent, QDropEvent

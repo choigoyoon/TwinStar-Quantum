@@ -10,10 +10,9 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
-    QGroupBox, QFrame
+    QFrame
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import pyqtSignal, QTimer
 from locales.lang_manager import t
 
 
@@ -224,7 +223,6 @@ class MultiTradeWidget(QWidget):
     def _update_status_display(self):
         """현황 표시 업데이트 (외부에서 호출 가능)"""
         # 이 메서드는 TradingDashboard에서 MultiTrader 상태를 받아 호출
-        pass
     
     def update_status(self, watching: int = 0, pending: list = None, position: dict = None):
         """외부에서 상태 업데이트"""

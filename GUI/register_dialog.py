@@ -6,8 +6,7 @@ TwinStar Quantum 가입 다이얼로그
 
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QLineEdit, QMessageBox, QFrame,
-    QApplication
+    QPushButton, QLineEdit, QMessageBox, QApplication
 )
 from PyQt5.QtCore import Qt
 import re

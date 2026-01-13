@@ -4,7 +4,7 @@ utils/cache_manager.py - 캐시 관리 유틸리티
 """
 import time
 import logging
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Callable
 from functools import wraps
 from threading import Lock
 

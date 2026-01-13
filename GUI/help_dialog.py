@@ -11,8 +11,7 @@ import os
 import webbrowser
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTabWidget, QWidget, QTextBrowser, QScrollArea, QFrame,
-    QGroupBox, QMessageBox
+    QTabWidget, QWidget, QTextBrowser, QScrollArea, QGroupBox
 )
 from PyQt5.QtCore import Qt
 

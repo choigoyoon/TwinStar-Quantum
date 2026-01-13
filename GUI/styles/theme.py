@@ -11,7 +11,6 @@ TwinStar Quantum - 프리미엄 테마 시스템
     from ui.design_system import ThemeGenerator, Colors
 """
 
-import warnings
 
 
 class Theme:

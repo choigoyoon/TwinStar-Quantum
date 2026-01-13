@@ -5,7 +5,6 @@
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QFont, QFontDatabase
 from pathlib import Path
-import os
 import logging
 
 logger = logging.getLogger(__name__)

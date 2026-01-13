@@ -9,8 +9,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QTableWidget, QTableWidgetItem, QPushButton,
-    QGroupBox, QHeaderView, QFileDialog, QSplitter,
-    QAbstractItemView
+    QGroupBox, QHeaderView, QFileDialog, QAbstractItemView
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont, QColor

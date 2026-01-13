@@ -7,14 +7,13 @@
 
 import sys
 import os
-import json
 import hashlib
 import uuid
 import requests
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QPushButton, QMessageBox, QFrame,
-    QStackedWidget, QWidget, QFormLayout
+    QFormLayout
 )
 from PyQt5.QtCore import Qt
 

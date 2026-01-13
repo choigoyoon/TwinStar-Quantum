@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime, timedelta
-from typing import Union, Optional
+from typing import Union
 
 
 def format_datetime(dt: Union[datetime, str, int, float], 

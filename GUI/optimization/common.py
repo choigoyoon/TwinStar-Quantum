@@ -3,23 +3,9 @@
 
 import sys
 import os
-import json
 import logging
-from datetime import datetime
-from pathlib import Path
-import multiprocessing
 
-import pandas as pd
 
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QComboBox, QDoubleSpinBox, QSpinBox,
-    QTableWidget, QTableWidgetItem, QHeaderView,
-    QProgressBar, QMessageBox, QScrollArea, QCheckBox, QLineEdit,
-    QRadioButton, QButtonGroup, QFrame, QApplication, QTabWidget
-)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
 
 logger = logging.getLogger(__name__)
 

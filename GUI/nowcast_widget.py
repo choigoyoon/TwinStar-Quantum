@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QCheckBox, QComboBox, QLabel, QPushButton,
-    QGridLayout, QFrame
+    QFrame
 )
 from PyQt5.QtCore import pyqtSignal
 

@@ -566,7 +566,6 @@ class BybitExchange(BaseExchange):
     def save_trade_history_to_log(self, trades: list = None):
         """API 매매 내역을 로컬 로그 파일에 보관"""
         import json
-        from datetime import datetime
         
         try:
             # 트레이드가 없으면 API에서 조회

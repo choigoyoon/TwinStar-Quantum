@@ -12,7 +12,6 @@
     from ui.design_system import ThemeGenerator
 """
 
-import warnings
 
 
 class VividTheme:

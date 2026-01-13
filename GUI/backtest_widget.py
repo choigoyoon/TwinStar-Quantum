@@ -12,17 +12,14 @@ from PyQt5.QtWidgets import (
     QPushButton, QGroupBox, QCheckBox,
     QProgressBar, QMessageBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QSplitter, QFrame, QDoubleSpinBox, QSpinBox,
-    QComboBox, QFileDialog, QInputDialog, QScrollArea, QGridLayout, QSizePolicy
+    QComboBox, QFileDialog, QInputDialog, QGridLayout
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QColor
 
 
-from datetime import datetime
 import sys
 import os
-import json
-from pathlib import Path
 import pandas as pd
 
 # Path setup for EXE compatibility
@@ -849,7 +846,6 @@ class SingleBacktestWidget(QWidget):
 
     def _on_trade_selected(self):
         """테이블 행 클릭 시 (현재는 기능 없음, 추후 줌 연동 가능)"""
-        pass
 
     # _update_chart removed (moved to InteractiveChart)
 

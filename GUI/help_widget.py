@@ -1,9 +1,8 @@
 # help_widget.py - GUI 내장 도움말 (한글 최적화)
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFrame, QTabWidget, QTextBrowser, QGroupBox,
-    QSizePolicy, QSpacerItem
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
+    QFrame
 )
 from PyQt5.QtCore import Qt
 

@@ -50,14 +50,7 @@ except ImportError:
 # [Phase 3] Single Source of Truth: config/parameters.py에서 import
 try:
     from config.parameters import (
-        DEFAULT_PARAMS,
-        PARAM_RANGES,
-        REQUIRED_PARAMS,
-        get_param,
-        get_all_params,
-        validate_params,
-        load_params_from_json,
-        save_params_to_json
+        load_params_from_json
     )
 except ImportError:
     # Fallback for EXE or path issues
@@ -65,14 +58,7 @@ except ImportError:
     import os
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     from config.parameters import (
-        DEFAULT_PARAMS,
-        PARAM_RANGES,
-        REQUIRED_PARAMS,
-        get_param,
-        get_all_params,
-        validate_params,
-        load_params_from_json,
-        save_params_to_json
+        load_params_from_json
     )
 
 

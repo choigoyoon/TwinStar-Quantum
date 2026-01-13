@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton, QMessageBox
+    QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton
 )
 
 # Logging

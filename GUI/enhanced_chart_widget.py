@@ -8,7 +8,7 @@ enhanced_chart_widget.py 수정사항
 import sys
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QFrame, QCheckBox, QComboBox, QGroupBox)
+                             QLabel, QComboBox, QGroupBox)
 from PyQt5.QtCore import Qt
 
 # Logging
@@ -20,10 +20,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 # ===== 상단 import 추가 =====
 try:
-    from nowcast_widget import NowcastWidget
     from candle_aggregator import CandleAggregator, Candle
 except ImportError:
-    from GUI.nowcast_widget import NowcastWidget
     from GUI.candle_aggregator import CandleAggregator, Candle
 
 # websocket_manager가 있으면

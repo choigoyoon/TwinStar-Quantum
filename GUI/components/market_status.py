@@ -1,5 +1,4 @@
 from PyQt5.QtWidgets import QFrame, QHBoxLayout, QLabel
-from PyQt5.QtCore import Qt
 
 class RiskHeaderWidget(QFrame):
     """글로벌 리스크 현황 헤더"""

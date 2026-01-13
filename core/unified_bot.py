@@ -14,8 +14,6 @@ import sys
 import os
 import time
 import logging
-import json
-import signal
 import threading
 import requests
 from datetime import datetime
@@ -116,7 +114,7 @@ def start_periodic_sync(exchange_name: str, interval_minutes: int = 30):
     sync()
 
 # [IMPORTS] Core Modules
-from exchanges.base_exchange import Position, Signal
+from exchanges.base_exchange import Signal
 from exchanges.bybit_exchange import BybitExchange
 from exchanges.lighter_exchange import LighterExchange
 try: from exchanges.binance_exchange import BinanceExchange
@@ -136,7 +134,6 @@ try:
     from core.order_executor import OrderExecutor
     from core.position_manager import PositionManager
     from core.capital_manager import CapitalManager
-    from core.trade_common import CapitalMode
     HAS_MODULAR_COMPONENTS = True
 except ImportError:
     HAS_MODULAR_COMPONENTS = False

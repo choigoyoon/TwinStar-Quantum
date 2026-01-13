@@ -59,7 +59,7 @@ except ImportError:
     def set_language(l): pass
 
 try:
-    from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection, ExchangeManager
+    from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection
 except ImportError:
     def connect_exchange(*args, **kwargs):
         return (False, "exchange_manager module load failed")

@@ -8,7 +8,7 @@ config/parameters.py
 
 import os
 import json
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
 
 # ============ 기본 파라미터 (전체 프로젝트 공용) ============

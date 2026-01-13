@@ -1,5 +1,4 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget
-from PyQt5.QtCore import Qt
 from locales.lang_manager import t
 
 class TradeHistoryWidget(QWidget):

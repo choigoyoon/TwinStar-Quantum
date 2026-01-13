@@ -3,7 +3,6 @@ TwinStar Quantum - Auto Updater
 서버 버전 확인 및 업데이트 알림 관리
 """
 import requests
-import json
 import logging
 from typing import Optional, Dict, Tuple
 

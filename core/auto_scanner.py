@@ -10,14 +10,13 @@ import threading
 import traceback
 import json
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal
 
 # Core Modules
 try:
-    from core.strategy_core import AlphaX7Core, Signal
+    from core.strategy_core import AlphaX7Core
 except ImportError:
     AlphaX7Core = None
 
@@ -294,7 +293,6 @@ class AutoScanner(QObject):
         # 3. `strategy.check_realtime_entry(candles, price)`.
         
         # Since we don't have `last_candles` stored in `monitoring_candidates` yet:
-        pass 
 
     def _execute_entry(self, opp):
         """Execute trade"""

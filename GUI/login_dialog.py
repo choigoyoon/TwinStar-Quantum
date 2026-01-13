@@ -8,9 +8,9 @@
 import sys
 import os
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QTabWidget, QWidget, QGroupBox, QTextEdit,
-    QMessageBox, QFrame, QGridLayout, QComboBox
+    QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit,
+    QTabWidget, QWidget, QGroupBox, QMessageBox, QFrame,
+    QComboBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont

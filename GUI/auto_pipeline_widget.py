@@ -15,13 +15,11 @@ import os
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QStackedWidget, 
-    QPushButton, QListWidget, QCheckBox, QComboBox, QGroupBox,
-    QProgressBar, QTableWidget, QTableWidgetItem, QHeaderView,
-    QListWidgetItem, QAbstractItemView, QMessageBox, QSpinBox,
-    QGridLayout
+    QPushButton, QListWidget, QComboBox, QGroupBox, QProgressBar,
+    QTableWidget, QTableWidgetItem, QHeaderView, QListWidgetItem,
+    QAbstractItemView, QMessageBox, QSpinBox, QGridLayout
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import Qt, QTimer
 
 # Add project root
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -521,7 +519,7 @@ class AutoPipelineWidget(QWidget):
         step = StepWidget("Step 4: Scanner Configuration")
         
         # Grid Layout for Settings
-        from PyQt5.QtWidgets import QGridLayout, QDoubleSpinBox, QRadioButton, QButtonGroup, QTextEdit
+        from PyQt5.QtWidgets import QGridLayout, QDoubleSpinBox, QRadioButton, QTextEdit
         
         g_layout = QGridLayout()
         

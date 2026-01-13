@@ -4,18 +4,16 @@ TwinStar Quantum - Main Window
 """
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QFrame, QStackedWidget,
-    QSizePolicy, QSpacerItem
+    QLabel, QPushButton, QFrame, QStackedWidget
 )
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtCore import Qt
 
-from GUI.styles.theme import COLORS, SPACING, FONTS, STYLESHEET
+from GUI.styles.theme import COLORS, STYLESHEET
 from GUI.pages.step1_backtest import BacktestPage
 from GUI.pages.step2_optimize import OptimizePage
 from GUI.pages.step3_trade import TradePage
@@ -297,7 +295,6 @@ class MainWindow(QMainWindow):
     
     def _start_trading_bot(self, config: dict):
         try:
-            from core.unified_bot import UnifiedBot
             logger.info(f"봇 시작: {config}")
         except Exception as e:
             logger.info(f"봇 시작 실패: {e}")

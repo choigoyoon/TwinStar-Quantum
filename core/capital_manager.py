@@ -1,7 +1,7 @@
 import json
 import logging
 import threading
-from typing import Literal, Dict, Optional
+from typing import Literal
 
 class CapitalManager:
     """통합 자본 관리 모듈 (복리/고정 지원)"""

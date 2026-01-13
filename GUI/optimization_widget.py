@@ -8,20 +8,17 @@ Optimization Widget - Full Version
 
 import sys
 import os
-import json
 from datetime import datetime
-from pathlib import Path
 import multiprocessing
 
 from core.optimization_logic import OptimizationEngine
-from core.strategy_core import AlphaX7Core
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QDoubleSpinBox, QSpinBox,
     QTableWidget, QTableWidgetItem, QHeaderView,
-    QProgressBar, QMessageBox, QScrollArea, QCheckBox, QLineEdit,
-    QRadioButton, QButtonGroup, QFrame, QApplication
+    QProgressBar, QMessageBox, QCheckBox, QLineEdit, QRadioButton,
+    QButtonGroup, QFrame, QApplication
 )
 
 # Logging

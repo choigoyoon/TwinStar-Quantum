@@ -5,13 +5,10 @@ TwinStar Quantum - Layout Optimized Dashboard (v4.3)
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
-    QGroupBox, QLabel, QTextEdit, QPushButton, QTabWidget,
-    QScrollArea
+    QGroupBox, QLabel, QTextEdit, QTabWidget
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon
 
-from GUI.styles.elegant_theme import ElegantTheme
 from GUI.components.status_card import StatusCard
 from GUI.components.trade_panel import TradePanel
 

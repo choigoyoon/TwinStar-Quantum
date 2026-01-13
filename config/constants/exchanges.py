@@ -2,7 +2,7 @@
 거래소 관련 상수 및 메타데이터
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 # ============ 거래소 타입 ============
 SPOT_EXCHANGES = {'upbit', 'bithumb'}

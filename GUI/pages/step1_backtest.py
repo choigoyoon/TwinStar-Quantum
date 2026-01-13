@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QDateEdit, QProgressBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
-    QFrame, QSpacerItem, QSizePolicy
+    QFrame
 )
 
 # Logging
@@ -14,7 +14,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtCore import Qt, QDate, pyqtSignal, QThread
-from PyQt5.QtGui import QFont
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection

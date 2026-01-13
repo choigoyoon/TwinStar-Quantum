@@ -7,15 +7,14 @@ Unified Backtest Engine (v2.1)
 import logging
 logger = logging.getLogger(__name__)
 
-import pandas as pd
 import numpy as np
 import traceback
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from datetime import datetime
+from typing import List
 from dataclasses import dataclass
 
 from core.strategy_core import AlphaX7Core
-from core.multi_symbol_backtest import MultiSymbolBacktest, Signal
+from core.multi_symbol_backtest import MultiSymbolBacktest
 from utils.preset_manager import get_preset_manager
 
 # Logging

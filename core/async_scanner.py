@@ -4,11 +4,9 @@ aiohttp를 이용한 대량 심볼 동시 데이터 수집 및 스캔
 """
 import asyncio
 import aiohttp
-import pandas as pd
 import time
 import logging
 from typing import List, Dict, Optional
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QScrollArea, QMessageBox, QGroupBox
+    QScrollArea, QMessageBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t

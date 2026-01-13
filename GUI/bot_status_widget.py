@@ -9,8 +9,8 @@ from locales.lang_manager import t
 import sys
 import os
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QGridLayout
+    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QGridLayout
 )
 from PyQt5.QtCore import QTimer
 

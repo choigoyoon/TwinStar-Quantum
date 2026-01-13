@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QHeaderView, QProgressBar, QMessageBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QColor
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection

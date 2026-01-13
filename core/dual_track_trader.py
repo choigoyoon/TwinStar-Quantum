@@ -10,7 +10,6 @@ import threading
 import time
 from typing import Dict, List
 
-from core.trade_common import CapitalMode, CoinStatus
 from core.capital_manager import CapitalManager
 from core.preset_health import get_health_monitor
 

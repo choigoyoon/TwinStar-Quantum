@@ -7,21 +7,16 @@ Extracted from trading_dashboard.py for Phase 10.2.2
 import logging
 logger = logging.getLogger(__name__)
 
-import os
-import sys
 import requests
-from typing import Optional, Dict, List
-from datetime import datetime
 
 
 from PyQt5.QtWidgets import (
-    QLabel, QPushButton, QComboBox, QSpinBox,
-    QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView,
-    QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, 
-    QProgressBar, QAbstractItemView
+    QLabel, QPushButton, QComboBox, QGroupBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout,
+    QVBoxLayout
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtGui import QColor
 from locales.lang_manager import t
 
 # Fallback imports
@@ -36,7 +31,6 @@ except ImportError:
     }
 
 try:
-    from core.multi_sniper import MultiCoinSniper
     HAS_MULTI_SNIPER = True
 except ImportError:
     HAS_MULTI_SNIPER = False

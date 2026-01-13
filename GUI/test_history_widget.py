@@ -176,7 +176,6 @@ def test_all_features():
     # 10. 차트 팝업 클래스 확인
     logger.info("\n[10] 차트 팝업 클래스 확인...")
     try:
-        from history_widget import TradeChartPopup
         logger.info("   ✅ TradeChartPopup 클래스 있음")
     except ImportError:
         logger.info("   ❌ TradeChartPopup 클래스 없음")

@@ -597,33 +597,49 @@ class AlphaX7Core:
         df_pattern: pd.DataFrame,
         df_entry: pd.DataFrame,
         slippage: float = 0,
-        atr_mult: float = None,
-        trail_start_r: float = None,
-        trail_dist_r: float = None,
-        pattern_tolerance: float = None,
-        entry_validity_hours: float = None,
-        pullback_rsi_long: float = None,
-        pullback_rsi_short: float = None,
-        max_adds: int = None,
-        filter_tf: str = None,
-        rsi_period: int = None,
-        atr_period: int = None,
-        enable_pullback: bool = False,
+        atr_mult: float = None,            # → MDD↑, 승률↑ (ATR 배수)
+        trail_start_r: float = None,       # → 수익률↑ (트레일링 시작점)
+        trail_dist_r: float = None,        # → MDD↑, 수익률 (트레일링 거리)
+        pattern_tolerance: float = None,   # → 거래수 (패턴 허용 오차)
+        entry_validity_hours: float = None,# → 거래수 (신호 유효 시간)
+        pullback_rsi_long: float = None,   # → 승률, 거래수 (롱 풀백 RSI)
+        pullback_rsi_short: float = None,  # → 승률, 거래수 (숏 풀백 RSI)
+        max_adds: int = None,              # → 거래수, 수익률 (최대 추가 진입)
+        filter_tf: str = None,             # → 승률↑, 거래수↓ (필터 타임프레임)
+        rsi_period: int = None,            # → 신호 품질 (RSI 기간)
+        atr_period: int = None,            # → SL/TP 정확도 (ATR 기간)
+        enable_pullback: bool = False,     # → 거래수↑ (풀백 진입 활성화)
         return_state: bool = False,
-        allowed_direction: str = None,
+        allowed_direction: str = None,     # → 거래수, 승률 (Long/Short/Both)
         collect_audit: bool = False,
-        macd_fast: int = None,
-        macd_slow: int = None,
-        macd_signal: int = None,
-        ema_period: int = None,
+        macd_fast: int = None,             # → 신호 민감도 (MACD fast)
+        macd_slow: int = None,             # → 신호 안정성 (MACD slow)
+        macd_signal: int = None,           # → 신호 타이밍 (MACD signal)
+        ema_period: int = None,            # → 추세 판단 (EMA 기간)
         **kwargs
     ) -> Union[List[Dict], Tuple[List[Dict], Dict], Tuple[List[Dict], List[Dict]]]:
-
         """
         백테스트 실행 (통합 로직)
-        - detect_signal과 동일한 W/M 패턴 감지
-        - RSI 적응형 트레일링
-        - 풀백 추가 진입
+        
+        ═══════════════════════════════════════════════════════════════
+        📊 파라미터별 지표 영향 관계 (PARAMETER-METRIC IMPACT)
+        ═══════════════════════════════════════════════════════════════
+        
+        [손익 관련]
+        • atr_mult ↑      → MDD ↑, 승률 ↑ (넓은 SL = 조기청산 방지)
+        • trail_start_r ↑ → 수익률 ↑ (더 많이 수익 확보 후 트레일링)
+        • trail_dist_r ↑  → MDD ↑, 수익률 ± (청산 늦음)
+        
+        [거래 빈도]
+        • filter_tf (상위) → 승률 ↑, 거래수 ↓ (엄격한 필터)
+        • entry_validity_hours ↑ → 거래수 ↑ (신호 유효기간 연장)
+        • enable_pullback  → 거래수 ↑ (추가 진입 기회)
+        
+        [방향성]
+        • allowed_direction = 'Both' → 거래수 ↑↑
+        • allowed_direction = 'Long' → 상승장에서 승률 ↑
+        
+        ═══════════════════════════════════════════════════════════════
         """
         # 파라미터 기본값 설정 (ACTIVE_PARAMS 연동)
         if atr_mult is None: atr_mult = ACTIVE_PARAMS.get('atr_mult')

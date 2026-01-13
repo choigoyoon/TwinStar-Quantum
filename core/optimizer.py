@@ -223,21 +223,69 @@ def estimate_combinations(param_grid: Dict) -> tuple:
 
 @dataclass
 class OptimizationResult:
-    """최적화 결과 데이터"""
-    params: Dict
-    trades: int
-    win_rate: float
-    total_return: float          # [DEPRECATED] use simple_return or compound_return
-    simple_return: float = 0.0   # [NEW] 단리 수익률
-    compound_return: float = 0.0 # [NEW] 복리 수익률
-    max_drawdown: float = 0.0
-    sharpe_ratio: float = 0.0
-    profit_factor: float = 0.0
-    avg_trades_per_day: float = 0.0  # [NEW] 일평균 거래수
-    stability: str = "⚠️"        # [NEW] 3구간 안정성 지표
-    strategy_type: str = ""      # [NEW] 전략 유형 (🔥공격, ⚖균형, 🛡보수 등)
-    grade: str = ""              # [NEW] 등급 (S/A/B/C)
-    capital_mode: str = "compound" # [NEW]
+    """
+    최적화 결과 데이터
+    
+    ═══════════════════════════════════════════════════════════════
+    📊 지표별 영향 관계 (METRICS IMPACT REFERENCE)
+    ═══════════════════════════════════════════════════════════════
+    
+    [입력 파라미터] → [영향 지표]
+    ───────────────────────────────────────────────────────────────
+    • atr_mult (ATR 배수)
+      → max_drawdown: ATR↑ = 넓은 SL = MDD↑
+      → win_rate: ATR↑ = 여유있는 SL = 승률↑ (조기 청산 방지)
+      → trades: 영향 적음
+    
+    • trail_start_r (트레일링 시작 R배수)
+      → simple_return/compound_return: 시작↑ = 더 많이 수익 확보 후 트레일링
+      → win_rate: 시작↑ = 익절 확률↑
+      → max_drawdown: 간접 영향
+    
+    • trail_dist_r (트레일링 거리 R배수)
+      → max_drawdown: 거리↑ = 청산 늦음 = MDD↑
+      → simple_return: 거리↑ = 수익 더 추구 = 수익↑ or 반납
+    
+    • leverage (레버리지)
+      → simple_return/compound_return: 레버리지↑ = 수익률↑ (비례)
+      → max_drawdown: 레버리지↑ = MDD↑ (비례)
+      → sharpe_ratio: 변동성↑ = 샤프↓
+    
+    • direction (방향: Long/Short/Both)
+      → trades: Both = 거래↑↑
+      → win_rate: 시장 상황에 따라 변동
+    
+    • filter_tf (필터 타임프레임)
+      → win_rate: 상위TF 필터 = 신호 품질↑ = 승률↑
+      → trades: 엄격한 필터 = 거래↓
+    
+    • entry_tf (진입 타임프레임)
+      → trades: 작은TF = 기회↑ = 거래↑
+      → win_rate: 타이밍 정확도에 영향
+    ───────────────────────────────────────────────────────────────
+    
+    [지표 계산 위치]
+    • win_rate: _calculate_metrics() → (수익거래/전체거래) × 100
+    • max_drawdown: _calculate_metrics() → 최고점 대비 최대 하락폭
+    • sharpe_ratio: _calculate_metrics() → (평균수익/표준편차) × √252
+    • simple_return: _calculate_metrics() → Σ(각 거래 수익률)
+    • compound_return: _calculate_metrics() → Π(1+수익률) - 1
+    ═══════════════════════════════════════════════════════════════
+    """
+    params: Dict                          # 사용된 파라미터
+    trades: int                           # 매매 횟수 → direction, filter_tf, entry_tf 영향
+    win_rate: float                       # 승률(%) → atr_mult, filter_tf 영향
+    total_return: float                   # [DEPRECATED] simple_return 또는 compound_return 사용
+    simple_return: float = 0.0            # 단리 수익률 → leverage, trail_* 영향
+    compound_return: float = 0.0          # 복리 수익률 → leverage, trail_* 영향
+    max_drawdown: float = 0.0             # MDD(%) → atr_mult, leverage, trail_dist_r 영향
+    sharpe_ratio: float = 0.0             # 샤프비율 → leverage 영향 (변동성)
+    profit_factor: float = 0.0            # 수익팩터 → 전체적 파라미터 영향
+    avg_trades_per_day: float = 0.0       # 일평균 거래수
+    stability: str = "⚠️"                 # 3구간 안정성 지표
+    strategy_type: str = ""               # 전략 유형 (🔥공격, ⚖균형, 🛡보수)
+    grade: str = ""                       # 등급 (S/A/B/C)
+    capital_mode: str = "compound"        # 자본 모드
 
 
 def calculate_grade(win_rate: float, profit_factor: float, max_drawdown: float) -> str:
@@ -746,7 +794,38 @@ class BacktestOptimizer:
     
     @staticmethod
     def calculate_metrics(trades: List[Dict]) -> Dict:
-        """거래 결과에서 메트릭 계산 (통합 정적 메서드)"""
+        """
+        거래 결과에서 메트릭 계산 (통합 정적 메서드)
+        
+        ═══════════════════════════════════════════════════════════
+        📊 지표 계산 공식 (METRICS CALCULATION FORMULAS)
+        ═══════════════════════════════════════════════════════════
+        
+        1. win_rate (승률)
+           공식: (수익 거래 수 / 전체 거래 수) × 100
+           영향: filter_tf↑ → 승률↑, atr_mult↑ → 승률↑
+        
+        2. simple_return (단리 수익률)
+           공식: Σ(각 거래의 PnL%)
+           영향: leverage↑ → 수익↑, trail_start_r↑ → 수익↑
+        
+        3. compound_return (복리 수익률)
+           공식: (Π(1 + PnL%/100) - 1) × 100
+           영향: leverage↑ → 수익↑↑ (복리 효과)
+        
+        4. max_drawdown (MDD, 최대 낙폭)
+           공식: max((peak - current) / peak × 100)
+           영향: leverage↑ → MDD↑, atr_mult↑ → MDD↑
+        
+        5. sharpe_ratio (샤프 비율)
+           공식: (평균 수익 / 표준편차) × √(252 × 4)
+           영향: leverage↑ → 변동성↑ → 샤프↓
+        
+        6. profit_factor (수익 팩터)
+           공식: 총 수익 / 총 손실
+           영향: 전체 파라미터의 복합 효과
+        ═══════════════════════════════════════════════════════════
+        """
         if not trades:
             return {k: 0 for k in ['win_rate', 'total_return', 'simple_return', 'compound_return', 'max_drawdown', 'sharpe_ratio', 'profit_factor']}
             

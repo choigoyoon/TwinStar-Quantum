@@ -739,11 +739,66 @@
                                     <option v-for="ex in exchanges" :key="ex" :value="ex">{{ ex.toUpperCase() }}</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="text-sm text-gray-400 block mb-1">심볼</label>
-                                <select v-model="autoTrading.symbol" class="input-field w-full px-4 py-2 rounded-lg">
-                                    <option v-for="sym in symbols" :key="sym" :value="sym">{{ sym }}</option>
-                                </select>
+                            <!-- [NEW] 자금 관리 섹션 -->
+                            <div class="bg-[#1a1a24] p-4 rounded-lg space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-400">💰 자금 관리</span>
+                                    <button @click="autoTrading.seedLocked = !autoTrading.seedLocked" 
+                                            class="text-xl" :title="autoTrading.seedLocked ? '잠금 해제' : '잠금'">
+                                        {{ autoTrading.seedLocked ? '🔒' : '🔓' }}
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs text-gray-500">초기 시드</label>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-500">$</span>
+                                            <input type="number" v-model="autoTrading.initialSeed" 
+                                                   :disabled="autoTrading.seedLocked"
+                                                   class="input-field w-full px-2 py-1 rounded text-sm"
+                                                   :class="autoTrading.seedLocked ? 'opacity-50' : ''">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">현재 잔고</label>
+                                        <div class="text-lg font-bold" :class="autoTrading.currentBalance >= autoTrading.initialSeed ? 'positive' : 'negative'">
+                                            ${{ autoTrading.currentBalance.toFixed(2) }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-500">수익률:</span>
+                                    <span class="font-bold" :class="(autoTrading.currentBalance - autoTrading.initialSeed) >= 0 ? 'positive' : 'negative'">
+                                        {{ ((autoTrading.currentBalance - autoTrading.initialSeed) / autoTrading.initialSeed * 100).toFixed(2) }}%
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs text-gray-500">자본 모드</label>
+                                        <select v-model="autoTrading.capitalMode" class="input-field w-full px-2 py-1 rounded text-sm">
+                                            <option value="compound">📈 복리</option>
+                                            <option value="fixed">📊 고정</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">레버리지</label>
+                                        <input type="number" v-model="autoTrading.leverage" min="1" max="50"
+                                               class="input-field w-full px-2 py-1 rounded text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- [NEW] 다중매매 설정 -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-gray-500">감시 대상</label>
+                                    <input type="number" v-model="autoTrading.watchCount" min="10" max="100"
+                                           class="input-field w-full px-2 py-1 rounded text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">동시 포지션</label>
+                                    <input type="number" v-model="autoTrading.maxPositions" min="1" max="10"
+                                           class="input-field w-full px-2 py-1 rounded text-sm">
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <button @click="startAutoTrading" :disabled="autoTrading.running"
@@ -878,7 +933,15 @@
                 const dataCollection = reactive({ exchange: 'bybit', symbol: 'BTCUSDT', timeframe: '1h', days: 30, downloading: false, progress: 0 });
                 const autoTrading = reactive({
                     running: false, uptime: 0, tradesToday: 0, pnlToday: 0, winRate: 0,
-                    exchange: 'bybit', symbol: 'BTCUSDT', signals: []
+                    exchange: 'bybit', symbol: 'BTCUSDT', signals: [],
+                    // [NEW] 자금 관리
+                    capitalMode: 'compound',  // compound | fixed
+                    initialSeed: 100,
+                    currentBalance: 100,
+                    seedLocked: true,
+                    watchCount: 50,
+                    maxPositions: 1,
+                    leverage: 10
                 });
                 
                 // Helper functions
@@ -1247,16 +1310,23 @@
                 let autoInterval = null;
                 const startAutoTrading = () => {
                     autoTrading.running = true; autoTrading.uptime = 0;
-                    addLog(`🤖 자동매매 시작: ${autoTrading.exchange}/${autoTrading.symbol}`, 'success');
+                    const modeText = autoTrading.capitalMode === 'compound' ? '복리' : '고정';
+                    addLog(`🤖 자동매매 시작: ${autoTrading.exchange} (${modeText} 모드, 감시: ${autoTrading.watchCount}개, 시드: $${autoTrading.initialSeed})`, 'success');
                     showToast('자동매매가 시작되었습니다', 'success');
                     autoInterval = setInterval(() => {
                         autoTrading.uptime += 1;
                         if (Math.random() > 0.9) {
                             autoTrading.tradesToday += 1;
-                            const pnl = parseFloat((Math.random() * 100 - 30).toFixed(2));
+                            // [NEW] 복리/고정 모드에 따른 PnL 계산
+                            const tradeSize = autoTrading.capitalMode === 'compound' 
+                                ? autoTrading.currentBalance 
+                                : autoTrading.initialSeed;
+                            const pnlPercent = (Math.random() * 10 - 3); // -3% ~ +7%
+                            const pnl = parseFloat((tradeSize * pnlPercent / 100).toFixed(2));
                             autoTrading.pnlToday += pnl;
+                            autoTrading.currentBalance += pnl;  // [NEW] 잔고 업데이트
                             autoTrading.winRate = Math.round((autoTrading.tradesToday > 0 ? (autoTrading.pnlToday > 0 ? 60 + Math.random() * 20 : 40 + Math.random() * 20) : 0));
-                            addLog(`🔔 자동 거래 체결: ${pnl >= 0 ? '+' : ''}$${pnl}`, pnl >= 0 ? 'success' : 'warning');
+                            addLog(`🔔 자동 거래 체결: ${pnl >= 0 ? '+' : ''}$${pnl} (잔고: $${autoTrading.currentBalance.toFixed(2)})`, pnl >= 0 ? 'success' : 'warning');
                         }
                     }, 1000);
                 };

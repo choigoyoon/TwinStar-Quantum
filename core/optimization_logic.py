@@ -244,25 +244,34 @@ def _worker_run_backtest(args):
         pnls = [t.get('pnl', 0) * leverage for t in trades]
         simple_return = sum(pnls)
         
-        # Compound return
-        log_sum = 0
+        # Compound return (청산/파산 안전 처리)
+        equity = 1.0
         for p in pnls:
-            if p > -100:
-                log_sum += math.log(1 + p / 100)
-        compound_return = (math.exp(log_sum) - 1) * 100
+            equity *= (1 + p / 100)
+            if equity <= 0:  # 파산 (전액 손실)
+                equity = 0
+                break
+        compound_return = (equity - 1) * 100
+        # 범위 제한: -100% ~ +무한대 (표시 오류 방지)
+        compound_return = max(-100.0, compound_return)
         
         wins = [p for p in pnls if p > 0]
         win_rate = len(wins) / len(trades) * 100 if trades else 0
         
-        # MDD
-        equity = 1.0
+        # MDD (청산 안전 처리)
+        equity_mdd = 1.0
         peak = 1.0
         mdd = 0
         for p in pnls:
-            equity *= (1 + p/100)
-            if equity > peak: peak = equity
-            dd = (peak - equity) / peak * 100
-            if dd > mdd: mdd = dd
+            equity_mdd *= (1 + p / 100)
+            if equity_mdd <= 0:  # 파산 시 MDD = 100%
+                mdd = 100.0
+                break
+            if equity_mdd > peak:
+                peak = equity_mdd
+            dd = (peak - equity_mdd) / peak * 100
+            if dd > mdd:
+                mdd = dd
         
         # Strategy type
         strategy_type = "⚖ 균형"
@@ -405,26 +414,34 @@ class OptimizationEngine:
             pnls = [t.get('pnl', 0) * leverage for t in trades]
             simple_return = sum(pnls)
             
-            # Compound return
+            # Compound return (청산/파산 안전 처리)
             import math
-            log_sum = 0
+            equity = 1.0
             for p in pnls:
-                if p > -100:
-                    log_sum += math.log(1 + p / 100)
-            compound_return = (math.exp(log_sum) - 1) * 100
+                equity *= (1 + p / 100)
+                if equity <= 0:  # 파산
+                    equity = 0
+                    break
+            compound_return = (equity - 1) * 100
+            compound_return = max(-100.0, compound_return)  # 범위 제한
             
             wins = [p for p in pnls if p > 0]
             win_rate = len(wins) / len(trades) * 100 if trades else 0
             
-            # MDD
-            equity = 1.0
+            # MDD (청산 안전 처리)
+            equity_mdd = 1.0
             peak = 1.0
             mdd = 0
             for p in pnls:
-                equity *= (1 + p/100)
-                if equity > peak: peak = equity
-                dd = (peak - equity) / peak * 100
-                if dd > mdd: mdd = dd
+                equity_mdd *= (1 + p / 100)
+                if equity_mdd <= 0:  # 파산 시 MDD = 100%
+                    mdd = 100.0
+                    break
+                if equity_mdd > peak:
+                    peak = equity_mdd
+                dd = (peak - equity_mdd) / peak * 100
+                if dd > mdd:
+                    mdd = dd
             
             # Determine strategy type
             strategy_type = "⚖ 균형"

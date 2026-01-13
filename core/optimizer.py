@@ -846,6 +846,7 @@ class BacktestOptimizer:
             if equity == 0: break
         
         compound_return = (equity - 1) * 100
+        compound_return = max(-100.0, compound_return)  # 범위 제한: -100% 최소
         
         # 2. 최대 낙폭 (MDD %) 계산
         peak = 1.0

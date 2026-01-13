@@ -191,24 +191,27 @@ class BacktestWorker(QThread):
                 # Simple return
                 simple_return = sum(pnls)
                 
-                # Compound return
+                # Compound return (청산/파산 안전 처리)
                 import math
-                log_sum = 0
-                for p in pnls:
-                    if p > -100:
-                        log_sum += math.log(1 + p / 100)
-                compound_return = min((math.exp(log_sum) - 1) * 100, 999999)
-                
-                # MDD calculation
-                cumulative = []
                 equity = 1.0
+                cumulative = [1.0]
                 for p in pnls:
                     equity *= (1 + p / 100)
+                    if equity <= 0:  # 파산
+                        equity = 0
+                        cumulative.append(0)
+                        break
                     cumulative.append(equity)
+                compound_return = (equity - 1) * 100
+                compound_return = max(-100.0, min(compound_return, 999999))  # 범위 제한
                 
+                # MDD calculation (청산 안전 처리)
                 peak = 1.0
                 mdd = 0
                 for c in cumulative:
+                    if c <= 0:  # 파산 시 MDD = 100%
+                        mdd = 100.0
+                        break
                     if c > peak:
                         peak = c
                     drawdown = (peak - c) / peak * 100

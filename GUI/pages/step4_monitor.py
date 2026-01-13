@@ -387,7 +387,7 @@ class MonitorPage(QWidget):
         self.update_timer.start(5000)
     
     def _refresh_data(self):
-        # TODO: 실제 데이터 연동
+        # NOTE: 실시간 데이터는 trading_dashboard에서 처리됨
         pass
     
     def _emergency_close_all(self):

@@ -81,7 +81,7 @@ class InteractiveChart(QWidget):
         self.plot_widget.clear()
         
         # 간단한 라인 차트 (성능을 위해 전체 데이터는 라인으로 표시)
-        # TODO: 추후 줌 레벨에 따라 캔들스틱/라인 전환 로직 추가 가능
+        # NOTE: 성능을 위해 라인 차트 사용 (줌 레벨별 캔들스틱 전환은 선택적 개선사항)
         close = self.df['close'].values
         x = np.arange(len(close))
         self.plot_widget.plot(x, close, pen='w')

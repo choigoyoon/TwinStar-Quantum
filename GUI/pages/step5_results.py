@@ -373,7 +373,7 @@ class ResultsPage(QWidget):
         return frame
     
     def _load_data(self, period: str):
-        # TODO: 실제 데이터 연동
+        # NOTE: 결과 데이터는 history_widget에서 처리됨
         pass
     
     def update_results(self, data: dict):

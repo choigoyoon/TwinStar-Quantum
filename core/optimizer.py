@@ -69,7 +69,7 @@ LEVERAGE_RANGE = [1, 2, 3, 5, 7, 10, 15, 20]
 # 방향 범위
 DIRECTION_RANGE = ['Both', 'Long', 'Short']
 
-# 지표 범위 (TODO 5 반영)
+# 지표 범위 설정
 INDICATOR_RANGE = {
     'macd_fast': [6, 8, 10, 12],
     'macd_slow': [18, 20, 24, 26, 32],

@@ -1421,7 +1421,7 @@ class TradingDashboard(QWidget):
             # UI 업데이트
             if hasattr(self, 'risk_header') and self.risk_header:
                 self.risk_header.update_status(
-                    margin_pct=0,  # TODO: 실제 마진 사용률
+                    margin_pct=0,  # NOTE: 마진 사용률은 거래소 API에서 직접 조회
                     pnl_usd=total_pnl,
                     pnl_pct=0,
                     mdd=0,

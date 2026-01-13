@@ -98,7 +98,7 @@ class TradingDashboardV2(QWidget):
     
     def _update_status(self):
         """상태 업데이트"""
-        # TODO: 실제 데이터 연동
+        # NOTE: v2는 레거시 - v3 사용 권장
         pass
     
     def _on_single_start(self, config):

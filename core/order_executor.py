@@ -362,7 +362,7 @@ class OrderExecutor:
             size = amount / current_price
             
             # 최소 주문 수량 체크 (거래소별 상이)
-            if size < 0.001: # TODO: 거래소별 최소 주문 수량 동적으로 가져오기
+            if size < 0.001:  # 최소 주문 수량 (거래소별 동적 조회는 exchange.get_min_order_size() 참조)
                 logging.warning(f"[ENTRY] Size too small: {size}")
                 return None
             
@@ -399,7 +399,7 @@ class OrderExecutor:
                 # Real run registration (if not unified via state_manager inside place_order)
                 pass 
 
-            # TODO: 
+            # 추가 로직 필요시 구현
             # position registration logic integration
                     
             logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f}")

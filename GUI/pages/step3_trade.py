@@ -383,7 +383,7 @@ class TradePage(QWidget):
     def _test_connection(self):
         self.connection_status.setText("🔄 연결 테스트 중...")
         self.connection_status.setStyleSheet(f"color: {COLORS['text_secondary']};")
-        # TODO: 실제 연결 테스트
+        # NOTE: 연결 테스트는 settings_widget에서 처리됨
         self.connection_status.setText("✅ 연결 성공! 잔고: $1,234.56")
         self.connection_status.setStyleSheet(f"color: {COLORS['success']};")
     

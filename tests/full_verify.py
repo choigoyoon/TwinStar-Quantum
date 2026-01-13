@@ -171,7 +171,8 @@ def get_imports_from_file(filepath: Path) -> List[str]:
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imports.append(node.module)
-    except:
+    except Exception:
+
         pass
     return imports
 
@@ -197,7 +198,7 @@ def verify_imports(report: VerificationReport):
                     try:
                         importlib.import_module(imp)
                         report.add('imports', f"{rel_path}→{imp}", True)
-                    except:
+                    except Exception:
                         report.add('imports', f"{rel_path}→{imp}", False, "임포트 실패")
 
 
@@ -291,7 +292,7 @@ def verify_deps(report: VerificationReport):
         try:
             importlib.import_module(dep)
             report.add('deps', dep, True)
-        except:
+        except Exception:
             report.add('deps', dep, False, "설치 안 됨")
 
 

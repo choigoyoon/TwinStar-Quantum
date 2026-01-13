@@ -175,7 +175,8 @@ class CryptoPayment:
             if hasattr(lg, 'confirm_payment'):
                 return lg.confirm_payment(payment_id)
             return False
-        except:
+        except Exception:
+
             return False
         
     def check_transaction(self, tx_hash: str, crypto_type: str, my_address: str, expected_memo: str = None) -> Dict:

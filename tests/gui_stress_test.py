@@ -19,7 +19,8 @@ def get_memory_mb():
         import psutil
         process = psutil.Process()
         return process.memory_info().rss / 1024 / 1024
-    except:
+    except Exception:
+
         return 0
 
 def main():

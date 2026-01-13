@@ -18,7 +18,8 @@ except FileNotFoundError:
     strategy = base / 'strategy_core.py'
     try:
         strategy_code = strategy.read_text(encoding='utf-8')
-    except:
+    except Exception:
+
         strategy_code = ""
 
 issues = []

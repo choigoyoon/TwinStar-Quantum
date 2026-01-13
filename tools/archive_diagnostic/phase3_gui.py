@@ -20,7 +20,8 @@ if gui_path.exists():
         try:
             lines = len(f.read_text(encoding='utf-8', errors='ignore').split('\n'))
             print(f'  📄 {f.name} ({lines:,}줄)')
-        except:
+        except Exception:
+
             pass
 else:
     print('  ❌ GUI 폴더 없음')
@@ -178,7 +179,8 @@ for f in gui_path.glob('*.py'):
                     'position_updated', 'order_filled', 'error_occurred']:
             if sig in code:
                 signals_found.add(sig)
-    except:
+    except Exception:
+
         pass
 
 print(f'  📡 총 .connect() 호출: {total_connects}개')
@@ -207,7 +209,8 @@ for f in gui_path.glob('*.py'):
                 found.append(name)
         if found:
             print(f'  {f.name}: {", ".join(found)}')
-    except:
+    except Exception:
+
         pass
 
 print('\n' + '=' * 70)

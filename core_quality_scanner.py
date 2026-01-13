@@ -25,7 +25,8 @@ for f in (base / 'core').glob('*.py'):
         fname = f.name
         
         for i, line in enumerate(lines):
-            # except: pass 또는 except ...: pass
+            # except Exception:
+     pass 또는 except ...: pass
             if re.search(r'except.*:\s*pass', line):
                 core_issues['except_pass'].append((fname, i+1, line.strip()[:60]))
             elif re.search(r'except.*:\s*$', line) and i+1 < len(lines) and 'pass' in lines[i+1]:
@@ -45,7 +46,8 @@ for f in (base / 'core').glob('*.py'):
     except Exception as e:
         print(f"Error reading {f}: {e}")
 
-print(f"\n[core/] except:pass — {len(core_issues['except_pass'])}개")
+print(f"\n[core/] except Exception:
+     pass — {len(core_issues['except_pass'])}개")
 for fname, ln, code in core_issues['except_pass']:
     print(f"  {fname} L{ln}: {code}")
 

@@ -17,7 +17,9 @@ for f in base.rglob('*.py'):
             if any(k in line.lower() for k in ['presets/', 'save_preset', 'to_json', 'dump(', '.json']):
                 if 'load' not in line.lower() and 'read' not in line.lower() and '#' not in line.strip()[:2]:
                     print(f'{f.relative_to(base)} L{i}: {line.strip()[:100]}')
-    except: pass
+    except Exception:
+
+        pass
 
 print('\n=== config/presets 폴더에 쓰는 코드 전체 검색 ===')
 for f in base.rglob('*.py'):
@@ -30,4 +32,6 @@ for f in base.rglob('*.py'):
                 if 'presets' in line and (any(k in line for k in ['write', 'dump', 'open', 'save', 'Path'])):
                     if '#' not in line.strip()[:2]:
                         print(f'{f.relative_to(base)} L{i}: {line.strip()[:100]}')
-    except: pass
+    except Exception:
+
+        pass

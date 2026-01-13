@@ -165,7 +165,8 @@ class TradeStorage:
             # 날짜순 정렬 (내림차순)
             try:
                 all_trades.sort(key=lambda x: x.get('time', ''), reverse=True)
-            except:
+            except Exception:
+
                 pass
             return all_trades
 

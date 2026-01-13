@@ -65,7 +65,8 @@ class RealtimeGUITester:
                     obj = getattr(self.dashboard, attr, None)
                     if isinstance(obj, QThread) and obj.isRunning():
                         running_threads.append(attr)
-                except:
+                except Exception:
+
                     pass
             
             # 타이머 상태
@@ -76,7 +77,8 @@ class RealtimeGUITester:
                     obj = getattr(self.dashboard, attr, None)
                     if isinstance(obj, QTimer) and obj.isActive():
                         active_timers.append(attr)
-                except:
+                except Exception:
+
                     pass
             
             self.log(f"   💓 visible={visible}, threads={len(running_threads)}, timers={len(active_timers)}")
@@ -193,7 +195,8 @@ class RealtimeGUITester:
                     obj = getattr(self.dashboard, attr, None)
                     if isinstance(obj, QTimer):
                         timers.append((attr, obj.isActive()))
-                except:
+                except Exception:
+
                     pass
             
             active = sum(1 for _, a in timers if a)
@@ -215,7 +218,8 @@ class RealtimeGUITester:
                     obj = getattr(self.dashboard, attr, None)
                     if isinstance(obj, QThread):
                         threads.append((attr, obj.isRunning()))
-                except:
+                except Exception:
+
                     pass
             
             running = sum(1 for _, r in threads if r)

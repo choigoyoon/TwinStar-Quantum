@@ -14,7 +14,8 @@ for folder in folders:
             code = f.read_text(encoding='utf-8', errors='ignore')
             lines = code.split('\n')
             
-            # except: pass
+            # except Exception:
+     pass
             file_warnings = []
             matches = re.findall(r'except.*:\s*pass\s*$', code, re.MULTILINE)
             if matches:

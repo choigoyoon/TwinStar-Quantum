@@ -59,7 +59,8 @@ def analyze_file(filepath):
                             'match': match.group(0)[:50],
                             'context': line.strip()[:60]
                         })
-    except:
+    except Exception:
+
         pass
     
     return items

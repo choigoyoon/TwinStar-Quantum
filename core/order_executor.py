@@ -336,7 +336,9 @@ class OrderExecutor:
                     balance = getattr(self.exchange, 'capital', 1000)
                     if hasattr(self.exchange, 'get_balance'):
                         try: balance = self.exchange.get_balance()
-                        except: pass
+                        except Exception:
+
+                            pass
             # 5. 레버리지 및 수량 계산
             # [FIX] 프리셋(strategy_params)에 레버리지가 있으면 최우선 적용 (Auto-Adjustment 지원)
             # 만약 프리셋에 없으면 UI에서 설정한 값(exchange.leverage)을 사용함
@@ -448,7 +450,9 @@ class OrderExecutor:
                         getattr(self.exchange, 'symbol', 'Unknown'),
                         direction, current_price, qty, stop_loss, pattern
                     )
-                except: pass
+                except Exception:
+
+                    pass
                 
             logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f}")
             return {'action': 'ENTRY', 'price': current_price, 'side': direction}
@@ -580,7 +584,9 @@ class OrderExecutor:
             elif self.trade_storage:
                  # Legacy fallback
                 try: self.trade_storage.add_trade(trade_data, immediate_flush=True)
-                except: pass
+                except Exception:
+
+                    pass
             
             # 5. bt_state 정리
             if bt_state:
@@ -594,7 +600,9 @@ class OrderExecutor:
                     msg = (f"{emoji} 청산 완료 ({reason})\n"
                            f"PnL: {pnl_pct:.2f}% (${pnl_usd:.2f})")
                     self.notifier.send_message(msg)
-                except: pass
+                except Exception:
+
+                    pass
             
             logging.info(f"[CLOSE] ✅ Success: PnL {pnl_pct:.2f}%")
             return trade_data

@@ -43,16 +43,18 @@ for fpath in targets.keys():
                             issues.append(('🔴 exchange미보호', ln, stripped[:50]))
                             break
         
-        # 2) bare except:
+        # 2) bare except Exception:
         if re.match(r'^\s*except\s*:\s*$', line):
             issues.append(('🟡 bare except', ln, stripped))
         
-        # 3) except: pass
+        # 3) except Exception:
+     pass
         if 'except' in line and ':' in line:
             if i + 1 < len(lines):
                 next_line = lines[i + 1].strip()
                 if next_line == 'pass':
-                    issues.append(('🟡 except:pass', ln, stripped[:30]))
+                    issues.append(('🟡 except Exception:
+     pass', ln, stripped[:30]))
     
     targets[fpath] = issues
     

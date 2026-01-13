@@ -85,7 +85,8 @@ if __name__ == "__main__":
     try:
         with open(PROJECT_ROOT / "version.txt", "r") as f:
             version = f.read().strip()
-    except:
+    except Exception:
+
         version = "1.0.0"
         
     create_patch(version, TARGET_FILES)

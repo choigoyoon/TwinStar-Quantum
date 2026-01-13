@@ -53,7 +53,8 @@ class DeepFullVerify(unittest.TestCase):
                         if hasattr(cls, 'setObjectName'):
                             instance = cls()
                             instance.deleteLater()
-                    except:
+                    except Exception:
+
                         pass # 생성자 인자 등이 필요한 경우 스킵
                 
                 logger.debug(f"[GUI {i}/{len(gui_files)}] {file}: ✅")

@@ -83,7 +83,8 @@ for root, dirs, files in os.walk(base_path):
                     if found_paths < 5:
                         all_issues.append(f"WARN 하드코딩: {f}")
                     found_paths += 1
-            except:
+            except Exception:
+
                 pass
 print(f"  발견: {found_paths}개")
 

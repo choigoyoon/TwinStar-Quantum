@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 try:
     from paths import Paths
     KEY_FILE = Path(Paths.USER_DIR) / "secret.key"
-except:
+except Exception:
+
     KEY_FILE = Path("user") / "secret.key"
 
 class CryptoManager:

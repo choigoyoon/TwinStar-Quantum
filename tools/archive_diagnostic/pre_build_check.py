@@ -56,7 +56,8 @@ for f in base.rglob('*.py'):
             for i, line in enumerate(lines):
                 if 'reconfigure' in line:
                     print(f'  {f.relative_to(base)} L{i+1}: {line.strip()[:60]}')
-    except:
+    except Exception:
+
         pass
 
 # [4] 요약

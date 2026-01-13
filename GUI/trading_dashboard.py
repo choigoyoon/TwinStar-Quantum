@@ -1499,7 +1499,8 @@ class TradingDashboard(QWidget):
                     'api_key': config.api_key, 'api_secret': config.api_secret,
                     'testnet': config.testnet, 'symbol': 'BTCUSDT'
                 })
-        except: 
+        except Exception:
+
             return None
         return None
 
@@ -1623,7 +1624,9 @@ class TradingDashboard(QWidget):
                     if bal > 0:
                         total_usdt += bal
                         connected_found = True
-                except: continue
+                except Exception:
+
+                    continue
             
             # KRW 거래소
             for name in ['upbit', 'bithumb']:
@@ -1632,7 +1635,9 @@ class TradingDashboard(QWidget):
                     if bal > 0:
                         total_krw += bal
                         connected_found = True
-                except: continue
+                except Exception:
+
+                    continue
             
             return (connected_found, total_usdt, total_krw)
         except Exception as e:

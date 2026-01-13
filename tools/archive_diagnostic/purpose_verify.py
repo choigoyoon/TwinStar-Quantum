@@ -19,7 +19,8 @@ for f in json_files:
             data = json.loads(f.read_text(encoding='utf-8'))
             if isinstance(data, dict):
                 print(f'    키: {list(data.keys())[:10]}')
-        except:
+        except Exception:
+
             pass
         count += 1
 

@@ -28,7 +28,9 @@ for f in base.rglob('*.py'):
             if any(k in line for k in ['save_preset', 'presets/', '.json', 'dump(']):
                 if '#' not in line.strip()[:2]: # 주석 제외
                     print(f'{f.relative_to(base)} L{i}: {line.strip()[:100]}')
-    except: pass
+    except Exception:
+
+        pass
 
 print('\n' + '='*60)
 print('[3] trading_dashboard 레이아웃 (CoinRow, setFixedHeight, addStretch, setSizes)')

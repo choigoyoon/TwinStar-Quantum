@@ -265,7 +265,8 @@ class StarUWindow(QMainWindow):
                 try:
                     child.terminate()
                     child.join(timeout=0.5)
-                except:
+                except Exception:
+
                     pass
             
             # 4) 현재 프로세스의 자식들 강제 종료
@@ -278,7 +279,8 @@ class StarUWindow(QMainWindow):
                     capture_output=True,
                     timeout=2
                 )
-            except:
+            except Exception:
+
                 pass
                 
         except Exception as e:

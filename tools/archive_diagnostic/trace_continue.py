@@ -70,7 +70,7 @@ if state_files:
             if 'bt_state' in data:
                 bt_pos = data['bt_state'].get('position')
                 print(f"     bt_state_pos: {bt_pos}")
-        except:
+        except Exception:
             print("     파싱 실패")
 else:
     print("  ❌ bot_state 파일 없음")

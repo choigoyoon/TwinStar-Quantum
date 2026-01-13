@@ -27,7 +27,7 @@ for fpath, desc in data_files.items():
         try:
             lines = len(f.read_text(encoding='utf-8', errors='ignore').split('\n'))
             print(f'  ✅ {fpath} ({desc}) - {lines:,}줄')
-        except:
+        except Exception:
             print(f'  ✅ {fpath} ({desc})')
     else:
         print(f'  ❌ {fpath} ({desc}) - 없음')
@@ -57,7 +57,8 @@ for f in base.rglob('*.py'):
                 found.append(desc)
         if found and 'parquet' in code.lower():
             print(f'  {f.relative_to(base)}: {", ".join(set(found))}')
-    except:
+    except Exception:
+
         pass
 
 #############################################

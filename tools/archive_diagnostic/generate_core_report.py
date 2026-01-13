@@ -9,7 +9,8 @@ for f in (base / 'core').glob('*.py'):
     code = f.read_text(encoding='utf-8', errors='ignore')
     lines = code.split('\n')
     for i, l in enumerate(lines):
-        # 1. except: pass
+        # 1. except Exception:
+     pass
         if re.search(r'except.*:\s*pass', l) or (re.search(r'except.*:\s*$', l) and i+1 < len(lines) and 'pass' in lines[i+1]):
             issues['except_pass'].append({'file': f.name, 'line': i+1, 'code': l.strip()})
         

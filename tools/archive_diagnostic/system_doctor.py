@@ -61,14 +61,14 @@ class SystemDoctor:
                 # Bybit 서버 시간
                 resp = requests.get('https://api.bybit.com/v5/market/time', timeout=5)
                 server_time = int(resp.json()['result']['timeSecond']) * 1000
-            except:
+            except Exception:
                 # 대체: worldtimeapi
                 try:
                     resp = requests.get('http://worldtimeapi.org/api/ip', timeout=5)
                     server_time = int(datetime.fromisoformat(
                         resp.json()['datetime'].replace('Z', '+00:00')
                     ).timestamp() * 1000)
-                except:
+                except Exception:
                     result['status'] = 'SKIP'
                     result['message'] = '서버 시간 확인 불가 (오프라인?)'
                     return result
@@ -156,7 +156,8 @@ class SystemDoctor:
                         subprocess.run(['pip', 'install', pkg], 
                                        capture_output=True, timeout=60)
                         self.fixed.append(f'{pkg} 자동 설치')
-                    except:
+                    except Exception:
+
                         pass
             else:
                 # EXE 환경: 사용자에게 안내
@@ -238,7 +239,7 @@ class SystemDoctor:
                 else:
                     failed.append(name)
                     result['exchanges'][name] = 'ERROR'
-            except:
+            except Exception:
                 failed.append(name)
                 result['exchanges'][name] = 'TIMEOUT'
         
@@ -275,7 +276,7 @@ class SystemDoctor:
                 self.warnings.append('디스크 공간 부족 주의')
             else:
                 result['message'] = f'디스크 공간: {free_gb:.1f}GB'
-        except:
+        except Exception:
             result['status'] = 'SKIP'
             result['message'] = '디스크 공간 확인 불가'
         
@@ -298,7 +299,8 @@ def get_time_offset() -> int:
             with open(config_path, 'r') as f:
                 config = json.load(f)
                 return config.get('time_offset_ms', 0)
-        except:
+        except Exception:
+
             pass
     
     return 0

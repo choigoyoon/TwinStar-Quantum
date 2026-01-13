@@ -73,7 +73,8 @@ for gf in (base / 'GUI').glob('*.py'):
                         if '#' not in line.strip()[:1]: # 주석 제외
                             print(f"  {gf.name} L{i}: {line.strip()[:55]}")
                             checks.append("gui_buttons")
-    except:
+    except Exception:
+
         pass
 
 # 5) 상태 저장
@@ -87,7 +88,8 @@ for gf in (base / 'GUI').glob('*.py'):
             print(f"  ✅ {gf.name}에서 dashboard_state 사용")
             checks.append("state_save")
             break
-    except:
+    except Exception:
+
         pass
 
 # 최종 결과

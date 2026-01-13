@@ -1,4 +1,5 @@
-# verify_except.py - except:pass 상세 분석
+# verify_except.py - except Exception:
+     pass 상세 분석
 from pathlib import Path
 
 base = Path(r'C:\매매전략')
@@ -56,5 +57,6 @@ for path, line in dangerous:
 if dangerous:
     print("\n! 수정 필요")
 else:
-    print("\nOK 핵심 로직에 위험한 except:pass 없음")
+    print("\nOK 핵심 로직에 위험한 except Exception:
+     pass 없음")
 print("=" * 60)

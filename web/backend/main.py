@@ -75,7 +75,8 @@ async def get_exchanges():
     try:
         from config.constants import EXCHANGE_INFO
         return {"exchanges": list(EXCHANGE_INFO.keys())}
-    except:
+    except Exception:
+
         return {"exchanges": ["bybit", "binance", "okx", "bitget", "bingx", "upbit", "bithumb"]}
 
 @app.get("/api/symbols/{exchange}")
@@ -127,7 +128,8 @@ async def get_backtest_params():
     try:
         from config.parameters import DEFAULT_PARAMS
         return {"params": DEFAULT_PARAMS}
-    except:
+    except Exception:
+
         return {"params": {
             "macd_fast": 6, "macd_slow": 18, "macd_signal": 7,
             "rsi_period": 14, "atr_period": 14, "atr_mult": 1.25,

@@ -62,7 +62,8 @@ def run_pylint():
                     score = line.split('rated at')[1].split('/')[0].strip()
                     results[target] = score
                     print(f"  {'✅' if float(score) >= 7 else '⚠️'} {target}: {score}/10")
-                except:
+                except Exception:
+
                     pass
                 break
     

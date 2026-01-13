@@ -24,7 +24,8 @@ for f in base.rglob('*.py'):
             root = m.split('.')[0]
             if root not in ['core', 'exchanges', 'GUI', 'utils', 'storage']:
                 all_imports.add(root)
-    except:
+    except Exception:
+
         pass
 
 # 표준 라이브러리 제외

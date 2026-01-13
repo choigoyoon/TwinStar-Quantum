@@ -818,7 +818,8 @@ class BacktestOptimizer:
                     total_days = max((last_entry - first_entry) / 24, 1)
                 
                 avg_trades_per_day = round(len(trades) / total_days, 2)
-            except:
+            except Exception:
+
                 avg_trades_per_day = round(len(trades) / 30, 2)  # 기본 30일 가정
 
         return {

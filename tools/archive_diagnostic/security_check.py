@@ -71,7 +71,8 @@ for f in base.rglob('*.json'):
             for path, val in sensitive:
                 print(f'    {path}: {val}...')
                 issues.append(f'{fname} 내 {path}')
-    except:
+    except Exception:
+
         pass
 
 #############################################
@@ -100,7 +101,8 @@ for f in base.rglob('*.py'):
                 if clean_matches:
                     print(f'  ⚠️ {fname}: {clean_matches[0][:50]}...')
                     issues.append(f'{fname} 하드코딩 키')
-    except:
+    except Exception:
+
         pass
 
 #############################################

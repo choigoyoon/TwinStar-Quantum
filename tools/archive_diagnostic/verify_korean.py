@@ -23,7 +23,8 @@ for fname in gui_files:
                         total += 1
                         remaining.append(f'{fname}|L{i+1}|{kw}')
                         break
-    except:
+    except Exception:
+
         pass
 
 if total == 0:

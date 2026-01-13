@@ -25,8 +25,10 @@ for f in (base / 'core').glob('*.py'):
         print(f"  ❌ {f.name}: L{e.lineno} {e.msg}")
         errors.append(f.name)
 
-# 2. except:pass 잔여 확인
-print("\n[2] except:pass 잔여 확인")
+# 2. except Exception:
+     pass 잔여 확인
+print("\n[2] except Exception:
+     pass 잔여 확인")
 remaining = 0
 for f in (base / 'core').glob('*.py'):
     code = f.read_text(encoding='utf-8', errors='ignore')

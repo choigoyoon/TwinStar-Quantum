@@ -66,7 +66,8 @@ for f in base.rglob('*.py'):
                 internal_modules.add(m)
             else:
                 all_imports.add(root)
-    except:
+    except Exception:
+
         pass
 
 # 표준 라이브러리 제외

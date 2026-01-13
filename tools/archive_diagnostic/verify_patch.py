@@ -39,5 +39,5 @@ try:
         ws = f.read()
     ws_trace = "traceback" in ws and "format_exc" in ws
     print(f"{'✅' if ws_trace else '❌'} WS 에러 traceback")
-except:
+except Exception:
     print("❌ ws_handler.py 파일 없음")

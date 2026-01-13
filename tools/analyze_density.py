@@ -4,7 +4,8 @@ def count_lines(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return len(f.readlines())
-    except:
+    except Exception:
+
         return 0
 
 dirs = [

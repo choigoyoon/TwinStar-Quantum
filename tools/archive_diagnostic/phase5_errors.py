@@ -49,7 +49,8 @@ for f in all_py:
             # 🟡 WARNING: 잠재적 문제
             # ═══════════════════════════════════════
             
-            # 4) except: pass (에러 무시)
+            # 4) except Exception:
+     pass (에러 무시)
             if stripped.startswith('except') and ':' in stripped:
                 next_line = lines[i+1].strip() if i+1 < len(lines) else ''
                 if next_line == 'pass':

@@ -17,7 +17,8 @@ for f in base.rglob('*.py'):
             if any(p in line for p in ['1000', 'tail(', 'head(', '[-1000', '[:1000', 'iloc[-', 'limit=1000']):
                 if 'parquet' in code.lower() or 'candle' in code.lower() or 'kline' in code.lower() or 'ohlcv' in code.lower():
                     targets.append((f.relative_to(base), i+1, line.strip()[:80]))
-    except:
+    except Exception:
+
         pass
 
 print(f'발견: {len(targets)}건\n')

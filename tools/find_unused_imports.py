@@ -25,7 +25,7 @@ def get_imports(content):
                 for alias in node.names:
                     name = alias.asname if alias.asname else alias.name
                     imports.append((name, f'{module}.{alias.name}', node.lineno))
-    except:
+    except Exception:
         # Fallback to regex
         for match in re.finditer(r'^(?:from\s+\S+\s+)?import\s+(.+)$', content, re.MULTILINE):
             line = match.group(1)

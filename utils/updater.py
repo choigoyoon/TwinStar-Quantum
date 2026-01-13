@@ -68,7 +68,8 @@ class AutoUpdater:
                 if l_parts[i] < c_parts[i]: return False
                 
             return len(l_parts) > len(c_parts) # 예: 1.7.0 vs 1.7.0.1
-        except:
+        except Exception:
+
             return latest != current
 
     def get_download_url(self) -> str:

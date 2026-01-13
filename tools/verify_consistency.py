@@ -34,7 +34,7 @@ for file_path, desc in files:
                 found.append(p.upper())
         if found:
             print(f'  → {", ".join(found)} 사용')
-    except:
+    except Exception:
         print(f'  → 파일 없음')
 print()
 
@@ -110,7 +110,7 @@ try:
         opt_content = f.read()
     if 'param' in opt_content.lower():
         print('  → param_ranges/param_grid 사용')
-except:
+except Exception:
     print('  → optimizer.py 없음')
 
 print('백테스트:')

@@ -34,7 +34,8 @@ for f in base.rglob('*.py'):
                         # dict, self, cls 등은 제외
                         if var not in ['self', 'cls', 'dict', 'os', 'sys', 'config', 'params', 'kwargs', 'options']:
                             issues.append((f.name, i+1, var, line.strip()[:50]))
-    except:
+    except Exception:
+
         pass
 
 print(f"\n발견: {len(issues)}개")
@@ -99,7 +100,8 @@ for f in base.rglob('*.py'):
                         if count3 < 15:
                             print(f"  {f.name} L{i+1}: {line.strip()[:50]}")
                         count3 += 1
-    except:
+    except Exception:
+
         pass
 
 if count3 > 15:

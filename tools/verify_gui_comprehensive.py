@@ -197,7 +197,7 @@ try:
                 print('Telegram Code: Found via grep')
             else:
                 print('Telegram Code: MISSING')
-        except:
+        except Exception:
              print('Telegram Code: MISSING')
 except Exception as e:
     print(f'[C2. Telegram] Error: {e}')

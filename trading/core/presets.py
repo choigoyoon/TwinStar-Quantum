@@ -341,7 +341,8 @@ def get_preset_description(name: str) -> str:
         meta = data.get('_meta', {})
         result = data.get('_result', {})
         return f"{meta.get('strategy', 'unknown')} | {result.get('grade', 'C')} | WR {result.get('win_rate', 0):.1f}%"
-    except:
+    except Exception:
+
         return "No description"
 
 

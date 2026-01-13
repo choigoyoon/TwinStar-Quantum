@@ -779,7 +779,8 @@ class SingleOptimizerWidget(QWidget):
                     grid['direction'] = ['Long']
                     grid['leverage'] = [1]
                     mode_text += " (Long Only)"
-            except:
+            except Exception:
+
                 pass
             
             total, est_min = estimate_combinations(grid)
@@ -969,7 +970,8 @@ class SingleOptimizerWidget(QWidget):
                 base_grid['leverage'] = [1]
                 base_grid['direction'] = ['Long']
                 logger.info(f"📌 [OPT] Spot constraints enforced: leverage=[1], direction=['Long']")
-        except:
+        except Exception:
+
             pass
             
         return base_grid
@@ -1965,7 +1967,8 @@ class BatchOptimizerWidget(QWidget):
         try:
             from paths import Paths
             preset_dir = Path(Paths.PRESETS)
-        except:
+        except Exception:
+
             preset_dir = Path("config/presets")
         
         preset_dir.mkdir(parents=True, exist_ok=True)

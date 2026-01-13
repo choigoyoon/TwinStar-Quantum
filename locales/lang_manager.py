@@ -73,7 +73,8 @@ class LangManager:
                         with open(alt_path, 'r', encoding='utf-8') as f:
                             self._translations = json.load(f)
                         break
-                    except:
+                    except Exception:
+
                         continue
             else:
                 print(f"[Lang] Language file not found: {lang_code}.json")
@@ -122,7 +123,8 @@ class LangManager:
                 try:
                     with open(config_path, 'r', encoding='utf-8') as f:
                         config = json.load(f)
-                except:
+                except Exception:
+
                     config = {}
             
             config['language'] = lang_code

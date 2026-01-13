@@ -553,7 +553,8 @@ if __name__ == "__main__":
                 df = pd.read_parquet(path)
                 print(f"데이터 로드: {path}")
                 break
-            except:
+            except Exception:
+
                 continue
         
         if df is None:

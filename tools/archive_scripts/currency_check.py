@@ -46,7 +46,9 @@ for f in base.rglob('*.py'):
             if re.search(r'["\']USDT["\']|["\']KRW["\']|["\']USD["\']', line):
                 results['hardcoded_currency'].append((fname, ln, line.strip()[:60]))
                 
-    except:
+    except Exception:
+
+                
         pass
 
 # 결과 출력

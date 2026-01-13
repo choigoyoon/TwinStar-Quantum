@@ -26,8 +26,10 @@ for folder in folders:
         if not any(f"{folder}/" in e for e in errors):
             print(f"  ✅ {folder}/ 전체 통과")
 
-# 2. except:pass 잔여
-print("\n[2] except:pass 잔여")
+# 2. except Exception:
+     pass 잔여
+print("\n[2] except Exception:
+     pass 잔여")
 total_pass = 0
 for folder in folders:
     folder_path = base / folder

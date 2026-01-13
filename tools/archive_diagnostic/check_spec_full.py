@@ -119,7 +119,8 @@ for py_file in all_py:
         # import xxx / from xxx import
         imports = re.findall(r'^(?:from|import)\s+([a-zA-Z_][a-zA-Z0-9_]*)', code, re.MULTILINE)
         imported_packages.update(imports)
-    except:
+    except Exception:
+
         pass
 
 # 표준 라이브러리 제외

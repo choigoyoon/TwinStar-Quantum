@@ -219,7 +219,8 @@ for f in base.rglob('*.py'):
                 if 'LIMITS' in line and '=' in line:
                     print(f'       L{i+1}: {line.strip()[:50]}')
                     break
-    except:
+    except Exception:
+
         pass
 
 #############################################

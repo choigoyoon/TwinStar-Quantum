@@ -30,7 +30,8 @@ def test_imports():
                         # This is a bit tricky, let's just use the fromlist check
                         print(f"  [FAIL] {name} not found in {module_path}")
                         results.append((module_path, name, False))
-                    except:
+                    except Exception:
+
                         pass
         except Exception as e:
             print(f"  [ERROR] Failed to import {module_path}: {e}")

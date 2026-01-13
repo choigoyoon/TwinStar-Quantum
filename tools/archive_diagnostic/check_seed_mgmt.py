@@ -24,7 +24,8 @@ for gf in gui_files:
                 lower = line.lower()
                 if ('seed' in lower or 'capital' in lower) and ('input' in lower or 'edit' in lower or 'spinbox' in lower or 'lineedit' in lower):
                     print(f"  {gf.name} L{i}: {line.strip()[:60]}")
-    except:
+    except Exception:
+
         pass
 
 # 2) 시드 리셋 기능
@@ -68,7 +69,8 @@ for pf in base.glob('**/*.json'):
                     if isinstance(v, dict):
                         find_keys(v, current_path)
             find_keys(data)
-    except:
+    except Exception:
+
         pass
 
 # 5) 거래소 잔고 동기화

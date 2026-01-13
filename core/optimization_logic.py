@@ -541,7 +541,8 @@ class OptimizationEngine:
                 for pid in getattr(self._executor, '_processes', {}).keys():
                     try:
                         os.kill(pid, signal.SIGTERM)
-                    except:
+                    except Exception:
+
                         pass
             except Exception as e:
                 logger.debug(f"Executor cleanup: {e}")

@@ -26,7 +26,8 @@ for f in base.rglob('*.py'):
         fname = str(f.relative_to(base))
         
         for i, line in enumerate(lines):
-            # 1. except: pass
+            # 1. except Exception:
+     pass
             if 'except' in line and (('pass' in line) or (re.search(r'except\s*:\s*$', line) and i+1 < len(lines) and 'pass' in lines[i+1])):
                 issues['except_pass'].append(f"{fname} L{i+1}: {line.strip()}")
             
@@ -39,7 +40,8 @@ for f in base.rglob('*.py'):
                 surrounding = '\n'.join(lines[max(0,i-3):i+1])
                 if 'try' not in surrounding:
                     issues['unsafe_get'].append(f"{fname} L{i+1}: {line.strip()}")
-    except:
+    except Exception:
+
         pass
 
 with open(r'C:\매매전략\quality_report.txt', 'w', encoding='utf-8') as f:
@@ -47,7 +49,8 @@ with open(r'C:\매매전략\quality_report.txt', 'w', encoding='utf-8') as f:
     f.write("TwinStar Quantum Code Quality Report (v1.4.4 Audit)\n")
     f.write("=" * 70 + "\n\n")
     
-    f.write(f"[1] except: pass — {len(issues['except_pass'])} issues\n")
+    f.write(f"[1] except Exception:
+     pass — {len(issues['except_pass'])} issues\n")
     f.write(f"[2] Hardcoded Paths — {len(issues['hardcoded_path'])} issues\n")
     f.write(f"[3] Unsafe Direct Access — {len(issues['unsafe_get'])} issues\n\n")
     

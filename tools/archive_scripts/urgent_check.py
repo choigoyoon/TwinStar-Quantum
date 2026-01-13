@@ -59,7 +59,8 @@ for f in base.rglob('*.py'):
                     has_append = 'append' in context.lower()
                     status = '✅ append/merge' if has_append else '⚠️ overwrite'
                     print(f'  [{status}] {f.relative_to(base)} L{i+1}: {line.strip()[:60]}')
-    except:
+    except Exception:
+
         pass
 
 # [3] 1000 하드코딩 전수 조사

@@ -52,7 +52,8 @@ def load_safety_config() -> SafetyConfig:
             with open(SAFETY_CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return SafetyConfig(**data)
-        except:
+        except Exception:
+
             pass
     return SafetyConfig()
 
@@ -76,7 +77,8 @@ def load_daily_pnl() -> DailyPnL:
                 # 오늘 날짜인지 확인
                 if data.get('date') == today:
                     return DailyPnL(**data)
-        except:
+        except Exception:
+
             pass
     
     # 새 날짜면 리셋

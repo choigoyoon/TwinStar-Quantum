@@ -24,7 +24,8 @@ def get_internal_imports(filepath):
             elif isinstance(node, ast.ImportFrom):
                 if node.module and node.module.startswith(tuple(SCAN_DIRS)):
                     imports.append(node.module)
-    except:
+    except Exception:
+
         pass
     return imports
 

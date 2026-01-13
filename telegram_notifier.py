@@ -164,7 +164,8 @@ class TelegramNotifier:
             )
             self._send_impl(text)
             return True
-        except:
+        except Exception:
+
             return False
 
     def notify_bot_status(self, action: str, exchange: str, symbol: str):

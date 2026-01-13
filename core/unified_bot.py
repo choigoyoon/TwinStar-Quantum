@@ -43,7 +43,8 @@ def _get_log_path(filename: str) -> str:
     try:
         from paths import Paths
         return os.path.join(Paths.LOGS, filename)
-    except:
+    except Exception:
+
         log_dir = os.path.join(_BASE_DIR, 'logs')
         os.makedirs(log_dir, exist_ok=True)
         return os.path.join(log_dir, filename)
@@ -101,7 +102,9 @@ def get_server_time_offset(exchange_name: str) -> float:
         else: return 1.0
         offset = local_time - server_time
         return max(offset + 0.5, 0.5)
-    except: return 1.0
+    except Exception:
+
+        return 1.0
 
 time.time = lambda: _original_time() - EXCHANGE_TIME_OFFSET
 
@@ -117,9 +120,13 @@ from exchanges.base_exchange import Position, Signal
 from exchanges.bybit_exchange import BybitExchange
 from exchanges.lighter_exchange import LighterExchange
 try: from exchanges.binance_exchange import BinanceExchange
-except: BinanceExchange = None
+except Exception:
+
+    BinanceExchange = None
 try: from exchanges.ccxt_exchange import CCXTExchange, SUPPORTED_EXCHANGES
-except: CCXTExchange = None; SUPPORTED_EXCHANGES = {}
+except Exception:
+
+    CCXTExchange = None; SUPPORTED_EXCHANGES = {}
 
 # [MODULAR] 6 Core Modules (including CapitalManager)
 try:
@@ -171,7 +178,7 @@ class UnifiedBot:
             self.license_guard = get_license_guard() if not simulation_mode else None
             from utils.preset_manager import get_backtest_params
             self.strategy_params = get_backtest_params(getattr(exchange, 'preset_name', None))
-        except:
+        except Exception:
             self.license_guard = None
             self.strategy_params = {}
 
@@ -385,7 +392,9 @@ class UnifiedBot:
                     if self.mod_data.backfill(lambda lim: sig_ex.get_klines('15', lim)) > 0:
                         self.df_entry_full = self.mod_data.df_entry_full; self._process_historical_data()
                     self.sync_position()
-                except: pass
+                except Exception:
+
+                    pass
         threading.Thread(target=monitor, daemon=True).start()
 
     # ========== Bridge \u0026 Helpers ==========
@@ -399,7 +408,9 @@ class UnifiedBot:
         try:
             from bot_status import update_bot_running
             update_bot_running(self.exchange.name, self.symbol, "v1.7.0 Modular")
-        except: pass
+        except Exception:
+
+            pass
 
         # [FIX] Connect to Exchange
         if hasattr(self.exchange, 'connect'):
@@ -427,7 +438,8 @@ class UnifiedBot:
             try:
                 # 단순 가격 조회 등으로 연결 확인
                 return self.exchange.get_klines(self.symbol, '15m', limit=1) is not None
-            except:
+            except Exception:
+
                 return False
         return True
 
@@ -439,7 +451,8 @@ class UnifiedBot:
                 if hasattr(self.exchange, 'connect'):
                     self.exchange.connect() # 재연결 시도
                     return True
-            except:
+            except Exception:
+
                 pass
         return False
 

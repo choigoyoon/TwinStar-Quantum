@@ -67,7 +67,8 @@ class MultiTrader:
                     with open(path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     return {"timeframe": tf, "params": data.get("params", {})}
-                except:
+                except Exception:
+
                     pass
         return None
     
@@ -164,7 +165,8 @@ class MultiTrader:
                 usdt = [t for t in tickers if t["symbol"].endswith("USDT") and "1000" not in t["symbol"]]
                 sorted_t = sorted(usdt, key=lambda x: float(x.get("turnover24h", 0)), reverse=True)
                 return [t["symbol"] for t in sorted_t[:self.watch_count]]
-        except:
+        except Exception:
+
             pass
         
         return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"]
@@ -190,7 +192,8 @@ class MultiTrader:
                         'strength': result.get('strength', 0),
                         'price': float(df['close'].iloc[-1])
                     })
-            except:
+            except Exception:
+
                 continue
         
         self.pending_signals = signals

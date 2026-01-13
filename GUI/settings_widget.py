@@ -143,7 +143,8 @@ class ConnectionWorker(QThread):
                                 balance = safe_float(bal['total'].get(quote, 0))
                             else:
                                 balance = 0.0
-                        except:
+                        except Exception:
+
                             balance = 0.0
                     
                     balance_data = {quote: balance}

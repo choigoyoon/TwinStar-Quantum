@@ -131,7 +131,8 @@ class TradeHistoryTable(QTableWidget):
             exit_time = trade.get('exit_time', '')
             try:
                 dt = exit_time.split('T')[0] + ' ' + exit_time.split('T')[1][:5]
-            except:
+            except Exception:
+
                 dt = exit_time
                 
             symbol = trade.get('symbol', '-')

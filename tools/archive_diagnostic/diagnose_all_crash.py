@@ -48,7 +48,8 @@ for f in base.rglob('*.py'):
                     try_block = '\n'.join(lines[max(0,i-5):i])
                     if 'try:' not in try_block:
                         critical.append(('dict[key]', fname, i+1, line.strip()[:50]))
-    except:
+    except Exception:
+
         pass
 
 # 유형별 정리

@@ -14,4 +14,6 @@ for f in base.rglob('*.py'):
             if any(k in line for k in ['presets/', 'save_preset', 'wr_', '.json', 'dump(']):
                 if '#' not in line.strip()[:2]:
                     print(f'{f.relative_to(base)} L{i}: {line.strip()[:100]}')
-    except: pass
+    except Exception:
+
+        pass

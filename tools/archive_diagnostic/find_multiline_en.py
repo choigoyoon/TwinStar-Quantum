@@ -13,7 +13,8 @@ for folder in folders:
             try:
                 code = f.read_text(encoding='utf-8', errors='ignore')
                 
-                # Check for except: pass (multiline)
+                # Check for except Exception:
+     pass (multiline)
                 matches = re.findall(r'except.*:\s*pass\s*$', code, re.MULTILINE)
                 if matches:
                     print(f"SILENT_EXCEPT FOUND in {folder}/{f.name}")

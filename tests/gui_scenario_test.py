@@ -129,7 +129,8 @@ def main():
                     # 활성 상태 확인
                     state = "Active" if obj.isActive() else "Inactive"
                     timers_found.append(f"{attr}({state})")
-            except:
+            except Exception:
+
                 pass
         
         # 2초 대기 (타이머 동작 유도)
@@ -177,7 +178,8 @@ def main():
                 obj = getattr(dashboard, attr, None)
                 if isinstance(obj, QThread):
                     threads.append((attr, obj.isRunning()))
-            except:
+            except Exception:
+
                 pass
         
         return f"관리 중인 스레드: {len(threads)}개"

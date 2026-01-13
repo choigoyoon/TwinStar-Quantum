@@ -104,7 +104,8 @@ try:
     check("optimization → preset 저장", "save_preset" in opt or "preset" in opt.lower())
     check("backtest → strategy_core 호출", "AlphaX7Core" in bt or "run_backtest" in bt)
     check("dashboard → preset 로드", True)  # trading_dashboard는 별도 확인 필요하지만 여기선 PASS 처리
-except:
+except Exception:
+
     pass
 
 # 7. 손절/익절 로직
@@ -113,7 +114,8 @@ try:
     check("strategy: ATR 기반 SL", "atr" in strat.lower() and "stop" in strat.lower())
     check("strategy: 트레일링", "trail" in strat.lower())
     check("bot: SL 주문", "stop_loss" in bot.lower() or "sl_price" in bot)
-except:
+except Exception:
+
     pass
 
 # 결과

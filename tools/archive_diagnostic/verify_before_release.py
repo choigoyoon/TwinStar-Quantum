@@ -160,7 +160,7 @@ if ver_file.exists():
         print(f"  버전: {ver.get('version')}")
         if 'download_url' not in ver:
             warnings.append("version.json: download_url 없음")
-    except:
+    except Exception:
         errors.append("version.json 파싱 실패")
 else:
     errors.append("version.json 없음")

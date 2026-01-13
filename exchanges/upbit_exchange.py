@@ -337,7 +337,8 @@ class UpbitExchange(BaseExchange):
                         'leverage': 1
                     })
             return positions
-        except:
+        except Exception:
+
             return []
 
     def get_realized_pnl(self, symbol: str = None) -> float:

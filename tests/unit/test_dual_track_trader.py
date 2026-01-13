@@ -165,7 +165,8 @@ class TestPresetIntegrationFlow(unittest.TestCase):
             from utils.preset_manager import PresetManager
             pm = PresetManager()
             pm.delete_preset(self.test_preset_name)
-        except:
+        except Exception:
+
             pass
     
     def test_01_batch_optimizer_creates_preset(self):

@@ -200,7 +200,8 @@ if gui_path.exists():
                     print(f'  ✅ {gf.name}: UnifiedBot 사용')
                 except UnicodeEncodeError:
                      print(f'  ✅ {gf.name.encode("utf-8", "ignore").decode("utf-8")}: UnifiedBot 사용')
-        except:
+        except Exception:
+
             pass
     print(f'\n  UnifiedBot 연동 파일: {bot_usage}개')
 

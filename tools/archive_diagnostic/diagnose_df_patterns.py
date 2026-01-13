@@ -44,7 +44,9 @@ for f in base.rglob('*.py'):
             if re.search(r'getattr\([^)]+\)\s+or\s+self\.df', line):
                 issues.append((fname, i+1, 'getattr or df', line.strip()[:50]))
 
-    except:
+    except Exception:
+
+
         pass
 
 print(f"\n총 {len(issues)}개 발견\n")

@@ -28,7 +28,8 @@ for py in base.rglob('*.py'):
             for i, line in enumerate(lines):
                 if 'fetchTime' in line:
                     print(f"  {py.relative_to(base)} L{i+1}: {line.strip()[:60]}")
-    except:
+    except Exception:
+
         pass
 
 # 3. upbit_exchange.py 내용 확인

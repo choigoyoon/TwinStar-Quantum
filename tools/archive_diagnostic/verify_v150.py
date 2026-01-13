@@ -59,7 +59,7 @@ if ver_file.exists():
         if ver.get('version') != '1.5.0':
             print("  ⚠️ 1.5.0으로 업데이트 필요")
             errors.append("version_mismatch")
-    except:
+    except Exception:
         errors.append("version_read_error")
 
 # 결과

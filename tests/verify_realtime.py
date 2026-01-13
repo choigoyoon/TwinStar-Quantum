@@ -29,7 +29,7 @@ def run():
                 balance = adapter.get_balance()
                 print(f"  ✅ 잔고: ${balance:.2f}")
                 passed += 1
-            except:
+            except Exception:
                 print("  ⚠️ 잔고 조회 실패 (API 키 확인)")
                 passed += 1  # 연결은 됨
         else:

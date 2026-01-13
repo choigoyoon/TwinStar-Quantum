@@ -48,7 +48,8 @@ def search_file(filepath):
                         'content': content
                     })
                     break
-    except:
+    except Exception:
+
         pass
     
     return items

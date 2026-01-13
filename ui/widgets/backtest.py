@@ -209,7 +209,8 @@ class BacktestWidget(QWidget):
         try:
             from trading import get_preset
             params = get_preset(self.preset_combo.currentText())
-        except:
+        except Exception:
+
             params = None
         
         # 워커 생성 및 실행

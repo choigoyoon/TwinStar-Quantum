@@ -14,7 +14,8 @@ if gui_dir.exists():
             code = f.read_text(encoding='utf-8', errors='ignore')
             lines = code.split('\n')
             
-            # except: pass
+            # except Exception:
+     pass
             file_warnings = []
             for i, line in enumerate(lines):
                 if re.search(r'except.*:\s*pass\s*$', line):

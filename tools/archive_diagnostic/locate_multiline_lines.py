@@ -14,7 +14,8 @@ for folder in folders:
                 code = f.read_text(encoding='utf-8', errors='ignore')
                 lines = code.split('\n')
                 
-                # Use a sliding window or a more advanced search to find multiline except: pass
+                # Use a sliding window or a more advanced search to find multiline except Exception:
+     pass
                 # We know they look like except ...:\n\s*pass
                 for i in range(len(lines) - 1):
                     if re.search(r'except.*:', lines[i]) and re.search(r'^\s*pass\s*$', lines[i+1]):

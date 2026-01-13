@@ -376,7 +376,8 @@ class ExchangeManager:
                         if isinstance(bal, tuple):
                             return float(bal[1]) if len(bal) >= 2 else 0.0
                         return float(bal or 0.0)
-                    except:
+                    except Exception:
+
                         return 0.0
                 else:
                     bal = ex.get_balance(currency)
@@ -431,7 +432,8 @@ class ExchangeManager:
                     result['usdt'] += bal
                     if name not in result['details']: result['details'][name] = {}
                     result['details'][name]['USDT'] = bal
-            except:
+            except Exception:
+
                 pass
         
         # 국내 현물 (KRW)
@@ -442,7 +444,8 @@ class ExchangeManager:
                     result['krw'] += bal
                     if name not in result['details']: result['details'][name] = {}
                     result['details'][name]['KRW'] = bal
-            except:
+            except Exception:
+
                 pass
         
         return result

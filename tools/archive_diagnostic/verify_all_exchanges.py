@@ -19,7 +19,8 @@ for ex in targets:
         for f in dm.cache_dir.glob(f'{ex}*.parquet'):
             try:
                 os.remove(f)
-            except:
+            except Exception:
+
                 pass
                 
         # 2. Download

@@ -41,7 +41,8 @@ for f in all_py:
                     if '#' not in line.split('signal')[0]:
                         issues['signal_get'].append((fname, ln, stripped[:60]))
             
-            # 3) except: pass
+            # 3) except Exception:
+     pass
             if stripped.startswith('except') and ':' in stripped:
                 next_line = lines[i+1].strip() if i+1 < len(lines) else ''
                 if next_line == 'pass':
@@ -88,7 +89,8 @@ categories = [
     ('signal_get', '🔴 signal.get() 위험', 'dict 아닌 객체 접근'),
     ('div_zero', '🔴 0 나누기 가능성', 'entry/price 체크 없음'),
     ('bare_except', '🟡 bare except:', '모든 예외 무시'),
-    ('except_pass', '🟡 except: pass', '에러 무시'),
+    ('except_pass', '🟡 except Exception:
+     pass', '에러 무시'),
     ('none_check', '🟡 None 체크 누락', 'self.exchange 접근'),
     ('async_sleep', '🟡 async + time.sleep', '블로킹 호출'),
     ('hardcode_path', '🟡 하드코딩 경로', 'C:\\ 절대경로'),

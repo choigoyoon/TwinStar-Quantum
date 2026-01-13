@@ -174,8 +174,9 @@ class BotStateManager:
                 try:
                     with open(self.default_state_file, 'w', encoding='utf-8') as f:
                          json.dump(state, f, indent=2, ensure_ascii=False, default=str)
-                except:
-                     pass
+                except Exception:
+
+                    pass
             
             logging.debug(f"[STATE] Saved: {self.state_file.name}")
             return True

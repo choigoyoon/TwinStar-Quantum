@@ -14,7 +14,8 @@ for folder in folders:
                 code = f.read_text(encoding='utf-8', errors='ignore')
                 lines = code.split('\n')
                 
-                # Check for except: pass
+                # Check for except Exception:
+     pass
                 for i, line in enumerate(lines):
                     if re.search(r'except.*:\s*pass\s*$', line):
                         print(f"SILENT_EXCEPT: {folder}/{f.name}:{i+1}: {line.strip()}")

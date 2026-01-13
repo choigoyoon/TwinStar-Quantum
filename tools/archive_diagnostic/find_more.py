@@ -16,5 +16,6 @@ for fname in os.listdir('GUI'):
                 for t in targets:
                     if t in line and 't(' not in line:
                         print(f'{fname} L{i+1}: {t}')
-        except:
+        except Exception:
+
             pass

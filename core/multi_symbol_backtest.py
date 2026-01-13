@@ -185,7 +185,8 @@ class MultiSymbolBacktest:
                 if len(df) >= 500:
                     self.all_candles[cache_key] = df
                     return df
-        except:
+        except Exception:
+
             pass
         
         try:
@@ -302,7 +303,8 @@ class MultiSymbolBacktest:
                 'low': float(row['low']),
                 'close': float(row['close'])
             }
-        except:
+        except Exception:
+
             return {'open': 0, 'high': 0, 'low': 0, 'close': 0}
     
     def check_exit_conditions(self, signal_time: datetime) -> bool:

@@ -144,20 +144,20 @@ class StrictGUITest:
         # 2. visible 체크
         try:
             checks["visible"] = widget.isVisible()
-        except:
+        except Exception:
             checks["visible"] = False
             
         # 3. enabled 체크
         try:
             checks["enabled"] = widget.isEnabled()
-        except:
+        except Exception:
             checks["enabled"] = False
             
         # 4. 크기 체크
         try:
             size = widget.size()
             checks["has_size"] = size.width() > 0 and size.height() > 0
-        except:
+        except Exception:
             checks["has_size"] = False
             
         all_ok = all(checks.values())

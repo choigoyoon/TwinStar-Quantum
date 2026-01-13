@@ -65,7 +65,8 @@ for check_name, (target_file, pattern) in checks.items():
             if re.search(pattern, code, re.I):
                 found = True
                 locations.append(f.name)
-        except:
+        except Exception:
+
             pass
     
     if found:
@@ -127,7 +128,8 @@ for feat, pattern in payment_features.items():
             code = f.read_text(encoding='utf-8', errors='ignore')
             if re.search(pattern, code, re.I):
                 found_in.append(f.name)
-        except:
+        except Exception:
+
             pass
     
     if found_in:

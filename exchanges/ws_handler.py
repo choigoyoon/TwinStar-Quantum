@@ -359,11 +359,15 @@ class WebSocketHandler:
                         new_loop = asyncio.new_event_loop()
                         new_loop.run_until_complete(self.ws.close())
                         new_loop.close()
-                    except: pass
+                    except Exception:
+
+                        pass
                 t = threading.Thread(target=_force_close, daemon=True)
                 t.start()
                 t.join(timeout=1)
-            except: pass
+            except Exception:
+
+                pass
         
         self.ws = None
 

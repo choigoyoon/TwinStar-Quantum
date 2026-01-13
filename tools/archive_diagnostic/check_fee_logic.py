@@ -92,7 +92,8 @@ for pf in preset_files[:5]:
                         for sk, sv in v.items():
                             if 'fee' in sk.lower():
                                 print(f"  {pf.name} -> {k}: {sk} = {sv}")
-    except:
+    except Exception:
+
         pass
 
 print("\n" + "=" * 70)

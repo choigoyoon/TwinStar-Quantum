@@ -245,15 +245,16 @@ class DeepVerifier:
             
             try:
                 ao = AutoOptimizer("bybit", "BTCUSDT")
-            except:
+            except Exception:
                 # If it requires an object, we might fail here. 
                 # Attempt to mock if it fails directly
                 class MockExchange:
                     def __init__(self): self.name = 'Bybit'; self.symbol='BTCUSDT'
                 try:
                     ao = AutoOptimizer(MockExchange(), "BTCUSDT")
-                except:
-                     ao = None
+                except Exception:
+
+                    ao = None
             
             if ao:
                 if hasattr(ao, 'DEFAULT_PARAMS'):

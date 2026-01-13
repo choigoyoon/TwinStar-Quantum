@@ -13,7 +13,8 @@ for folder in folders:
             code = f.read_text(encoding='utf-8', errors='ignore')
             lines = code.split('\n')
             
-            # except: pass
+            # except Exception:
+     pass
             for i, line in enumerate(lines):
                 if re.search(r'except.*:\s*pass\s*$', line):
                      print(f"PASS: {folder}/{f.name}:{i+1}: {line.strip()}")

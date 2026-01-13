@@ -20,9 +20,12 @@ for py in base.rglob("*.py"):
         if 'async def' in code and 'time.sleep(' in code:
             print(f"  ! {py.name}: time.sleep in async")
             issues.append(f"! {py.name}: async+time.sleep")
-    except: pass
+    except Exception:
 
-# 2. except: pass
+        pass
+
+# 2. except Exception:
+     pass
 print("\n[2] 예외 삼킴 (except + pass)")
 count = 0
 for py in base.rglob("*.py"):
@@ -34,7 +37,9 @@ for py in base.rglob("*.py"):
             if re.match(r'\s*except.*:\s*$', line):
                 if i+1 < len(lines) and lines[i+1].strip() == 'pass':
                     count += 1
-    except: pass
+    except Exception:
+
+        pass
 print(f"  발견: {count}개")
 
 # 3. 스레드 안전성
@@ -73,7 +78,9 @@ for py in base.rglob("*.py"):
         code = py.read_text(encoding='utf-8', errors='ignore')
         froms = re.findall(r'from\s+(\w+)\s+import', code)
         imports_map[py.stem] = set(froms)
-    except: pass
+    except Exception:
+
+        pass
 
 cycles = 0
 for mod, deps in imports_map.items():

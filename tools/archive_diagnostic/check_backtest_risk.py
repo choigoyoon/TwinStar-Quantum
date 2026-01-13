@@ -18,7 +18,8 @@ for f in base.rglob('*.py'):
                 print(f"  {f.name}: MDD 계산 있음")
         if 'losing_streak' in code.lower() or 'consecutive' in code.lower():
             print(f"  {f.name}: 연패 계산 있음")
-    except:
+    except Exception:
+
         pass
 
 # 2. 현재 리스크 매니저 구조

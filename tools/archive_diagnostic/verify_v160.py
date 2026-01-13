@@ -19,7 +19,7 @@ if version_file.exists():
     try:
         v = json.loads(version_file.read_text(encoding='utf-8'))
         print(f"  version.json: {v.get('version', 'N/A')}")
-    except:
+    except Exception:
         print("  version.json 파싱 실패")
 
 # staru_main.py 버전

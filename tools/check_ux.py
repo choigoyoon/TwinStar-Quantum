@@ -106,7 +106,7 @@ try:
         const_content = f.read()
     if 'DEFAULT' in const_content:
         print('✅ 기본 파라미터 정의됨 (constants.py)')
-except:
+except Exception:
     print('⚠️ constants.py 없음')
 
 # 프리셋 존재 확인

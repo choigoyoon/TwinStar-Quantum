@@ -40,7 +40,9 @@ for f in base.rglob('*.py'):
             if 'float(balance' in line and '.get(' not in line:
                 issues.append(('float(balance) raw', fname, ln, line.strip()[:60]))
                 
-    except:
+    except Exception:
+
+                
         pass
 
 # 결과 출력

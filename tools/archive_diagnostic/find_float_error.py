@@ -28,5 +28,6 @@ for f in base.rglob('*.py'):
                     if 'return' in lines[j]:
                         print(f'  L{j+1}: {lines[j].strip()[:60]}')
                         break
-    except:
+    except Exception:
+
         pass

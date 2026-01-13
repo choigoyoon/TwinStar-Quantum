@@ -13,7 +13,8 @@ for f in (base / 'exchanges').glob('*.py'):
     code = f.read_text(encoding='utf-8', errors='ignore')
     lines = code.split('\n')
     for i, l in enumerate(lines):
-        # 1. except: pass
+        # 1. except Exception:
+     pass
         if re.search(r'except.*:\s*pass', l) or (re.search(r'except.*:\s*$', l) and i+1 < len(lines) and 'pass' in lines[i+1]):
             issues['except_pass'].append({'file': f.name, 'line': i+1, 'code': l.strip()})
         
@@ -30,4 +31,5 @@ for f in (base / 'exchanges').glob('*.py'):
 with open(r'C:\매매전략\exchanges_quality_report.json', 'w', encoding='utf-8') as f:
     json.dump(issues, f, ensure_ascii=False, indent=2)
 
-print(f"Exchanges Scan Complete. Found {len(issues['except_pass'])} except:pass, {len(issues['hardcoded'])} hardcoded, {len(issues['unsafe'])} unsafe.")
+print(f"Exchanges Scan Complete. Found {len(issues['except_pass'])} except Exception:
+     pass, {len(issues['hardcoded'])} hardcoded, {len(issues['unsafe'])} unsafe.")

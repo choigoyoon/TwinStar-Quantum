@@ -25,7 +25,9 @@ for f in base.rglob('*.py'):
                 if 'is None' not in line:
                     print(f"  {f.name} L{i+1}: {line.strip()[:60]}")
                     issues.append(('DataFrame', f.name, i+1))
-    except: pass
+    except Exception:
+
+        pass
 
 # 2. .get() 호출 (객체 vs 딕셔너리)
 print("\n[2] Signal/객체에 .get() 호출")
@@ -39,7 +41,9 @@ for f in base.rglob('*.py'):
                     # Filter out likely safe dict usages if known, but for now report all to be safe
                     print(f"  {f.name} L{i+1}: {line.strip()[:60]}")
                     issues.append(('Signal접근', f.name, i+1))
-    except: pass
+    except Exception:
+
+        pass
 
 # 3. 선물 거래소 positionIdx 누락
 print("\n[3] 선물 거래소 positionIdx 누락")
@@ -51,10 +55,14 @@ for f in (base / 'exchanges').glob('*_exchange.py'):
         if is_futures and not has_idx:
             print(f"  ❌ {f.name}: 선물인데 positionIdx/Side 없음")
             issues.append(('PositionIdx', f.name, 0))
-    except: pass
+    except Exception:
 
-# 4. except: pass (에러 무시)
-print("\n[4] except: pass (에러 삼킴)")
+        pass
+
+# 4. except Exception:
+     pass (에러 무시)
+print("\n[4] except Exception:
+     pass (에러 삼킴)")
 for f in base.rglob('*.py'):
     try:
         code = f.read_text(encoding='utf-8', errors='ignore')
@@ -63,7 +71,9 @@ for f in base.rglob('*.py'):
             matches = re.findall(r'except.*:\s*(\n\s*)?pass', code)
             print(f"  {f.name}: {len(matches)}개")
             issues.append(('ExceptPass', f.name, len(matches)))
-    except: pass
+    except Exception:
+
+        pass
 
 # 5. 하드코딩된 경로
 print("\n[5] 하드코딩된 경로")
@@ -80,7 +90,9 @@ for f in base.rglob('*.py'):
                             print(f"  {f.name} L{i+1}: {line.strip()[:50]}")
                             issues.append(('HardPath', f.name, i+1))
                             break
-    except: pass
+    except Exception:
+
+        pass
 
 # 6. time.sleep in async
 print("\n[6] async 함수 내 time.sleep")
@@ -90,7 +102,9 @@ for f in base.rglob('*.py'):
         if 'async def' in code and 'time.sleep' in code:
             print(f"  ⚠️ {f.name}: async + time.sleep 혼용 가능성")
             issues.append(('AsyncSleep', f.name, 0))
-    except: pass
+    except Exception:
+
+        pass
 
 # 7. 모듈 import 경로 문제
 print("\n[7] core.updater 등 import 경로")
@@ -100,7 +114,9 @@ for f in base.rglob('*.py'):
         if 'from core.updater' in code or 'import core.updater' in code:
             print(f"  {f.name}: core.updater import 발견")
             issues.append(('ImportPath', f.name, 0))
-    except: pass
+    except Exception:
+
+        pass
 
 # 8. 현물 Short 차단 누락
 print("\n[8] 현물 Short 차단 로직")

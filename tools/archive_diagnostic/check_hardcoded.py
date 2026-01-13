@@ -21,7 +21,8 @@ for fname in gui_files:
                     if f'"{kw}"' in line:
                         results.append(f'{fname}|L{i+1}|{kw}|{line.strip()[:70]}')
                         break
-    except:
+    except Exception:
+
         pass
 
 # Save to file

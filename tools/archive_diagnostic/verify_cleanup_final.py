@@ -30,8 +30,10 @@ for folder in folders:
                 print(f"  ❌ {folder}/{f.name}: L{e.lineno}")
                 errors.append(f"{folder}/{f.name}")
 
-# 2. except:pass 잔여
-print("\n[2] except:pass 잔여 확인")
+# 2. except Exception:
+     pass 잔여
+print("\n[2] except Exception:
+     pass 잔여 확인")
 for folder in folders:
     folder_path = base / folder
     if folder_path.exists():

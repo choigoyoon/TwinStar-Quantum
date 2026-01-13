@@ -232,7 +232,9 @@ def verify_websocket_sim():
                 else:
                     # DEBUG Filter
                     pass
-            except: continue
+            except Exception:
+
+                continue
         
         if len(valid) < len(signals):
              print(f"DEBUG MockFilter: {len(signals)} -> {len(valid)} (Now={now})")

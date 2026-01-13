@@ -242,7 +242,8 @@ class GUIStepTester:
                                     btn = child
                                     print(f"    - Found widget with text '{c_text}': {child}")
                                     break
-                            except:
+                            except Exception:
+
                                 continue
             
             if not btn:

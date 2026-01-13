@@ -83,7 +83,9 @@ else:
     
     print(f"  try: {try_count}개")
     print(f"  except: {except_count}개")
-    print(f"  except: pass: {except_pass}개 [!]" if except_pass > 0 else f"  except: pass: 0개 O")
+    print(f"  except Exception:
+      pass: {except_pass}개 [!]" if except_pass > 0 else f"  except Exception:
+      pass: 0개 O")
 
     # 7. None 체크 없는 위험 호출
     print("\n[6] None 체크 없는 호출")

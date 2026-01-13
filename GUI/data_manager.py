@@ -202,7 +202,9 @@ class DataManager:
         if start_date:
             try:
                 req_start_ts = int(pd.Timestamp(start_date).timestamp() * 1000)
-            except: req_start_ts = None
+            except Exception:
+
+                req_start_ts = None
         else:
             req_start_ts = None
 
@@ -496,7 +498,9 @@ class DataManager:
             if listing_date:
                 try:
                     listing_ts = int(pd.Timestamp(listing_date).timestamp() * 1000)
-                except: pass
+                except Exception:
+
+                    pass
             
             # since 설정
             if since is None:

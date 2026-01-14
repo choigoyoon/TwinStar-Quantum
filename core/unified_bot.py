@@ -436,11 +436,18 @@ class UnifiedBot:
         
         while self.is_running:
             try:
+                # [VME] 로컬 손절 감시 강화 (Upbit, Bithumb, Lighter)
+                vme_exchanges = ['upbit', 'bithumb', 'lighter']
+                is_vme = hasattr(self.exchange, 'name') and self.exchange.name.lower() in vme_exchanges
+                
                 if not self.position:
                     signal = self.detect_signal()
                     if signal: self.execute_entry(signal)
-                else: self.manage_position()
-                time.sleep(1)
+                    time.sleep(1) # 진입 탐색은 1초 주기 유지
+                else: 
+                    self.manage_position()
+                    # 포지션 보유 중이며 VME 필요 거래소인 경우 0.2초(5Hz) 고속 감시
+                    time.sleep(0.2 if is_vme else 1.0)
             except Exception as e:
                 logging.error(f"[LOOP] Error: {e}"); time.sleep(5)
 

@@ -112,8 +112,10 @@ class ExchangeSelectorWidget(QWidget):
         self.combo_exchange.clear()
         
         # Overseas exchanges
+        tier1 = ['okx', 'bingx', 'bitget']
         for ex in self.em.get_overseas_exchanges():
-            self.combo_exchange.addItem(f"[Global] {ex.name}", ex.id)
+            prefix = "[Direct API]" if ex.id in tier1 else "[Global]"
+            self.combo_exchange.addItem(f"{prefix} {ex.name}", ex.id)
             
         # Domestic exchanges
         for ex in self.em.get_domestic_exchanges():

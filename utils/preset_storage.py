@@ -59,33 +59,69 @@ class PresetStorage:
             json.dump(self.index, f, indent=2, ensure_ascii=False)
     
     def _get_preset_key(self, symbol: str, tf: str) -> str:
-        """프리셋 키 생성"""
+        """프리셋 키 생성 (레거시 호환용)"""
         return f"{symbol.upper()}_{tf.lower()}"
-    
-    def _get_preset_path(self, symbol: str, tf: str) -> Path:
-        """프리셋 파일 경로"""
-        key = self._get_preset_key(symbol, tf)
-        return self.base_path / f"{key}.json"
-    
-    def save_preset(self, symbol: str, tf: str, params: Dict,
-                   optimization_result: Dict | None = None,
-                   chart_profile: Dict | None = None) -> bool:
+
+    def _get_preset_path(
+        self,
+        symbol: str,
+        tf: str,
+        mode: str | None = None,
+        use_timestamp: bool = True,
+        exchange: str | None = None
+    ) -> Path:
         """
-        프리셋 저장
-        
+        프리셋 파일 경로 (v2.0 - 표준 네이밍 규칙)
+
+        Args:
+            symbol: 심볼
+            tf: 타임프레임
+            mode: 최적화 모드 (quick/standard/deep)
+            use_timestamp: 타임스탬프 포함 여부 (기본 True)
+            exchange: 거래소 (None이면 self.exchange 사용)
+        """
+        from config.constants import generate_preset_filename
+
+        # 거래소 정보 (None 방지)
+        exchange_name: str = exchange if exchange is not None else getattr(self, 'exchange', 'bybit')
+
+        filename = generate_preset_filename(
+            exchange=exchange_name,
+            symbol=symbol,
+            timeframe=tf,
+            mode=mode,
+            use_timestamp=use_timestamp
+        )
+        return self.base_path / filename
+    
+    def save_preset(
+        self,
+        symbol: str,
+        tf: str,
+        params: Dict,
+        optimization_result: Dict | None = None,
+        chart_profile: Dict | None = None,
+        mode: str | None = None,
+        exchange: str | None = None
+    ) -> bool:
+        """
+        프리셋 저장 (v2.0 - 타임스탬프 포함)
+
         Args:
             symbol: 심볼 (예: BTCUSDT)
             tf: 타임프레임 (예: 4h)
             params: 최적화 파라미터
             optimization_result: 최적화 결과 (승률, MDD 등)
             chart_profile: 차트 프로파일
-        
+            mode: 최적화 모드 (quick/standard/deep)
+            exchange: 거래소 (None이면 self.exchange 사용)
+
         Returns:
             성공 여부
         """
         try:
             key = self._get_preset_key(symbol, tf)
-            path = self._get_preset_path(symbol, tf)
+            path = self._get_preset_path(symbol, tf, mode=mode, use_timestamp=True, exchange=exchange)
             
             preset_data = {
                 'symbol': symbol.upper(),

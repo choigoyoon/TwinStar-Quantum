@@ -176,6 +176,10 @@ class UpbitExchange(BaseExchange):
                 )
                 
                 logging.info(f"[Upbit] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
+                
+                # [NEW] 로컬 거래 DB 기록
+                self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+                
                 return True # base_exchange.py usually expects bool or uses the side effect
             else:
                 logging.error(f"[Upbit] Order failed: {result}")
@@ -224,6 +228,10 @@ class UpbitExchange(BaseExchange):
                         pnl = (self.position.entry_price - price) / self.position.entry_price * 100
                     
                     logging.info(f"[Upbit] Position closed: PnL {pnl:.2f}%")
+                    
+                    # [NEW] 로컬 거래 DB 기록 (FIFO PnL 계산)
+                    self._record_trade_close(exit_price=price, exit_amount=float(balance), exit_side=self.position.side)
+                    
                     self.position = None
                     return True
             
@@ -261,6 +269,10 @@ class UpbitExchange(BaseExchange):
                 self.position.order_id = order_id
                 
                 logging.info(f"[Upbit] Added: {size} @ {price:,.0f}원 (ID: {order_id})")
+                
+                # [NEW] 로컬 거래 DB 기록 (추가 매수/매도)
+                self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+                
                 return True
             
             return False

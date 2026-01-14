@@ -7,8 +7,8 @@ from PyQt6.QtWidgets import (
     QPushButton
 )
 from typing import Dict, Any
-from PyQt6.QtCore import pyqtSignal
-from ui.design_system.tokens import Colors
+from PyQt6.QtCore import pyqtSignal, Qt
+from ui.design_system.tokens import Colors, Spacing, Typography, Radius
 
 class TradePanel(QWidget):
     """단일 트레이딩 패널 (싱글/멀티 공용)"""
@@ -46,86 +46,143 @@ class TradePanel(QWidget):
         
         layout.addLayout(header)
         
-        # 설정 그리드
-        settings = QGridLayout()
-        settings.setSpacing(12)
+        # 설정 그리드 (세로형 컴팩트)
+        settings = QVBoxLayout()
+        settings.setSpacing(16)
         
-        # Row 0: 거래소 & 심볼
-        settings.addWidget(QLabel("거래소"), 0, 0)
+        # Helper to create compact rows
+        def create_row(icon: str, label: str, widget: QWidget):
+            row = QVBoxLayout()
+            row.setSpacing(4)
+            lbl_layout = QHBoxLayout()
+            lbl = QLabel(f"{icon} {label}")
+            lbl.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_muted}; font-weight: 600;")
+            lbl_layout.addWidget(lbl)
+            lbl_layout.addStretch()
+            row.addLayout(lbl_layout)
+            row.addWidget(widget)
+            widget.setMinimumHeight(32)
+            return row
+
+        # 1. 거래소
         self.exchange_combo = QComboBox()
         self.exchange_combo.addItems(["Bybit", "Binance", "OKX", "Bitget"])
         self.exchange_combo.currentTextChanged.connect(self._load_presets)
-        settings.addWidget(self.exchange_combo, 0, 1)
+        settings.addLayout(create_row("🌐", "EXCHANGE", self.exchange_combo))
         
-        settings.addWidget(QLabel("심볼"), 0, 2)
+        # 2. 심볼
         self.symbol_combo = QComboBox()
         self.symbol_combo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"])
         self.symbol_combo.setEditable(True)
         self.symbol_combo.currentTextChanged.connect(self._load_presets)
-        settings.addWidget(self.symbol_combo, 0, 3)
+        settings.addLayout(create_row("💎", "SYMBOL", self.symbol_combo))
         
-        # Row 1: 레버리지 & 시드
-        settings.addWidget(QLabel("레버리지"), 1, 0)
+        # 3. 레버리지 & 시드 (HBoxLayout in a row)
+        lev_seed_row = QHBoxLayout()
+        
+        lev_col = QVBoxLayout()
         self.leverage_spin = QSpinBox()
         self.leverage_spin.setRange(1, 125)
         self.leverage_spin.setValue(10)
         self.leverage_spin.setSuffix("x")
-        settings.addWidget(self.leverage_spin, 1, 1)
+        lev_col.addLayout(create_row("⚡", "LEV", self.leverage_spin))
         
-        settings.addWidget(QLabel("시드"), 1, 2)
+        seed_col = QVBoxLayout()
         self.seed_spin = QDoubleSpinBox()
         self.seed_spin.setRange(10, 100000)
         self.seed_spin.setValue(100)
         self.seed_spin.setPrefix("$")
-        settings.addWidget(self.seed_spin, 1, 3)
+        seed_col.addLayout(create_row("💰", "SEED", self.seed_spin))
         
-        # Row 2: 자본모드 & 프리셋(전략)
-        settings.addWidget(QLabel("자본"), 2, 0)
+        lev_seed_row.addLayout(lev_col)
+        lev_seed_row.addLayout(seed_col)
+        settings.addLayout(lev_seed_row)
+        
+        # 4. 자본 & 프리셋
         self.capital_combo = QComboBox()
         self.capital_combo.addItems(["복리", "고정"])
-        settings.addWidget(self.capital_combo, 2, 1)
+        settings.addLayout(create_row("📈", "CAPITAL", self.capital_combo))
         
-        settings.addWidget(QLabel("전략(Preset)"), 2, 2)
         self.preset_combo = QComboBox()
-        self.preset_combo.setToolTip("config/presets 폴더의 JSON 파일 선택")
-        settings.addWidget(self.preset_combo, 2, 3)
+        settings.addLayout(create_row("📜", "STRATEGY", self.preset_combo))
         
         # 멀티 모드 전용
-        row_idx = 3
         if self.mode == "multi":
-            settings.addWidget(QLabel("감시"), row_idx, 0)
+            multi_row = QHBoxLayout()
+            
+            watch_col = QVBoxLayout()
             self.watch_spin = QSpinBox()
             self.watch_spin.setRange(5, 100)
             self.watch_spin.setValue(50)
-            self.watch_spin.setSuffix("개")
-            settings.addWidget(self.watch_spin, row_idx, 1)
+            watch_col.addLayout(create_row("🔭", "WATCH", self.watch_spin))
             
-            settings.addWidget(QLabel("동시"), row_idx, 2)
+            conc_col = QVBoxLayout()
             self.concurrent_spin = QSpinBox()
             self.concurrent_spin.setRange(1, 5)
             self.concurrent_spin.setValue(1)
-            self.concurrent_spin.setSuffix("개")
-            settings.addWidget(self.concurrent_spin, row_idx, 3)
+            conc_col.addLayout(create_row("👯", "MAX", self.concurrent_spin))
+            
+            multi_row.addLayout(watch_col)
+            multi_row.addLayout(conc_col)
+            settings.addLayout(multi_row)
         
         layout.addLayout(settings)
+        layout.addSpacing(20)
         
         # 버튼
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
         
-        self.start_btn = QPushButton("▶ 시작")
-        self.start_btn.setObjectName("startBtn")
+        self.start_btn = QPushButton("▶ START SNIPING")
+        self.start_btn.setFixedHeight(44)
+        self.start_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.start_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.accent_primary};
+                color: {Colors.text_inverse};
+                border-radius: {Radius.radius_md};
+                font-weight: 800;
+                font-size: {Typography.text_base};
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.accent_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.accent_pressed};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.bg_overlay};
+                color: {Colors.text_muted};
+            }}
+        """)
         self.start_btn.clicked.connect(self._on_start)
         
-        self.stop_btn = QPushButton("⏹ 정지")
-        self.stop_btn.setObjectName("stopBtn")
+        self.stop_btn = QPushButton("⏹ STOP")
+        self.stop_btn.setFixedHeight(40)
+        self.stop_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.stop_btn.setEnabled(False)
+        self.stop_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {Colors.danger};
+                border: 1px solid {Colors.danger};
+                border-radius: {Radius.radius_md};
+                font-weight: 700;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.danger};
+                color: white;
+            }}
+            QPushButton:disabled {{
+                border-color: {Colors.border_muted};
+                color: {Colors.text_muted};
+            }}
+        """)
         self.stop_btn.clicked.connect(self._on_stop)
         
-        btn_layout.addWidget(self.start_btn)
-        btn_layout.addWidget(self.stop_btn)
-        
-        layout.addLayout(btn_layout)
+        layout.addWidget(self.start_btn)
+        layout.addWidget(self.stop_btn)
+        layout.addStretch()
 
     def _load_presets(self):
         """config/presets 폴더에서 JSON 로드"""

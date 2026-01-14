@@ -133,11 +133,20 @@ class BatchOptimizer:
             self._update_status(f"최적화 실패 ({symbol}): {e}")
         return None
 
-    def save_preset(self, symbol: str, timeframe: str, result: dict) -> str:
-        """프리셋 저장"""
+    def save_preset(self, symbol: str, timeframe: str, result: dict, mode: str = 'standard') -> str:
+        """프리셋 저장 (v2.0 - 타임스탬프 포함)"""
         if get_preset_manager:
+            from config.constants import generate_preset_filename
+
             pm = get_preset_manager()
-            name = f"{self.exchange}_{symbol}_{timeframe}"
+            # 타임스탬프 포함된 파일명 생성
+            name = generate_preset_filename(
+                exchange=self.exchange,
+                symbol=symbol,
+                timeframe=timeframe,
+                mode=mode,
+                use_timestamp=True
+            ).replace('.json', '')  # preset_manager는 확장자 제외
             
             preset_data = {
                 '_meta': {

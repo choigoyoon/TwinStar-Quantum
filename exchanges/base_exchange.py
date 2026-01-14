@@ -13,6 +13,13 @@ from typing import Optional, Union, Dict, Any
 from datetime import datetime
 import pandas as pd
 
+# [NEW] 로컬 거래 DB 연동
+try:
+    from storage.local_trade_db import get_local_db, Execution
+except ImportError:
+    get_local_db = None
+    Execution = None
+
 
 @dataclass
 class Position:
@@ -333,4 +340,51 @@ class BaseExchange(ABC):
         except Exception as e:
             import logging
             logging.error(f"Trade log save error: {e}")
+
+    # ========== [NEW] LocalTradeDB 전용 훅 메서드 ==========
+
+    def _record_execution(self, side: str, price: float, amount: float, fee: float = 0.0, order_id: str = ""):
+        """체결 내역 로컬 DB 기록"""
+        if get_local_db is None or Execution is None:
+            return
+            
+        try:
+            db = get_local_db()
+            exe = Execution(
+                exchange=self.name,
+                symbol=self.symbol,
+                side='BUY' if side == 'Long' else 'SELL',
+                price=price,
+                amount=amount,
+                fee=fee,
+                order_id=order_id
+            )
+            db.add_execution(exe)
+        except Exception as e:
+            logging.error(f"[BaseExchange] Execution record error: {e}")
+
+    def _record_trade_close(self, exit_price: float, exit_amount: float, exit_side: str, fee: float = 0.0):
+        """청산 내역 및 PnL 계산 (FIFO)"""
+        if get_local_db is None:
+            return
+            
+        try:
+            db = get_local_db()
+            exit_time = datetime.now().isoformat()
+            
+            # FIFO PnL 계산 및 저장
+            trade = db.calculate_pnl_fifo(
+                exchange=self.name,
+                symbol=self.symbol,
+                exit_price=exit_price,
+                exit_amount=exit_amount,
+                exit_side='SELL' if exit_side == 'Long' else 'BUY', # Long 청산은 SELL 실행
+                exit_time=exit_time,
+                fee=fee
+            )
+            
+            if trade:
+                logging.info(f"📈 [PnL] {trade.symbol} {trade.side} Closed: {trade.pnl_pct:.2f}% (${trade.pnl:.2f})")
+        except Exception as e:
+            logging.error(f"[BaseExchange] Trade close record error: {e}")
 

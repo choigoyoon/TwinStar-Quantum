@@ -6,6 +6,9 @@
 
 import pandas as pd
 
+# 메트릭 계산 (SSOT)
+from utils.metrics import calculate_profit_factor, calculate_sharpe_ratio
+
 # Logging
 import logging
 logger = logging.getLogger(__name__)
@@ -130,8 +133,6 @@ def calculate_pnl_metrics(pnls: list) -> dict:
             'is_bankrupt': 파산 여부(bool)
         }
     """
-    import numpy as np
-    
     if not pnls:
         return {
             'win_rate': 0, 'simple_return': 0, 'compound_return': 0,
@@ -168,17 +169,12 @@ def calculate_pnl_metrics(pnls: list) -> dict:
             
     compound_return = (equity - 1) * 100 if not is_bankrupt else -100.0
     
-    # 2. Sharpe Ratio (연간화, 15분봉 기준 가공)
-    if pnl_series.std() > 0:
-        # 하루 4개 세션(15m 기준이 아니라 1h/4h 데이터가 혼재되어 있으므로 대략적 보정)
-        sharpe = (pnl_series.mean() / pnl_series.std()) * np.sqrt(252 * 4) 
-    else:
-        sharpe = 0
-        
-    # 3. Profit Factor
-    gains = pnl_series[pnl_series > 0].sum()
-    losses = abs(pnl_series[pnl_series < 0].sum())
-    pf = gains / losses if losses > 0 else float('inf')
+    # 2. Sharpe Ratio - SSOT (252 × 4 통일)
+    sharpe = calculate_sharpe_ratio(pnl_series.tolist(), periods_per_year=252 * 4)
+
+    # 3. Profit Factor - SSOT
+    trades_for_pf = [{'pnl': p} for p in pnl_series.tolist()]
+    pf = calculate_profit_factor(trades_for_pf)
     
     return {
         'win_rate': round(float(win_rate), 2),

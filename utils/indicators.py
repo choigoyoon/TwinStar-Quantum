@@ -241,6 +241,126 @@ def calculate_ema(
     return ema if return_series else float(ema.iloc[-1])
 
 
+def calculate_adx(
+    df: pd.DataFrame,
+    period: int = 14,
+    return_series: bool = False,
+    return_di: bool = False
+) -> Union[float, pd.Series, Tuple[pd.Series, pd.Series, pd.Series]]:
+    """
+    ADX (Average Directional Index) 계산
+
+    ADX는 추세의 강도를 측정하는 지표입니다:
+    - 0-25: 약한 추세 (range-bound market)
+    - 25-50: 강한 추세
+    - 50-75: 매우 강한 추세
+    - 75-100: 극도로 강한 추세
+
+    Args:
+        df: OHLC 데이터프레임 (high, low, close 컬럼 필수)
+        period: ADX 계산 기간 (기본값: 14)
+        return_series: True면 전체 Series 반환, False면 마지막 값만 반환
+        return_di: True면 (+DI, -DI, ADX) 3개 반환 (return_series=True 필요)
+
+    Returns:
+        float: 마지막 ADX 값 (return_series=False, return_di=False)
+        pd.Series: 전체 ADX 시리즈 (return_series=True, return_di=False)
+        Tuple[pd.Series, pd.Series, pd.Series]: (+DI, -DI, ADX) (return_series=True, return_di=True)
+
+    Note:
+        - Wilder's Smoothing 방식 사용
+        - 데이터가 부족하면 0 반환
+
+    Example:
+        >>> df = pd.DataFrame({'high': [...], 'low': [...], 'close': [...]})
+        >>> adx = calculate_adx(df, period=14)
+        >>> print(f"ADX: {adx:.2f}")
+        >>>
+        >>> # DI 포함 반환
+        >>> plus_di, minus_di, adx_series = calculate_adx(df, return_series=True, return_di=True)
+    """
+    if df is None or len(df) < period * 2:
+        if return_series:
+            empty = pd.Series([0.0] * len(df) if df is not None else [], index=df.index if df is not None else [])
+            return (empty, empty, empty) if return_di else empty
+        return 0.0
+
+    high = np.asarray(df['high'].values)
+    low = np.asarray(df['low'].values)
+    close = np.asarray(df['close'].values)
+
+    # +DM (Positive Directional Movement) 계산
+    plus_dm = np.zeros(len(df))
+    minus_dm = np.zeros(len(df))
+
+    for i in range(1, len(df)):
+        high_diff = high[i] - high[i-1]
+        low_diff = low[i-1] - low[i]
+
+        if high_diff > low_diff and high_diff > 0:
+            plus_dm[i] = high_diff
+        if low_diff > high_diff and low_diff > 0:
+            minus_dm[i] = low_diff
+
+    # True Range 계산 (ATR과 동일)
+    high_low = high - low
+    high_close = np.abs(high - np.roll(close, 1))
+    low_close = np.abs(low - np.roll(close, 1))
+
+    high_close[0] = high_low[0]
+    low_close[0] = high_low[0]
+
+    tr = np.maximum(np.maximum(high_low, high_close), low_close)
+
+    # Wilder's Smoothing (EMA-like with alpha = 1/period)
+    def wilder_smooth(data, period):
+        smoothed = np.zeros_like(data)
+        smoothed[period-1] = np.sum(data[:period])
+        for i in range(period, len(data)):
+            smoothed[i] = smoothed[i-1] - (smoothed[i-1] / period) + data[i]
+        return smoothed
+
+    # Smoothed True Range
+    atr_smooth = wilder_smooth(tr, period)
+
+    # Smoothed +DM and -DM
+    plus_dm_smooth = wilder_smooth(plus_dm, period)
+    minus_dm_smooth = wilder_smooth(minus_dm, period)
+
+    # +DI and -DI 계산
+    plus_di = 100 * plus_dm_smooth / atr_smooth
+    minus_di = 100 * minus_dm_smooth / atr_smooth
+
+    # 0으로 나누기 방지
+    plus_di = np.where(atr_smooth == 0, 0, plus_di)
+    minus_di = np.where(atr_smooth == 0, 0, minus_di)
+
+    # DX (Directional Index) 계산
+    di_sum = plus_di + minus_di
+    di_diff = np.abs(plus_di - minus_di)
+    dx = np.where(di_sum == 0, 0, 100 * di_diff / di_sum)
+
+    # ADX 계산 (DX의 Wilder's Smoothing)
+    adx = wilder_smooth(dx, period)
+
+    # Series로 변환
+    adx_series = pd.Series(adx, index=df.index)
+    plus_di_series = pd.Series(plus_di, index=df.index)
+    minus_di_series = pd.Series(minus_di, index=df.index)
+
+    # 초기 period*2 구간은 NaN 처리 (계산 불안정)
+    adx_series.iloc[:period*2-1] = 0
+    plus_di_series.iloc[:period-1] = 0
+    minus_di_series.iloc[:period-1] = 0
+
+    if return_series:
+        if return_di:
+            return plus_di_series, minus_di_series, adx_series
+        return adx_series
+    else:
+        return float(adx_series.iloc[-1])
+
+
 def calculate_sma(
     data: Union[np.ndarray, pd.Series],
     period: int = 20,
@@ -248,12 +368,12 @@ def calculate_sma(
 ) -> Union[float, pd.Series]:
     """
     SMA (Simple Moving Average) 계산
-    
+
     Args:
         data: 종가 데이터 (numpy array 또는 pandas Series)
         period: SMA 기간 (기본값: 20)
         return_series: True면 전체 Series 반환
-        
+
     Returns:
         float: 마지막 SMA 값 (return_series=False)
         pd.Series: 전체 SMA 시리즈 (return_series=True)
@@ -262,9 +382,9 @@ def calculate_sma(
         series = pd.Series(data)
     else:
         series = data
-    
+
     sma = series.rolling(window=period).mean()
-    
+
     return sma if return_series else float(sma.iloc[-1])
 
 

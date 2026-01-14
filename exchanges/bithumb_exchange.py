@@ -356,6 +356,10 @@ class BithumbExchange(BaseExchange):
                 order_id=order_id
             )
             logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
+            
+            # [NEW] 로컬 거래 DB 기록
+            self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+            
             return {'id': order_id, 'symbol': self.symbol, 'side': side, 'price': price, 'amount': size}
         
         logging.error(f"[Bithumb] Order failed: {result}")
@@ -391,6 +395,10 @@ class BithumbExchange(BaseExchange):
                 order_id=order_id
             )
             logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
+            
+            # [NEW] 로컬 거래 DB 기록
+            self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+            
             return {'id': order_id, 'symbol': self.symbol, 'side': side, 'price': price, 'amount': size}
         
         return False
@@ -427,6 +435,9 @@ class BithumbExchange(BaseExchange):
                 pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                 
                 logging.info(f"[Bithumb] Position closed: PnL {pnl:.2f}%")
+                
+                # [NEW] 로컬 거래 DB 기록 (FIFO PnL 계산)
+                self._record_trade_close(exit_price=price, exit_amount=float(balance), exit_side=self.position.side)
             
             self.position = None
             return True
@@ -470,6 +481,10 @@ class BithumbExchange(BaseExchange):
                 self.position.order_id = order_id
                 
                 logging.info(f"[Bithumb] Added: {size} @ {price:,.0f}원 (ID: {order_id})")
+                
+                # [NEW] 로컬 거래 DB 기록 (추가 매수/매도)
+                self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+                
                 return True
             
             return False

@@ -301,9 +301,17 @@ class MultiOptimizer:
             logging.error(f"[OPTIMIZER] Optimize error: {symbol}/{timeframe} - {e}")
             return None
     
-    def _save_preset(self, symbol: str, timeframe: str, result: Dict):
-        """프리셋 저장"""
-        filename = f"{self.exchange}_{symbol}_{timeframe}.json"
+    def _save_preset(self, symbol: str, timeframe: str, result: Dict, mode: str = 'standard'):
+        """프리셋 저장 (v2.0 - 타임스탬프 포함)"""
+        from config.constants import generate_preset_filename
+
+        filename = generate_preset_filename(
+            exchange=self.exchange,
+            symbol=symbol,
+            timeframe=timeframe,
+            mode=mode,
+            use_timestamp=True
+        )
         filepath = self.presets_dir / filename
         
         preset_data = {

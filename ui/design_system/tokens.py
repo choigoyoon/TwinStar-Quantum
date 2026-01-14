@@ -160,6 +160,19 @@ class SpacingTokens:
     space_12: str = "48px"
     space_16: str = "64px"
 
+    # === Integer values for PyQt (px 제거) ===
+    i_space_0: int = 0
+    i_space_1: int = 4
+    i_space_2: int = 8
+    i_space_3: int = 12
+    i_space_4: int = 16
+    i_space_5: int = 20
+    i_space_6: int = 24
+    i_space_8: int = 32
+    i_space_10: int = 40
+    i_space_12: int = 48
+    i_space_16: int = 64
+
 
 # ============================================================
 # RADIUS TOKENS
@@ -175,6 +188,13 @@ class RadiusTokens:
     radius_lg: str = "12px"     # 패널, 모달
     radius_xl: str = "16px"     # 대형 카드
     radius_full: str = "9999px" # 원형 (뱃지, 아바타)
+
+    # === Integer values for PyQt ===
+    i_radius_none: int = 0
+    i_radius_sm: int = 4
+    i_radius_md: int = 8
+    i_radius_lg: int = 12
+    i_radius_xl: int = 16
 
 
 # ============================================================

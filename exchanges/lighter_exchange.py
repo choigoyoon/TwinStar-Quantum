@@ -220,6 +220,44 @@ class LighterExchange(BaseExchange):
             return True
         return False
     
+    def get_positions(self) -> list:
+        """Lighter는 잔고 기반으로 포지션 재구성 (Upbit 방식)"""
+        try:
+            if not self.api_client:
+                return []
+                
+            # 계정 정보 조회 (API 클라이언트 추론)
+            async def fetch_account():
+                try:
+                    account_api = lighter.AccountApi(self.api_client)
+                    return await account_api.get_account(self.account_index)
+                except Exception:
+                    return None
+            
+            account = self._run_async(fetch_account())
+            if not account or not hasattr(account, 'balances'):
+                return []
+                
+            positions = []
+            for bal in account.balances:
+                # API 응답 형식에 따라 dict 또는 object 처리
+                symbol = bal.get('symbol', '') if isinstance(bal, dict) else getattr(bal, 'symbol', '')
+                amount = float(bal.get('amount', 0)) if isinstance(bal, dict) else float(getattr(bal, 'amount', 0))
+                
+                # 잔고가 있는 경우 포지션으로 간주
+                if amount > 0 and symbol != 'USDC': 
+                    positions.append({
+                        'symbol': symbol,
+                        'side': 'Long',
+                        'size': amount,
+                        'entry_price': float(bal.get('avg_price', 0)) if isinstance(bal, dict) else float(getattr(bal, 'avg_price', 0)),
+                        'leverage': 1
+                    })
+            return positions
+        except Exception as e:
+            logging.error(f"Lighter get_positions failed: {e}")
+            return []
+    
     def close_position(self) -> bool:
         """포지션 청산"""
         try:
@@ -269,11 +307,68 @@ class LighterExchange(BaseExchange):
             return False
     
     def get_balance(self) -> float:
-        """잔고 조회"""
-        return self.capital  # Lighter는 로컬 추적
+        """DEX 계정의 USDC 잔고 조회"""
+        try:
+            if not self.api_client:
+                return self.capital
+                
+            async def fetch_usdc_balance():
+                try:
+                    account_api = lighter.AccountApi(self.api_client)
+                    account = await account_api.get_account(self.account_index)
+                    for bal in account.balances:
+                        b_sym = bal.get('symbol') if isinstance(bal, dict) else getattr(bal, 'symbol', '')
+                        if b_sym == 'USDC':
+                            return float(bal.get('amount', 0)) if isinstance(bal, dict) else float(getattr(bal, 'amount', 0))
+                    return 0.0
+                except Exception:
+                    return None
+            
+            balance = self._run_async(fetch_usdc_balance())
+            if balance is not None:
+                self.capital = balance # 로컬 자본 동기화
+                return balance
+            return self.capital
+        except Exception:
+            return self.capital
     
     def sync_time(self) -> bool:
         """시간 동기화 (DEX는 블록체인 시간 사용으로 불필요)"""
+        return True
+
+    def start_websocket(self, interval='1m', on_candle_close=None, on_price_update=None, on_connect=None):
+        """Lighter는 공식 WS 미지원 -> 고주파 폴링 기반 가상 웹소켓 가동"""
+        logging.info(f"[Lighter] Starting Pseudo-WebSocket (Polling) for {self.symbol}")
+        
+        def polling_loop():
+            if on_connect: on_connect()
+            last_candle_time = None
+            
+            while True:
+                try:
+                    # 1. 가격 폴링 (0.5초 주기로 VME 대응)
+                    price = self.get_current_price()
+                    if price > 0 and on_price_update:
+                        on_price_update(price)
+                    
+                    # 2. 캔들 폴링 (1분 주기로 캔들 클로즈 감지)
+                    now = time.time()
+                    if not last_candle_time or now - last_candle_time >= 60:
+                        df = self.get_klines('1', limit=2)
+                        if df is not None and len(df) > 0:
+                            candle = df.iloc[-1].to_dict()
+                            if on_candle_close:
+                                on_candle_close(candle)
+                            last_candle_time = now
+                            
+                    time.sleep(0.5) # VME용 고주파 감시 (0.5s)
+                except Exception as e:
+                    logging.error(f"[Lighter-WS] Polling error: {e}")
+                    time.sleep(5)
+        
+        import threading
+        t = threading.Thread(target=polling_loop, daemon=True)
+        t.start()
         return True
 
     def add_position(self, side: str, size: float) -> bool:

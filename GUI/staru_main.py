@@ -167,7 +167,7 @@ HistoryWidget_Pkg = load_widget('history_widget', 'HistoryWidget')
 SettingsWidget_Pkg = load_widget('settings_widget', 'SettingsWidget')
 DataCollectorWidget_Pkg = load_widget('data_collector_widget', 'DataCollectorWidget')
 OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget')
-TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget')
+# TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget') # REMOVED: Merged into History/Results
 AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget')
 
 
@@ -343,17 +343,6 @@ class StarUWindow(QMainWindow):
             logger.info(f"  ❌ Optimization 생성 실패: {e}")
             self.optimization_widget = self._create_error_widget("Optimization", e)
 
-        # 7. Trade History Widget
-        cls, err = TradeHistoryWidget_Pkg
-        try:
-            if cls:
-                self.trade_history_widget = cls()
-                logger.info("  ✅ TradeHistory 생성 완료")
-            else:
-                self.trade_history_widget = self._create_error_widget("TradeHistory", err) # 필수 아님
-                logger.info(f"  ⚠️ TradeHistory 생성 실패: {err}")
-        except Exception as e:
-            logger.info(f"  ❌ TradeHistory 생성 실패: {e}")
             self.trade_history_widget = self._create_error_widget("TradeHistory", e)
         
     def _create_error_widget(self, title, e):
@@ -603,8 +592,8 @@ class StarUWindow(QMainWindow):
         self.tabs.addTab(self.data_collector_widget, f"📥 {t('tabs.data', '수집')}")
         self.tabs.addTab(self.backtest_widget, f"🔬 {t('tabs.backtest', '백테스트')}")
         self.tabs.addTab(self.optimization_widget, f"🎯 {t('tabs.optimization', '최적화')}")
-        self.tabs.addTab(self.history_widget, f"📈 {t('tabs.results', '결과')}")
-        self.tabs.addTab(self.trade_history_widget, f"📜 {t('dashboard.trade_history', '내역')}")
+        self.tabs.addTab(self.history_widget, f"📈 {t('tabs.results', '결과/내역')}")
+        # self.tabs.addTab(self.trade_history_widget, f"📜 {t('dashboard.trade_history', '내역')}") # MERGED
         
         layout.addWidget(self.tabs)
         
@@ -671,19 +660,35 @@ class StarUWindow(QMainWindow):
             logger.info(f"  - Rejected: {len(rejected)}건")
         logger.info(f"{'='*60}\n")
         
-        # History 탭으로 전환
-        logger.info("→ 결과 탭으로 전환...")
-        if hasattr(self.history_widget, 'refresh_trades'):
+        # History 탭으로 전환 & 결과 전달
+        logger.info("→ 결과/내역 탭으로 전환 및 데이터 전달...")
+        if hasattr(self.history_widget, 'add_backtest_results'):
+            cast(Any, self.history_widget).add_backtest_results(trades)
+        elif hasattr(self.history_widget, 'refresh_trades'):
             cast(Any, self.history_widget).refresh_trades()
+            
+        # 결과/내역 탭(5)으로 전환
+        self.tabs.setCurrentIndex(5)
         
-    def on_start_trading(self):
+    def on_start_trading(self, config: dict):
         """트레이딩 시작 - Dashboard에서 처리"""
-        logger.info("▶️ 트레이딩 시작...")
+        logger.info(f"▶️ 트레이딩 시작: {config}")
         self.tabs.setCurrentIndex(0)
+        
+        # 봇 카드 추가 (심볼 기반 키 생성)
+        bot_key = f"{config.get('exchange', 'any')}_{config.get('symbol', 'unknown')}"
+        if hasattr(self.dashboard, 'upsert_bot_card'):
+            cast(Any, self.dashboard).upsert_bot_card(bot_key, config)
         
     def on_stop_trading(self):
         """트레이딩 중지 - Dashboard에서 처리"""
         logger.info("⏹️ 트레이딩 중지...")
+        
+        # 모든 봇 카드 제거 (향후 개별 정지 시 특정 키만 제거 가능)
+        if hasattr(self.dashboard, 'bot_cards'):
+            keys = list(cast(Any, self.dashboard).bot_cards.keys())
+            for k in keys:
+                cast(Any, self.dashboard).remove_bot_card(k)
 
     def on_settings_optimized(self, params):
         """최적화된 설정 적용 핸들러"""

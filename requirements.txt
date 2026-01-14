@@ -17,6 +17,8 @@ matplotlib>=3.8.0
 pybit>=5.7.0
 python-binance>=1.0.19
 ccxt>=4.2.0
+okx>=1.0.0
+bitget-python>=1.0.0
 
 # Korean Exchanges
 pyupbit>=0.2.33

@@ -14,6 +14,16 @@ from typing import Optional, Any, Dict, Union, List, cast
 from typing import Sequence
 import pandas as pd
 
+try:
+    from bitget.v2.mix.order_api import OrderApi # type: ignore
+    from bitget.v2.mix.account_api import AccountApi # type: ignore
+    BITGET_SDK_AVAILABLE = True
+except ImportError:
+    BITGET_SDK_AVAILABLE = False
+    OrderApi = None
+    AccountApi = None
+
+USE_DIRECT_API = True
 
 from .base_exchange import BaseExchange, Position
 
@@ -37,6 +47,11 @@ class BitgetExchange(BaseExchange):
         self.passphrase = config.get('passphrase', '')
         self.testnet = config.get('testnet', False)
         self.exchange: Optional[Any] = None
+        
+        # Bitget SDK 클라이언트 (매매용)
+        self.trade_api: Optional[Any] = None
+        self.account_api: Optional[Any] = None
+        
         self.time_offset = 0
         self.hedge_mode = False
         
@@ -62,7 +77,6 @@ class BitgetExchange(BaseExchange):
                 }
             })
 
-            
             if self.testnet:
                 self.exchange.set_sandbox_mode(True)
             
@@ -71,17 +85,26 @@ class BitgetExchange(BaseExchange):
             
             self.exchange.load_markets()
             
-            # [NEW] Hedge Mode Check
-            try:
-                # Bitget may not support fetchPositionMode via CCXT consistently, but we try
-                # If unsupported, User should ensure One-Way or we assume One-Way
-                self.hedge_mode = False 
-                # Uncomment if CCXT implementation is verified:
-                # mode = self.exchange.fetch_position_mode(self._convert_symbol(self.symbol))
-                # self.hedge_mode = mode['hedged']
-                logging.info(f"Bitget Position Mode: {'Hedge (Assumed False)' if self.hedge_mode else 'One-Way'}")
-            except Exception:
-                self.hedge_mode = False
+            # [NEW] Bitget SDK 연결 (매매용)
+            if BITGET_SDK_AVAILABLE:
+                try:
+                    # bitget-python SDK는 실거래/테스트넷 설정을 URL이나 파라미터로 처리
+                    # 기본적으로 OrderApi 생성 시 필요한 정보 전달
+                    self.trade_api = cast(Any, OrderApi)(
+                        self.api_key, 
+                        self.api_secret, 
+                        self.passphrase,
+                        is_testnet=self.testnet
+                    )
+                    self.account_api = cast(Any, AccountApi)(
+                        self.api_key, 
+                        self.api_secret, 
+                        self.passphrase,
+                        is_testnet=self.testnet
+                    )
+                    logging.info("[Bitget] 공식 SDK 연결 완료 (매매용)")
+                except Exception as sdk_err:
+                    logging.error(f"[Bitget] SDK 연결 실패: {sdk_err}")
             
             logging.info(f"Bitget connected. Time offset: {self.time_offset}ms")
             return True
@@ -132,9 +155,112 @@ class BitgetExchange(BaseExchange):
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
             return 0.0
+
+    def _convert_symbol_direct(self, symbol: str) -> str:
+        """SDK용 심볼 변환 (BTCUSDT)"""
+        return symbol.replace('/', '').replace('-', '').replace(':USDT', '').upper()
     
     def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """시장가 주문"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._place_order_direct(side, size, stop_loss, take_profit, client_order_id)
+        else:
+            return self._place_order_ccxt(side, size, stop_loss, take_profit, client_order_id)
+
+    def _place_order_direct(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+        """Bitget SDK 직접 주문"""
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                symbol = self._convert_symbol_direct(self.symbol)
+                order_side = 'buy' if side == 'Long' else 'sell'
+                
+                params = {
+                    'symbol': symbol,
+                    'productType': 'USDT-FUTURES',
+                    'marginMode': 'cross',
+                    'side': order_side,
+                    'orderType': 'market',
+                    'size': str(size)
+                }
+                
+                if client_order_id:
+                    params['clientOid'] = client_order_id
+                
+                res = cast(Any, self.trade_api).place_order(params)
+                
+                if res.get('code') == '00000':
+                    order_data = res.get('data', {})
+                    order_id = order_data.get('orderId', '')
+                    price = self.get_current_price()
+                    
+                    logging.info(f"[Bitget-Direct] Order SUCCESS: {side} {size} @ {price} (ID: {order_id})")
+                    
+                    # 2. SL 설정 (TPSL Order)
+                    if stop_loss > 0:
+                        try:
+                            sl_params = {
+                                'symbol': symbol,
+                                'productType': 'USDT-FUTURES',
+                                'planType': 'loss_plan',
+                                'triggerPrice': str(stop_loss),
+                                'triggerType': 'mark_price',
+                                'holdSide': 'long' if side == 'Long' else 'short',
+                                'size': str(size)
+                            }
+                            sl_res = cast(Any, self.trade_api).place_tpsl_order(sl_params)
+                            
+                            if sl_res.get('code') != '00000':
+                                raise Exception(f"SL API error: {sl_res}")
+                            logging.info(f"[Bitget-Direct] SL set: {stop_loss}")
+                            
+                        except Exception as sl_err:
+                            logging.error(f"[Bitget] ❌ SL FAIL! Emergency Close: {sl_err}")
+                            self._close_position_direct()
+                            return False
+                    
+                    # 3. TP 설정
+                    if take_profit > 0:
+                        try:
+                            tp_params = {
+                                'symbol': symbol,
+                                'productType': 'USDT-FUTURES',
+                                'planType': 'profit_plan',
+                                'triggerPrice': str(take_profit),
+                                'triggerType': 'mark_price',
+                                'holdSide': 'long' if side == 'Long' else 'short',
+                                'size': str(size)
+                            }
+                            cast(Any, self.trade_api).place_tpsl_order(tp_params)
+                        except Exception as tp_err:
+                            logging.warning(f"[Bitget] TP set warning: {tp_err}")
+
+                    self.position = Position(
+                        symbol=self.symbol,
+                        side=side,
+                        entry_price=price,
+                        size=size,
+                        stop_loss=stop_loss,
+                        initial_sl=stop_loss,
+                        risk=abs(price - stop_loss),
+                        be_triggered=False,
+                        entry_time=datetime.now(),
+                        order_id=order_id
+                    )
+                    return {'id': order_id, 'status': 'filled'}
+                else:
+                    logging.error(f"[Bitget-Direct] Order API Fail: {res}")
+                    if attempt < max_retries - 1: time.sleep(2)
+                    
+            except Exception as e:
+                logging.error(f"[Bitget-Direct] Exception: {e}")
+                if attempt < max_retries - 1: time.sleep(2)
+                
+        return False
+
+    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+        """기존 CCXT 주문 로직 (폴백용)"""
         max_retries = 3
         
         for attempt in range(max_retries):
@@ -241,7 +367,7 @@ class BitgetExchange(BaseExchange):
                     return order
                     
             except Exception as e:
-                logging.error(f"[Bitget] Order error: {e}")
+                logging.error(f"[Bitget-CCXT] Order error: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
         
@@ -249,6 +375,48 @@ class BitgetExchange(BaseExchange):
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._update_sl_direct(new_sl)
+        else:
+            return self._update_sl_ccxt(new_sl)
+
+    def _update_sl_direct(self, new_sl: float) -> bool:
+        """SDK 직접 SL 수정"""
+        try:
+            if not self.position: return False
+            symbol = self._convert_symbol_direct(self.symbol)
+            
+            # 기존 TPSL 주문 일괄 취소
+            cancel_params = {
+                'symbol': symbol,
+                'productType': 'USDT-FUTURES',
+                'planType': 'loss_plan'
+            }
+            cast(Any, self.trade_api).cancel_plan_order(cancel_params)
+            
+            # 새 SL 주문 (Trigger Price 방식)
+            sl_params = {
+                'symbol': symbol,
+                'productType': 'USDT-FUTURES',
+                'planType': 'loss_plan',
+                'triggerPrice': str(new_sl),
+                'triggerType': 'mark_price',
+                'holdSide': 'long' if self.position.side == 'Long' else 'short',
+                'size': str(self.position.size)
+            }
+            res = cast(Any, self.trade_api).place_tpsl_order(sl_params)
+            
+            if res.get('code') == '00000':
+                self.position.stop_loss = new_sl
+                logging.info(f"[Bitget-Direct] SL updated: {new_sl}")
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"[Bitget-Direct] SL update error: {e}")
+            return False
+
+    def _update_sl_ccxt(self, new_sl: float) -> bool:
+        """기존 CCXT SL 수정 로직"""
         try:
             symbol = self._convert_symbol(self.symbol)
             
@@ -294,6 +462,49 @@ class BitgetExchange(BaseExchange):
     
     def close_position(self) -> bool:
         """포지션 청산"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._close_position_direct()
+        else:
+            return self._close_position_ccxt()
+
+    def _close_position_direct(self) -> bool:
+        """SDK 직접 청산"""
+        try:
+            if not self.position: return True
+            symbol = self._convert_symbol_direct(self.symbol)
+            
+            # v2 API: close_position 대신 place_order로 반대 매매 (market, reduceOnly)
+            params = {
+                'symbol': symbol,
+                'productType': 'USDT-FUTURES',
+                'marginMode': 'cross',
+                'side': 'sell' if self.position.side == 'Long' else 'buy',
+                'orderType': 'market',
+                'size': str(self.position.size),
+                'reduceOnly': 'true'
+            }
+            res = cast(Any, self.trade_api).place_order(params)
+            
+            if res.get('code') == '00000':
+                price = self.get_current_price()
+                if self.position.side == 'Long':
+                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                else:
+                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+                
+                profit_usd = self.capital * self.leverage * (pnl / 100)
+                self.capital += profit_usd
+                
+                logging.info(f"[Bitget-Direct] Position closed: PnL {pnl:.2f}%")
+                self.position = None
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"[Bitget-Direct] Close error: {e}")
+            return False
+
+    def _close_position_ccxt(self) -> bool:
+        """기존 CCXT 청산 로직"""
         try:
             if not self.position:
                 return True
@@ -339,6 +550,44 @@ class BitgetExchange(BaseExchange):
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._add_position_direct(side, size)
+        else:
+            return self._add_position_ccxt(side, size)
+
+    def _add_position_direct(self, side: str, size: float) -> bool:
+        """SDK 직접 추가 진입"""
+        try:
+            if not self.position or side != self.position.side: return False
+            symbol = self._convert_symbol_direct(self.symbol)
+            
+            params = {
+                'symbol': symbol,
+                'productType': 'USDT-FUTURES',
+                'marginMode': 'cross',
+                'side': 'buy' if side == 'Long' else 'sell',
+                'orderType': 'market',
+                'size': str(size)
+            }
+            res = cast(Any, self.trade_api).place_order(params)
+            
+            if res.get('code') == '00000':
+                price = self.get_current_price()
+                total_size = self.position.size + size
+                avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
+                
+                self.position.size = total_size
+                self.position.entry_price = avg_price
+                
+                logging.info(f"[Bitget-Direct] Added: {size} @ {price}, Avg: {avg_price:.2f}")
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"[Bitget-Direct] Add Error: {e}")
+            return False
+
+    def _add_position_ccxt(self, side: str, size: float) -> bool:
+        """기존 CCXT 추가 진입 로직"""
         try:
             if not self.position or side != self.position.side:
                 return False
@@ -374,7 +623,30 @@ class BitgetExchange(BaseExchange):
             return False
     
     def get_balance(self) -> float:
-        """잔고 조회 (USDT-M 선물 계정)"""
+        """잔고 조회"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._get_balance_direct()
+        else:
+            return self._get_balance_ccxt()
+
+    def _get_balance_direct(self) -> float:
+        """SDK 직접 잔고 조회"""
+        try:
+            # v2 API: account_api.account()
+            res = cast(Any, self.account_api).account({
+                'symbol': self._convert_symbol_direct(self.symbol),
+                'productType': 'USDT-FUTURES'
+            })
+            if res.get('code') == '00000':
+                data = res.get('data', {})
+                return float(data.get('available', 0))
+            return 0.0
+        except Exception as e:
+            logging.error(f"[Bitget-Direct] Balance error: {e}")
+            return 0.0
+
+    def _get_balance_ccxt(self) -> float:
+        """기존 CCXT 잔고 조회 로직"""
         if self.exchange is None:
             return 0
         try:
@@ -383,7 +655,7 @@ class BitgetExchange(BaseExchange):
             balance = self.exchange.fetch_balance(params={'productType': 'USDT-FUTURES'})
             return safe_float(balance.get('USDT', {}).get('free', 0))
         except Exception as e:
-            logging.error(f"[Bitget] Balance error: {e}")
+            logging.error(f"[Bitget-CCXT] Balance error: {e}")
             return 0
             
     def fetch_balance(self, params={}):
@@ -414,6 +686,39 @@ class BitgetExchange(BaseExchange):
     
     def get_positions(self) -> Optional[list]:
         """모든 열린 포지션 조회 (긴급청산용)"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._get_positions_direct()
+        else:
+            return self._get_positions_ccxt()
+
+    def _get_positions_direct(self) -> Optional[list]:
+        """SDK 직접 포지션 조회"""
+        try:
+            # v2 API: account_api.positions()
+            res = cast(Any, self.account_api).positions({
+                'productType': 'USDT-FUTURES'
+            })
+            if res.get('code') == '00000':
+                pos_list = []
+                for pos in res.get('data', []):
+                    size = abs(float(pos.get('total', 0)))
+                    if size > 0:
+                        pos_list.append({
+                            'symbol': pos.get('symbol', ''),
+                            'side': 'Buy' if pos.get('holdSide') == 'long' else 'Sell',
+                            'size': size,
+                            'entry_price': float(pos.get('averageOpenPrice', 0)),
+                            'unrealized_pnl': float(pos.get('unrealizedPL', 0)),
+                            'leverage': int(pos.get('leverage', 1))
+                        })
+                return pos_list
+            return []
+        except Exception as e:
+            logging.error(f"[Bitget-Direct] Positions error: {e}")
+            return None
+
+    def _get_positions_ccxt(self) -> Optional[list]:
+        """기존 CCXT 포지션 조회 로직"""
         try:
             if self.exchange is None:
                 return []
@@ -440,6 +745,33 @@ class BitgetExchange(BaseExchange):
             return None
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
+        if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
+            return self._set_leverage_direct(leverage)
+        else:
+            return self._set_leverage_ccxt(leverage)
+
+    def _set_leverage_direct(self, leverage: int) -> bool:
+        """SDK 직접 레버리지 설정"""
+        try:
+            symbol = self._convert_symbol_direct(self.symbol)
+            params = {
+                'symbol': symbol,
+                'productType': 'USDT-FUTURES',
+                'leverage': str(leverage),
+                'marginMode': 'cross'
+            }
+            res = cast(Any, self.account_api).set_leverage(params)
+            if res.get('code') == '00000':
+                self.leverage = leverage
+                logging.info(f"[Bitget-Direct] Leverage set to {leverage}x")
+                return True
+            return False
+        except Exception as e:
+            logging.error(f"[Bitget-Direct] Leverage error: {e}")
+            return False
+
+    def _set_leverage_ccxt(self, leverage: int) -> bool:
+        """기존 CCXT 레버리지 설정 로직"""
         if self.exchange is None: return False
         try:
             symbol = self._convert_symbol(self.symbol)
@@ -451,7 +783,7 @@ class BitgetExchange(BaseExchange):
             if "leverage not modified" in str(e).lower():
                 self.leverage = leverage
                 return True
-            logging.error(f"[Bitget] Leverage error: {e}")
+            logging.error(f"[Bitget-CCXT] Leverage error: {e}")
             return False
 
     # ============================================

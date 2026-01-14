@@ -5,6 +5,9 @@ import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import pandas as pd
 
+# 메트릭 계산 (SSOT)
+from utils.metrics import calculate_profit_factor, calculate_sharpe_ratio
+
 try:
     from config.parameters import PARAM_RANGES, DEFAULT_PARAMS
 except ImportError:
@@ -173,7 +176,6 @@ def _worker_run_backtest(args):
     """
     import pandas as pd
     import math
-    import numpy as np
     
     params, df_dict, columns = args
     
@@ -280,18 +282,12 @@ def _worker_run_backtest(args):
         if mdd < 10 and win_rate > 60: strategy_type = "🛡 보수"
         elif simple_return > 100 or leverage > 10: strategy_type = "🔥 공격"
         
-        # Sharpe
-        if len(pnls) > 1:
-            std = np.std(pnls)
-            avg = np.mean(pnls)
-            sharpe = (avg / std) * np.sqrt(252 * 6) if std > 1e-6 else 0
-        else:
-            sharpe = 0
-        
-        # Profit Factor
-        gains = sum([p for p in pnls if p > 0])
-        losses = abs(sum([p for p in pnls if p < 0]))
-        profit_factor = gains / losses if losses > 1e-6 else gains
+        # Sharpe Ratio - SSOT (252 × 4 통일)
+        sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 4)
+
+        # Profit Factor - SSOT
+        trades_for_pf = [{'pnl': p} for p in pnls]
+        profit_factor = calculate_profit_factor(trades_for_pf)
         
         # Stability
         n = len(pnls)
@@ -450,19 +446,12 @@ class OptimizationEngine:
             if mdd < 10 and win_rate > 60: strategy_type = "🛡 보수"
             elif simple_return > 100 or leverage > 10: strategy_type = "🔥 공격"
             
-            # Sharpe Ratio (Standardized to 252 * 4 entries/day approximation)
-            import numpy as np
-            if len(pnls) > 1:
-                std = np.std(pnls)
-                avg = np.mean(pnls)
-                sharpe = (avg / std) * np.sqrt(252 * 6) if std > 1e-6 else 0
-            else:
-                sharpe = 0
-                
-            # Profit Factor
-            gains = sum([p for p in pnls if p > 0])
-            losses = abs(sum([p for p in pnls if p < 0]))
-            profit_factor = gains / losses if losses > 1e-6 else gains
+            # Sharpe Ratio - SSOT (252 × 4 통일)
+            sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 4)
+
+            # Profit Factor - SSOT
+            trades_for_pf = [{'pnl': p} for p in pnls]
+            profit_factor = calculate_profit_factor(trades_for_pf)
             
             # Stability (3 stages)
             n = len(pnls)

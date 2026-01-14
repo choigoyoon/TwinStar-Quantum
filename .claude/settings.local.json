@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(/c/Users/woojupapa/AppData/Local/Programs/Python/Python312/python.exe -m pyright:*)",
-      "Bash(/c/Users/woojupapa/AppData/Local/Programs/Python/Python312/python.exe -c \"import sys, json; data=json.load\\(sys.stdin\\); print\\(f\"\"총 에러: {data[''summary''][''errorCount'']}\\\\n총 경고: {data[''summary''][''warningCount'']}\\\\n분석 파일: {data[''summary''][''filesAnalyzed'']}\"\"\\)\")"
+      "Bash(/c/Users/woojupapa/AppData/Local/Programs/Python/Python312/python.exe -c \"import sys, json; data=json.load\\(sys.stdin\\); print\\(f\"\"총 에러: {data[''summary''][''errorCount'']}\\\\n총 경고: {data[''summary''][''warningCount'']}\\\\n분석 파일: {data[''summary''][''filesAnalyzed'']}\"\"\\)\")",
+      "Bash(timeout /t 10)",
+      "Bash(findstr:*)"
     ]
   }
 }

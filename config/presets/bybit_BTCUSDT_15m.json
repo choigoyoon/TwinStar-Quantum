@@ -1,0 +1,45 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "entry_tf": "15m",
+        "created": "2026-01-14 23:45:41",
+        "candles": 203633,
+        "period_start": "2020-03-25",
+        "period_end": "2026-01-14",
+        "name": "bybit_BTCUSDT_15m",
+        "updated": "2026-01-14 23:45:41"
+    },
+    "_result": {
+        "trades": 4788,
+        "win_rate": 61.6,
+        "total_return": 675.6,
+        "mdd": 16.7,
+        "sharpe": 10.35
+    },
+    "params": {
+        "macd_fast": 6,
+        "macd_slow": 18,
+        "macd_signal": 7,
+        "ema_period": 10,
+        "atr_mult": 1.05,
+        "atr_period": 14,
+        "rsi_period": 14,
+        "trail_start_r": 0.7,
+        "trail_dist_r": 0.08,
+        "pullback_rsi_long": 35,
+        "pullback_rsi_short": 60,
+        "enable_pullback": true,
+        "pattern_tolerance": 0.05,
+        "entry_validity_hours": 24.0,
+        "max_adds": 1,
+        "filter_tf": "2h",
+        "entry_tf": "15m",
+        "direction": "Both",
+        "slippage": 0.0006,
+        "fee": 0.00055,
+        "leverage": 1,
+        "max_slippage": 0.01
+    }
+}

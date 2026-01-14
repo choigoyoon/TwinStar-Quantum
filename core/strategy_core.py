@@ -14,6 +14,9 @@ from dataclasses import dataclass
 # 통합 지표 모듈
 from utils.indicators import calculate_rsi as _calc_rsi, calculate_atr as _calc_atr
 
+# 메트릭 계산 (SSOT)
+from utils.metrics import calculate_mdd
+
 # Logging
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
@@ -68,50 +71,33 @@ def _to_dt(ts: Any) -> Optional[pd.Timestamp]:
 
 
 # ============ MDD 및 메트릭 계산 함수 ============
-
-def calculate_mdd(trades: List[Dict]) -> float:
-    """
-    최대 낙폭(MDD) 계산
-    
-    Args:
-        trades: 거래 목록 [{'pnl': float, ...}, ...]
-    
-    Returns:
-        MDD (%) - 양수로 반환 (예: 15.3 = -15.3% 낙폭)
-    """
-    if not trades:
-        return 0.0
-    
-    equity = [100.0]  # 시작 자본 100%
-    for t in trades:
-        pnl = t.get('pnl', 0)
-        equity.append(equity[-1] * (1 + pnl / 100))
-    
-    # 최고점 대비 낙폭 계산
-    peak = equity[0]
-    max_dd = 0.0
-    for e in equity:
-        if e > peak:
-            peak = e
-        if peak > 0:
-            dd = (peak - e) / peak * 100
-            if dd > max_dd:
-                max_dd = dd
-    
-    return max_dd
-
+# NOTE: calculate_mdd()는 utils.metrics로 이동 (SSOT)
+# NOTE: calculate_backtest_metrics()도 utils.metrics로 통합 (Phase 1-B)
 
 def calculate_backtest_metrics(trades: List[Dict], leverage: int = 1) -> Dict:
     """
-    백테스트 결과에서 전체 메트릭 계산
-    
+    백테스트 결과에서 전체 메트릭 계산 (Wrapper for utils.metrics.calculate_backtest_metrics)
+
     Args:
         trades: 거래 목록
         leverage: 레버리지 배수
-    
+
     Returns:
         Dict with: total_return, trade_count, win_rate, profit_factor, max_drawdown, sharpe_ratio
+        (키 이름이 utils.metrics와 다름 - 하위 호환성 유지)
+
+    Note:
+        이 함수는 utils.metrics.calculate_backtest_metrics를 호출하고,
+        키 이름을 변환하여 반환합니다 (하위 호환성).
+
+        utils.metrics          →  core.strategy_core
+        ───────────────────────────────────────────
+        total_pnl             →  total_return
+        total_trades          →  trade_count
+        mdd                   →  max_drawdown
     """
+    from utils.metrics import calculate_backtest_metrics as calc_metrics
+
     if not trades:
         return {
             'total_return': 0.0,
@@ -121,36 +107,21 @@ def calculate_backtest_metrics(trades: List[Dict], leverage: int = 1) -> Dict:
             'max_drawdown': 0.0,
             'sharpe_ratio': 0.0,
         }
-    
-    pnls = [t.get('pnl', 0) * leverage for t in trades]
-    wins = [p for p in pnls if p > 0]
-    losses = [p for p in pnls if p < 0]
-    
-    total_return = sum(pnls)
-    win_rate = len(wins) / len(trades) * 100 if trades else 0
-    
-    total_gains = sum(wins) if wins else 0
-    total_losses = abs(sum(losses)) if losses else 0
-    profit_factor = total_gains / total_losses if total_losses > 0 else (total_gains if total_gains > 0 else 0)
-    
-    # MDD 계산
-    mdd = calculate_mdd(trades)
-    
-    # Sharpe Ratio (연간화)
-    if len(pnls) > 1:
-        mean_return = np.mean(pnls)
-        std_return = np.std(pnls)
-        sharpe = (mean_return / std_return * np.sqrt(252)) if std_return > 0 else 0
-    else:
-        sharpe = 0
-    
+
+    # leverage 적용된 거래 생성
+    leveraged_trades = [{'pnl': t.get('pnl', 0) * leverage} for t in trades]
+
+    # utils.metrics로 계산
+    metrics = calc_metrics(leveraged_trades, leverage=1, capital=100.0)
+
+    # 키 이름 변환 (하위 호환성)
     return {
-        'total_return': total_return,
-        'trade_count': len(trades),
-        'win_rate': win_rate,
-        'profit_factor': profit_factor,
-        'max_drawdown': mdd,
-        'sharpe_ratio': sharpe,
+        'total_return': metrics['total_pnl'],
+        'trade_count': metrics['total_trades'],
+        'win_rate': metrics['win_rate'],
+        'profit_factor': metrics['profit_factor'],
+        'max_drawdown': metrics['mdd'],
+        'sharpe_ratio': metrics['sharpe_ratio'],
         'trades': trades,  # 원본 거래 목록 포함
     }
 

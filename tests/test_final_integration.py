@@ -31,7 +31,7 @@ df_1h = df_15m.resample('1h').agg({
 df_15m = df_15m.reset_index()
 
 print(f"📊 데이터: 1h={len(df_1h)}개 ({len(df_1h)//24}일)")
-print(f"⚙️ 적용된 기본 파라미터 (C:\매매전략\GUI\constants.py):")
+print(r"⚙️ 적용된 기본 파라미터 (C:\매매전략\GUI\constants.py):")
 for k, v in DEFAULT_PARAMS.items():
     if k in ['macd_fast', 'macd_slow', 'macd_signal', 'ema_period', 'atr_mult', 'rsi_period', 'filter_tf']:
         print(f"  - {k}: {v}")

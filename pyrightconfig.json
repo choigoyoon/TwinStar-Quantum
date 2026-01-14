@@ -1,0 +1,31 @@
+{
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/backups",
+    "**/archive",
+    "**/refactor_backup",
+    "**/.venv/**"
+  ],
+  "ignore": ["**/backups/*.py", "**/archive/*.py"],
+  "venvPath": "f:\\TwinStar-Quantum",
+  "venv": "venv",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.12",
+      "pythonPlatform": "Windows",
+      "extraPaths": [".", "GUI", "core", "utils", "exchanges", "for_local", "strategies"]
+    }
+  ],
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": "none",
+  "reportOptionalMemberAccess": "error",
+  "reportOptionalCall": "error",
+  "reportGeneralTypeIssues": "error",
+  "reportAttributeAccessIssue": "error",
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows",
+  "analysisMode": "workspace",
+  "typeCheckingMode": "basic"
+}

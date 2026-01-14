@@ -107,7 +107,7 @@ class DeepVerifier:
         
         try:
             # [FIX] DataDownloader -> GUI.data_manager.DataManager
-            from GUI.data_manager import DataManager
+            from GUI.data_cache import DataManager
             downloader = DataManager()
             self.log("data_collector", "DataManager 로드", True, "")
             

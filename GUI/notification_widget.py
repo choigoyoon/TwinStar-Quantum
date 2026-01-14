@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QTime
 
-from notification_manager import NotificationManager
+from GUI.notification_manager import NotificationManager
 
 
 class NotificationWidget(QWidget):

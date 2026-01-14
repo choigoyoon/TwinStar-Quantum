@@ -318,7 +318,8 @@ class DataManager:
             if listing:
                 return listing
         except Exception:
-            pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
         
         # 2. 하드코딩된 값에서 조회
         if clean in self.COIN_LISTING_DATES:
@@ -499,8 +500,8 @@ class DataManager:
                 try:
                     listing_ts = int(pd.Timestamp(listing_date).timestamp() * 1000)
                 except Exception:
-
-                    pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
             
             # since 설정
             if since is None:
@@ -624,7 +625,8 @@ class DataManager:
                 self._save_cache(cache_path, df)
                 return df
             except Exception:
-                pass  # 레거시 DB 변환 실패 무시
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")  # 레거시 DB 변환 실패 무시
         
         return None
     

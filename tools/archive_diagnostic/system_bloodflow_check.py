@@ -285,7 +285,7 @@ def check_preset_dir():
 
 def check_indicator_generator():
     try:
-        from indicator_generator import IndicatorGenerator
+        from utils.indicators import IndicatorGenerator
         return {'location': 'root', 'class': True}
     except ImportError:
         try:

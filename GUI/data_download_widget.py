@@ -9,8 +9,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal
 from datetime import datetime
 
-from exchange_selector_widget import ExchangeSelectorWidget
-from data_manager import DataManager
+from GUI.exchange_selector_widget import ExchangeSelectorWidget
+from GUI.data_cache import DataManager
 
 
 class DownloadWorker(QThread):

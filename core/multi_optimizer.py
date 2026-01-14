@@ -21,7 +21,7 @@ logger = get_module_logger(__name__)
 
 # DataManager import
 try:
-    from GUI.data_manager import DataManager
+    from GUI.data_cache import DataManager
 except ImportError:
     DataManager = None
 
@@ -195,7 +195,7 @@ class MultiOptimizer:
             
             # 지표 추가
             try:
-                from indicator_generator import IndicatorGenerator
+                from utils.indicators import IndicatorGenerator
                 df_15m = IndicatorGenerator.add_all_indicators(df_15m)
                 df_1h = IndicatorGenerator.add_all_indicators(df_1h)
             except ImportError as e:

@@ -10,7 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 # 기존 모듈 임포트
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 from GUI.symbol_cache import SymbolCache
 from utils.symbol_converter import extract_base
 

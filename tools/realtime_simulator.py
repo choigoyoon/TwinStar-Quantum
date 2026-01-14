@@ -15,7 +15,7 @@ from datetime import datetime
 from core.strategy_core import AlphaX7Core
 
 try:
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
 except ImportError:
     IndicatorGenerator = None
 

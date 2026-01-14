@@ -176,7 +176,7 @@ class BotDataManager:
             try:
                 from utils.indicators import add_all_indicators
             except ImportError:
-                from indicator_generator import IndicatorGenerator
+                from utils.indicators import IndicatorGenerator
                 add_all_indicators = IndicatorGenerator.add_all_indicators
             
             # 1. Entry TF 리샘플링
@@ -268,7 +268,8 @@ class BotDataManager:
                         import shutil
                         shutil.copy(entry_file, upbit_file)
                     except Exception:
-                        pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
             
             # 1h 데이터 저장
             if self.df_pattern_full is not None and len(self.df_pattern_full) > 0:

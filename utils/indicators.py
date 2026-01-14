@@ -329,6 +329,29 @@ def add_all_indicators(
 
 
 # 하위 호환성을 위한 클래스 래퍼
+class IndicatorGenerator:
+    """
+    지표 생성기 Utility (레거시 호환용)
+
+    Note: 새 코드에서는 utils.indicators 모듈 함수를 직접 사용하세요.
+    """
+
+    @staticmethod
+    def add_all_indicators(df):
+        """모든 필수 지표 추가"""
+        return add_all_indicators(df)
+
+    @staticmethod
+    def calculate_rsi(series, period=14):
+        """RSI 계산 (SMA 방식)"""
+        return calculate_rsi(series, period=period, return_series=True)
+
+    @staticmethod
+    def calculate_atr(df, period=14):
+        """ATR 계산"""
+        return calculate_atr(df, period=period, return_series=True)
+
+
 class IndicatorCalculator:
     """
     레거시 코드 호환용 클래스 래퍼

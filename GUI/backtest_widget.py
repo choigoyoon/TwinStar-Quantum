@@ -146,7 +146,7 @@ class BacktestWorker(QThread):
             
             # Add indicators
             try:
-                from indicator_generator import IndicatorGenerator
+                from utils.indicators import IndicatorGenerator
                 df_pattern = IndicatorGenerator.add_all_indicators(df_pattern)
             except Exception as e:
                 logger.info(f"Indicator calculation failed: {e}")
@@ -271,9 +271,9 @@ class SingleBacktestWidget(QWidget):
                 os.chdir(project_root)
             
             try:
-                from GUI.data_manager import DataManager
+                from GUI.data_cache import DataManager
             except ImportError:
-                from data_manager import DataManager
+                from GUI.data_cache import DataManager
             
             dm = DataManager()
             df = None
@@ -740,7 +740,7 @@ class SingleBacktestWidget(QWidget):
             return
         
         try:
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             from core.strategy_core import AlphaX7Core
             
             dm = DataManager()
@@ -748,10 +748,10 @@ class SingleBacktestWidget(QWidget):
             
             if df is not None and not df.empty:
                 try:
-                    from indicator_generator import IndicatorGenerator
+                    from utils.indicators import IndicatorGenerator
                     df = IndicatorGenerator.add_all_indicators(df)
                 except ImportError:
-                    pass
+                    pass  # Indicators not available
                 
                 if 'rsi' not in df.columns and 'rsi_14' in df.columns:
                     df['rsi'] = df['rsi_14']
@@ -915,7 +915,8 @@ class SingleBacktestWidget(QWidget):
                     hours = pd.Timedelta(diff).total_seconds() / 3600
                     duration = f"{hours:.1f}h"
             except (TypeError, ValueError, AttributeError):
-                pass  # 시간 계산 실패 시 무시
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")  # 시간 계산 실패 시 무시
             self.result_table.setItem(row, 7, QTableWidgetItem(duration))
 
     def _run_backtest(self):
@@ -1221,7 +1222,7 @@ class SingleBacktestWidget(QWidget):
         resampled = df.resample(rule).agg(agg_dict).dropna().reset_index()
         
         try:
-            from indicator_generator import IndicatorGenerator
+            from utils.indicators import IndicatorGenerator
             resampled = IndicatorGenerator.add_all_indicators(resampled)
             if 'rsi' not in resampled.columns and 'rsi_14' in resampled.columns:
                 resampled['rsi'] = resampled['rsi_14']

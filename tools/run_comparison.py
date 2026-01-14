@@ -21,7 +21,7 @@ result = {
 try:
     result["steps"].append("1. Import modules")
     import pandas as pd
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
     from core.strategy_core import AlphaX7Core
     from tools.realtime_simulator import RealtimeSimulator
     result["steps"].append("   Imports OK")

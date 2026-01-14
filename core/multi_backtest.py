@@ -87,7 +87,7 @@ class MultiBacktester:
             }).dropna().reset_index()
             
             # 지표 추가
-            from indicator_generator import IndicatorGenerator
+            from utils.indicators import IndicatorGenerator
             df_15m = IndicatorGenerator.add_all_indicators(df_15m)
             df_pattern = IndicatorGenerator.add_all_indicators(df_pattern)
             

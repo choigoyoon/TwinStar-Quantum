@@ -29,7 +29,7 @@ def main():
     
     # 지표 추가
     try:
-        from indicator_generator import IndicatorGenerator
+        from utils.indicators import IndicatorGenerator
         df = IndicatorGenerator.add_all_indicators(df)
         if 'rsi' not in df.columns and 'rsi_14' in df.columns:
             df['rsi'] = df['rsi_14']

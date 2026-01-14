@@ -6,7 +6,7 @@ import pandas as pd
 
 # Add paths
 sys.path.append(os.getcwd())
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 
 def verify_data_manager():
     dm = DataManager()

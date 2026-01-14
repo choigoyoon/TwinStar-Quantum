@@ -121,7 +121,7 @@ def test_gui_properties():
     
     # DataManager 속성 테스트
     try:
-        from GUI.data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         
         # cache_dir @property

@@ -84,7 +84,7 @@ def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True)
 def _add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """지표 추가 (IndicatorGenerator 사용)"""
     try:
-        from indicator_generator import IndicatorGenerator
+        from utils.indicators import IndicatorGenerator
         df = IndicatorGenerator.add_all_indicators(df)
         
         # 별칭 생성

@@ -6,7 +6,7 @@ from datetime import datetime
 # Add current directory to path
 sys.path.append(os.getcwd())
 
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 
 def verify_hybrid_logic():
     print("🚀 Verifying Bithumb-Upbit Hybrid Logic...")

@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PyQt6.QtWidgets import QApplication
-from history_widget import HistoryWidget
+from GUI.history_widget import HistoryWidget
 import json
 
 import logging

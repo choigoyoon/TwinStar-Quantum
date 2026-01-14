@@ -31,7 +31,7 @@ except Exception as e:
 # 2. IndicatorGenerator
 print("\n[2] IndicatorGenerator")
 try:
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
     ig = IndicatorGenerator()
     print(f"  OK 생성 성공")
 except Exception as e:

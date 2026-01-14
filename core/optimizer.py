@@ -448,7 +448,7 @@ class BacktestOptimizer:
             'low': 'min', 'close': 'last', 'volume': 'sum'
         }).dropna().reset_index()
         try:
-            from indicator_generator import IndicatorGenerator
+            from utils.indicators import IndicatorGenerator
             resampled = IndicatorGenerator.add_all_indicators(resampled)
             if 'rsi' not in resampled.columns and 'rsi_14' in resampled.columns:
                 resampled['rsi'] = resampled['rsi_14']

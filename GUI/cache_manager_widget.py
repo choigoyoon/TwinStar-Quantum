@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 import os
 
-from data_manager import DataManager
+from GUI.data_cache import DataManager
 
 
 class CacheManagerWidget(QWidget):

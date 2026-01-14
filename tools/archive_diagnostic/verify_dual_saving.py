@@ -6,7 +6,7 @@ from pathlib import Path
 # Add current directory to path
 sys.path.append(os.getcwd())
 
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 
 def verify_dual_saving():
     print("🚀 Verifying Bithumb-Upbit Dual-Saving Logic...")

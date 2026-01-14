@@ -91,7 +91,7 @@ class FeatureCheck:
         
         # DataManager 클래스
         try:
-            from GUI.data_manager import DataManager
+            from GUI.data_cache import DataManager
             self.check("DataManager import", True)
             
             dm = DataManager()

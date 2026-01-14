@@ -61,7 +61,7 @@ class DownloadThread(QThread):
     def run(self):
         try:
             logger.info(f"[Download] 시작: {len(self.symbols)}개 심볼")
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             total = len(self.symbols)
@@ -89,7 +89,7 @@ class DownloadThread(QThread):
                         self.progress.emit(sub_progress, msg)
                     
                     # 지표 생성기 로드
-                    from indicator_generator import IndicatorGenerator
+                    from utils.indicators import IndicatorGenerator
                     
                     df = dm.download(
                         symbol=symbol,
@@ -723,7 +723,8 @@ class DataCollectorWidget(QWidget):
                 sorted_pairs = sorted(tickers, key=lambda x: float(x.get("quoteVolume", 0)), reverse=True)
                 return [t["symbol"].replace("_UMCBL", "") for t in sorted_pairs[:n]]
         except Exception:
-            pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
         return []
     
     def _select_new_listings(self):
@@ -834,7 +835,8 @@ class DataCollectorWidget(QWidget):
                 )
                 return [t["symbol"] for t in sorted_pairs[:n] if t["symbol"].endswith("USDT")]
         except Exception:
-            pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
         return []
     
     def _load_symbols(self):
@@ -1056,7 +1058,7 @@ class DataCollectorWidget(QWidget):
     def _refresh_cache_status(self):
         """캐시 상태 새로고침"""
         try:
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             cache_dir = dm.cache_dir

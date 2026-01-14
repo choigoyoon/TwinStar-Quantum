@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QFrame, QGridLayout
 )
 from PyQt6.QtCore import Qt
-from capital_config import get_position_sizer
+from GUI.capital_config import get_position_sizer
 
 class CapitalManagementWidget(QWidget):
     """자금 관리 설정 및 계산기 위젯"""
@@ -152,7 +152,7 @@ class CapitalManagementWidget(QWidget):
         self.config.compounding = self.chk_compounding.isChecked()
         
         # 저장
-        from capital_config import save_capital_config
+        from GUI.capital_config import save_capital_config
         save_capital_config(self.config)
         self.update_status()
         

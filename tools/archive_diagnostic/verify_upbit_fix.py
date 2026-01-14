@@ -1,4 +1,4 @@
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 import pandas as pd
 from datetime import datetime, timedelta
 

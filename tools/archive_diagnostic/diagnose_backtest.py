@@ -22,7 +22,7 @@ def diagnose():
     df_pattern = resample_data(df_15m, '1h', add_indicators=True)
     df_entry = df_15m.copy()
     # Indicators are needed for both
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
     df_entry = IndicatorGenerator.add_all_indicators(df_entry)
     
     print(f"📊 리샘플링 완료: Pattern(1H)={len(df_pattern)}, Entry(15m)={len(df_entry)}")

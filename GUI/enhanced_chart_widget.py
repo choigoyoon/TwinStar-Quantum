@@ -321,7 +321,7 @@ class EnhancedChartWidget(QWidget):
         logger.info(f"[Chart] 다운로드: {exchange} {symbol} {tf}")
         
         try:
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             # 심볼 정규화

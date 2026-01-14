@@ -83,7 +83,7 @@ class ParameterOptimizer:
         """데이터 로드"""
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'GUI'))
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             
             dm = DataManager()
             df = dm.load(symbol=symbol, timeframe=timeframe, exchange=exchange)

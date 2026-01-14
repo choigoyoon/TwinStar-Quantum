@@ -10,7 +10,7 @@ sys.path.append(os.getcwd())
 from core.strategy_core import AlphaX7Core
 from core.multi_symbol_backtest import MultiSymbolBacktest
 from utils.data_utils import resample_data
-from indicator_generator import IndicatorGenerator
+from utils.indicators import IndicatorGenerator
 
 def run_variant(name, entry_price_mode, locked_mtf):
     msb = MultiSymbolBacktest(exchange='bybit')

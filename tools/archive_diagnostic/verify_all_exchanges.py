@@ -1,4 +1,4 @@
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 import os
 import shutil
 
@@ -20,8 +20,8 @@ for ex in targets:
             try:
                 os.remove(f)
             except Exception:
-
-                pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
                 
         # 2. Download
         print(f"\n[{ex.upper()}] Downloading {sym}...")

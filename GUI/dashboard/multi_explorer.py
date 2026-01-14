@@ -430,7 +430,7 @@ class MultiExplorer(QGroupBox):
             import pandas as pd
             from pathlib import Path
             from paths import Paths
-            from GUI.data_manager import DataManager
+            from GUI.data_cache import DataManager
             
             exchange = self.exchange_combo.currentText().lower()
             symbol_clean = symbol.lower().replace('/', '').replace('-', '')
@@ -521,7 +521,8 @@ class MultiExplorer(QGroupBox):
                         logger.info(f"[MultiExplorer] ✅ {symbol}: {direction}")
             
             except Exception as e:
-                pass  # 분석 실패 시 조용히 스킵
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")  # 분석 실패 시 조용히 스킵
             
             self.stats_analyzed.setText(t("multi_explorer.stat_analyzed", "🔍 분석: {n}").replace("{n}", str(self.current_idx + 1)))
         except Exception as e:

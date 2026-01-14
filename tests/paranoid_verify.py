@@ -151,7 +151,7 @@ def run_verification():
     print("-"*40)
     
     def test_data_manager():
-        from GUI.data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         files = list(dm.cache_dir.glob("*.parquet"))
         assert len(files) > 0, f"No cache files found in {dm.cache_dir}"

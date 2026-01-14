@@ -824,7 +824,8 @@ class SingleOptimizerWidget(QWidget):
                     grid['leverage'] = [1]
                     mode_text += " (Long Only)"
             except Exception:
-                pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
             
             total, est_min = estimate_combinations(grid)
             
@@ -861,7 +862,7 @@ class SingleOptimizerWidget(QWidget):
         self.exchange_combo.addItem("ALL")
         
         try:
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             cache_files = list(dm.cache_dir.glob("*.parquet"))
             
@@ -1023,8 +1024,8 @@ class SingleOptimizerWidget(QWidget):
                 base_grid['direction'] = ['Long']
                 logger.info(f"📌 [OPT] Spot constraints enforced: leverage=[1], direction=['Long']")
         except Exception:
-
-            pass
+    import logging
+    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
             
         return base_grid
 
@@ -1033,7 +1034,7 @@ class SingleOptimizerWidget(QWidget):
     def _load_data(self) -> pd.DataFrame:
         """Load selected data and resample to 1H for pattern detection"""
         try:
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             db_path = self.data_combo.currentData()

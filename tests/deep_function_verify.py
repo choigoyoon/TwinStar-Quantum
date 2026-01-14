@@ -90,7 +90,7 @@ class DeepVerification:
         
         # 1.1 캔들 데이터 로드
         try:
-            from GUI.data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             # 캐시 파일 확인
@@ -111,7 +111,7 @@ class DeepVerification:
         # 1.2 리샘플링
         try:
             if 'df' in dir() and df is not None and len(df) > 100:
-                from GUI.data_manager import DataManager
+                from GUI.data_cache import DataManager
                 dm = DataManager()
                 
                 # 15m -> 4H 리샘플 (16배)

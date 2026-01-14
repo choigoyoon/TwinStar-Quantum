@@ -24,7 +24,7 @@ def load_data_and_trades(symbol="BTCUSDT", exchange="bybit", timeframe="1h"):
         df: 원본 DataFrame
     """
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         
         # 캐시에서 데이터 로드
@@ -84,7 +84,7 @@ def load_ohlcv_df(symbol="BTCUSDT", exchange="bybit", timeframe="15m",
     OHLCV DataFrame 로드
     """
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         
         df = dm.load_data(
@@ -107,7 +107,7 @@ def download_and_save(symbol, exchange, timeframe, days=180):
     거래소에서 데이터 다운로드 후 저장
     """
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         from datetime import timedelta
         
         dm = DataManager()

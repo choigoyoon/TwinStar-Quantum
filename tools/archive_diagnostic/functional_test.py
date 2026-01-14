@@ -87,7 +87,7 @@ def test_indicator_generation():
     """지표 생성 테스트"""
     import pandas as pd
     import numpy as np
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
     
     # 더미 데이터
     df = pd.DataFrame({
@@ -163,7 +163,7 @@ def test_backtest_execution():
         'close': 40000 + np.cumsum(np.random.randn(n) * 100),
         'volume': np.random.uniform(100, 1000, n),
     })
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
     df = IndicatorGenerator.add_all_indicators(df)
     
     core = AlphaX7Core()

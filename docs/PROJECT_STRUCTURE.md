@@ -1,8 +1,18 @@
 # 🏗️ TwinStar Quantum - 프로젝트 구조 및 모듈 가이드
 
-> **버전**: v1.8.3  
-> **업데이트**: 2026-01-13  
+> **버전**: v1.8.4  
+> **업데이트**: 2026-01-14  
 > **목적**: 프로젝트 구조 파악 및 모듈 연동 가이드
+
+---
+
+## ⚠️ 최근 변경사항 (v1.8.4)
+
+| 변경 | 내용 |
+|------|------|
+| **PyQt5 → PyQt6** | 전체 GUI 모듈 PyQt6로 마이그레이션 |
+| **data_manager 분리** | `GUI/data_manager.py` → `GUI/data_cache.py` (core와 충돌 해결) |
+| **import 경로 통일** | `from indicator_generator` → `from utils.indicators` |
 
 ---
 
@@ -11,7 +21,7 @@
 ```
 TwinStar-Quantum/
 ├── 📂 core/                 # 핵심 비즈니스 로직 (30개 모듈)
-├── 📂 GUI/                  # PyQt5 데스크톱 UI (71개 모듈)
+├── 📂 GUI/                  # PyQt6 데스크톱 UI (71개 모듈)
 ├── 📂 utils/                # 유틸리티 함수 (23개 모듈)
 ├── 📂 exchanges/            # 거래소 어댑터 (13개 모듈)
 ├── 📂 strategies/           # 매매 전략 (6개 모듈)
@@ -261,7 +271,7 @@ web/
 | 카테고리 | 파일 수 | 설명 |
 |----------|---------|------|
 | Core | 30 | 핵심 비즈니스 로직 |
-| GUI | 71 | PyQt5 데스크톱 UI |
+| GUI | 71 | PyQt6 데스크톱 UI |
 | Utils | 23 | 유틸리티 함수 |
 | Exchanges | 13 | 거래소 어댑터 |
 | Strategies | 6 | 매매 전략 |

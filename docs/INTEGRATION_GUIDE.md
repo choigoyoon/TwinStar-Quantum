@@ -1,7 +1,7 @@
 # 🔗 TwinStar Quantum - 추가 연동 가이드
 
-> **버전**: v1.8.3  
-> **업데이트**: 2026-01-13  
+> **버전**: v1.8.4  
+> **업데이트**: 2026-01-14  
 > **목적**: 새로운 기능 추가 및 모듈 연동 방법 가이드
 
 ---
@@ -243,8 +243,8 @@ GUI/
 새 기능 위젯
 """
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
+from PyQt6.QtCore import pyqtSignal
 
 class NewWidget(QWidget):
     # 시그널 정의 (다른 위젯과 통신용)

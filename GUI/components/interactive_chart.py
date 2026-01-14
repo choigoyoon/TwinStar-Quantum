@@ -4,6 +4,7 @@ from PyQt6.QtCore import pyqtSignal
 import pandas as pd
 import numpy as np
 import logging
+from ui.design_system.tokens import Colors
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class InteractiveChart(QWidget):
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.setLabel('left', 'Price')
         self.plot_widget.setLabel('bottom', 'Time')
-        self.plot_widget.setBackground('#1a1a2e')
+        self.plot_widget.setBackground(Colors.bg_base)
         if (layout := self.layout()) is not None:
             layout.addWidget(self.plot_widget)
     
@@ -104,14 +105,14 @@ class InteractiveChart(QWidget):
         """Matplotlib 캔들스틱"""
         if self.df is None or self.df.empty:
             return
-            
+
         self.ax.clear()
-        
+
         # 간단한 라인 차트
         self.ax.plot(self.df.index, self.df['close'], 'w-', linewidth=0.8)
-        self.ax.set_facecolor('#1a1a2e')
-        self.figure.patch.set_facecolor('#1a1a2e')
-        
+        self.ax.set_facecolor(Colors.bg_base)
+        self.figure.patch.set_facecolor(Colors.bg_base)
+
         self.canvas.draw()
     
     def add_trades(self, trades: list):
@@ -145,15 +146,15 @@ class InteractiveChart(QWidget):
                 if e_idx is not None and e_idx < len(self.df):
                     entry_x.append(e_idx)
                     entry_y.append(trade.get('entry_price', trade.get('entry', 0)))
-                    entry_brush.append('#00e676' if trade.get('type') == 'Long' else '#ff5252')
-                
+                    entry_brush.append(Colors.success if trade.get('type') == 'Long' else Colors.danger)
+
                 # Exit
                 x_idx = trade.get('exit_idx')
                 if x_idx is not None and x_idx < len(self.df):
                     exit_x.append(x_idx)
                     exit_y.append(trade.get('exit_price', trade.get('exit', 0)))
                     pnl = trade.get('pnl', 0)
-                    exit_brush.append('#00e676' if pnl > 0 else '#ff5252')
+                    exit_brush.append(Colors.success if pnl > 0 else Colors.danger)
 
             if entry_x:
                 self.plot_widget.plot(entry_x, entry_y, pen=None, symbol='t', symbolBrush=entry_brush, symbolSize=10, name="Entries")
@@ -217,7 +218,7 @@ class EquityCurveChart(QWidget):
             layout.addWidget(self.canvas)
         elif HAS_PYQTGRAPH:
             self.plot_widget = pg.PlotWidget()
-            self.plot_widget.setBackground('#1a1a2e')
+            self.plot_widget.setBackground(Colors.bg_base)
             self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
             layout.addWidget(self.plot_widget)
 
@@ -225,12 +226,12 @@ class EquityCurveChart(QWidget):
         """에쿼티 커브 설정"""
         if HAS_MATPLOTLIB:
             self.ax.clear()
-            self.ax.fill_between(range(len(equity)), equity, alpha=0.3, color='cyan')
-            self.ax.plot(equity, 'cyan', linewidth=1)
-            self.ax.set_facecolor('#1a1a2e')
-            self.ax.set_title('Equity Curve', color='white')
-            self.ax.tick_params(colors='white')
-            self.figure.patch.set_facecolor('#1a1a2e')
+            self.ax.fill_between(range(len(equity)), equity, alpha=0.3, color=Colors.accent_primary)
+            self.ax.plot(equity, color=Colors.accent_primary, linewidth=1)
+            self.ax.set_facecolor(Colors.bg_base)
+            self.ax.set_title('Equity Curve', color=Colors.text_primary)
+            self.ax.tick_params(colors=Colors.text_primary)
+            self.figure.patch.set_facecolor(Colors.bg_base)
             self.canvas.draw()
         elif HAS_PYQTGRAPH:
             self.plot_widget.clear()

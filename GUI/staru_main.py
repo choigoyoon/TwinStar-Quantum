@@ -239,7 +239,8 @@ class StarUWindow(QMainWindow):
         self.init_widgets()
         self.init_ui()
         self.connect_signals()
-        
+        self._setup_fullscreen_toggle()  # 전체화면 토글 설정
+
         logger.info("\n✅ TwinStar Quantum 초기화 완료!\n")
     
         # [삭제됨: 중복 정의 및 강제 종료 로직 하단으로 이동]
@@ -799,7 +800,27 @@ class StarUWindow(QMainWindow):
             popup.exec()
         except Exception as e:
             logger.info(f"Update popup error: {e}")
-    
+
+    def _setup_fullscreen_toggle(self):
+        """전체화면 토글 기능 설정 (F11 단축키)"""
+        from PyQt6.QtGui import QAction, QKeySequence
+
+        self.fullscreen_action = QAction("전체화면", self)
+        self.fullscreen_action.setShortcut(QKeySequence("F11"))
+        self.fullscreen_action.triggered.connect(self.toggle_fullscreen)
+        self.addAction(self.fullscreen_action)
+
+        logger.info("✅ 전체화면 토글 (F11) 설정 완료")
+
+    def toggle_fullscreen(self):
+        """전체화면/창 모드 전환"""
+        if self.isFullScreen():
+            self.showNormal()
+            logger.info("🪟 창 모드로 전환")
+        else:
+            self.showFullScreen()
+            logger.info("🖥️ 전체화면 모드로 전환")
+
     def closeEvent(self, event):
         """안전하고 확실한 종료 - 봇 정지, 탭 정리 및 프로세스 트리 제거"""
         import logging

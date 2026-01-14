@@ -1,7 +1,9 @@
 import json
+import os
 from pathlib import Path
+from datetime import datetime
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton
+    QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton, QSizePolicy, QMessageBox
 )
 from typing import Dict, Any
 
@@ -61,7 +63,9 @@ class BotControlCard(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(1, 0, 1, 0)
         layout.setSpacing(2)
-        self.setFixedHeight(35)
+        # 동적 높이 설정 (최소 40px, 내용에 맞게 조정)
+        self.setMinimumHeight(40)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         
         # #번호
         self.num_label = QLabel(f"#{self.row_id}")
@@ -133,6 +137,7 @@ class BotControlCard(QWidget):
         self.mode_combo.setFixedWidth(40)
         self.mode_combo.setToolTip("Capital Mode: C(Compound), F(Fixed)")
         self.mode_combo.setStyleSheet("color: #FF9800; font-weight: bold;")
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         layout.addWidget(self.mode_combo)
         
         # 잠금 버튼
@@ -339,27 +344,58 @@ class BotControlCard(QWidget):
 
     def _on_preset_changed(self, index: int):
         """프리셋 변경 시 UI(레버리지 등) 연동 업데이트"""
+        if index <= 0:
+            return
+
         preset_file = self.preset_combo.currentData()
         if not preset_file:
             return
-            
+
         try:
             with open(preset_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                params = data.get('params', data)
-                
-                # 레버리지 연동
-                if 'leverage' in params:
-                    self.leverage_spin.setValue(int(params['leverage']))
-                
-                # 방향 연동 (있는 경우)
-                if 'direction' in params:
-                    direction = params['direction'].capitalize()
-                    if direction in ["Both", "Long", "Short"]:
-                        self.direction_combo.setCurrentText(direction)
-                        
+
+                # v2 형식 지원
+                if 'version' in data and data['version'] == 2:
+                    trading = data.get('trading', {})
+
+                    # 레버리지
+                    if 'leverage' in trading:
+                        self.leverage_spin.setValue(int(trading['leverage']))
+
+                    # 방향
+                    if 'direction' in trading:
+                        direction = str(trading['direction']).capitalize()
+                        if direction in ["Both", "Long", "Short"]:
+                            self.direction_combo.setCurrentText(direction)
+
+                    # 시드 자금 (잠금 해제된 경우만)
+                    if 'seed_capital' in trading and not self.lock_btn.isChecked():
+                        self.seed_spin.setValue(int(trading['seed_capital']))
+
+                # 레거시 flat 형식 지원
+                else:
+                    params = data.get('params', data)
+
+                    # 레버리지
+                    if 'leverage' in params:
+                        self.leverage_spin.setValue(int(params['leverage']))
+
+                    # 방향
+                    if 'direction' in params:
+                        direction = str(params['direction']).capitalize()
+                        if direction in ["Both", "Long", "Short"]:
+                            self.direction_combo.setCurrentText(direction)
+
+                preset_name = self.preset_combo.itemText(index)
+                logger.info(f"✅ 프리셋 '{preset_name}' 적용 완료")
+
+        except FileNotFoundError:
+            logger.error(f"❌ 프리셋 파일을 찾을 수 없습니다: {preset_file}")
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ 프리셋 JSON 파싱 오류: {e}")
         except Exception as e:
-            logger.info(f"[PRESET] UI Sync Error: {e}")
+            logger.error(f"❌ 프리셋 로드 실패: {e}")
     
     def _on_start(self):
         if self.is_running:
@@ -413,8 +449,33 @@ class BotControlCard(QWidget):
             'capital_mode': 'compound' if self.mode_combo.currentText() == 'C' else 'fixed'
         }
     
+    def _on_mode_changed(self, index: int):
+        """복리/단리 모드 변경 시 처리"""
+        mode = 'compound' if index == 0 else 'fixed'
+        mode_text = '복리(Compound)' if index == 0 else '단리(Fixed)'
+        logger.info(f"💰 [{self.symbol_combo.currentText()}] 자본 모드 변경: {mode_text}")
+
+        # 모드 변경 시 시드 자금 색상 업데이트
+        if mode == 'compound':
+            self.mode_combo.setStyleSheet("color: #4CAF50; font-weight: bold;")  # 녹색
+        else:
+            self.mode_combo.setStyleSheet("color: #FF9800; font-weight: bold;")  # 주황색
+
     def _toggle_lock(self):
         is_locked = self.lock_btn.isChecked()
+
+        # 잠금 해제 시 확인 대화상자 (선택사항)
+        if not is_locked:
+            reply = QMessageBox.question(
+                self, "자금 잠금 해제",
+                "시드 자금을 수정하시겠습니까?\n(변경 사항은 즉시 저장됩니다)",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                self.lock_btn.setChecked(True)
+                return
+
+        # UI 업데이트
         if is_locked:
             self.lock_btn.setText("🔒")
             self.seed_spin.setEnabled(False)
@@ -427,6 +488,46 @@ class BotControlCard(QWidget):
             self.seed_spin.setStyleSheet("color: white; padding: 3px;")
             self.adj_btn.setEnabled(True)
             self.adj_btn.setStyleSheet("color: #4CAF50; font-weight: bold; border-radius: 2px;")
+
+        # 잠금 상태 저장
+        self._save_lock_state(is_locked)
+
+        logger.info(f"{'🔒 잠금' if is_locked else '🔓 해제'}: 시드 자금 편집")
+
+    def _save_lock_state(self, is_locked: bool):
+        """잠금 상태 및 시드 값 저장"""
+        config_path = "data/capital_config.json"
+
+        try:
+            # 기존 설정 로드
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            else:
+                config = {}
+
+            # 현재 행의 설정 업데이트
+            symbol = self.symbol_combo.currentText()
+            exchange = self.exchange_combo.currentText()
+            key = f"{exchange}_{symbol}"
+
+            config[key] = {
+                'locked': is_locked,
+                'seed_capital': self.seed_spin.value(),
+                'capital_mode': 'compound' if self.mode_combo.currentIndex() == 0 else 'fixed',
+                'last_updated': datetime.now().isoformat()
+            }
+
+            # data 디렉토리 생성
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+
+            # 저장
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"💾 자금 설정 저장: {key}")
+        except Exception as e:
+            logger.error(f"❌ 설정 저장 실패: {e}")
     
     def update_balance(self, current_capital: float):
         initial = self.seed_spin.value()

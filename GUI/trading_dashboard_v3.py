@@ -36,9 +36,10 @@ class TradingDashboardV3(QWidget):
         self.active_card = StatusCard("Active Bots", "0 Moving", "🤖")
         self.risk_card = StatusCard("Risk Level", "Safe", "🛡️")
         
-        # 카드 높이 강제 조절 (Compact)
+        # 카드 높이를 동적으로 설정 (내용에 맞게 조정)
         for card in [self.balance_card, self.pnl_card, self.active_card, self.risk_card]:
-            card.setFixedHeight(80)
+            card.setMinimumHeight(60)  # 최소 높이만 설정
+            card.setMaximumHeight(100)  # 최대 높이 제한
             
         hud_layout.addWidget(self.balance_card)
         hud_layout.addWidget(self.pnl_card)

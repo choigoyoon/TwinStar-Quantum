@@ -88,8 +88,8 @@ class BotControlCard(QWidget):
                 color: white; padding: 3px;
             }
         """) # Removed hardcoded background
-        self.symbol_combo.completer().setFilterMode(Qt.MatchContains)
-        self.symbol_combo.completer().setCaseSensitivity(Qt.CaseInsensitive)
+        self.symbol_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.symbol_combo.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.symbol_combo.currentTextChanged.connect(self._on_symbol_changed)
         layout.addWidget(self.symbol_combo)
         

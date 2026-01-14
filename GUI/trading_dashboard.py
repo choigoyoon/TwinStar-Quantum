@@ -876,7 +876,7 @@ class TradingDashboard(QWidget):
                 
                 # 메시지 박스 표시 (메인 스레드에서)
                 from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
-                QMetaObject.invokeMethod(self, "_show_api_key_error", Qt.QueuedConnection,
+                QMetaObject.invokeMethod(self, "_show_api_key_error", Qt.ConnectionType.QueuedConnection,
                                         Q_ARG(str, config['exchange']))
                 return
             

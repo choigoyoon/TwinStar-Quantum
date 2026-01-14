@@ -1493,14 +1493,14 @@ class MultiBacktestWidget(QWidget):
             from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
             QMetaObject.invokeMethod(
                 self, "_display_result",
-                Qt.QueuedConnection,
+                Qt.ConnectionType.QueuedConnection,
                 Q_ARG(dict, result)
             )
         except Exception as e:
             self._status_callback(f"❌ 오류: {e}", 100)
         finally:
             from PyQt6.QtCore import QMetaObject, Qt
-            QMetaObject.invokeMethod(self, "_on_complete", Qt.QueuedConnection)
+            QMetaObject.invokeMethod(self, "_on_complete", Qt.ConnectionType.QueuedConnection)
     
     def _on_complete(self):
         """완료 후 UI 복원"""

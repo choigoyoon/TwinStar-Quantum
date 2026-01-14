@@ -206,7 +206,7 @@ class AuthDialog(QDialog):
         
         self.addr_display = QLabel(DEPOSIT_WALLET)
         self.addr_display.setStyleSheet("color: #26a69a; font-size: 13px; font-family: monospace;")
-        self.addr_display.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.addr_display.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         addr_layout.addWidget(self.addr_display)
         
         copy_btn = QPushButton("📋 Copy Address")

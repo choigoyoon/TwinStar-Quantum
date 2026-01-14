@@ -83,8 +83,8 @@ class ExchangeSelectorWidget(QWidget):
         
         # Auto-complete
         self.completer = QCompleter()
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.setFilterMode(Qt.MatchContains)
+        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.combo_symbol.setCompleter(self.completer)
         
         sym_layout.addWidget(lbl_sym)

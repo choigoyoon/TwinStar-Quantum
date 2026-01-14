@@ -354,7 +354,7 @@ class PaymentDialog(QDialog):
                 addr = QLabel(f"주소: {opt['address']}")
                 addr.setStyleSheet("color: white; font-family: monospace; font-size: 11px;")
                 addr.setWordWrap(True)
-                addr.setTextInteractionFlags(Qt.TextSelectableByMouse)
+                addr.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
                 crypto_layout.addWidget(addr)
                 
                 payment_layout.addWidget(crypto_frame)

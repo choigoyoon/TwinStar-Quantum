@@ -775,7 +775,7 @@ class HistoryWidget(QWidget):
             id_item = QTableWidgetItem(f"#{trade.get('id', i+1)}")
             id_item.setForeground(QColor('#2962FF'))
             id_item.setFont(QFont("Arial", 10, QFont.Bold))
-            id_item.setData(Qt.UserRole, trade)  # 거래 데이터 저장
+            id_item.setData(Qt.ItemDataRole.UserRole, trade)  # 거래 데이터 저장
             self.table.setItem(i, 0, id_item)
             
             # 시간
@@ -824,7 +824,7 @@ class HistoryWidget(QWidget):
         if col == 0:  # # 컬럼
             item = self.table.item(row, 0)
             if item:
-                trade = item.data(Qt.UserRole)
+                trade = item.data(Qt.ItemDataRole.UserRole)
                 if trade:
                     dialog = TradeChartPopup(trade, self)
                     dialog.show()

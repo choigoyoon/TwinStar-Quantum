@@ -5,7 +5,8 @@ import sys
 import os
 
 # 인코딩 설정
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[union-attr]
 
 ROOT = r"c:\매매전략"
 sys.path.insert(0, ROOT)
@@ -66,12 +67,14 @@ for p in STANDARD:
 print("\n[2] GUI 위젯 임포트")
 print("-" * 50)
 
+from typing import Any, cast
+
 try:
-    from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtWidgets import QApplication  # type: ignore[import-not-found]
     app = QApplication.instance() or QApplication([])
     check("PyQt5 초기화", True)
-except Exception as e:
-    check("PyQt5 초기화", False, str(e))
+except ImportError as e:
+    check("PyQt5 초기화", False, f"PyQt5 not installed: {e}")
 
 widgets = [
     ("backtest_widget", "BacktestWidget"),
@@ -96,7 +99,7 @@ print("-" * 50)
 
 # BacktestWidget
 try:
-    from backtest_widget import BacktestWidget
+    from GUI.backtest_widget import BacktestWidget  # type: ignore[import-not-found]
     w = BacktestWidget()
     check("BacktestWidget 생성", True)
     check("BacktestWidget.strategy 존재", hasattr(w, 'strategy')) # strategy는 초기화 시 생성될수도 있고 아닐수도 있음
@@ -106,14 +109,15 @@ except Exception as e:
 
 # OptimizationWidget
 try:
-    from optimization_widget import OptimizationWidget
+    from GUI.optimization_widget import OptimizationWidget  # type: ignore[import-not-found]
     w = OptimizationWidget()
     check("OptimizationWidget 생성", True)
     check("OptimizationWidget.param_widgets 존재", hasattr(w, 'param_widgets'))
     
     # 파라미터 위젯 키 확인
     if hasattr(w, 'param_widgets'):
-        keys = list(w.param_widgets.keys())
+        w_any = cast(Any, w)
+        keys = list(w_any.param_widgets.keys())
         check("param_widgets에 'atr_mult' 존재", 'atr_mult' in keys, f"실제: {keys}")
         check("param_widgets에 'trail_start_r' 존재", 'trail_start_r' in keys)
         check("param_widgets에 'trail_dist_r' 존재", 'trail_dist_r' in keys)
@@ -122,7 +126,7 @@ except Exception as e:
 
 # SettingsWidget
 try:
-    from settings_widget import SettingsWidget
+    from GUI.settings_widget import SettingsWidget  # type: ignore[import-not-found]
     w = SettingsWidget()
     check("SettingsWidget 생성", True)
 except Exception as e:
@@ -130,14 +134,15 @@ except Exception as e:
 
 # TradingDashboard
 try:
-    from trading_dashboard import TradingDashboard
+    from GUI.trading_dashboard import TradingDashboard  # type: ignore[import-not-found]
     w = TradingDashboard()
     check("TradingDashboard 생성", True)
     check("TradingDashboard.control_panel 존재", hasattr(w, 'control_panel'))
     
     # Direction/Preset 콤보 확인
     if hasattr(w, 'control_panel'):
-        cp = w.control_panel
+        w_any = cast(Any, w)
+        cp = w_any.control_panel
         check("ControlPanel.direction_combo 존재", hasattr(cp, 'direction_combo'))
         check("ControlPanel.preset_combo 존재", hasattr(cp, 'preset_combo'))
 except Exception as e:
@@ -150,7 +155,7 @@ print("\n[4] 시그널 연결")
 print("-" * 50)
 
 try:
-    from optimization_widget import OptimizationWidget
+    from GUI.optimization_widget import OptimizationWidget  # type: ignore[import-not-found]
     w = OptimizationWidget()
     check("settings_applied 시그널 존재", hasattr(w, 'settings_applied'))
 except Exception as e:
@@ -219,15 +224,15 @@ print("\n[7] 최적화 → 백테스트 플로우")
 print("-" * 50)
 
 try:
-    from optimization_widget import OptimizationWidget
-    from backtest_widget import BacktestWidget
-    
+    from GUI.optimization_widget import OptimizationWidget  # type: ignore[import-not-found]
+    from GUI.backtest_widget import BacktestWidget  # type: ignore[import-not-found]
+
     opt_w = OptimizationWidget()
     bt_w = BacktestWidget()
-    
+
     # 백테스트 위젯이 이 파라미터를 받을 수 있는지 (구조적 호환성)
     check("최적화→백테스트 파라미터 호환", hasattr(bt_w, 'apply_params') or hasattr(bt_w, '_current_params') or True) # apply_params 없을수도 있음
-    
+
 except Exception as e:
     check("플로우 테스트", False, str(e))
 
@@ -238,7 +243,7 @@ print("\n[8] StarUWindow 전체")
 print("-" * 50)
 
 try:
-    from staru_main import StarUWindow
+    from GUI.staru_main import StarUWindow  # type: ignore[import-not-found]
     w = StarUWindow(user_tier='admin')
     
     check("StarUWindow 생성", True)

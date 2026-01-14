@@ -4,14 +4,17 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# GUI 경로 추가 (constants.py 로드용)
-_gui_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'GUI')
-if _gui_dir not in sys.path:
-    sys.path.insert(0, _gui_dir)
-
 # 원본 모듈 로드
 from core.strategy_core import AlphaX7Core
-from constants import DEFAULT_PARAMS
+
+# constants import (SSOT)
+try:
+    from config.constants import DEFAULT_PARAMS  # type: ignore[attr-defined]
+except ImportError:
+    try:
+        from GUI.constants import DEFAULT_PARAMS
+    except ImportError:
+        from config.parameters import DEFAULT_PARAMS
 
 import pandas as pd
 

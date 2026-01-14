@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from typing import Dict, Any
 from PyQt6.QtCore import pyqtSignal
+from ui.design_system.tokens import Colors
 
 class TradePanel(QWidget):
     """단일 트레이딩 패널 (싱글/멀티 공용)"""
@@ -34,10 +35,10 @@ class TradePanel(QWidget):
         header = QHBoxLayout()
         
         title_label = QLabel(f"{'🎯' if self.mode == 'single' else '🔍'} {title}")
-        title_label.setStyleSheet("font-size: 16px; font-weight: 600; color: #00d4aa;")
-        
+        title_label.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {Colors.accent_primary};")
+
         self.status_label = QLabel("대기 중")
-        self.status_label.setStyleSheet("color: #8b949e;")
+        self.status_label.setStyleSheet(f"color: {Colors.text_secondary};")
         
         header.addWidget(title_label)
         header.addStretch()
@@ -187,8 +188,8 @@ class TradePanel(QWidget):
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.status_label.setText("실행 중")
-        self.status_label.setStyleSheet("color: #3fb950;")
-        
+        self.status_label.setStyleSheet(f"color: {Colors.success};")
+
         self.start_signal.emit(config)
     
     def _on_stop(self):
@@ -196,6 +197,6 @@ class TradePanel(QWidget):
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.status_label.setText("정지됨")
-        self.status_label.setStyleSheet("color: #f85149;")
-        
+        self.status_label.setStyleSheet(f"color: {Colors.danger};")
+
         self.stop_signal.emit()

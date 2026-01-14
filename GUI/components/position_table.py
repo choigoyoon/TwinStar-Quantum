@@ -3,6 +3,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QColor
 import logging
 from locales.lang_manager import t
+from ui.design_system.tokens import Colors, Radius
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +43,19 @@ class PositionTable(QTableWidget):
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         
         # 스타일
-        self.setStyleSheet("""
-            QTableWidget {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #333333;
-                gridline-color: #333333;
-            }
-            QHeaderView::section {
-                background-color: #2d2d2d;
-                color: #cccccc;
+        self.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {Colors.bg_surface};
+                color: {Colors.text_primary};
+                border: 1px solid {Colors.border_default};
+                gridline-color: {Colors.border_default};
+            }}
+            QHeaderView::section {{
+                background-color: {Colors.bg_elevated};
+                color: {Colors.text_secondary};
                 padding: 4px;
-                border: 1px solid #333333;
-            }
+                border: 1px solid {Colors.border_default};
+            }}
         """)
 
     def update_position(self, symbol: str, mode: str, status: str, entry: float = 0, current: float = 0, pnl: float = 0):
@@ -74,11 +75,11 @@ class PositionTable(QTableWidget):
         # PnL Color
         pnl_item = QTableWidgetItem(f"{pnl:+.2f}%")
         if pnl > 0:
-            pnl_item.setForeground(QColor("#4CAF50"))
+            pnl_item.setForeground(QColor(Colors.success))
         elif pnl < 0:
-            pnl_item.setForeground(QColor("#F44336"))
+            pnl_item.setForeground(QColor(Colors.danger))
         else:
-            pnl_item.setForeground(QColor("#CCCCCC"))
+            pnl_item.setForeground(QColor(Colors.text_secondary))
         self.setItem(row, 5, pnl_item)
 
         # Action Button (Close)
@@ -88,15 +89,15 @@ class PositionTable(QTableWidget):
             layout.setContentsMargins(2, 2, 2, 2)
             
             close_btn = QPushButton(t("common.close", "Close"))
-            close_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #d32f2f;
+            close_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.danger};
                     color: white;
                     border: none;
-                    border-radius: 3px;
+                    border-radius: {Radius.radius_sm};
                     padding: 2px 5px;
-                }
-                QPushButton:hover { background-color: #b71c1c; }
+                }}
+                QPushButton:hover {{ background-color: #d32f2f; }}
             """)
             close_btn.clicked.connect(lambda: self.close_requested.emit(symbol))
             layout.addWidget(close_btn)

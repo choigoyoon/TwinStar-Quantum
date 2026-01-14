@@ -12,7 +12,7 @@ from typing import Optional, Tuple, Dict, List, Any, cast
 from dataclasses import dataclass
 
 # 통합 지표 모듈
-from utils.indicators import calculate_rsi as _calc_rsi, calculate_atr as _calc_atr
+from utils.indicators import calculate_rsi as _calc_rsi, calculate_atr as _calc_atr, calculate_adx as _calc_adx
 
 # 메트릭 계산 (SSOT)
 from utils.metrics import calculate_mdd
@@ -327,11 +327,27 @@ class AlphaX7Core:
     
     def calculate_rsi(self, closes: np.ndarray, period: int = 14) -> float:
         """RSI 계산 (utils.indicators 모듈 위임)"""
-        return _calc_rsi(closes, period=period, return_series=False)
+        result = _calc_rsi(closes, period=period, return_series=False)
+        return cast(float, result)
 
     def calculate_atr(self, df: pd.DataFrame, period: int = 14) -> float:
         """ATR 계산 (utils.indicators 모듈 위임)"""
-        return _calc_atr(df, period=period, return_series=False)
+        result = _calc_atr(df, period=period, return_series=False)
+        return cast(float, result)
+
+    def calculate_adx(self, df: pd.DataFrame, period: int = 14) -> float:
+        """
+        ADX 계산 (utils.indicators 모듈 위임)
+
+        Args:
+            df: OHLC 데이터 (high, low, close 필요)
+            period: ADX 기간 (기본값: 14)
+
+        Returns:
+            ADX 값 (0-100 범위)
+        """
+        result = _calc_adx(df, period=period, return_series=False)
+        return cast(float, result)
     
     def detect_signal(
         self,
@@ -347,6 +363,10 @@ class AlphaX7Core:
         macd_slow: Optional[int] = None,
         macd_signal: Optional[int] = None,
         ema_period: Optional[int] = None,
+        # ADX 파라미터 (Session 8)
+        adx_period: Optional[int] = None,
+        adx_threshold: Optional[float] = None,
+        enable_adx_filter: Optional[bool] = None,
     ) -> Optional[TradeSignal]:
         """W/M 패턴 감지 + MTF 필터"""
         
@@ -373,8 +393,23 @@ class AlphaX7Core:
             macd_slow = ACTIVE_PARAMS.get('macd_slow', 26) or 26
         if macd_signal is None:
             macd_signal = ACTIVE_PARAMS.get('macd_signal', 9) or 9
+        # ADX 파라미터 (Session 8)
+        if adx_period is None:
+            adx_period = ACTIVE_PARAMS.get('adx_period', 14) or 14
+        if adx_threshold is None:
+            adx_threshold = ACTIVE_PARAMS.get('adx_threshold', 25.0) or 25.0
+        if enable_adx_filter is None:
+            enable_adx_filter = ACTIVE_PARAMS.get('enable_adx_filter', False)
 
-        logger.debug(f"[SIGNAL] Using: tolerance={pattern_tolerance*100:.1f}%, validity={entry_validity_hours}h, MTF={self.USE_MTF_FILTER}")
+        logger.debug(f"[SIGNAL] Using: tolerance={pattern_tolerance*100:.1f}%, validity={entry_validity_hours}h, MTF={self.USE_MTF_FILTER}, ADX={enable_adx_filter}")
+
+        # ADX 필터 (Session 8) - 추세 강도 검증
+        if enable_adx_filter:
+            adx_value = self.calculate_adx(df_1h_safe, period=adx_period)
+            if adx_value < adx_threshold:
+                logger.debug(f"[SIGNAL] ❌ ADX filter: {adx_value:.1f} < {adx_threshold} (weak trend)")
+                return None
+            logger.debug(f"[SIGNAL] ✅ ADX filter passed: {adx_value:.1f} >= {adx_threshold} (strong trend)")
         
         # 적응형 파라미터 계산
         if self.adaptive_params is None:

@@ -29,7 +29,12 @@ DEFAULT_PARAMS = {
     
     # RSI 파라미터 (최적화됨)
     'rsi_period': 14,          # [OPT] 14 (표준 유지)
-    
+
+    # ADX 파라미터 (Session 8 추가)
+    'adx_period': 14,          # ADX 계산 기간 (표준)
+    'adx_threshold': 25.0,     # 추세 강도 임계값 (>25: 강한 추세)
+    'enable_adx_filter': False, # ADX 필터 활성화 여부 (기본 비활성)
+
     # 트레일링 파라미터
     'trail_start_r': 0.8,
     'trail_dist_r': 0.1,       # [OPT] 0.5 → 0.1 (88.4% 프리셋 기준)
@@ -94,7 +99,11 @@ PARAM_RANGES = {
     'rsi_period': (10, 21, 1),
     'pullback_rsi_long': (35, 50, 5),
     'pullback_rsi_short': (50, 65, 5),
-    
+
+    # ADX (Session 8 추가)
+    'adx_period': (10, 21, 1),
+    'adx_threshold': (20.0, 30.0, 5.0),
+
     # 트레일링
     'trail_start_r': (0.5, 1.5, 0.1),
     'trail_dist_r': (0.3, 0.8, 0.1),

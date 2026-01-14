@@ -169,6 +169,7 @@ DataCollectorWidget_Pkg = load_widget('data_collector_widget', 'DataCollectorWid
 OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget')
 # TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget') # REMOVED: Merged into History/Results
 AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget')
+IndicatorComparisonWidget_Pkg = load_widget('GUI.optimization.indicator_comparison', 'IndicatorComparisonWidget')
 
 
 from GUI.styles.fonts import FontSystem
@@ -344,6 +345,18 @@ class StarUWindow(QMainWindow):
             self.optimization_widget = self._create_error_widget("Optimization", e)
 
             self.trade_history_widget = self._create_error_widget("TradeHistory", e)
+
+        # 7. Indicator Comparison Widget (Session 8)
+        cls, err = IndicatorComparisonWidget_Pkg
+        try:
+            if cls:
+                self.indicator_comparison_widget = cls()
+                logger.info("  ✅ IndicatorComparison 생성 완료")
+            else:
+                raise ImportError(f"IndicatorComparisonWidget not available.\n{err}")
+        except Exception as e:
+            logger.info(f"  ❌ IndicatorComparison 생성 실패: {e}")
+            self.indicator_comparison_widget = self._create_error_widget("IndicatorComparison", e)
         
     def _create_error_widget(self, title, e):
         """상세 정보가 포함된 에러 위젯 생성"""
@@ -592,6 +605,7 @@ class StarUWindow(QMainWindow):
         self.tabs.addTab(self.data_collector_widget, f"📥 {t('tabs.data', '수집')}")
         self.tabs.addTab(self.backtest_widget, f"🔬 {t('tabs.backtest', '백테스트')}")
         self.tabs.addTab(self.optimization_widget, f"🎯 {t('tabs.optimization', '최적화')}")
+        self.tabs.addTab(self.indicator_comparison_widget, f"📊 {t('tabs.indicator_comparison', '지표 비교')}")
         self.tabs.addTab(self.history_widget, f"📈 {t('tabs.results', '결과/내역')}")
         # self.tabs.addTab(self.trade_history_widget, f"📜 {t('dashboard.trade_history', '내역')}") # MERGED
         

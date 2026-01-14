@@ -824,8 +824,7 @@ class SingleOptimizerWidget(QWidget):
                     grid['leverage'] = [1]
                     mode_text += " (Long Only)"
             except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+                pass  # Error silenced
             
             total, est_min = estimate_combinations(grid)
             
@@ -1024,8 +1023,7 @@ class SingleOptimizerWidget(QWidget):
                 base_grid['direction'] = ['Long']
                 logger.info(f"📌 [OPT] Spot constraints enforced: leverage=[1], direction=['Long']")
         except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+            pass  # Error silenced
             
         return base_grid
 

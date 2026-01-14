@@ -186,8 +186,7 @@ class MultiSymbolBacktest:
                     self.all_candles[cache_key] = df
                     return df
         except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+            pass  # Error silenced
         
         try:
             from GUI.data_cache import DataManager

@@ -9,6 +9,7 @@ core/data_manager.py
 """
 
 import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -268,8 +269,7 @@ class BotDataManager:
                         import shutil
                         shutil.copy(entry_file, upbit_file)
                     except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+                        pass  # Error silenced
             
             # 1h 데이터 저장
             if self.df_pattern_full is not None and len(self.df_pattern_full) > 0:

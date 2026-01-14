@@ -723,8 +723,7 @@ class DataCollectorWidget(QWidget):
                 sorted_pairs = sorted(tickers, key=lambda x: float(x.get("quoteVolume", 0)), reverse=True)
                 return [t["symbol"].replace("_UMCBL", "") for t in sorted_pairs[:n]]
         except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+            pass  # Error silenced
         return []
     
     def _select_new_listings(self):
@@ -835,8 +834,7 @@ class DataCollectorWidget(QWidget):
                 )
                 return [t["symbol"] for t in sorted_pairs[:n] if t["symbol"].endswith("USDT")]
         except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+            pass  # Error silenced
         return []
     
     def _load_symbols(self):

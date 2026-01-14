@@ -521,8 +521,7 @@ class MultiExplorer(QGroupBox):
                         logger.info(f"[MultiExplorer] ✅ {symbol}: {direction}")
             
             except Exception as e:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")  # 분석 실패 시 조용히 스킵
+                pass  # Error silenced
             
             self.stats_analyzed.setText(t("multi_explorer.stat_analyzed", "🔍 분석: {n}").replace("{n}", str(self.current_idx + 1)))
         except Exception as e:

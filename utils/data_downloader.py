@@ -1,6 +1,7 @@
 import sys
 import shutil
 import logging
+logger = logging.getLogger(__name__)
 from pathlib import Path
 from typing import List
 

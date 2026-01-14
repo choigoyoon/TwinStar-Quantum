@@ -873,8 +873,7 @@ class MultiCoinSniper:
             try:
                 self.exchange_client.set_leverage(3)
             except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")  # 레버리지 설정 실패 무시
+                pass  # Error silenced
             
             # 수량 계산 (가격 기준)
             entry_price = signal.get('entry_price', 1)
@@ -947,8 +946,7 @@ class MultiCoinSniper:
                     if len(df_15m) >= 20:
                         current_rsi = self.strategy.calculate_rsi(df_15m['close'].values, period=14)
             except Exception:
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")
+                pass  # Error silenced
 
             # 2. Risk 계산 (entry - initial_sl)
             initial_sl = pos.get('sl_price', 0)

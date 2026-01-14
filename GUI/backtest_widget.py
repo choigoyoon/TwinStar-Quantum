@@ -915,8 +915,7 @@ class SingleBacktestWidget(QWidget):
                     hours = pd.Timedelta(diff).total_seconds() / 3600
                     duration = f"{hours:.1f}h"
             except (TypeError, ValueError, AttributeError):
-    import logging
-    logging.getLogger("auto_fix").warning(f"Silenced error in {path.name}")  # 시간 계산 실패 시 무시
+                pass  # Error silenced
             self.result_table.setItem(row, 7, QTableWidgetItem(duration))
 
     def _run_backtest(self):

@@ -22,7 +22,7 @@ def run():
     
     # PyQt5 체크
     try:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         app = QApplication.instance() or QApplication(sys.argv)
         print("  ✅ PyQt5 로드")
         passed += 1

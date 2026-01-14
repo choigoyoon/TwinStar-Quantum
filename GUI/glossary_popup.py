@@ -1,11 +1,11 @@
 """
 트레이딩 용어집 팝업
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QScrollArea, QWidget, QFrame
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 class GlossaryPopup(QDialog):
@@ -153,7 +153,7 @@ class GlossaryPopup(QDialog):
         # 스크롤 영역
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
@@ -208,9 +208,9 @@ class GlossaryPopup(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
     app = QApplication(sys.argv)
     popup = GlossaryPopup(lang='ko')
     popup.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

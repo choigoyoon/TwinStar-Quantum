@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('📦 빌드 설정 최적화')

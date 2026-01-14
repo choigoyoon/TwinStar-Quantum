@@ -1,13 +1,13 @@
 import json
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton
 )
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t
 
 # [FALLBACK] Constants
@@ -216,7 +216,7 @@ class BotControlCard(QWidget):
         # 잔액 (복리)
         self.balance_label = QLabel("$100.0")
         self.balance_label.setFixedWidth(75)
-        self.balance_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.balance_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.balance_label.setToolTip(t("dashboard.balance_tip", "현재 잔액 (초기 시드 + 누적 익절)"))
         self.balance_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
         layout.addWidget(self.balance_label)

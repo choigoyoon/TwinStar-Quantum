@@ -1,7 +1,7 @@
 """백테스트 파라미터 추출 → 실매매 동기화"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 strategy = base / 'core' / 'strategy_core.py'
 bot = base / 'core' / 'unified_bot.py'
 

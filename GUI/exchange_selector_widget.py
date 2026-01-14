@@ -1,7 +1,7 @@
 # exchange_selector_widget.py
 """Exchange Selector Widget - Exchange/Market/Symbol Selection"""
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QRadioButton, QButtonGroup, QCompleter, QFrame
 )
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, pyqtSignal, QStringListModel
+from PyQt6.QtCore import Qt, pyqtSignal, QStringListModel
 
 from exchanges.exchange_manager import ExchangeManager
 
@@ -227,7 +227,7 @@ class ExchangeSelectorWidget(QWidget):
 # Test code
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -256,4 +256,4 @@ if __name__ == "__main__":
     window.resize(400, 200)
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

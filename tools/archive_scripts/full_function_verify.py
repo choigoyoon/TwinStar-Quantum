@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🎯 5대 기능 실제 동작 + 대소문자 기준 검증')

@@ -1,7 +1,7 @@
 """진입 타이밍 로직 체크: 봉마감 vs 실시간"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 
 print("=" * 70)

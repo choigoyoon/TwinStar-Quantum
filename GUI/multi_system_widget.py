@@ -13,12 +13,12 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from datetime import datetime
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QProgressBar, QTableWidget, QTableWidgetItem,
     QHeaderView, QTabWidget, QTextEdit, QDoubleSpinBox, QCheckBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, pyqtSignal, QObject
 
 # 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -114,7 +114,7 @@ class MultiSystemWidget(QWidget):
         self.preset_table = QTableWidget()
         self.preset_table.setColumnCount(4)
         self.preset_table.setHorizontalHeaderLabels(["심볼", "타임프레임", "승률", "생성일"])
-        self.preset_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.preset_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.preset_table)
         
         return widget
@@ -149,14 +149,14 @@ class MultiSystemWidget(QWidget):
         # 결과 요약 레이블
         self.bt_result_label = QLabel("결과가 여기에 표시됩니다.")
         self.bt_result_label.setStyleSheet("font-size: 14px; background: #2b2b2b; padding: 10px; border-radius: 5px;")
-        self.bt_result_label.setAlignment(Qt.AlignCenter)
+        self.bt_result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.bt_result_label)
         
         # 거래 내역 테이블
         self.bt_table = QTableWidget()
         self.bt_table.setColumnCount(6)
         self.bt_table.setHorizontalHeaderLabels(["시간", "심볼", "트랙", "수익률(%)", "수익($)", "잔고($)"])
-        self.bt_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.bt_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.bt_table)
         
         return widget
@@ -203,7 +203,7 @@ class MultiSystemWidget(QWidget):
         self.health_table = QTableWidget()
         self.health_table.setColumnCount(4)
         self.health_table.setHorizontalHeaderLabels(["심볼", "상태", "승률차이", "메시지"])
-        self.health_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.health_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         health_layout.addWidget(self.health_table)
         layout.addWidget(health_group)
         
@@ -313,9 +313,9 @@ class MultiSystemWidget(QWidget):
             self.log_signal.new_log.emit("Dual-Track Trader 중단.")
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     window = MultiSystemWidget()
     window.resize(1000, 800)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

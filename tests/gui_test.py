@@ -20,8 +20,8 @@ def main():
     # PyQt5 임포트 테스트
     print("\n[PyQt5 Core]")
     try:
-        from PyQt5.QtWidgets import QApplication, QWidget
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtWidgets import QApplication, QWidget
+        from PyQt6.QtCore import Qt
         print("  ✅ PyQt5 임포트 성공")
         passed += 1
     except Exception as e:

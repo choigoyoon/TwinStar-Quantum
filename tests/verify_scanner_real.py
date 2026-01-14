@@ -8,7 +8,7 @@ import os
 import unittest
 import logging
 from unittest.mock import MagicMock, patch
-from PyQt5.QtCore import QCoreApplication
+from PyQt6.QtCore import QCoreApplication
 from datetime import datetime
 
 # Path setup

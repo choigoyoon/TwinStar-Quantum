@@ -6,7 +6,7 @@
 - 전략 정보 카드
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QComboBox, QPushButton, QFrame, QGridLayout,
     QGroupBox, QScrollArea
@@ -15,8 +15,8 @@ from PyQt5.QtWidgets import (
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QFont
 
 import sys
 import os
@@ -38,7 +38,7 @@ class StrategyCard(QFrame):
         self._init_ui()
     
     def _init_ui(self):
-        self.setFrameStyle(QFrame.Box | QFrame.Raised)
+        self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
         self.setStyleSheet("""
             StrategyCard {
                 background-color: #2d2d2d;
@@ -50,7 +50,7 @@ class StrategyCard(QFrame):
                 border-color: #4CAF50;
             }
         """)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
@@ -327,7 +327,7 @@ class StrategySelectorWidget(QWidget):
 
 # ============== 테스트 ==============
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -353,4 +353,4 @@ if __name__ == "__main__":
     widget.strategy_selected.connect(on_strategy_selected)
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

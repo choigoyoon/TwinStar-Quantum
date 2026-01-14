@@ -5,7 +5,7 @@ import time
 from unittest.mock import MagicMock
 from datetime import datetime
 
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 from core.order_executor import OrderExecutor
 from core.bot_state import BotStateManager
 

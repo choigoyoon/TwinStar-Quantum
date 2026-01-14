@@ -1,7 +1,7 @@
 
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QWidget, QVBoxLayout
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from locales.lang_manager import t
 
 # Logging
@@ -44,9 +44,9 @@ class ExternalPositionTable(QTableWidget):
             }
         """)
         self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         
     def update_data(self, positions: list):
         """포지션 리스트 업데이트"""
@@ -70,7 +70,7 @@ class ExternalPositionTable(QTableWidget):
             
             for col, text in enumerate(items):
                 item = QTableWidgetItem(str(text))
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 
                 # 색상 처리 (Side & PnL)
                 if col == 2: # Side
@@ -114,7 +114,7 @@ class TradeHistoryTable(QTableWidget):
             }
         """)
         self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
     def update_history(self, trades: list):
@@ -145,7 +145,7 @@ class TradeHistoryTable(QTableWidget):
             
             for col, text in enumerate(items):
                 item = QTableWidgetItem(str(text))
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 
                 if col == 2: # Side
                     if 'long' in str(side).lower(): item.setForeground(QColor("#4CAF50"))
@@ -282,9 +282,9 @@ class PositionTable(QTableWidget):
             }
         """)
         self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
     def update_position(self, symbol, data):
         """특정 심볼 포지션 업데이트"""
@@ -313,7 +313,7 @@ class PositionTable(QTableWidget):
         
         for col, text in enumerate(items):
             item = QTableWidgetItem(str(text))
-            item.setTextAlignment(Qt.AlignCenter)
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             
             # Styles
             if col == 1: # Side

@@ -4,11 +4,11 @@ from locales.lang_manager import t
 import sys
 import os
 import logging
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QCheckBox, QMessageBox,
                              QStackedWidget, QFrame, QApplication)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class AuthDialog(QDialog):
         # Title
         title = QLabel("🌟 TwinStar Quantum")
         title.setFont(QFont("Arial", 22, QFont.Bold))
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: #2962FF; margin-bottom: 10px;")
         layout.addWidget(title)
         
@@ -98,7 +98,7 @@ class AuthDialog(QDialog):
         layout.addWidget(QLabel("Password"))
         self.login_password = QLineEdit()
         self.login_password.setPlaceholderText("Enter your password")
-        self.login_password.setEchoMode(QLineEdit.Password)
+        self.login_password.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.login_password)
         
         # Remember
@@ -157,14 +157,14 @@ class AuthDialog(QDialog):
         layout.addWidget(QLabel("Password"))
         self.reg_password = QLineEdit()
         self.reg_password.setPlaceholderText("Create a password")
-        self.reg_password.setEchoMode(QLineEdit.Password)
+        self.reg_password.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.reg_password)
         
         # Confirm Password
         layout.addWidget(QLabel("Confirm Password"))
         self.reg_password2 = QLineEdit()
         self.reg_password2.setPlaceholderText("Confirm your password")
-        self.reg_password2.setEchoMode(QLineEdit.Password)
+        self.reg_password2.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.reg_password2)
         
         layout.addSpacing(10)
@@ -231,7 +231,7 @@ class AuthDialog(QDialog):
         # Status
         self.payment_status = QLabel("⏳ Waiting for payment...")
         self.payment_status.setStyleSheet("color: #f0b90b; font-size: 14px;")
-        self.payment_status.setAlignment(Qt.AlignCenter)
+        self.payment_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.payment_status)
         
         # Manual Check Button
@@ -388,7 +388,7 @@ LoginDialog = AuthDialog
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     dialog = AuthDialog()
-    if dialog.exec_() == QDialog.Accepted:
+    if dialog.exec() == QDialog.DialogCode.Accepted:
         logger.info(f"Logged in: {dialog.user_info}")
     else:
         logger.info("Login cancelled")

@@ -19,7 +19,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
     QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView,
     QTextEdit, QMessageBox, QScrollArea, QFrame, QSplitter,
@@ -28,8 +28,8 @@ from PyQt5.QtWidgets import (
 )
 from GUI.dashboard_widgets import ExternalPositionTable, TradeHistoryTable, PositionTable
 from GUI.position_widget import PositionStatusWidget
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot, QThread
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot, QThread
+from PyQt6.QtGui import QFont
 
 # Path setup
 if not getattr(sys, 'frozen', False):
@@ -151,7 +151,7 @@ class TradingDashboard(QWidget):
         self._apply_license_limits()
         
         # [NEW] 포지션 상태 동기화 타이머 (2초마다)
-        from PyQt5.QtCore import QTimer
+        from PyQt6.QtCore import QTimer
         self._state_timer = QTimer(self)
         self._state_timer.timeout.connect(self._sync_position_states)
         self._state_timer.start(2000)  # 2초마다
@@ -246,7 +246,7 @@ class TradingDashboard(QWidget):
         main_layout.addLayout(header)
         
         # === Main Splitter (Left: Trading, Right: Monitoring) ===
-        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.main_splitter.setHandleWidth(2)
         
         main_layout.addWidget(self.main_splitter)
@@ -264,7 +264,7 @@ class TradingDashboard(QWidget):
         left_layout.setSpacing(8)
         
         # Trading Content - Side-by-Side Layout (QSplitter)
-        self.trade_splitter = QSplitter(Qt.Horizontal)
+        self.trade_splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.trade_splitter.setStyleSheet("""
             QSplitter::handle {
@@ -420,7 +420,7 @@ class TradingDashboard(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
         
         # Splitter Vertical (Top: Managed, Bottom: Results)
-        self.right_splitter = QSplitter(Qt.Vertical)
+        self.right_splitter = QSplitter(Qt.Orientation.Vertical)
         self.right_splitter.setHandleWidth(2)
         
         # Top: Active Bot Status
@@ -697,7 +697,7 @@ class TradingDashboard(QWidget):
         bot_key = f"{config['exchange']}_{config['symbol']}"
         
         if bot_key in self.running_bots:
-            from PyQt5.QtWidgets import QMessageBox
+            from PyQt6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "알림", f"{config['symbol']}은(는) 이미 실행 중입니다.")
             return
     
@@ -724,16 +724,16 @@ class TradingDashboard(QWidget):
                 return
             
             if requested_seed > available:
-                from PyQt5.QtWidgets import QMessageBox
+                from PyQt6.QtWidgets import QMessageBox
                 reply = QMessageBox.warning(
                     self, "⚠️ 잔고 초과",
                     f"설정 시드: {currency} {requested_seed:,.0f}\n"
                     f"가용 잔고: {currency} {available:,.0f}\n\n"
                     f"가용 잔고의 90%({currency} {available * 0.9:,.0f})로 조정하여 진행할까요?",
-                    QMessageBox.Yes | QMessageBox.No
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
                 )
                 
-                if reply == QMessageBox.Yes:
+                if reply == QMessageBox.StandardButton.Yes:
                     # 시드 자동 조정
                     adjusted = int(available * 0.9)
                     config['capital'] = adjusted
@@ -875,7 +875,7 @@ class TradingDashboard(QWidget):
                 self._log(f"❌ [{config['exchange']}] API 키 없음 - Settings에서 설정 필요")
                 
                 # 메시지 박스 표시 (메인 스레드에서)
-                from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
+                from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
                 QMetaObject.invokeMethod(self, "_show_api_key_error", Qt.QueuedConnection,
                                         Q_ARG(str, config['exchange']))
                 return
@@ -900,9 +900,9 @@ class TradingDashboard(QWidget):
     @pyqtSlot(str)
     def _show_api_key_error(self, exchange: str):
         """API 키 없을 때 사용자에게 알림 (메인 스레드에서 호출)"""
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
         msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Warning)
+        msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle("API 키 설정 필요")
         msg.setText(f"{exchange} API 키가 설정되지 않았습니다!")
         msg.setInformativeText(
@@ -910,8 +910,8 @@ class TradingDashboard(QWidget):
             "1. Settings 탭 → API 키 설정에서 키 입력\n"
             "2. 또는 data/exchange_keys.json 파일 확인"
         )
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.exec_()
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
     
     def _on_row_stop(self, bot_key: str):
         """봇 정지"""
@@ -951,7 +951,7 @@ class TradingDashboard(QWidget):
         bot_key = f"{config['exchange']}_{config['symbol']}"
         current_seed = config['seed']
         
-        from PyQt5.QtWidgets import QInputDialog
+        from PyQt6.QtWidgets import QInputDialog
         val, ok = QInputDialog.getDouble(
             self, "시드 조정", 
             f"[{config['symbol']}] 현재 시드: ${current_seed:,.2f}\n"
@@ -981,15 +981,15 @@ class TradingDashboard(QWidget):
         """PnL 및 거래 기록 초기화"""
         bot_key = f"{config['exchange']}_{config['symbol']}"
         
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
         reply = QMessageBox.question(
             self, "PnL 리셋",
             f"[{config['symbol']}]의 모든 거래 기록을 백업하고 초기화할까요?\n\n"
             "※ 누적 수익률이 0%로 리셋되며, 기존 기록은 백업 파일로 저장됩니다.",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             # 1. 봇이 실행 중이면 세션 리셋 호출
             if bot_key in self.running_bots:
                 bot = self.running_bots[bot_key].get('bot')
@@ -1012,10 +1012,10 @@ class TradingDashboard(QWidget):
         reply = QMessageBox.question(
             self, "확인",
             f"실행 중인 {len(self.running_bots)}개 봇을 모두 정지하시겠습니까?",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
         
         for bot_key in list(self.running_bots.keys()):
@@ -1030,11 +1030,11 @@ class TradingDashboard(QWidget):
             self, "⚠️ 긴급 청산 경고",
             "정말 모든 포지션을 즉시 청산하시겠습니까?\n\n"
             "이 작업은 되돌릴 수 없으며, 현재 시장가로 모든 포지션이 청산됩니다.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
         
         # 2단계 최종 확인
@@ -1043,11 +1043,11 @@ class TradingDashboard(QWidget):
             "마지막 확인입니다.\n\n"
             "모든 거래소의 모든 포지션이 시장가로 청산됩니다.\n"
             "정말 진행하시겠습니까?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply2 != QMessageBox.Yes:
+        if reply2 != QMessageBox.StandardButton.Yes:
             return
         
         self._log("🚨 긴급 청산 시작...")
@@ -1216,9 +1216,9 @@ class TradingDashboard(QWidget):
                 f"{symbol} 데이터가 필요합니다.\n\n"
                 f"누락: {', '.join(missing_data)}\n\n"
                 f"Data 탭에서 수집하시겠습니까?",
-                QMessageBox.Yes | QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 return False
             # 데이터 수집 탭으로 이동
             if hasattr(self, 'parent') and hasattr(self.parent(), 'tabs'):
@@ -1243,9 +1243,9 @@ class TradingDashboard(QWidget):
                 self, "⚙️ 최적화 필요",
                 f"{symbol} 최적화 프리셋이 없습니다.\n\n"
                 f"기본값으로 진행하시겠습니까?",
-                QMessageBox.Yes | QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 return False
         
         return True
@@ -1569,7 +1569,7 @@ class TradingDashboard(QWidget):
                 summary = self._sniper.get_session_summary()
                 if summary and summary.get('total_trades', 0) > 0:
                     popup = SniperSessionPopup(summary, parent=self)
-                    if popup.exec_():
+                    if popup.exec():
                         result = popup.get_result()
                         if result == "compound":
                             self._sniper.apply_compound(summary)
@@ -1656,7 +1656,7 @@ class TradingDashboard(QWidget):
             self._log("🔄 거래소 데이터(잔고/포지션) 동기화 중...")
             
             # [NEW] 워커 스레드 생성 (인라인 정의)
-            from PyQt5.QtCore import QThread, pyqtSignal, QObject
+            from PyQt6.QtCore import QThread, pyqtSignal, QObject
             
             class BalanceWorker(QObject):
                 finished = pyqtSignal(bool, float, float)
@@ -1711,7 +1711,7 @@ class TradingDashboard(QWidget):
             self.position_count_label.setText("📊 포지션: 조회중...")
             self.position_count_label.setStyleSheet("color: #888; margin-left: 15px;")
             
-            from PyQt5.QtCore import QThread, pyqtSignal, QObject
+            from PyQt6.QtCore import QThread, pyqtSignal, QObject
             
             class PositionWorker(QObject):
                 finished = pyqtSignal(list)
@@ -1863,7 +1863,7 @@ ControlPanel = TradingDashboard
 
 # 테스트용
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background: #0d1117; color: white; }")
@@ -1872,4 +1872,4 @@ if __name__ == "__main__":
     w.resize(900, 750)
     w.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core/unified_bot.py'
 code = bot.read_text(encoding='utf-8', errors='ignore')
 

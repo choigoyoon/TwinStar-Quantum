@@ -1,7 +1,7 @@
 
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 binance_file = base / 'exchanges' / 'binance_exchange.py'
 
 print("=" * 60)

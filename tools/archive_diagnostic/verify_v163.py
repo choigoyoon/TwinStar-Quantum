@@ -1,7 +1,7 @@
 """v1.6.3 복리 잔액 UI 구현 검증"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 dashboard = base / 'GUI' / 'trading_dashboard.py'
 bot = base / 'core' / 'unified_bot.py'
 

@@ -5,7 +5,7 @@ import os
 import re
 from collections import defaultdict
 
-BASE = r'C:\매매전략'
+BASE = rstr(Path(__file__).parent)
 os.chdir(BASE)
 
 print('=' * 60)

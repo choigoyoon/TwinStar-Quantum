@@ -58,7 +58,7 @@ class RealtimeGUITester:
             visible = self.dashboard.isVisible()
             
             # 스레드 상태
-            from PyQt5.QtCore import QThread
+            from PyQt6.QtCore import QThread
             running_threads = []
             for attr in dir(self.dashboard):
                 try:
@@ -70,7 +70,7 @@ class RealtimeGUITester:
                     pass
             
             # 타이머 상태
-            from PyQt5.QtCore import QTimer
+            from PyQt6.QtCore import QTimer
             active_timers = []
             for attr in dir(self.dashboard):
                 try:
@@ -114,7 +114,7 @@ class RealtimeGUITester:
         
         # === Stage 0: PyQt5 초기화 ===
         def init_qt():
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             self.app = QApplication.instance() or QApplication(sys.argv)
             return "QApplication 준비"
         
@@ -187,7 +187,7 @@ class RealtimeGUITester:
         
         # === Stage 4: 타이머 동작 확인 ===
         def check_timers():
-            from PyQt5.QtCore import QTimer
+            from PyQt6.QtCore import QTimer
             
             timers = []
             for attr in dir(self.dashboard):
@@ -210,7 +210,7 @@ class RealtimeGUITester:
         
         # === Stage 5: 스레드 상태 ===
         def check_threads():
-            from PyQt5.QtCore import QThread
+            from PyQt6.QtCore import QThread
             
             threads = []
             for attr in dir(self.dashboard):

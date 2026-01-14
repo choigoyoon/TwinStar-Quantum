@@ -2,7 +2,7 @@
 import os
 import re
 
-base_path = r'C:\매매전략'
+base_path = rstr(Path(__file__).parent)
 
 print("=" * 60)
 print("코드 실행 순서 + 계산식 분석")

@@ -1,7 +1,7 @@
 
 import os
 
-base = r"C:\매매전략"
+base = rstr(Path(__file__).parent)
 critical_files = [
     "core/unified_bot.py",
     "exchanges/ws_handler.py",  # Corrected from core/ws_handler.py

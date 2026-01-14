@@ -14,7 +14,7 @@ dirs = [
     'C:/매매전략/exchanges',
     'C:/매매전략/utils',
     'C:/매매전략/strategies',
-    'C:/매매전략'
+    str(Path(__file__).parent)
 ]
 
 print("="*60)

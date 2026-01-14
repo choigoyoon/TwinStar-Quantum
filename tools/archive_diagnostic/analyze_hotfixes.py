@@ -6,7 +6,7 @@ import sys
 # Ensure proper encoding for printing to console in Windows if needed
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("1. UPBIT fetchTime 에러 분석")

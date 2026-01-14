@@ -3,7 +3,7 @@ import numpy as np
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(r"C:\매매전략")))
+sys.path.insert(0, str(Path(rstr(Path(__file__).parent))))
 from utils.indicators import calculate_rsi
 
 def debug_rsi():

@@ -7,7 +7,7 @@ import sys
 import os
 import logging
 
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 # MOCK MODULES
 sys.modules['core.license_guard'] = MagicMock()

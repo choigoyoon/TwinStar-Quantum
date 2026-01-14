@@ -2,7 +2,7 @@ import sqlite3
 import os
 from pathlib import Path
 
-base_path = Path(r'C:\매매전략')
+base_path = Path(rstr(Path(__file__).parent))
 db_path = base_path / 'trades.db'
 logs_path = base_path / 'logs'
 

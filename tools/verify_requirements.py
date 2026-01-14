@@ -3,7 +3,7 @@ import sys
 import os
 
 # Add project root
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 print("=== STARTING REQUIREMENTS VERIFICATION ===\n")
 

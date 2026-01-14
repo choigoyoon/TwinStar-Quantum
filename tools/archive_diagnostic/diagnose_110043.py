@@ -3,7 +3,7 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 # 1. bybit_exchange.py에서 110043 처리
 print("[1] bybit_exchange.py 110043 처리:")

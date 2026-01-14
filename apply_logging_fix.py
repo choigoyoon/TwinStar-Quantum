@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 files_to_fix = [
     'exchanges/bingx_exchange.py',

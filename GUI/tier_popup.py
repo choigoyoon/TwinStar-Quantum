@@ -3,12 +3,12 @@
 TwinStar Quantum 등급 세부 정보 팝업
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QTableWidget, QTableWidgetItem, QPushButton, QHeaderView
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 
 # 다국어 지원
 try:
@@ -71,13 +71,13 @@ class TierPopup(QDialog):
         # 제목
         title = QLabel("💎 TwinStar Quantum 등급 안내")
         title.setFont(QFont("Arial", 16, QFont.Bold))
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
         # 설명
         desc = QLabel("각 등급별 기능과 가격을 확인하세요")
         desc.setStyleSheet("color: #888; font-size: 12px;")
-        desc.setAlignment(Qt.AlignCenter)
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc)
         
         # 등급 테이블
@@ -112,13 +112,13 @@ class TierPopup(QDialog):
             items = [tier, price, exchanges, symbols, features]
             for col, text in enumerate(items):
                 item = QTableWidgetItem(text)
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 if col == 0:
-                    item.setForeground(Qt.white)
+                    item.setForeground(Qt.GlobalColor.white)
                 table.setItem(row, col, item)
         
         # 테이블 설정
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionMode(QTableWidget.NoSelection)
@@ -131,7 +131,7 @@ class TierPopup(QDialog):
         # 하단 안내
         note = QLabel("💡 업그레이드는 설정 탭에서 가능합니다")
         note.setStyleSheet("color: #7c4dff; font-size: 11px;")
-        note.setAlignment(Qt.AlignCenter)
+        note.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(note)
         
         # 닫기 버튼
@@ -148,9 +148,9 @@ class TierPopup(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
     
     app = QApplication(sys.argv)
     popup = TierPopup()
-    popup.exec_()
+    popup.exec()

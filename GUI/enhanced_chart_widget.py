@@ -7,9 +7,9 @@ enhanced_chart_widget.py 수정사항
 
 import sys
 import os
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QComboBox, QGroupBox)
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 # Logging
 import logging
@@ -112,7 +112,7 @@ class EnhancedChartWidget(QWidget):
             self._has_chart = True
         except ImportError:
             self.chart_view = QLabel("pyqtgraph 설치 필요")
-            self.chart_view.setAlignment(Qt.AlignCenter)
+            self.chart_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.chart_view.setStyleSheet("color: #8b949e; font-size: 14px;")
             chart_layout.addWidget(self.chart_view)
             self._has_chart = False
@@ -178,7 +178,7 @@ class EnhancedChartWidget(QWidget):
             
             # 데이터 큐 처리 타이머 (100ms마다)
             if not hasattr(self, '_ws_timer'):
-                from PyQt5.QtCore import QTimer
+                from PyQt6.QtCore import QTimer
                 self._ws_timer = QTimer()
                 self._ws_timer.timeout.connect(self._process_ws_queue)
             self._ws_timer.start(100)
@@ -383,7 +383,7 @@ class EnhancedChartWidget(QWidget):
 
 # ===== 테스트 =====
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     try:
         from styles import StarUTheme
@@ -405,4 +405,4 @@ if __name__ == "__main__":
     widget.setMinimumSize(800, 600)
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

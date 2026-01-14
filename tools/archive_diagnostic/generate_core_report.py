@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import json
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 issues = {'except_pass': [], 'hardcoded': [], 'unsafe': []}
 
 for f in (base / 'core').glob('*.py'):

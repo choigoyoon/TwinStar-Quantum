@@ -3,7 +3,7 @@ import os
 import re
 import json
 
-base_path = r'C:\매매전략'
+base_path = rstr(Path(__file__).parent)
 
 print("=" * 60)
 print("전체 시스템 완전 검증")

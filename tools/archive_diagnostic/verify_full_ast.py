@@ -2,7 +2,7 @@
 import ast
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("전체 Python 파일 AST 검증")

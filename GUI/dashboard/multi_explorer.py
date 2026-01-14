@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 import requests
 
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QLabel, QPushButton, QComboBox, QGroupBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout,
     QVBoxLayout
 )
-from PyQt5.QtCore import QTimer, pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtGui import QColor
 from locales.lang_manager import t
 
 # Fallback imports
@@ -96,7 +96,7 @@ class MultiExplorer(QGroupBox):
         # Row 2: 진행 상태
         progress_layout = QHBoxLayout()
         
-        from PyQt5.QtWidgets import QProgressBar
+        from PyQt6.QtWidgets import QProgressBar
         self.progress_bar = QProgressBar()
         self.progress_bar.setStyleSheet("""
             QProgressBar {
@@ -145,7 +145,7 @@ class MultiExplorer(QGroupBox):
             t("multi_explorer.header_candles", "캔들"),
             t("multi_explorer.header_action", "액션")
         ])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.result_table.verticalHeader().setVisible(False)
         self.result_table.setMinimumHeight(200)
         self.result_table.setStyleSheet("""

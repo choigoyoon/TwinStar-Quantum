@@ -37,7 +37,7 @@ def qapp():
         pytest.skip("No display available for GUI tests")
     
     try:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         
         # Use existing instance if available
         _qapp = QApplication.instance()
@@ -77,7 +77,7 @@ def auto_qapp(request):
     if 'test_gui' in request.fspath.basename or 'test_phase7_gui' in request.fspath.basename:
         global _qapp
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             _qapp = QApplication.instance()
             if _qapp is None:
                 _qapp = QApplication([])

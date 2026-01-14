@@ -2,7 +2,7 @@ import sys
 import os
 import inspect
 
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 def verify_1_original_functions():
     print('=== 1. unified_bot.py 원래 기능 (추정) ===')

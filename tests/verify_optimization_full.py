@@ -3,8 +3,8 @@ import sys
 import os
 import time
 import pandas as pd
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer, Qt
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer, Qt
 
 # Mocking grid generator BEFORE importing OptimizationWidget
 import core.optimizer as opt_mod
@@ -30,8 +30,8 @@ def run_verification():
     app = QApplication(sys.argv)
     
     # Mocking MessageBox to avoid blocking
-    from PyQt5.QtWidgets import QMessageBox
-    QMessageBox.question = lambda *args: QMessageBox.Yes
+    from PyQt6.QtWidgets import QMessageBox
+    QMessageBox.question = lambda *args: QMessageBox.StandardButton.Yes
     QMessageBox.warning = lambda *args: None
     QMessageBox.information = lambda *args: None
     QMessageBox.critical = lambda *args: print(f"CRITICAL: {args[2]}") if len(args) > 2 else print(f"CRITICAL: {args}")
@@ -135,7 +135,7 @@ def run_verification():
     # CSV
     print("## 4) CSV 내보내기 테스트")
     test_csv = "test_opt_export_final.csv"
-    from PyQt5.QtWidgets import QFileDialog
+    from PyQt6.QtWidgets import QFileDialog
     QFileDialog.getSaveFileName = lambda *args: (test_csv, "")
     try:
         single_widget._export_csv()

@@ -1,7 +1,7 @@
 # cache_manager_widget.py
 
 from locales.lang_manager import t
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
 )
@@ -49,8 +49,8 @@ class CacheManagerWidget(QWidget):
         
         # 헤더 스타일
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(1, QHeaderView.Stretch) # Symbol
-        header.setSectionResizeMode(3, QHeaderView.Stretch) # Range
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # Symbol
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch) # Range
         
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -132,10 +132,10 @@ class CacheManagerWidget(QWidget):
         reply = QMessageBox.question(
             self, '삭제 확인',
             f"{filename} 파일을 삭제하시겠습니까?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             try:
                 path = self.dm.CACHE_DIR / filename
                 if path.exists():
@@ -150,10 +150,10 @@ class CacheManagerWidget(QWidget):
         reply = QMessageBox.question(
             self, 'Confirm Delete All',
             "Are you sure you want to delete ALL cache files?\nThis action cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             try:
                 for cache_file in self.dm.CACHE_DIR.glob("*.parquet"):
                     os.remove(cache_file)
@@ -166,7 +166,7 @@ class CacheManagerWidget(QWidget):
 # 테스트
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -177,4 +177,4 @@ if __name__ == "__main__":
     window.setStyleSheet("background-color: #0d1117; color: #c9d1d9;")
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

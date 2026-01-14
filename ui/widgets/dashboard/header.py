@@ -7,8 +7,8 @@ TwinStar Quantum - Dashboard Header
 - 잔고, PnL, 활성봇, 리스크
 """
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton
+from PyQt6.QtCore import pyqtSignal
 
 from .status_cards import BalanceCard, PnLCard, ActiveBotsCard, RiskCard
 

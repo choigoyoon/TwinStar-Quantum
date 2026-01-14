@@ -5,8 +5,8 @@ Tests the structural integrity and connectivity of the AutoPipelineWidget.
 import sys
 import os
 import unittest
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QComboBox, QCheckBox, QLabel, QTableWidget, QProgressBar, QRadioButton, QSpinBox, QDoubleSpinBox
-from PyQt5.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QComboBox, QCheckBox, QLabel, QTableWidget, QProgressBar, QRadioButton, QSpinBox, QDoubleSpinBox
+from PyQt6.QtCore import QTimer
 
 # Path setup
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

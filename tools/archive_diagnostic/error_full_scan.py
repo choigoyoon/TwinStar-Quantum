@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 all_py = [f for f in base.rglob('*.py') if '__pycache__' not in str(f)]
 
 print('=' * 70)

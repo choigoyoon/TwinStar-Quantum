@@ -14,7 +14,7 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, 'GUI'))
 
 # PyQt Application 필요 (위젯 테스트용)
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 app = QApplication.instance() or QApplication([]    )
 
 print("=" * 70)

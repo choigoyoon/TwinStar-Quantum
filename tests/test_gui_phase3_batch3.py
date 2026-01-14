@@ -23,7 +23,7 @@ os.chdir(PROJECT_ROOT)
 
 logging.basicConfig(level=logging.WARNING)
 
-from PyQt5.QtWidgets import QApplication, QTabWidget
+from PyQt6.QtWidgets import QApplication, QTabWidget
 
 # Initialize QApplication once
 app = QApplication.instance() or QApplication(sys.argv)
@@ -107,7 +107,7 @@ def run_batch3_tests():
             result.ok("FAQ Tab exists", hasattr(dialog, '_create_faq_tab'))
             
             # Test usage of mocks
-            from PyQt5.QtWidgets import QTextBrowser
+            from PyQt6.QtWidgets import QTextBrowser
             current_tab = dialog.findChild(QTabWidget).currentWidget()
             browser = current_tab.findChild(QTextBrowser)
             
@@ -186,7 +186,7 @@ def run_batch3_tests():
             result.ok("Instance Created", popup is not None)
             
             # Check table presence (TierPopup has a QTableWidget)
-            from PyQt5.QtWidgets import QTableWidget
+            from PyQt6.QtWidgets import QTableWidget
             tables = popup.findChildren(QTableWidget)
             result.ok("Table exists", len(tables) > 0)
             if tables:

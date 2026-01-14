@@ -5,8 +5,8 @@ TwinStar Quantum - Base Dialog
 모든 다이얼로그의 기본 클래스
 """
 
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PyQt6.QtCore import Qt
 
 # 디자인 시스템
 try:

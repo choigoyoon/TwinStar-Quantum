@@ -119,8 +119,8 @@ class StrictGUITest:
     def capture_screenshot(self, name):
         """스크린샷 저장"""
         try:
-            from PyQt5.QtWidgets import QApplication
-            from PyQt5.QtGui import QPixmap
+            from PyQt6.QtWidgets import QApplication
+            from PyQt6.QtGui import QPixmap
             
             if self.window:
                 pixmap = QPixmap(self.window.size())
@@ -199,8 +199,8 @@ class StrictGUITest:
 
     def test_launch(self, result: StrictTestResult):
         """Step 1: GUI 실행 검증"""
-        from PyQt5.QtWidgets import QApplication
-        from PyQt5.QtTest import QTest
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtTest import QTest
         
         self.log("QApplication 생성...")
         self.app = QApplication.instance() or QApplication(sys.argv)
@@ -243,8 +243,8 @@ class StrictGUITest:
 
     def test_tab_switch(self, result: StrictTestResult):
         """Step 2: 탭 전환 검증"""
-        from PyQt5.QtTest import QTest
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtTest import QTest
+        from PyQt6.QtCore import Qt
         
         if not self.window or not hasattr(self.window, 'tabs'):
             result.add_check("사전 조건", False, "윈도우/탭 없음")
@@ -279,7 +279,7 @@ class StrictGUITest:
 
     def test_optimization_data(self, result: StrictTestResult):
         """Step 3: 최적화 탭 데이터 로딩 검증"""
-        from PyQt5.QtTest import QTest
+        from PyQt6.QtTest import QTest
         
         # 최적화 탭으로 이동
         for i in range(self.window.tabs.count()):
@@ -314,8 +314,8 @@ class StrictGUITest:
 
     def test_backtest(self, result: StrictTestResult):
         """Step 4: 백테스트 탭 검증"""
-        from PyQt5.QtTest import QTest
-        from PyQt5.QtWidgets import QPushButton
+        from PyQt6.QtTest import QTest
+        from PyQt6.QtWidgets import QPushButton
         
         # 백테스트 탭으로 이동
         for i in range(self.window.tabs.count()):

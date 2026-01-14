@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-root_dir = Path(r"C:\매매전략")
+root_dir = Path(rstr(Path(__file__).parent))
 sys.path.insert(0, str(root_dir))
 
 from core.bot_state import BotStateManager

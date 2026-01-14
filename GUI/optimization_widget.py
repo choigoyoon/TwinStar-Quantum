@@ -13,7 +13,7 @@ import multiprocessing
 
 from core.optimization_logic import OptimizationEngine
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QDoubleSpinBox, QSpinBox,
     QTableWidget, QTableWidgetItem, QHeaderView,
@@ -24,8 +24,8 @@ from PyQt5.QtWidgets import (
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt6.QtGui import QFont, QColor
 import pandas as pd
 
 # Path setup
@@ -523,7 +523,7 @@ class SingleOptimizerWidget(QWidget):
         # 컬럼 너비 자동 조절
         header = self.result_table.horizontalHeader()
         header.setStretchLastSection(True)
-        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         
         # 행 높이 고정 (20개가 화면에 맞도록)
         self.result_table.verticalHeader().setDefaultSectionSize(24)
@@ -567,7 +567,7 @@ class SingleOptimizerWidget(QWidget):
             QTableWidget { background: #131722; color: #888; border: 1px solid #363a45; font-size: 10px; }
             QHeaderView::section { background: #131722; color: #555; padding: 2px; }
         """)
-        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.grid_audit_table)
         
         return result_group
@@ -781,7 +781,7 @@ class SingleOptimizerWidget(QWidget):
     
     def _create_separator(self):
         sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet("background-color: #363a45;")
         return sep
     
@@ -1113,9 +1113,9 @@ class SingleOptimizerWidget(QWidget):
             reply = QMessageBox.question(
                 self, "Confirm", 
                 f"Testing {total:,} combinations.\nThis may take a while. Continue?",
-                QMessageBox.Yes | QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 return
         
         # Update UI
@@ -1317,10 +1317,10 @@ class SingleOptimizerWidget(QWidget):
             "상위 결과를 바탕으로 파라미터 범위를 축소하여 2차 정밀 스캔을 시작하시겠습니까?\n\n"
             "• 지배적인 파라미터는 고정됩니다.\n"
             "• 나머지 범위는 더 촘촘하게 탐색합니다.",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if confirm == QMessageBox.Yes:
+        if confirm == QMessageBox.StandardButton.Yes:
             logger.info(f"🚀 [OPT] Stage 2 Refinement Start: {self.iterative_grid}")
             self._run_optimization(custom_grid=self.iterative_grid)
             self.refine_group.setVisible(False)
@@ -1362,7 +1362,7 @@ class SingleOptimizerWidget(QWidget):
         for row, r in enumerate(results[:20]):
             # 0. 유형 (Strategy Type)
             type_item = QTableWidgetItem(getattr(r, 'strategy_type', '-'))
-            type_item.setTextAlignment(Qt.AlignCenter)
+            type_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             if "🔥" in type_item.text(): type_item.setForeground(QColor("#FF5252"))
             elif "🛡" in type_item.text(): type_item.setForeground(QColor("#4CAF50"))
             self.result_table.setItem(row, 0, type_item)
@@ -1406,7 +1406,7 @@ class SingleOptimizerWidget(QWidget):
             
             # 10. 안정성 (Stability)
             stability_item = QTableWidgetItem(getattr(r, 'stability', '⚠️'))
-            stability_item.setTextAlignment(Qt.AlignCenter)
+            stability_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.result_table.setItem(row, 10, stability_item)
             
             # 11. Apply button
@@ -1542,7 +1542,7 @@ class SingleOptimizerWidget(QWidget):
     
     def _export_csv(self):
         """최적화 결과를 CSV로 내보내기"""
-        from PyQt5.QtWidgets import QFileDialog
+        from PyQt6.QtWidgets import QFileDialog
         import csv
         from datetime import datetime
         
@@ -1610,7 +1610,7 @@ class BatchOptimizerWidget(QWidget):
         self.task_done.connect(self._on_task_done)
     
     def _init_ui(self):
-        from PyQt5.QtWidgets import QTextEdit, QGridLayout
+        from PyQt6.QtWidgets import QTextEdit, QGridLayout
         
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -1749,7 +1749,7 @@ class BatchOptimizerWidget(QWidget):
             QTableWidget { background: #131722; color: #cfcfcf; border: none; font-size: 10px; }
             QHeaderView::section { background: #131722; color: #555; padding: 2px; }
         """)
-        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         a_layout.addWidget(self.grid_audit_table)
         layout.addWidget(audit_group)
         
@@ -1943,7 +1943,7 @@ class BatchOptimizerWidget(QWidget):
         except Exception as e:
             self._status_callback(f"❌ 오류: {e}")
         finally:
-            from PyQt5.QtCore import QMetaObject, Qt
+            from PyQt6.QtCore import QMetaObject, Qt
             QMetaObject.invokeMethod(self, "_on_complete", Qt.QueuedConnection)
     
     def _on_complete(self):
@@ -1973,9 +1973,9 @@ class BatchOptimizerWidget(QWidget):
                 self, "확인",
                 "배치 최적화를 중지하시겠습니까?\n\n"
                 "진행 상태는 저장되며, '이어하기' 버튼으로 재개할 수 있습니다.",
-                QMessageBox.Yes | QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
-            if reply == QMessageBox.Yes:
+            if reply == QMessageBox.StandardButton.Yes:
                 self.optimizer.stop()
                 self._on_complete()
     
@@ -2003,10 +2003,10 @@ class BatchOptimizerWidget(QWidget):
             f"진행률: {state.completed}/{state.total_symbols}\n"
             f"성공: {state.success_count}개\n"
             f"마지막 심볼: {state.current_symbol}",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
         
         self.optimizer = BatchOptimizer(
@@ -2067,7 +2067,7 @@ class OptimizationWidget(QWidget):
         self._init_ui()
     
     def _init_ui(self):
-        from PyQt5.QtWidgets import QTabWidget
+        from PyQt6.QtWidgets import QTabWidget
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -2117,11 +2117,11 @@ class OptimizationWidget(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background: #0d1117; }")
     
     w = OptimizationWidget()
     w.resize(1200, 800)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -10,12 +10,12 @@ import os
 import hashlib
 import uuid
 import requests
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QPushButton, QMessageBox, QFrame,
     QFormLayout
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 # License Guard
 try:
@@ -51,7 +51,7 @@ class PCLicenseDialog(QDialog):
         self.setStyleSheet(self._get_styles())
         
         # 작업표시줄 아이콘 설정
-        from PyQt5.QtGui import QIcon
+        from PyQt6.QtGui import QIcon
         icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'icon.ico')
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
@@ -76,12 +76,12 @@ class PCLicenseDialog(QDialog):
         
         # 로고/타이틀
         title = QLabel("🚀 TwinStar Quantum")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 28px; font-weight: bold; color: #00d4ff;")
         layout.addWidget(title)
         
         subtitle = QLabel("Professional Trading Bot")
-        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("font-size: 14px; color: #888;")
         layout.addWidget(subtitle)
         
@@ -90,7 +90,7 @@ class PCLicenseDialog(QDialog):
         # ==================== 로그인 섹션 ====================
         login_frame = QFrame()
         login_frame.setObjectName("loginFrame")
-        login_frame.setFrameShape(QFrame.StyledPanel)
+        login_frame.setFrameShape(QFrame.Shape.StyledPanel)
         login_frame.setStyleSheet("""
             #loginFrame {
                 background-color: #1a1e2a;
@@ -210,7 +210,7 @@ class PCLicenseDialog(QDialog):
         
         # 상태 메시지
         self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("font-size: 13px;")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -275,7 +275,7 @@ class PCLicenseDialog(QDialog):
                         "success"
                     )
                     
-                    from PyQt5.QtCore import QTimer
+                    from PyQt6.QtCore import QTimer
                     QTimer.singleShot(1500, self.accept)
                 else:
                     error = result.get('error', '알 수 없는 오류')
@@ -316,7 +316,7 @@ class PCLicenseDialog(QDialog):
                         "success"
                     )
                     
-                    from PyQt5.QtCore import QTimer
+                    from PyQt6.QtCore import QTimer
                     QTimer.singleShot(1500, self.accept)
                 else:
                     error = result.get('error', '알 수 없는 오류')
@@ -346,10 +346,10 @@ class PCLicenseDialog(QDialog):
         reply = QMessageBox.question(
             self, "PC 활성화",
             "이 PC를 라이선스에 등록하시겠습니까?",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.activate_pc(email)
     
     def activate_pc(self, email):
@@ -376,7 +376,7 @@ class PCLicenseDialog(QDialog):
     def on_register_click(self):
         """신규 가입 다이얼로그"""
         dialog = RegisterDialog(self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             # 가입 성공 시 이메일 자동 입력
             self.email_input.setText(dialog.registered_email)
             self.show_status("✅ 가입 완료! 로그인해주세요", "success")
@@ -391,14 +391,14 @@ class PCLicenseDialog(QDialog):
         
         # 체험 가입은 신규 가입과 동일 (tier만 trial)
         dialog = RegisterDialog(self, email=email, trial=True)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             self.email_input.setText(dialog.registered_email)
             self.on_login_click()  # 자동 로그인
     
     def on_payment_click(self):
         """결제 안내 다이얼로그"""
         dialog = PaymentDialog(self, self.hw_id)
-        dialog.exec_()
+        dialog.exec()
     
     def show_status(self, message, status_type="info"):
         """상태 메시지 표시"""
@@ -469,7 +469,7 @@ class RegisterDialog(QDialog):
         
         title = QLabel("📝 신규 가입" if not self.trial else "🎁 7일 무료 체험")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
         # 입력 필드
@@ -613,7 +613,7 @@ class PaymentDialog(QDialog):
         
         # 구분선
         line = QFrame()
-        line.setFrameShape(QFrame.HLine)
+        line.setFrameShape(QFrame.Shape.HLine)
         line.setStyleSheet("background: #555; margin: 10px 0;")
         p_layout.addWidget(line)
         
@@ -718,8 +718,8 @@ class PaymentDialog(QDialog):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QFormLayout, QFrame, QMessageBox
-    from PyQt5.QtCore import Qt
+    from PyQt6.QtWidgets import QApplication, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QFormLayout, QFrame, QMessageBox
+    from PyQt6.QtCore import Qt
     import sys
     import os
     import requests
@@ -749,7 +749,7 @@ if __name__ == "__main__":
 
             title = QLabel("✨ PC 라이선스 관리")
             title.setStyleSheet("font-size: 24px; font-weight: bold; color: #58a6ff;")
-            title.setAlignment(Qt.AlignCenter)
+            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
             main_layout.addWidget(title)
 
             # Email input
@@ -761,7 +761,7 @@ if __name__ == "__main__":
             # Password input (for login, though not explicitly used in snippet)
             self.password_input = QLineEdit()
             self.password_input.setPlaceholderText("비밀번호 (선택)")
-            self.password_input.setEchoMode(QLineEdit.Password)
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.password_input.setStyleSheet(self._input_style())
             main_layout.addWidget(self.password_input)
 
@@ -795,7 +795,7 @@ if __name__ == "__main__":
 
             # Status label
             self.status_label = QLabel("준비 완료")
-            self.status_label.setAlignment(Qt.AlignCenter)
+            self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.status_label.setStyleSheet("font-size: 13px; color: #888;")
             main_layout.addWidget(self.status_label)
 
@@ -843,4 +843,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     dialog = PCLicenseDialog()
     dialog.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

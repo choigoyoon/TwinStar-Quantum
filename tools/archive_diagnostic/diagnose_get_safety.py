@@ -4,7 +4,7 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 70)
 print("전체 코드베이스 .get() 호출 안전성 검사")

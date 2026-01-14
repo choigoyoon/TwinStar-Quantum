@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # Add project root
-sys.path.insert(0, str(Path(r"C:\매매전략")))
+sys.path.insert(0, str(Path(rstr(Path(__file__).parent))))
 
 from core.unified_bot import UnifiedBot
 

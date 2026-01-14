@@ -1,6 +1,6 @@
 """프리미엄 상태 카드 컴포넌트"""
 
-from PyQt5.QtWidgets import QFrame, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
 
 class StatusCard(QFrame):
     """상태 표시 카드"""

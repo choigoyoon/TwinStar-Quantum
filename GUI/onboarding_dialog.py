@@ -6,11 +6,11 @@
 
 import sys
 import os
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QStackedWidget, QWidget, QFrame
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 class OnboardingDialog(QDialog):
@@ -49,7 +49,7 @@ class OnboardingDialog(QDialog):
         
         # 스텝 인디케이터
         self.indicator_layout = QHBoxLayout()
-        self.indicator_layout.setAlignment(Qt.AlignCenter)
+        self.indicator_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.indicators = []
         
         for i in range(5):
@@ -106,24 +106,24 @@ class OnboardingDialog(QDialog):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(20)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # 이모지
         emoji_label = QLabel(emoji)
         emoji_label.setStyleSheet("font-size: 64px;")
-        emoji_label.setAlignment(Qt.AlignCenter)
+        emoji_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(emoji_label)
         
         # 타이틀
         title_label = QLabel(title)
         title_label.setStyleSheet("font-size: 24px; font-weight: bold;")
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
         
         # 내용
         content_label = QLabel(content)
         content_label.setStyleSheet("font-size: 14px; color: #d1d4dc; line-height: 1.6;")
-        content_label.setAlignment(Qt.AlignCenter)
+        content_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         content_label.setWordWrap(True)
         layout.addWidget(content_label)
         
@@ -234,7 +234,7 @@ def show_onboarding_if_first_run():
     
     # 온보딩 표시
     dialog = OnboardingDialog()
-    dialog.exec_()
+    dialog.exec()
     
     # 완료 표시
     os.makedirs(os.path.dirname(flag_file), exist_ok=True)
@@ -246,7 +246,7 @@ def show_onboarding_if_first_run():
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     dialog = OnboardingDialog()
-    dialog.exec_()
+    dialog.exec()

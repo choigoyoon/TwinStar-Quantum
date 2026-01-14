@@ -9,8 +9,8 @@ SingleBacktestWidget을 래핑합니다.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel
+from PyQt6.QtCore import Qt, pyqtSignal
 
 # 디자인 시스템
 try:
@@ -84,7 +84,7 @@ class BacktestWidget(QWidget):
         placeholder = QWidget()
         layout = QVBoxLayout(placeholder)
         label = QLabel(f"{icon} {name}\n\n로드 중...")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 16px;")
         layout.addWidget(label)
         
@@ -137,7 +137,7 @@ class BacktestWidget(QWidget):
 # 개발/테스트용 실행
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -152,4 +152,4 @@ if __name__ == "__main__":
     w.resize(1200, 800)
     w.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

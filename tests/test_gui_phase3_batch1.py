@@ -21,7 +21,7 @@ os.chdir(PROJECT_ROOT)
 
 logging.basicConfig(level=logging.WARNING)
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 # Initialize QApplication once
 app = QApplication.instance() or QApplication(sys.argv)

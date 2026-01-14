@@ -1,7 +1,7 @@
 """매매탭 UI 구조 추출"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 70)
 print("🔍 매매탭 UI 구조 (버튼/입력창 배치)")

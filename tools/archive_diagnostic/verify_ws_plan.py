@@ -2,7 +2,7 @@
 from pathlib import Path
 import time
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("전체 거래소 WS + 시간 동기화 구현 계획")

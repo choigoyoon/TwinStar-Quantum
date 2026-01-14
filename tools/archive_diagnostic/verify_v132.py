@@ -5,7 +5,7 @@ import json
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("v1.3.2 배포 전 검증")

@@ -6,7 +6,7 @@ import sys
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 70)
 print("core/ + exchanges/ 수정 후 검증")

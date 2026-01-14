@@ -4,13 +4,13 @@ Trade Detail Popup - 매매 차트 시각화
 """
 
 import sys
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
     QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
     QWidget, QFrame
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QColor
 import pandas as pd
 
 # Matplotlib 임포트

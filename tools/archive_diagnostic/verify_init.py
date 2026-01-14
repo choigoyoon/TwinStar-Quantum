@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 import inspect
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 sys.path.insert(0, str(base))
 os.chdir(base)
 

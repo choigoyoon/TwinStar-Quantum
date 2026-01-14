@@ -4,8 +4,8 @@
 import os
 import re
 import sys
-sys.path.insert(0, r'C:\매매전략')
-os.chdir(r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
+os.chdir(rstr(Path(__file__).parent))
 
 print('=' * 70)
 print('=== 사용자 친화성 검토 ===')

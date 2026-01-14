@@ -3,7 +3,7 @@ from pathlib import Path
 import ast
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 dashboard = base / 'GUI' / 'trading_dashboard.py'
 bot = base / 'core' / 'unified_bot.py'
 

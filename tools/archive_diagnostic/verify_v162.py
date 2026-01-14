@@ -1,7 +1,7 @@
 """v1.6.2 수정사항 검증"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 
 if not bot.exists():

@@ -3,7 +3,7 @@ import sys
 import os
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 sys.path.insert(0, str(base))
 os.chdir(base)
 
@@ -25,7 +25,7 @@ modules = [
     ('updater', 'from core.updater import Updater'),
     ('multi_sniper', 'from core.multi_sniper import MultiCoinSniper'),
     ('multi_trader', 'from core.multi_trader import MultiTrader'),
-    ('PyQt5', 'from PyQt5.QtWidgets import QApplication'),
+    ('PyQt5', 'from PyQt6.QtWidgets import QApplication'),
 ]
 
 for name, stmt in modules:

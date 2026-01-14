@@ -3,11 +3,11 @@ TwinStar Quantum - Layout Optimized Dashboard (v4.3)
 가독성 및 공간 효율성을 극대화한 2열 탭 레이아웃
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QGroupBox, QLabel, QTextEdit, QTabWidget
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 from GUI.components.status_card import StatusCard
 from GUI.components.trade_panel import TradePanel
@@ -48,7 +48,7 @@ class TradingDashboardV3(QWidget):
         layout.addLayout(hud_layout)
         
         # === 2. Main Workspace (Splitter) ===
-        main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setHandleWidth(2)
         
         # --- Left Panel: Control Center (Tabs) ---
@@ -73,7 +73,7 @@ class TradingDashboardV3(QWidget):
         left_layout.addWidget(self.control_tabs)
         
         # --- Right Panel: Monitor & Logs (Vertical Splitter) ---
-        right_splitter = QSplitter(Qt.Vertical)
+        right_splitter = QSplitter(Qt.Orientation.Vertical)
         right_splitter.setHandleWidth(2)
         
         # Top Right: Positions & Charts
@@ -82,7 +82,7 @@ class TradingDashboardV3(QWidget):
         
         # (Placeholder for generic position list)
         self.pos_label = QLabel("No Active Positions")
-        self.pos_label.setAlignment(Qt.AlignCenter)
+        self.pos_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pos_label.setStyleSheet("font-size: 14px; color: #5f6368;")
         
         # Real position contents would go here
@@ -132,9 +132,9 @@ class TradingDashboardV3(QWidget):
 # Test code
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     w = TradingDashboardV3()
     w.resize(1280, 800)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

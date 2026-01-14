@@ -120,7 +120,7 @@ def main():
     print_header("5. 위젯 인스턴스 생성 체크 (QApplication 필요)")
     
     try:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         app = QApplication.instance() or QApplication([])
         
         widget_classes = [

@@ -2,8 +2,8 @@
 프리미엄 폰트 시스템
 """
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont, QFontDatabase
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont, QFontDatabase
 from pathlib import Path
 import logging
 

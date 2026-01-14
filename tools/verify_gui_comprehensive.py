@@ -5,7 +5,7 @@ import inspect
 from pathlib import Path
 
 # Add project root
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 print("=== STARTING GUI COMPREHENSIVE VERIFICATION ===\n")
 
@@ -177,7 +177,7 @@ try:
     tg_patterns = ['telegram', 'notifier', 'notification']
     found_files = []
     
-    for root, dirs, files in os.walk(r'C:\매매전략'):
+    for root, dirs, files in os.walk(rstr(Path(__file__).parent)):
         if '__pycache__' in root:
             continue
         for f in files:

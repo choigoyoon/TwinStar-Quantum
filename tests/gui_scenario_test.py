@@ -14,9 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtTest import QTest
 
 class GUIScenarioTester:
     def __init__(self):
@@ -147,7 +147,7 @@ def main():
         if not dashboard:
             raise Exception("대시보드 없음")
         
-        from PyQt5.QtWidgets import QPushButton
+        from PyQt6.QtWidgets import QPushButton
         
         # 모든 버튼 찾기
         buttons = dashboard.findChildren(QPushButton)
@@ -170,7 +170,7 @@ def main():
         if not dashboard:
             raise Exception("대시보드 없음")
         
-        from PyQt5.QtCore import QThread
+        from PyQt6.QtCore import QThread
         
         threads = []
         for attr in dir(dashboard):
@@ -194,7 +194,7 @@ def main():
             raise Exception("대시보드 없음")
         
         # closeEvent 트리거
-        from PyQt5.QtGui import QCloseEvent
+        from PyQt6.QtGui import QCloseEvent
         
         # 종료 전 정리 메서드 확인
         has_cleanup = hasattr(dashboard, 'closeEvent')

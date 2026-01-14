@@ -7,7 +7,7 @@ import io
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 gui = base / 'GUI'
 
 print("=" * 70)

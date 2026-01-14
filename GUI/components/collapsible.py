@@ -1,5 +1,5 @@
 """접이식 위젯"""
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QFrame
 )
 

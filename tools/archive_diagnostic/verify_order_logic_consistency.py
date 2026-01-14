@@ -1,7 +1,7 @@
 
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("1. 주문 실행 명령어 흐름")

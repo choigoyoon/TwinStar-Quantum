@@ -208,7 +208,7 @@ def main():
     print("="*50)
     
     def test_pyqt5():
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         v.app = QApplication.instance() or QApplication(sys.argv)
         return "QApplication 준비"
     v.test("PyQt5 초기화", test_pyqt5)
@@ -256,7 +256,7 @@ def main():
         if not v.main_window:
             raise Exception("MainWindow 없음")
         
-        from PyQt5.QtCore import QTimer
+        from PyQt6.QtCore import QTimer
         
         timers = []
         for attr in dir(v.main_window):
@@ -272,7 +272,7 @@ def main():
         if not v.main_window:
             raise Exception("MainWindow 없음")
         
-        from PyQt5.QtCore import QThread
+        from PyQt6.QtCore import QThread
         
         threads = []
         for attr in dir(v.main_window):

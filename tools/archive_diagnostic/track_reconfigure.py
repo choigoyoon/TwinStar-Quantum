@@ -1,6 +1,6 @@
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=== reconfigure 에러 추적 ===\n')
 

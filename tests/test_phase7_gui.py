@@ -14,7 +14,7 @@ os.chdir(PROJECT_ROOT)
 
 # Create QApplication ONCE before any GUI imports
 try:
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication.instance()
     if app is None:
         app = QApplication([])

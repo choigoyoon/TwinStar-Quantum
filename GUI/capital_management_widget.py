@@ -1,11 +1,11 @@
 # capital_management_widget.py
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QDoubleSpinBox, 
     QSpinBox, QCheckBox, QGroupBox, QPushButton, QProgressBar,
     QFrame, QGridLayout
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 from capital_config import get_position_sizer
 
 class CapitalManagementWidget(QWidget):
@@ -139,7 +139,7 @@ class CapitalManagementWidget(QWidget):
         lbl = QLabel(label)
         lbl.setStyleSheet("color: #8b949e;")
         value_widget.setStyleSheet("color: #c9d1d9; font-weight: bold;")
-        value_widget.setAlignment(Qt.AlignRight)
+        value_widget.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout.addWidget(lbl, row, 0)
         layout.addWidget(value_widget, row, 1)
         
@@ -194,7 +194,7 @@ class CapitalManagementWidget(QWidget):
 # 테스트
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -205,4 +205,4 @@ if __name__ == "__main__":
     window.setStyleSheet("background-color: #0d1117; color: #c9d1d9;")
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

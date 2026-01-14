@@ -2,13 +2,13 @@
 Step 5: 내 수익 (결과)
 "얼마 벌었어?"
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QScrollArea
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QColor
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -170,11 +170,11 @@ class ResultsPage(QWidget):
         """)
         
         layout = QVBoxLayout(frame)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(SPACING['sm'])
         
         profit_label = QLabel("총 수익")
-        profit_label.setAlignment(Qt.AlignCenter)
+        profit_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         profit_label.setStyleSheet(f"""
             color: {COLORS['text_secondary']};
             font-size: {FONTS['body']}px;
@@ -182,7 +182,7 @@ class ResultsPage(QWidget):
         layout.addWidget(profit_label)
         
         self.total_profit = QLabel("+$1,234.56")
-        self.total_profit.setAlignment(Qt.AlignCenter)
+        self.total_profit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.total_profit.setStyleSheet(f"""
             font-size: 48px;
             font-weight: bold;
@@ -191,7 +191,7 @@ class ResultsPage(QWidget):
         layout.addWidget(self.total_profit)
         
         self.total_pct = QLabel("+12.34%")
-        self.total_pct.setAlignment(Qt.AlignCenter)
+        self.total_pct.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.total_pct.setStyleSheet(f"""
             font-size: {FONTS['subtitle']}px;
             color: {COLORS['success']};
@@ -236,7 +236,7 @@ class ResultsPage(QWidget):
         layout.addWidget(title)
         
         self.chart_placeholder = QLabel("[ 수익 차트 영역 ]")
-        self.chart_placeholder.setAlignment(Qt.AlignCenter)
+        self.chart_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.chart_placeholder.setMinimumHeight(200)
         self.chart_placeholder.setStyleSheet(f"""
             background-color: #1E1E1E;
@@ -255,7 +255,7 @@ class ResultsPage(QWidget):
         self.trades_table.setHorizontalHeaderLabels([
             "날짜", "코인", "방향", "진입가", "청산가", "수익", "수익률"
         ])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;

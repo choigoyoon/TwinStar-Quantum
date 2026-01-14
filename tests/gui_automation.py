@@ -4,10 +4,10 @@ import time
 import unittest
 import argparse
 from pathlib import Path
-from PyQt5.QtWidgets import QApplication, QTabWidget, QPushButton, QLineEdit, QComboBox, QCheckBox, QTableWidget, QWidget
+from PyQt6.QtWidgets import QApplication, QTabWidget, QPushButton, QLineEdit, QComboBox, QCheckBox, QTableWidget, QWidget
 
-from PyQt5.QtTest import QTest
-from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt6.QtTest import QTest
+from PyQt6.QtCore import Qt, QTimer, QPoint
 
 # Add base path for imports
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -82,7 +82,7 @@ class GUIAutomationTester(unittest.TestCase):
         # 3. Simulate Run (Quick mode if available)
         if hasattr(page, 'run_btn'):
             print("  - Clicking 'Start Optimization'...")
-            QTest.mouseClick(page.run_btn, Qt.LeftButton)
+            QTest.mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
             QTest.qWait(2000)
             self.capture("sc1_opt_running")
             
@@ -112,7 +112,7 @@ class GUIAutomationTester(unittest.TestCase):
         # 3. Click Run
         if hasattr(page, 'run_btn'):
             print("  - Clicking 'Start Backtest'...")
-            QTest.mouseClick(page.run_btn, Qt.LeftButton)
+            QTest.mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
             QTest.qWait(2000)
             self.capture("sc2_bt_running")
         else:

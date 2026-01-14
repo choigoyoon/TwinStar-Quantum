@@ -8,7 +8,7 @@
 from locales.lang_manager import t
 import sys
 import os
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QLineEdit, QCheckBox, QMessageBox, QGroupBox
 )
@@ -108,7 +108,7 @@ class TelegramSettingsWidget(QFrame):
         
         self.token_input = QLineEdit()
         self.token_input.setPlaceholderText("123456789:ABCdefGHIjklMNO...")
-        self.token_input.setEchoMode(QLineEdit.Password)
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
         token_layout.addWidget(self.token_input)
         
         settings_layout.addLayout(token_layout)
@@ -225,10 +225,10 @@ class TelegramSettingsWidget(QFrame):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     widget = TelegramSettingsWidget()
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

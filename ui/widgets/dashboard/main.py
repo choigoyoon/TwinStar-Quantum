@@ -11,11 +11,11 @@ TwinStar Quantum - Trading Dashboard Main Widget
 """
 
 import logging
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QGroupBox, QTextEdit, QTabWidget, QLabel
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 
 from .header import DashboardHeader
 from .status_cards import StatusCard
@@ -76,7 +76,7 @@ class TradingDashboard(QWidget):
         layout.addWidget(self.header)
         
         # === 2. Main Workspace (Splitter) ===
-        main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setHandleWidth(2)
         main_splitter.setStyleSheet(f"""
             QSplitter::handle {{
@@ -141,7 +141,7 @@ class TradingDashboard(QWidget):
     
     def _build_right_panel(self) -> QWidget:
         """우측 패널: 모니터 & 로그"""
-        splitter = QSplitter(Qt.Vertical)
+        splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.setHandleWidth(2)
         
         # 상단: 포지션 모니터
@@ -163,7 +163,7 @@ class TradingDashboard(QWidget):
         monitor_layout = QVBoxLayout(monitor_group)
         
         self.pos_label = QLabel("No Active Positions")
-        self.pos_label.setAlignment(Qt.AlignCenter)
+        self.pos_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pos_label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 14px;")
         monitor_layout.addWidget(self.pos_label)
         monitor_layout.addStretch()
@@ -209,7 +209,7 @@ class TradingDashboard(QWidget):
             widget = QWidget()
             layout = QVBoxLayout(widget)
             label = QLabel(f"📌 {title}\n\n[준비 중...]")
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setStyleSheet(f"color: {Colors.text_secondary};")
             layout.addWidget(label)
             return widget
@@ -256,7 +256,7 @@ class TradingDashboard(QWidget):
 # 개발/테스트용 실행
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -280,4 +280,4 @@ if __name__ == "__main__":
     )
     w.add_log("Dashboard initialized")
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

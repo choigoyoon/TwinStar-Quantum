@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # 프로젝트 루트 설정
-ROOT = Path(r"C:\매매전략")
+ROOT = Path(rstr(Path(__file__).parent))
 sys.path.insert(0, str(ROOT))
 
 class DeepVerifier:

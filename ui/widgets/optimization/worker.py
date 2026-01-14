@@ -6,7 +6,7 @@ TwinStar Quantum - Optimization Worker
 """
 
 import logging
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 logger = logging.getLogger(__name__)
 

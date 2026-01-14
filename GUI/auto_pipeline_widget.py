@@ -13,13 +13,13 @@ Step 5: Live Dashboard
 import sys
 import os
 from datetime import datetime
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QStackedWidget, 
     QPushButton, QListWidget, QComboBox, QGroupBox, QProgressBar,
     QTableWidget, QTableWidgetItem, QHeaderView, QListWidgetItem,
     QAbstractItemView, QMessageBox, QSpinBox, QGridLayout
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 # Add project root
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -78,7 +78,7 @@ class AutoPipelineWidget(QWidget):
         
         for i, text in enumerate(self.labels):
             lbl = QLabel(text)
-            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet("color: #666; font-weight: bold; background: #222; padding: 8px; border-radius: 4px;")
             self.step_indicators.addWidget(lbl)
             self.label_widgets.append(lbl)
@@ -153,7 +153,7 @@ class AutoPipelineWidget(QWidget):
         
         # Checkbox List
         self.symbol_list = QListWidget()
-        self.symbol_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.symbol_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.symbol_list.setStyleSheet("background: #1e1e1e; color: white;")
         step.content_layout.addWidget(self.symbol_list)
         
@@ -216,12 +216,12 @@ class AutoPipelineWidget(QWidget):
                     # Just use clean text for display.
                     
                     item = QListWidgetItem(symbol_clean)
-                    item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                     # Check top 5 by default
                     if top_50.index(sym) < 5:
-                         item.setCheckState(Qt.Checked)
+                         item.setCheckState(Qt.CheckState.Checked)
                     else:
-                         item.setCheckState(Qt.Unchecked)
+                         item.setCheckState(Qt.CheckState.Unchecked)
                     self.symbol_list.addItem(item)
                     
                 self._update_selection_count()
@@ -238,8 +238,8 @@ class AutoPipelineWidget(QWidget):
         top_coins = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "BNBUSDT", "TRXUSDT", "LINKUSDT", "MATICUSDT"]
         for sym in top_coins:
             item = QListWidgetItem(sym)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Checked) 
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked) 
             self.symbol_list.addItem(item)
         self._update_selection_count()
 
@@ -248,7 +248,7 @@ class AutoPipelineWidget(QWidget):
         self.selected_symbols = []
         for i in range(self.symbol_list.count()):
             item = self.symbol_list.item(i)
-            if item.checkState() == Qt.Checked:
+            if item.checkState() == Qt.CheckState.Checked:
                 count += 1
                 self.selected_symbols.append(item.text())
         self.sel_label.setText(f"Selected: {count}")
@@ -260,7 +260,7 @@ class AutoPipelineWidget(QWidget):
         step = StepWidget("Step 2: Batch Optimization")
         
         # Mode Selection
-        from PyQt5.QtWidgets import QFormLayout, QSpinBox
+        from PyQt6.QtWidgets import QFormLayout, QSpinBox
         
         config_group = QGroupBox("Configuration")
         form_layout = QFormLayout(config_group)
@@ -339,7 +339,7 @@ class AutoPipelineWidget(QWidget):
         self.status_log.setText("Initializing Batch Optimizer...")
         
         # Run in Thread
-        from PyQt5.QtCore import QThread, pyqtSignal
+        from PyQt6.QtCore import QThread, pyqtSignal
         
         class OptimizerThread(QThread):
             progress_updated = pyqtSignal(int, int, str)
@@ -464,7 +464,7 @@ class AutoPipelineWidget(QWidget):
         self.ub_status.setText("Initializing Unified Backtest...")
         self.ub_progress.setValue(0)
         
-        from PyQt5.QtCore import QThread, pyqtSignal
+        from PyQt6.QtCore import QThread, pyqtSignal
         
         class UBThread(QThread):
             progress = pyqtSignal(int, int, str)
@@ -519,7 +519,7 @@ class AutoPipelineWidget(QWidget):
         step = StepWidget("Step 4: Scanner Configuration")
         
         # Grid Layout for Settings
-        from PyQt5.QtWidgets import QGridLayout, QDoubleSpinBox, QRadioButton, QTextEdit
+        from PyQt6.QtWidgets import QGridLayout, QDoubleSpinBox, QRadioButton, QTextEdit
         
         g_layout = QGridLayout()
         
@@ -725,14 +725,14 @@ class AutoPipelineWidget(QWidget):
         self.pos_table = QTableWidget()
         self.pos_table.setColumnCount(4)
         self.pos_table.setHorizontalHeaderLabels(["Symbol", "Type", "Entry Price", "Size"])
-        self.pos_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.pos_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.pos_table.setStyleSheet("background: #1a1a1a; color: white; gridline-color: #444;")
         self.pos_table.setMaximumHeight(150)
         step.content_layout.addWidget(self.pos_table)
         
         # Logs
         step.content_layout.addWidget(QLabel("Live Logs"))
-        from PyQt5.QtWidgets import QTextEdit
+        from PyQt6.QtWidgets import QTextEdit
         self.scan_log = QTextEdit()
         self.scan_log.setReadOnly(True)
         self.scan_log.setStyleSheet("background: #111; color: #00FF00; font-family: Consolas;")
@@ -788,9 +788,9 @@ class AutoPipelineWidget(QWidget):
         self.pos_table.setItem(row, 3, QTableWidgetItem(str(data['size'])))
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     window = AutoPipelineWidget()
     window.resize(800, 600)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

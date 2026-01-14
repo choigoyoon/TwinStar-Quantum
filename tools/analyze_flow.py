@@ -2,7 +2,7 @@
 GUI → Core 전체 흐름 분석 스크립트
 """
 import sys
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 print('=' * 70)
 print('=== 전체 흐름 분석 결과 ===')

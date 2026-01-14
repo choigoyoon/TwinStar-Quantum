@@ -5,7 +5,7 @@ import sys
 # Ensure proper encoding
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("데이터 수집 / 웹소켓 / 진입 신호 검증")

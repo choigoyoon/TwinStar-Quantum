@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import json
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('='*60)
 print('[1] 1000캔들 제한 위치 (1000, tail(, limit=)')

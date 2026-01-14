@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import numpy as np
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 60)
 print('🚨 긴급 버그 진단 보고서')

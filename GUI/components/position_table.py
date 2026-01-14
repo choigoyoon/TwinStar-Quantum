@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QWidget, QHBoxLayout
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QWidget, QHBoxLayout
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QColor
 import logging
 from locales.lang_manager import t
 
@@ -33,7 +33,7 @@ class PositionTable(QTableWidget):
         
         # 헤더 설정
         header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         
         # 선택 모드
         self.setSelectionBehavior(QTableWidget.SelectRows)

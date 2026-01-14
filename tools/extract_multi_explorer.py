@@ -4,7 +4,7 @@ Creates multi_explorer.py from trading_dashboard.py
 """
 import os
 
-BASE = r'C:\매매전략'
+BASE = rstr(Path(__file__).parent)
 SOURCE = os.path.join(BASE, 'GUI', 'trading_dashboard.py')
 TARGET = os.path.join(BASE, 'GUI', 'dashboard', 'multi_explorer.py')
 INIT_FILE = os.path.join(BASE, 'GUI', 'dashboard', '__init__.py')
@@ -30,14 +30,14 @@ import sys
 from typing import Optional, Dict, List
 from datetime import datetime
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox,
     QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView,
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, 
     QProgressBar, QAbstractItemView
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QFont, QColor
 
 # Fallback imports
 try:

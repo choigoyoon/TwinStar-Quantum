@@ -3,9 +3,9 @@ import os
 import time
 import argparse
 from pathlib import Path
-from PyQt5.QtWidgets import QApplication, QTabWidget, QPushButton, QLineEdit, QComboBox, QCheckBox, QTableWidget, QWidget
-from PyQt5.QtTest import QTest
-from PyQt5.QtCore import Qt, QTimer, QPoint, QObject
+from PyQt6.QtWidgets import QApplication, QTabWidget, QPushButton, QLineEdit, QComboBox, QCheckBox, QTableWidget, QWidget
+from PyQt6.QtTest import QTest
+from PyQt6.QtCore import Qt, QTimer, QPoint, QObject
 
 # Path setup
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -152,14 +152,14 @@ class GUIStepTester:
                 # Quick mode is usually ID 0
                 btn = page.mode_group.button(0)
                 if btn:
-                    QTest.mouseClick(btn, Qt.LeftButton)
+                    QTest.mouseClick(btn, Qt.MouseButton.LeftButton)
                 QTest.qWait(int(2000))
 
             
             # [3.3] 시작 버튼
             print("  - [3.3] 최적화 시작 버튼 클릭...")
             if hasattr(page, 'run_btn'):
-                QTest.mouseClick(page.run_btn, Qt.LeftButton)
+                QTest.mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
                 self.capture("step3_opt_start")
                 # Wait for finish signal or progress
                 print("  - 진행 대기 중 (Max 30s)...")
@@ -215,8 +215,8 @@ class GUIStepTester:
             # Fallback: Extremely robust recursive search
             if not btn:
                 from locales.lang_manager import t
-                from PyQt5.QtCore import QObject
-                from PyQt5.QtWidgets import QPushButton
+                from PyQt6.QtCore import QObject
+                from PyQt6.QtWidgets import QPushButton
                 target_text = t("backtest.run") # "백테스트 실행"
                 print(f"    - Searching recursively for target text: '{target_text}'")
                 
@@ -262,7 +262,7 @@ class GUIStepTester:
 
             if btn:
                 print(f"  - Clicking button: {btn} ('{getattr(btn, 'text', lambda: '??')()}')")
-                QTest.mouseClick(btn, Qt.LeftButton)
+                QTest.mouseClick(btn, Qt.MouseButton.LeftButton)
                 self.capture("step4_backtest_start")
                 
                 # Wait for progress bar (_progress in SingleBacktestWidget)

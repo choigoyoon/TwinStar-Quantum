@@ -4,7 +4,7 @@ import json
 import py_compile
 import sys
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 70)
 print("🔍 v1.6.0 최종 검증")

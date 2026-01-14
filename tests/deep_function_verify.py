@@ -329,7 +329,7 @@ class DeepVerification:
         r = self.section("6. GUI 기능")
         
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             app = QApplication.instance() or QApplication(sys.argv)
             
             # 6.1 메인 윈도우

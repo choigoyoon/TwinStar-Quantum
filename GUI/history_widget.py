@@ -7,14 +7,14 @@ import json
 import csv
 import logging
 from datetime import datetime
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
     QComboBox, QDateEdit, QFileDialog, QMessageBox, QTabWidget,
     QDialog
 )
-from PyQt5.QtCore import Qt, QDate, QTimer
-from PyQt5.QtGui import QFont, QColor, QDragEnterEvent, QDropEvent
+from PyQt6.QtCore import Qt, QDate, QTimer
+from PyQt6.QtGui import QFont, QColor, QDragEnterEvent, QDropEvent
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -181,7 +181,7 @@ class TradeChartPopup(QDialog):
                     <span style="color:{pnl_color}; font-size:24px;">PnL: {pnl_pct:+.2f}%</span>
                 </div>
             """)
-            chart_label.setAlignment(Qt.AlignCenter)
+            chart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(chart_label)
         
         # 닫기 버튼
@@ -198,7 +198,7 @@ class TradeChartPopup(QDialog):
             QPushButton:hover { background: #1e4bd8; }
         """)
         close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
 
 class HistoryWidget(QWidget):
@@ -267,7 +267,7 @@ class HistoryWidget(QWidget):
         # 드래그앤드롭 안내
         drop_hint = QLabel("💡 Drag & Drop CSV file here to import")
         drop_hint.setStyleSheet("color: #787b86; font-size: 11px; padding: 5px;")
-        drop_hint.setAlignment(Qt.AlignCenter)
+        drop_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(drop_hint)
         
         # 통계 카드 (확장)
@@ -392,9 +392,9 @@ class HistoryWidget(QWidget):
             t("common.num_header"), t("common.date_time"), t("trade.coin"), t("common.category"), 
             t("trade.entry"), t("trade.exit"), t("common.amount"), t("common.profit_usd"), t("common.profit_pct"), t("common.be")
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setColumnWidth(0, 50)  # # 컬럼 좁게
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setStyleSheet("""
             QTableWidget {
                 background: #131722;
@@ -985,7 +985,7 @@ class HistoryWidget(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     # 다크 테마
@@ -996,4 +996,4 @@ if __name__ == "__main__":
     w = HistoryWidget()
     w.resize(1200, 800)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

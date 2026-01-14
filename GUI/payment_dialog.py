@@ -5,7 +5,7 @@ TwinStar Quantum 결제 다이얼로그
 - TX Hash 제출
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QLineEdit, QComboBox, QMessageBox,
     QFrame, QApplication
@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 from locales.lang_manager import t
 
 
@@ -106,7 +106,7 @@ class PaymentDialog(QDialog):
         # 타이틀
         title = QLabel("💎 " + t("license.upgrade_title"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
         # 현재 등급
@@ -144,7 +144,7 @@ class PaymentDialog(QDialog):
         # 가격 표시
         self.price_label = QLabel("Loading...")
         self.price_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #00e676;")
-        self.price_label.setAlignment(Qt.AlignCenter)
+        self.price_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.price_label)
         
         layout.addSpacing(5)
@@ -196,7 +196,7 @@ class PaymentDialog(QDialog):
         # 안내
         note = QLabel(t("license.note"))
         note.setStyleSheet("font-size: 11px; color: #787b86;")
-        note.setAlignment(Qt.AlignCenter)
+        note.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(note)
         
         # 초기 가격 표시

@@ -1,7 +1,7 @@
 
 import os
 
-base = r"C:\매매전략"
+base = rstr(Path(__file__).parent)
 problem_patterns = [
     "if df:",  # DataFrame 직접 비교
     "if data:",  # 모호한 비교

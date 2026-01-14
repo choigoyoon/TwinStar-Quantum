@@ -23,7 +23,7 @@ class GUITest:
         self.log("[Test 1] Widget Creation")
         
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             
             # Need QApplication for widgets
             app = QApplication.instance() or QApplication(sys.argv)
@@ -51,7 +51,7 @@ class GUITest:
         self.log("\n[Test 2] Step 2 Optimization Config")
         
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             app = QApplication.instance() or QApplication(sys.argv)
             
             from GUI.auto_pipeline_widget import AutoPipelineWidget
@@ -79,7 +79,7 @@ class GUITest:
         self.log("\n[Test 3] Step 3 Unified Backtest UI")
         
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             app = QApplication.instance() or QApplication(sys.argv)
             
             from GUI.auto_pipeline_widget import AutoPipelineWidget
@@ -104,7 +104,7 @@ class GUITest:
         self.log("\n[Test 4] Step 5 Dashboard Metrics")
         
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             app = QApplication.instance() or QApplication(sys.argv)
             
             from GUI.auto_pipeline_widget import AutoPipelineWidget
@@ -128,7 +128,7 @@ class GUITest:
         self.log("\n[Test 5] Navigation Functions")
         
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             app = QApplication.instance() or QApplication(sys.argv)
             
             from GUI.auto_pipeline_widget import AutoPipelineWidget

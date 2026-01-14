@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 import pandas as pd
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 preset_path = base / 'config/presets/bybit_btcusdt_optimized.json'
 
 print("=" * 70)

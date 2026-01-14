@@ -3,7 +3,7 @@ import sys
 import os
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 sys.path.insert(0, str(base))
 os.chdir(base)
 

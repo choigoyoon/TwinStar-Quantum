@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🎯 목적 vs 구현 재검증')

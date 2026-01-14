@@ -6,7 +6,7 @@ Background Workers
 trading/ 패키지와 직접 연동
 """
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 import pandas as pd
 import logging
 

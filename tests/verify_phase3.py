@@ -3,7 +3,7 @@ import sys
 import os
 
 # Add project root to path
-sys.path.append(r'C:\매매전략')
+sys.path.append(rstr(Path(__file__).parent))
 
 def verify_parameter_centralization():
     print("Starting Phase 3 Verification...")

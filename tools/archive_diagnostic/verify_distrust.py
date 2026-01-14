@@ -5,7 +5,7 @@ import sys
 # Force UTF-8 output
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("실제 수정 확인 (불신 검증)")

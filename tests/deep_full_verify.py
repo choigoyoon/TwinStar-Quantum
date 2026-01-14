@@ -42,7 +42,7 @@ class DeepFullVerify(unittest.TestCase):
                 classes = [obj for name, obj in inspect.getmembers(module) if inspect.isclass(obj) and obj.__module__ == module_name]
                 
                 # Mock QApplication for widget initialization
-                from PyQt5.QtWidgets import QApplication
+                from PyQt6.QtWidgets import QApplication
                 if not QApplication.instance():
                     _app = QApplication([])
                 

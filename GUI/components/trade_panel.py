@@ -1,12 +1,12 @@
 """프리미엄 트레이딩 패널"""
 
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QComboBox, QSpinBox, QDoubleSpinBox,
     QPushButton
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 class TradePanel(QWidget):
     """단일 트레이딩 패널 (싱글/멀티 공용)"""

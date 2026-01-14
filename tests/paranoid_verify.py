@@ -180,7 +180,7 @@ def run_verification():
     print("-"*40)
     
     try:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         app = QApplication.instance() or QApplication(sys.argv)
         
         def test_widget(name, widget_class):

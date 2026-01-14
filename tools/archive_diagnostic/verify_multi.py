@@ -3,7 +3,7 @@
 """
 import os
 import sys
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 print("=" * 60)
 print("🔍 멀티 트레이더/스나이퍼 기능 검증")

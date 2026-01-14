@@ -8,13 +8,13 @@ logger = logging.getLogger(__name__)
 import sys
 import os
 import json
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QLineEdit, QSpinBox, QCheckBox, QComboBox,
     QGridLayout, QMessageBox, QFrame, QScrollArea
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QFont
 
 # Path setup
 if not getattr(sys, 'frozen', False):
@@ -189,7 +189,7 @@ class TelegramCard(QFrame):
         
         fields_layout.addWidget(QLabel("Bot Token:"), 0, 0)
         self.token_input = QLineEdit()
-        self.token_input.setEchoMode(QLineEdit.Password)
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.token_input.setPlaceholderText("1234567890:ABC...")
         self.token_input.setToolTip("텔레그램 봇 토큰\n@BotFather에서 발급받은 토큰")
         fields_layout.addWidget(self.token_input, 0, 1)
@@ -353,7 +353,7 @@ class ExchangeCard(QFrame):
         if info.get("type") == "CEX":
             fields_layout.addWidget(QLabel("API Key:"), row, 0)
             self.fields['api_key'] = QLineEdit()
-            self.fields['api_key'].setEchoMode(QLineEdit.Password)
+            self.fields['api_key'].setEchoMode(QLineEdit.EchoMode.Password)
             self.fields['api_key'].setPlaceholderText("Enter API Key")
             self.fields['api_key'].setToolTip("거래소 API Key\n거래소에서 발급받은 공개키")
             fields_layout.addWidget(self.fields['api_key'], row, 1)
@@ -361,7 +361,7 @@ class ExchangeCard(QFrame):
             
             fields_layout.addWidget(QLabel("Secret:"), row, 0)
             self.fields['api_secret'] = QLineEdit()
-            self.fields['api_secret'].setEchoMode(QLineEdit.Password)
+            self.fields['api_secret'].setEchoMode(QLineEdit.EchoMode.Password)
             self.fields['api_secret'].setPlaceholderText("Enter API Secret")
             self.fields['api_secret'].setToolTip("거래소 API Secret\n⚠️ 절대 타인에게 공개하지 마세요!")
             fields_layout.addWidget(self.fields['api_secret'], row, 1)
@@ -370,7 +370,7 @@ class ExchangeCard(QFrame):
             if info.get("passphrase"):
                 fields_layout.addWidget(QLabel("Passphrase:"), row, 0)
                 self.fields['password'] = QLineEdit()
-                self.fields['password'].setEchoMode(QLineEdit.Password)
+                self.fields['password'].setEchoMode(QLineEdit.EchoMode.Password)
                 self.fields['password'].setPlaceholderText("Passphrase (Required)")
                 self.fields['password'].setToolTip("API Passphrase\nOKX/Bitget 등 일부 거래소에서 필수")
                 fields_layout.addWidget(self.fields['password'], row, 1)
@@ -386,7 +386,7 @@ class ExchangeCard(QFrame):
         elif info.get("type") == "DEX":
             fields_layout.addWidget(QLabel("Private Key:"), row, 0)
             self.fields['private_key'] = QLineEdit()
-            self.fields['private_key'].setEchoMode(QLineEdit.Password)
+            self.fields['private_key'].setEchoMode(QLineEdit.EchoMode.Password)
             self.fields['private_key'].setPlaceholderText("0x...")
             fields_layout.addWidget(self.fields['private_key'], row, 1)
             row += 1
@@ -649,10 +649,10 @@ class ExchangeCard(QFrame):
         
         msg = QMessageBox(self)
         msg.setWindowTitle(f"API Guide - {self.exchange_name.upper()}")
-        msg.setTextFormat(Qt.RichText)
+        msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setText(guide)
         msg.setMinimumWidth(500)
-        msg.exec_()
+        msg.exec()
 
 
 class SettingsWidget(QWidget):
@@ -1049,7 +1049,7 @@ class SettingsWidget(QWidget):
             from license_tiers import LICENSE_TIERS
             
             # 비교표 다이얼로그 생성
-            from PyQt5.QtWidgets import QDialog, QTextEdit
+            from PyQt6.QtWidgets import QDialog, QTextEdit
             dlg = QDialog(self)
             dlg.setWindowTitle("📊 등급 비교표")
             dlg.setMinimumSize(600, 500)
@@ -1125,7 +1125,7 @@ class SettingsWidget(QWidget):
             close_btn.clicked.connect(dlg.accept)
             layout.addWidget(close_btn)
             
-            dlg.exec_()
+            dlg.exec()
             
         except Exception as e:
             QMessageBox.warning(self, "오류", f"등급 비교표 로드 실패: {e}")
@@ -1162,18 +1162,18 @@ class SettingsWidget(QWidget):
                 
                 lm = get_license_manager()
                 dlg = PaymentDialog(lm, self)
-                dlg.exec_()
+                dlg.exec()
                 
         except Exception as e:
             QMessageBox.critical(self, "오류", f"결제 다이얼로그 오류: {e}")
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background: #0d1117; }")
     
     w = SettingsWidget()
     w.resize(800, 600)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

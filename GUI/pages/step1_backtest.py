@@ -2,7 +2,7 @@
 Step 1: 전략 테스트 (백테스트)
 "이 전략이 과거에 통했을까?"
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QDateEdit, QProgressBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtCore import Qt, QDate, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, QDate, pyqtSignal, QThread
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -223,7 +223,7 @@ class BacktestPage(QWidget):
         """)
         
         to_label = QLabel("~")
-        to_label.setAlignment(Qt.AlignCenter)
+        to_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         to_label.setFixedWidth(30)
         
         self.end_date = QDateEdit()
@@ -287,7 +287,7 @@ class BacktestPage(QWidget):
         self.trades_table = QTableWidget()
         self.trades_table.setColumnCount(5)
         self.trades_table.setHorizontalHeaderLabels(["시간", "방향", "진입가", "청산가", "수익"])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;
@@ -353,7 +353,7 @@ class BacktestPage(QWidget):
             self.trades_table.setItem(i, 3, QTableWidgetItem(f"${trade.get('exit', 0):,.2f}"))
             pnl = trade.get('pnl', 0)
             pnl_item = QTableWidgetItem(f"{pnl:+.2f}%")
-            pnl_item.setForeground(Qt.green if pnl >= 0 else Qt.red)
+            pnl_item.setForeground(Qt.GlobalColor.green if pnl >= 0 else Qt.GlobalColor.red)
             self.trades_table.setItem(i, 4, pnl_item)
     
     def _on_error(self, error: str):

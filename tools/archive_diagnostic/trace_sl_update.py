@@ -1,7 +1,7 @@
 """실제 SL 업데이트 로직 추적 status"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 
 print("=" * 70)

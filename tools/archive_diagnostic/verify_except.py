@@ -2,7 +2,7 @@
      pass 상세 분석
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("except:pass 상세 분석 (핵심 파일)")

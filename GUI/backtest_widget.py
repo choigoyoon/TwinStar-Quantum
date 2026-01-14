@@ -7,15 +7,15 @@ Backtest Widget - Full Version
 """
 
 from locales.lang_manager import t
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QGroupBox, QCheckBox,
     QProgressBar, QMessageBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QSplitter, QFrame, QDoubleSpinBox, QSpinBox,
     QComboBox, QFileDialog, QInputDialog, QGridLayout
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QColor
 
 
 import sys
@@ -774,7 +774,7 @@ class SingleBacktestWidget(QWidget):
     
     def _init_result_area(self):
         """결과 영역: 탭 구성 (Trades vs Logic Audit)"""
-        from PyQt5.QtWidgets import QTabWidget
+        from PyQt6.QtWidgets import QTabWidget
         
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -791,7 +791,7 @@ class SingleBacktestWidget(QWidget):
         trades_layout = QVBoxLayout(self.trades_tab)
         trades_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.result_splitter = QSplitter(Qt.Horizontal)
+        self.result_splitter = QSplitter(Qt.Orientation.Horizontal)
         
         # 좌측: 결과 테이블
         self.result_table = QTableWidget()
@@ -801,7 +801,7 @@ class SingleBacktestWidget(QWidget):
             t("trade.pnl_pct_header"), t("dashboard.balance"), t("backtest.mdd"), t("backtest.header_duration") if t("backtest.header_duration") != "backtest.header_duration" else "Duration"
         ])
         self.result_table.setStyleSheet(self._get_table_style())
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.result_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.result_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.result_table.itemSelectionChanged.connect(self._on_trade_selected)
@@ -832,7 +832,7 @@ class SingleBacktestWidget(QWidget):
         self.logic_table.setColumnCount(5)
         self.logic_table.setHorizontalHeaderLabels(['Timestamp', 'Signal/Logic', 'Action', 'PnL/Status', 'Details'])
         self.logic_table.setStyleSheet(self._get_table_style())
-        self.logic_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.logic_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.logic_table.horizontalHeader().setStretchLastSection(True)
         
         audit_layout.addWidget(self.logic_table)
@@ -1012,7 +1012,7 @@ class SingleBacktestWidget(QWidget):
     
     def _save_result(self):
         """백테스트 결과 저장"""
-        from PyQt5.QtWidgets import QFileDialog
+        from PyQt6.QtWidgets import QFileDialog
         import json
         from datetime import datetime
         
@@ -1145,8 +1145,8 @@ class SingleBacktestWidget(QWidget):
             return
         
         reply = QMessageBox.question(self, "Confirm", f"Delete preset '{current}'?", 
-                                     QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
             pm = get_preset_manager()
             if pm and pm.delete_preset(current):
                 self._refresh_presets()
@@ -1348,7 +1348,7 @@ class MultiBacktestWidget(QWidget):
         self.result_table = QTableWidget()
         self.result_table.setColumnCount(4)
         self.result_table.setHorizontalHeaderLabels(['항목', '값', '항목', '값'])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.result_table.setStyleSheet("""
             QTableWidget { background: #1e222d; color: white; }
             QHeaderView::section { background: #2b2b2b; color: white; }
@@ -1377,7 +1377,7 @@ class MultiBacktestWidget(QWidget):
         self.trades_table.setHorizontalHeaderLabels([
             '심볼', '방향', '진입시간', '청산시간', '청산사유', 'PnL%', 'PnL$'
         ])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget { background: #1e222d; color: white; }
             QHeaderView::section { background: #2b2b2b; color: white; }
@@ -1490,7 +1490,7 @@ class MultiBacktestWidget(QWidget):
         """백테스트 실행 (워커 스레드)"""
         try:
             result = self.backtest.run()
-            from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
+            from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
             QMetaObject.invokeMethod(
                 self, "_display_result",
                 Qt.QueuedConnection,
@@ -1499,7 +1499,7 @@ class MultiBacktestWidget(QWidget):
         except Exception as e:
             self._status_callback(f"❌ 오류: {e}", 100)
         finally:
-            from PyQt5.QtCore import QMetaObject, Qt
+            from PyQt6.QtCore import QMetaObject, Qt
             QMetaObject.invokeMethod(self, "_on_complete", Qt.QueuedConnection)
     
     def _on_complete(self):
@@ -1584,7 +1584,7 @@ class BacktestWidget(QWidget):
         self._init_ui()
     
     def _init_ui(self):
-        from PyQt5.QtWidgets import QTabWidget
+        from PyQt6.QtWidgets import QTabWidget
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1646,10 +1646,10 @@ class BacktestWidget(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background-color: #1e1e1e; }")
     w = BacktestWidget()
     w.resize(1200, 800)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

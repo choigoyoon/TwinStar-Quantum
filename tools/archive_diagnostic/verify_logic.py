@@ -3,7 +3,7 @@ import os
 import re
 from collections import defaultdict
 
-base_path = r'C:\매매전략'
+base_path = rstr(Path(__file__).parent)
 
 print("=" * 60)
 print("논리적 문제 + 중복 + 백업 검증")

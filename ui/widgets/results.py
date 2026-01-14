@@ -6,13 +6,13 @@ Results Widget
 등급 시스템 (S/A/B/C) 포함
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox,
     QGridLayout
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QFont
 
 from ..styles import COLORS, GRADE_COLORS, get_grade_style, get_pnl_color
 
@@ -35,7 +35,7 @@ class GradeLabel(QLabel):
     def set_grade(self, grade: str):
         """등급 설정 및 스타일 적용"""
         self.setText(grade)
-        self.setAlignment(Qt.AlignCenter)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setStyleSheet(get_grade_style(grade))
         self.setFixedSize(60, 60)
         
@@ -54,7 +54,7 @@ class StatCard(QFrame):
     
     def __init__(self, label: str, value: str = '-', parent=None):
         super().__init__(parent)
-        self.setFrameStyle(QFrame.StyledPanel)
+        self.setFrameStyle(QFrame.Shape.StyledPanel)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {COLORS['surface']};
@@ -71,13 +71,13 @@ class StatCard(QFrame):
         # 라벨
         self.label = QLabel(label)
         self.label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 11px;")
-        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label)
         
         # 값
         self.value_label = QLabel(value)
         self.value_label.setStyleSheet(f"color: {COLORS['text']}; font-size: 16px; font-weight: bold;")
-        self.value_label.setAlignment(Qt.AlignCenter)
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label)
     
     def set_value(self, value: str, color: str = None):
@@ -114,15 +114,15 @@ class ResultsWidget(QWidget):
         grade_frame = QFrame()
         grade_frame.setStyleSheet(f"background-color: {COLORS['surface']}; border-radius: 8px;")
         grade_layout = QVBoxLayout(grade_frame)
-        grade_layout.setAlignment(Qt.AlignCenter)
+        grade_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         grade_title = QLabel("등급")
         grade_title.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 11px;")
-        grade_title.setAlignment(Qt.AlignCenter)
+        grade_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         grade_layout.addWidget(grade_title)
         
         self.grade_label = GradeLabel('C')
-        grade_layout.addWidget(self.grade_label, alignment=Qt.AlignCenter)
+        grade_layout.addWidget(self.grade_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         top_layout.addWidget(grade_frame)
         
@@ -309,7 +309,7 @@ class ResultsTable(QTableWidget):
             # 등급
             grade = result.get('grade', 'C')
             grade_item = QTableWidgetItem(grade)
-            grade_item.setTextAlignment(Qt.AlignCenter)
+            grade_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             grade_item.setForeground(QColor(GRADE_COLORS.get(grade, COLORS['text'])))
             grade_item.setFont(QFont('Arial', 12, QFont.Bold))
             self.setItem(row, 0, grade_item)
@@ -346,7 +346,7 @@ class ResultsTable(QTableWidget):
     def _create_item(self, text: str) -> QTableWidgetItem:
         """중앙 정렬된 아이템 생성"""
         item = QTableWidgetItem(text)
-        item.setTextAlignment(Qt.AlignCenter)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         return item
     
     def get_selected_result(self) -> dict:

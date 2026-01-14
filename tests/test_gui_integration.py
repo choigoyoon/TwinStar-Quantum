@@ -26,8 +26,8 @@ def test(name, func):
 # ========================================
 def test_basic_imports():
     """기본 모듈 import 테스트"""
-    from PyQt5.QtWidgets import QApplication, QMainWindow
-    from PyQt5.QtCore import Qt
+    from PyQt6.QtWidgets import QApplication, QMainWindow
+    from PyQt6.QtCore import Qt
     return True
 
 def test_main_window():

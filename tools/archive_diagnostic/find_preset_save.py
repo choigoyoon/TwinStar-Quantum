@@ -1,6 +1,6 @@
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=== 프리셋 자동저장 위치 탐색 (Backtest/Strategy) ===')
 

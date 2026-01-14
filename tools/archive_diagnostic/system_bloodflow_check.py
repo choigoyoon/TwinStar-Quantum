@@ -177,7 +177,7 @@ print("=" * 70 + "\n")
 
 # PyQt5 init
 try:
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication.instance()
     if not app:
         app = QApplication([])

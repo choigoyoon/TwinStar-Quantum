@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import py_compile
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 def run_verify():
     print('=== 수정 사항 검증 ===')

@@ -136,7 +136,7 @@ class SystemDoctor:
             try:
                 # PyQt5는 특별 케이스 (대소문자 유지)
                 if pkg == 'PyQt5':
-                    import PyQt5.QtCore
+                    import PyQt6.QtCore
                 else:
                     __import__(pkg.lower().replace('-', '_'))
             except ImportError:

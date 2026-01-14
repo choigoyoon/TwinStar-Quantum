@@ -2,7 +2,7 @@ from pathlib import Path
 import py_compile
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🏁 TwinStar Quantum 최종 검증')

@@ -83,7 +83,7 @@ def _check_dependencies():
     
     if errors:
         try:
-            from PyQt5.QtWidgets import QMessageBox, QApplication
+            from PyQt6.QtWidgets import QMessageBox, QApplication
             app = QApplication([])
             msg = t("app.missing_modules_msg").replace("{modules}", ", ".join(errors))
             QMessageBox.critical(None, t("app.missing_modules"), msg)
@@ -143,12 +143,12 @@ def load_widget(name, cls_name):
 
 
 # ============ PyQt5 import ============
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QMessageBox, QApplication, QLabel, QTextEdit
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 
 # 다국어 지원
 try:
@@ -191,8 +191,8 @@ class StarUWindow(QMainWindow):
         self.setWindowTitle(t("app.full_title"))
         
         # 작업표시줄 아이콘 설정
-        from PyQt5.QtGui import QIcon
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtGui import QIcon
+        from PyQt6.QtWidgets import QApplication
         
         # 폰트 시스템 초기화 및 적용
         app = QApplication.instance()
@@ -405,17 +405,17 @@ class StarUWindow(QMainWindow):
         """상세 정보가 포함된 에러 위젯 생성"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(15)
         
         # 아이콘 있는 큰 제목
         icon_label = QLabel("⚠️")
         icon_label.setStyleSheet("font-size: 48px;")
-        layout.addWidget(icon_label, alignment=Qt.AlignCenter)
+        layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         title_label = QLabel(f"{title} 로드 실패")
         title_label.setStyleSheet("color: #ff9800; font-size: 18px; font-weight: bold;")
-        layout.addWidget(title_label, alignment=Qt.AlignCenter)
+        layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # 메인 에러 메시지
         error_msg = str(e)
@@ -423,18 +423,18 @@ class StarUWindow(QMainWindow):
         err_detail.setWordWrap(True)
         err_detail.setMaximumWidth(600)
         err_detail.setStyleSheet("color: #ef5350; font-size: 13px; background: #2a1a1a; padding: 10px; border-radius: 5px;")
-        layout.addWidget(err_detail, alignment=Qt.AlignCenter)
+        layout.addWidget(err_detail, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # 상세 트레이스백 (버튼으로 토글)
         trace_widget = QWidget()
         trace_layout = QVBoxLayout(trace_widget)
         trace_layout.setContentsMargins(0, 0, 0, 0)
         
-        from PyQt5.QtWidgets import QPushButton
+        from PyQt6.QtWidgets import QPushButton
         toggle_btn = QPushButton("상세 오류 정보 보기 (Show Details)")
         toggle_btn.setCheckable(True)
         toggle_btn.setStyleSheet("background: #363a45; color: #aaa; border: none; padding: 5px; font-size: 11px;")
-        layout.addWidget(toggle_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(toggle_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         
         detailed_error = traceback.format_exc()
         trace_edit = QTextEdit()
@@ -446,7 +446,7 @@ class StarUWindow(QMainWindow):
         
         trace_widget.setVisible(False)
         trace_layout.addWidget(trace_edit)
-        layout.addWidget(trace_widget, alignment=Qt.AlignCenter)
+        layout.addWidget(trace_widget, alignment=Qt.AlignmentFlag.AlignCenter)
         
         toggle_btn.toggled.connect(trace_widget.setVisible)
         
@@ -460,7 +460,7 @@ class StarUWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         
         # ===== 등급 표시 헤더 (NEW) =====
-        from PyQt5.QtWidgets import QHBoxLayout, QPushButton
+        from PyQt6.QtWidgets import QHBoxLayout, QPushButton
         header_widget = QWidget()
         header_widget.setStyleSheet("background: #1a1a2e; border-bottom: 1px solid #2a2e3b;")
         header_widget.setFixedHeight(40)
@@ -470,7 +470,7 @@ class StarUWindow(QMainWindow):
         # 로고/제목 (클릭 시 도움말)
         title_label = QLabel(f"⭐ TwinStar Quantum")
         title_label.setStyleSheet("color: #00d4ff; font-weight: bold; font-size: 13px;")
-        title_label.setCursor(Qt.PointingHandCursor)
+        title_label.setCursor(Qt.CursorShape.PointingHandCursor)
         title_label.setToolTip("클릭하여 도움말 보기")
         title_label.mousePressEvent = self._on_title_click
         header_layout.addWidget(title_label)
@@ -546,7 +546,7 @@ class StarUWindow(QMainWindow):
         header_layout.addWidget(update_btn)
         
         # 언어 선택 (NEW)
-        from PyQt5.QtWidgets import QComboBox
+        from PyQt6.QtWidgets import QComboBox
         try:
             from locales import set_language, get_lang_manager
             lang_mgr = get_lang_manager()
@@ -773,7 +773,7 @@ class StarUWindow(QMainWindow):
             if PaymentDialog:
                 lm = get_license_manager()
                 dlg = PaymentDialog(lm)
-                dlg.exec_()
+                dlg.exec()
                 
                 # 결제 후 등급 갱신
                 lm.refresh()
@@ -808,7 +808,7 @@ class StarUWindow(QMainWindow):
         try:
             from GUI.help_popup import HelpPopup
             popup = HelpPopup(self)
-            popup.exec_()
+            popup.exec()
         except Exception as e:
             logger.info(f"Help popup error: {e}")
     
@@ -824,7 +824,7 @@ class StarUWindow(QMainWindow):
                 logging.debug(f"[GLOSSARY] 언어 확인 실패: {e}")
                 lang = 'ko'
             popup = GlossaryPopup(self, lang=lang)
-            popup.exec_()
+            popup.exec()
         except Exception as e:
             logger.info(f"Glossary popup error: {e}")
     
@@ -833,7 +833,7 @@ class StarUWindow(QMainWindow):
         try:
             from GUI.telegram_popup import TelegramPopup
             popup = TelegramPopup(self)
-            popup.exec_()
+            popup.exec()
         except Exception as e:
             logger.info(f"Telegram popup error: {e}")
     
@@ -842,7 +842,7 @@ class StarUWindow(QMainWindow):
         try:
             from GUI.update_popup import UpdatePopup
             popup = UpdatePopup(self)
-            popup.exec_()
+            popup.exec()
         except Exception as e:
             logger.info(f"Update popup error: {e}")
     
@@ -858,18 +858,18 @@ class StarUWindow(QMainWindow):
                 running_bots.extend(list(widget.running_bots.keys()))
         
         if running_bots:
-            from PyQt5.QtWidgets import QMessageBox
+            from PyQt6.QtWidgets import QMessageBox
             reply = QMessageBox.warning(
                 self, "⚠️ 종료 확인",
                 f"실행 중인 봇이 {len(running_bots)}개 있습니다:\n"
                 f"{', '.join(running_bots[:5])}{'...' if len(running_bots) > 5 else ''}\n\n"
                 "봇을 정지하고 종료하시겠습니까?\n"
                 "(포지션은 유지됩니다)",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
             )
             
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
             
@@ -905,7 +905,7 @@ def main():
     if getattr(sys, 'frozen', False):
         multiprocessing.freeze_support()
         
-    from PyQt5.QtCore import Qt
+    from PyQt6.QtCore import Qt
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
@@ -978,7 +978,7 @@ def main():
         
         if LoginDialog:
             dlg = LoginDialog()
-            if dlg.exec_() != 1:
+            if dlg.exec() != 1:
                 logger.info("❌ 로그인 취소 - 종료")
                 sys.exit(0)
             
@@ -1004,7 +1004,7 @@ def main():
                 if PaymentDialog:
                     try:
                         pay_dlg = PaymentDialog(lm)
-                        result = pay_dlg.exec_()
+                        result = pay_dlg.exec()
                         logger.info(f"🏷️ 결제 팝업 종료 코드: {result}")
                         pay_dlg.deleteLater()
                     except Exception as e:
@@ -1043,7 +1043,7 @@ def main():
     
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

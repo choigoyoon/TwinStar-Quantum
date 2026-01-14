@@ -25,7 +25,7 @@ os.chdir(PROJECT_ROOT)
 
 logging.basicConfig(level=logging.WARNING)
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 # Initialize QApplication once
 app = QApplication.instance() or QApplication(sys.argv)
@@ -99,9 +99,9 @@ def run_batch4_tests():
     # ---------------------------------------------------------
     print("\n[2. SniperSessionPopup]")
     try:
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtCore import Qt
         print(f"  DEBUG: Qt is {Qt}")
-        print(f"  DEBUG: Qt.AlignCenter is {Qt.AlignCenter} type={type(Qt.AlignCenter)}")
+        print(f"  DEBUG: Qt.AlignmentFlag.AlignCenter is {Qt.AlignmentFlag.AlignCenter} type={type(Qt.AlignmentFlag.AlignCenter)}")
         
         from GUI.sniper_session_popup import SniperSessionPopup
         print("  ✅ Import Successful")
@@ -145,7 +145,7 @@ def run_batch4_tests():
     sys.stdout.flush()
     
     # Define StubCanvas for addWidget compatibility
-    from PyQt5.QtWidgets import QWidget
+    from PyQt6.QtWidgets import QWidget
     class StubCanvas(QWidget):
         def __init__(self, figure=None, parent=None):
             super().__init__(parent)

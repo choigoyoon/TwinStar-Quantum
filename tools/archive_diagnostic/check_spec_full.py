@@ -4,7 +4,7 @@ import re
 import sys
 import os
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 spec_file = base / 'staru_clean.spec'
 
 print("=" * 70)

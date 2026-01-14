@@ -6,7 +6,7 @@ TwinStar Quantum - Parameter Input Widgets
 """
 
 import numpy as np
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, 
     QDoubleSpinBox, QCheckBox
 )
@@ -213,7 +213,7 @@ class ParamIntRangeWidget(QWidget):
         self._init_ui(min_val, max_val, step)
     
     def _init_ui(self, min_val, max_val, step):
-        from PyQt5.QtWidgets import QSpinBox
+        from PyQt6.QtWidgets import QSpinBox
         
         if self.tooltip:
             self.setToolTip(self.tooltip)

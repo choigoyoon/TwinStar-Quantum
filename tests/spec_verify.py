@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-ROOT = Path(r"C:\매매전략")
+ROOT = Path(rstr(Path(__file__).parent))
 SPEC_FILE = ROOT / "twinstar.spec"
 
 # 제외할 폴더/파일

@@ -5,8 +5,8 @@ TwinStar Quantum - Status Card Components
 대시보드용 상태 카드 컴포넌트들
 """
 
-from PyQt5.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt6.QtCore import Qt
 
 # 디자인 시스템
 try:

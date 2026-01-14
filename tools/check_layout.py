@@ -3,7 +3,7 @@ GUI 레이아웃 분석 스크립트
 """
 import os
 import re
-os.chdir(r'C:\매매전략')
+os.chdir(rstr(Path(__file__).parent))
 
 print('=' * 70)
 print('=== GUI 레이아웃 분석 ===')

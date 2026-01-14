@@ -10,7 +10,7 @@ if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 # The user's script indicates these paths for production
 cache = Path(r'C:\TwinStar Quantum\data\cache')
 logs = Path(r'C:\TwinStar Quantum\logs')

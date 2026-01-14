@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFrame, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel
 
 class RiskHeaderWidget(QFrame):
     """글로벌 리스크 현황 헤더"""
@@ -26,7 +26,7 @@ class RiskHeaderWidget(QFrame):
         
         # Separator
         line1 = QFrame()
-        line1.setFrameShape(QFrame.VLine)
+        line1.setFrameShape(QFrame.Shape.VLine)
         line1.setStyleSheet("color: #555;")
         layout.addWidget(line1)
         
@@ -36,7 +36,7 @@ class RiskHeaderWidget(QFrame):
 
         # Separator
         line2 = QFrame()
-        line2.setFrameShape(QFrame.VLine)
+        line2.setFrameShape(QFrame.Shape.VLine)
         line2.setStyleSheet("color: #555;")
         layout.addWidget(line2)
 
@@ -47,7 +47,7 @@ class RiskHeaderWidget(QFrame):
         
         # Separator
         line3 = QFrame()
-        line3.setFrameShape(QFrame.VLine)
+        line3.setFrameShape(QFrame.Shape.VLine)
         line3.setStyleSheet("color: #555;")
         layout.addWidget(line3)
 

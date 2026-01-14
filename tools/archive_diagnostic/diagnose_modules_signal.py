@@ -4,7 +4,7 @@ import sys
 # Force UTF-8 output
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 # 1. updater 파일 위치 확인
 print("1. Updater 파일 위치:")

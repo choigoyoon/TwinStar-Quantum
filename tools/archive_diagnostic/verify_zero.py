@@ -4,7 +4,7 @@ import re
 import json
 import sys
 
-base_path = r'C:\매매전략'
+base_path = rstr(Path(__file__).parent)
 sys.path.insert(0, base_path)
 
 print("=" * 60)

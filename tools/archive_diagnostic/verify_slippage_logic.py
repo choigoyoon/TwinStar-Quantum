@@ -5,7 +5,7 @@ import sys
 # Ensure proper encoding
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("슬리피지 최소화 매매 로직 검증")

@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 def check_module(module_path, class_name, required_funcs):
     print(f'=== {class_name} 기능 체크 ===')

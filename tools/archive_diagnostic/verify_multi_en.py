@@ -1,7 +1,7 @@
 """Multi-trader/sniper verification"""
 import os
 import sys
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 print("=" * 50)
 print("Multi-Trader/Sniper Verification")

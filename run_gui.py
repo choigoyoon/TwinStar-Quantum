@@ -20,7 +20,7 @@ def main():
     
     args = parser.parse_args()
     
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     # Fusion 스타일 적용 (Windows 표준 느낌)
@@ -48,7 +48,7 @@ def main():
             return
 
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

@@ -226,7 +226,7 @@ class TestPhase4Core(unittest.TestCase):
         """[AutoScanner] Init & Logging"""
         try:
             # Need to mock PyQt5 signals if no QApp
-            from PyQt5.QtCore import QObject
+            from PyQt6.QtCore import QObject
         except ImportError:
             print("PyQt5 not found, skipping AutoScanner test")
             return

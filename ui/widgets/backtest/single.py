@@ -36,8 +36,8 @@ except ImportError as e:
     logger.warning(f"⚠️ SingleBacktestWidget import 실패: {e}")
     
     # 플레이스홀더 위젯
-    from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
-    from PyQt5.QtCore import Qt, pyqtSignal
+    from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+    from PyQt6.QtCore import Qt, pyqtSignal
     
     class SingleBacktestWidget(QWidget):
         """[플레이스홀더] 싱글 백테스트 위젯"""
@@ -48,7 +48,7 @@ except ImportError as e:
             super().__init__(parent)
             layout = QVBoxLayout(self)
             label = QLabel("⚠️ SingleBacktestWidget 로드 실패\n\n원인: GUI/backtest_widget.py를 찾을 수 없음")
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setStyleSheet("color: #ff9800; font-size: 14px;")
             layout.addWidget(label)
 

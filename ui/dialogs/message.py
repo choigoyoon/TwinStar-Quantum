@@ -5,8 +5,8 @@ TwinStar Quantum - Message Dialogs
 메시지 및 확인 다이얼로그
 """
 
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QLabel
+from PyQt6.QtCore import Qt
 
 from .base import BaseDialog
 
@@ -64,13 +64,13 @@ class MessageDialog(BaseDialog):
         # 아이콘
         icon_label = QLabel(icon)
         icon_label.setStyleSheet("font-size: 48px;")
-        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.content_layout.addWidget(icon_label)
         
         # 메시지
         msg_label = QLabel(message)
         msg_label.setWordWrap(True)
-        msg_label.setAlignment(Qt.AlignCenter)
+        msg_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         msg_label.setStyleSheet(f"""
             font-size: 14px;
             color: {Colors.text_primary};
@@ -87,7 +87,7 @@ class MessageDialog(BaseDialog):
     def show(cls, message: str, msg_type: str = "info", title: str = None, parent=None):
         """다이얼로그 표시"""
         dialog = cls(message, msg_type, title, parent)
-        return dialog.exec_()
+        return dialog.exec()
     
     @classmethod
     def info(cls, message: str, parent=None):
@@ -144,13 +144,13 @@ class ConfirmDialog(BaseDialog):
         icon = "⚠️" if self._dangerous else "❓"
         icon_label = QLabel(icon)
         icon_label.setStyleSheet("font-size: 48px;")
-        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.content_layout.addWidget(icon_label)
         
         # 메시지
         msg_label = QLabel(message)
         msg_label.setWordWrap(True)
-        msg_label.setAlignment(Qt.AlignCenter)
+        msg_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         msg_label.setStyleSheet(f"""
             font-size: 14px;
             color: {Colors.text_primary};
@@ -195,7 +195,7 @@ class ConfirmDialog(BaseDialog):
     ) -> bool:
         """확인 질문"""
         dialog = cls(message, title, yes_text, no_text, dangerous, parent)
-        dialog.exec_()
+        dialog.exec()
         return dialog.result()
     
     @classmethod

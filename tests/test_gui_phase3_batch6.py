@@ -14,8 +14,8 @@ from pathlib import Path
 import logging
 import unittest
 from unittest.mock import MagicMock, patch
-from PyQt5.QtWidgets import QApplication, QWidget, QDialog
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QApplication, QWidget, QDialog
+from PyQt6.QtCore import Qt, QTimer
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))

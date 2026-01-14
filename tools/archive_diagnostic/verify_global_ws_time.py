@@ -2,7 +2,7 @@
 from pathlib import Path
 import ast
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 exchanges_dir = base / 'exchanges'
 
 print("=" * 60)

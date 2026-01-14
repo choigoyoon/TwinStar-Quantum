@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 strategy = base / 'core' / 'strategy_core.py'
 bot = base / 'core' / 'unified_bot.py'
 

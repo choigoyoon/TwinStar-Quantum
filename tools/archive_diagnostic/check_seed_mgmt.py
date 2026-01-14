@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import json
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 gui_dir = base / 'GUI'
 gui_files = list(gui_dir.glob('*.py')) if gui_dir.exists() else []

@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from collections import defaultdict
 
-BASE = Path(r'C:\매매전략')
+BASE = Path(rstr(Path(__file__).parent))
 DIRS = ['core', 'GUI', 'exchanges', 'utils']
 
 # 관심 있는 패턴

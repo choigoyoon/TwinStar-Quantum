@@ -8,11 +8,11 @@
 from locales.lang_manager import t
 import sys
 import os
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QGridLayout
 )
-from PyQt5.QtCore import QTimer
+from PyQt6.QtCore import QTimer
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -91,7 +91,7 @@ class BotStatusWidget(QFrame):
         
         # 구분선
         line = QFrame()
-        line.setFrameShape(QFrame.HLine)
+        line.setFrameShape(QFrame.Shape.HLine)
         line.setStyleSheet("background: #2a2e3b;")
         layout.addWidget(line)
         
@@ -198,11 +198,11 @@ class BotStatusWidget(QFrame):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     widget = BotStatusWidget()
     widget.setMinimumWidth(300)
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

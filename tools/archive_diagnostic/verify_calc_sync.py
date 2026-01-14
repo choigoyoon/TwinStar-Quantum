@@ -4,7 +4,7 @@ import re
 import sys
 
 def verify_calc_sync():
-    base = Path(r'C:\매매전략')
+    base = Path(__file__).parent
     strategy = base / 'core' / 'strategy_core.py'
     bot = base / 'core' / 'unified_bot.py'
     

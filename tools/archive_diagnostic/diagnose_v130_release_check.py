@@ -6,7 +6,7 @@ import json
 # Force UTF-8 output
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 70)
 print("v1.3.0 배포 전 최종 점검")

@@ -1,7 +1,7 @@
 # check_multichain.py
 import os
 
-base_path = r'C:\매매전략'
+base_path = rstr(Path(__file__).parent)
 
 multichain_files = {
     'utils/chart_profiler.py': '차트 특성 추출',

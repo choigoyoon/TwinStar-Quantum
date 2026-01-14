@@ -9,11 +9,11 @@
 import sys
 import os
 import webbrowser
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTabWidget, QWidget, QTextBrowser, QScrollArea, QGroupBox
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -80,7 +80,7 @@ class HelpDialog(QDialog):
         # 닫기 버튼
         close_btn = QPushButton("닫기")
         close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
     
     def _create_quick_start_tab(self) -> QWidget:
         """빠른 시작 탭"""
@@ -223,8 +223,8 @@ class HelpDialog(QDialog):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     dialog = HelpDialog()
     dialog.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

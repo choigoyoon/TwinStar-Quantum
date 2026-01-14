@@ -2,7 +2,7 @@ import os
 import re
 from collections import defaultdict
 
-BASE = r'C:\매매전략'
+BASE = rstr(Path(__file__).parent)
 
 def analyze_file(filepath):
     """Analyze a single file for cleanup opportunities"""

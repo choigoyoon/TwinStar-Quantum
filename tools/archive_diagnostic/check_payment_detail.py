@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 # 1) unified_bot.py에서 tier 관련 로직 확인
 print('=== unified_bot.py tier 로직 ===')

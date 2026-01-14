@@ -1,12 +1,12 @@
 # data_download_widget.py
 
 from locales.lang_manager import t
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QDateEdit, QCheckBox, QProgressBar, QGroupBox, QTextEdit,
     QMessageBox
 )
-from PyQt5.QtCore import Qt, QDate, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal
 from datetime import datetime
 
 from exchange_selector_widget import ExchangeSelectorWidget
@@ -142,7 +142,7 @@ class DataDownloadWidget(QWidget):
         prog_layout.addWidget(self.pbar)
         
         self.lbl_status = QLabel("다운로드 준비됨")
-        self.lbl_status.setAlignment(Qt.AlignCenter)
+        self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         prog_layout.addWidget(self.lbl_status)
         
         btn_layout = QHBoxLayout()
@@ -266,7 +266,7 @@ class DataDownloadWidget(QWidget):
 # 테스트
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -277,4 +277,4 @@ if __name__ == "__main__":
     window.setStyleSheet("background-color: #0d1117; color: #c9d1d9;")
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

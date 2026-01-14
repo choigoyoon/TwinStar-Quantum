@@ -8,12 +8,12 @@ import logging
 logger = logging.getLogger(__name__)
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QCheckBox, QComboBox, QLabel, QPushButton,
     QFrame
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 
 class NowcastWidget(QWidget):
@@ -74,7 +74,7 @@ class NowcastWidget(QWidget):
         
         # 구분선
         line1 = QFrame()
-        line1.setFrameShape(QFrame.HLine)
+        line1.setFrameShape(QFrame.Shape.HLine)
         line1.setStyleSheet("background-color: #30363d;")
         main_layout.addWidget(line1)
         
@@ -128,7 +128,7 @@ class NowcastWidget(QWidget):
         
         # 구분선
         line2 = QFrame()
-        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShape(QFrame.Shape.HLine)
         line2.setStyleSheet("background-color: #30363d;")
         main_layout.addWidget(line2)
         
@@ -288,7 +288,7 @@ class NowcastWidget(QWidget):
 # ===== 테스트 =====
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     # 스타일 적용
     try:
@@ -320,4 +320,4 @@ if __name__ == "__main__":
     widget.disconnect_requested.connect(lambda: logger.info("연결 해제 요청"))
     
     widget.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

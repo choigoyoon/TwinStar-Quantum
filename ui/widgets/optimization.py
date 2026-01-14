@@ -5,15 +5,15 @@ Optimization Widget
 trading/ 패키지 기반 최적화 UI 위젯
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QProgressBar, QMessageBox,
     QFileDialog, QCheckBox, QRadioButton, QButtonGroup,
     QTableWidget, QTableWidgetItem, QHeaderView, QSplitter,
     QFrame, QSpinBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFont
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont
 import pandas as pd
 import logging
 
@@ -195,7 +195,7 @@ class OptimizationWidget(QWidget):
         header = self.results_table.horizontalHeader()
         header.setStretchLastSection(True)
         for i in range(len(columns)):
-            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
         
         self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.results_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -302,7 +302,7 @@ class OptimizationWidget(QWidget):
         # 등급
         grade = result.get('grade', 'C')
         grade_item = QTableWidgetItem(grade)
-        grade_item.setTextAlignment(Qt.AlignCenter)
+        grade_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         grade_item.setForeground(QColor(GRADE_COLORS.get(grade, COLORS['text'])))
         grade_item.setFont(QFont('Arial', 11, QFont.Bold))
         self.results_table.setItem(row, 0, grade_item)
@@ -339,7 +339,7 @@ class OptimizationWidget(QWidget):
     def _create_item(self, text: str) -> QTableWidgetItem:
         """중앙 정렬 아이템 생성"""
         item = QTableWidgetItem(text)
-        item.setTextAlignment(Qt.AlignCenter)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         return item
     
     def _on_finished(self, results: list):

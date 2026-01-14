@@ -28,7 +28,7 @@ def main():
     print("💪 GUI 스트레스 테스트")
     print("="*60)
     
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication.instance() or QApplication(sys.argv)
     
     try:

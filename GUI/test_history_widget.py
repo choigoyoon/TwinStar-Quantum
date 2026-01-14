@@ -5,7 +5,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 from history_widget import HistoryWidget
 import json
 
@@ -189,7 +189,7 @@ def test_all_features():
     widget.show()
     
     logger.info("\n📋 GUI 창이 열렸습니다. 확인 후 닫아주세요.")
-    # sys.exit(app.exec_())  # 주석 처리 - 자동 테스트용
+    # sys.exit(app.exec())  # 주석 처리 - 자동 테스트용
     return True
 
 

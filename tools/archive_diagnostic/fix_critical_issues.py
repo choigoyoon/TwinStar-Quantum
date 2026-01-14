@@ -6,7 +6,7 @@ import sys
 # Ensure proper encoding
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot_path = base / 'core' / 'unified_bot.py'
 
 print("=" * 60)

@@ -3,8 +3,8 @@
 거래 상세 차트 다이얼로그 (TradingView 스타일)
 """
 
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog
-from PyQt5.QtGui import QFont
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog
+from PyQt6.QtGui import QFont
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -277,7 +277,7 @@ class TradeChartDialog(QDialog):
 
 # ============== 테스트 ==============
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     from strategies.common.strategy_interface import SignalType, TradeStatus
     import random
     
@@ -327,4 +327,4 @@ if __name__ == "__main__":
     dialog = TradeChartDialog(trade, candles)
     dialog.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

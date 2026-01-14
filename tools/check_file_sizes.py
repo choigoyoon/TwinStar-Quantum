@@ -5,7 +5,7 @@ import sys
 # Windows console encoding fix
 sys.stdout.reconfigure(encoding='utf-8')
 
-root = r'C:\매매전략'
+root = rstr(Path(__file__).parent)
 large_files = []
 
 scan_folders = ['core', 'GUI', 'exchanges', 'utils', 'storage', 'config']

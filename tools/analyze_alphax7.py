@@ -1,6 +1,6 @@
 import sys
 import re
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 print('=== Alpha-X7 매매 로직 분석 ===')
 print()

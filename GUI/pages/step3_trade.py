@@ -2,12 +2,12 @@
 Step 3: 실행하기 (실매매)
 "진짜 돌리자"
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QLineEdit, QSpinBox,
     QDoubleSpinBox, QFrame, QCheckBox, QMessageBox
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -122,7 +122,7 @@ class TradePage(QWidget):
         api_label.setFixedWidth(100)
         self.api_key_input = QLineEdit()
         self.api_key_input.setPlaceholderText("API Key 입력...")
-        self.api_key_input.setEchoMode(QLineEdit.Password)
+        self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_key_input.setStyleSheet(self._get_input_style())
         api_row.addWidget(api_label)
         api_row.addWidget(self.api_key_input)
@@ -134,7 +134,7 @@ class TradePage(QWidget):
         secret_label.setFixedWidth(100)
         self.secret_key_input = QLineEdit()
         self.secret_key_input.setPlaceholderText("Secret Key 입력...")
-        self.secret_key_input.setEchoMode(QLineEdit.Password)
+        self.secret_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.secret_key_input.setStyleSheet(self._get_input_style())
         secret_row.addWidget(secret_label)
         secret_row.addWidget(self.secret_key_input)
@@ -402,11 +402,11 @@ class TradePage(QWidget):
             f"코인: {self.symbol_combo.currentText()}\n"
             f"자본금: ${self.capital_input.value():,.2f}\n"
             f"레버리지: {self.leverage_input.value()}x",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
         
         self.is_running = True
@@ -432,11 +432,11 @@ class TradePage(QWidget):
             self,
             "매매 중지",
             "정말 매매를 중지하시겠습니까?\n열린 포지션은 유지됩니다.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
         
         self.is_running = False

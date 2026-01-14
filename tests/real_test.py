@@ -175,8 +175,8 @@ def main():
     print("\n[7] GUI 실제 렌더링")
     
     def test_gui_render():
-        from PyQt5.QtWidgets import QApplication
-        from PyQt5.QtCore import QTimer
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtCore import QTimer
         
         app = QApplication.instance() or QApplication(sys.argv)
         

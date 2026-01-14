@@ -47,7 +47,7 @@ def run_strategy_selector_tests():
     print("\n[1. Import]")
     
     try:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         print("  ✅ PyQt5 import")
         result.passed += 1
     except Exception as e:

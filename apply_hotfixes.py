@@ -1,12 +1,22 @@
 
 from pathlib import Path
-import re
 import sys
+from typing import cast, Any
+import io
 
 # Ensure proper encoding
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    cast(Any, sys.stdout).reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+# Root path detection
+base = Path(__file__).parent
+if not (base / 'core').exists():
+    # If not in root, try C:\매매전략 as fallback but prioritize current dir
+    fallback = Path(rstr(Path(__file__).parent))
+    if fallback.exists():
+        base = fallback
+    else:
+        print(f"경고: {base} 또는 C:\\매매전략 경로를 찾을 수 없습니다.")
 
 print("=" * 60)
 print("긴급 패치 적용")

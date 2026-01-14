@@ -3,7 +3,7 @@ import os
 import re
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("극한 검증: 숨겨진 모든 문제 탐색")

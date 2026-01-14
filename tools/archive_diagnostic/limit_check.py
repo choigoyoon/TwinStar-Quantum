@@ -1,6 +1,6 @@
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 target = base / 'GUI' / 'data_collector_widget.py'
 
 print('=== 데이터 수집기 limit 분석 ===\n')

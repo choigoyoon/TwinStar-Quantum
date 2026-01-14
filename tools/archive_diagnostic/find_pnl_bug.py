@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import sys
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 
 print("=" * 70)

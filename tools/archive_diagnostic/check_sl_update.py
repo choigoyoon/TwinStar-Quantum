@@ -1,7 +1,7 @@
 """SL 이동 로직 전수 확인"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 strategy = base / 'core' / 'strategy_core.py'
 bot = base / 'core' / 'unified_bot.py'
 

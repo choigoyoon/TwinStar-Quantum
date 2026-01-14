@@ -7,7 +7,7 @@ import re
 import ast
 from pathlib import Path
 
-BASE = Path(r'C:\매매전략')
+BASE = Path(rstr(Path(__file__).parent))
 DIRS = ['core', 'GUI', 'exchanges', 'utils']
 
 def get_imports_with_lines(content):

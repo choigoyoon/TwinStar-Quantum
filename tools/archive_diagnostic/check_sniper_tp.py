@@ -1,7 +1,7 @@
 """multi_sniper.py TP 로직 확인 및 수정 가이드"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 sniper = base / 'core' / 'multi_sniper.py'
 
 print("=" * 70)

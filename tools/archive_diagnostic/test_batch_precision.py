@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 # 경로 추가
-BASE_DIR = Path("C:/매매전략")
+BASE_DIR = Path(str(Path(__file__).parent))
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 

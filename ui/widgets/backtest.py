@@ -5,12 +5,12 @@ Backtest Widget
 trading/ 패키지 기반 백테스트 UI 위젯
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QProgressBar, QMessageBox,
     QFileDialog, QCheckBox, QFrame, QSplitter
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 import pandas as pd
 import logging
 
@@ -263,7 +263,7 @@ class BacktestWidget(QWidget):
             QMessageBox.warning(self, "경고", "먼저 백테스트를 실행하세요.")
             return
         
-        from PyQt5.QtWidgets import QInputDialog
+        from PyQt6.QtWidgets import QInputDialog
         
         name, ok = QInputDialog.getText(
             self, "프리셋 저장", "프리셋 이름:",

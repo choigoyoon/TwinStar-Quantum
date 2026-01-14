@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🔒 빌드 시 민감 정보 유출 점검')

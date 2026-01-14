@@ -98,7 +98,7 @@ def run():
     # 4. GUI 실행
     print("\n[GUI 실행]")
     try:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         from GUI.trading_dashboard import TradingDashboard
         
         app = QApplication.instance() or QApplication(sys.argv)

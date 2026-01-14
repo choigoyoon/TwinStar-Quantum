@@ -10,7 +10,7 @@ import tempfile
 import inspect
 
 # Setup paths
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, rstr(Path(__file__).parent))
 
 # Configure logging to suppress during tests
 logging.basicConfig(level=logging.CRITICAL)

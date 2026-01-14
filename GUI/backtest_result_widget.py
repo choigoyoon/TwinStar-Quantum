@@ -6,13 +6,13 @@
 - 차트 마커 연동
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QTableWidget, QTableWidgetItem, QPushButton,
     QGroupBox, QHeaderView, QFileDialog, QAbstractItemView
 )
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QFont, QColor
 
 import csv
 from datetime import datetime
@@ -79,15 +79,15 @@ class TradeTableWidget(QTableWidget):
         """)
         
         # 설정
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.verticalHeader().setVisible(False)
         
         # 컬럼 너비
         header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.setColumnWidth(0, 50)
         
         # 클릭 이벤트
@@ -147,7 +147,7 @@ class TradeTableWidget(QTableWidget):
         if row < len(self._trades) and self._candles:
             trade = self._trades[row]
             dialog = TradeChartDialog(trade, self._candles, self)
-            dialog.exec_()
+            dialog.exec()
     
     def set_candles(self, candles: List[Candle]):
         """캔들 데이터 설정 (차트 표시용)"""
@@ -255,11 +255,11 @@ class BacktestResultWidget(QWidget):
             vbox = QVBoxLayout()
             label = QLabel(name)
             label.setStyleSheet("color: #888888; font-size: 11px;")
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             
             value = QLabel("-")
             value.setStyleSheet("color: #ffffff; font-size: 16px; font-weight: bold;")
-            value.setAlignment(Qt.AlignCenter)
+            value.setAlignment(Qt.AlignmentFlag.AlignCenter)
             
             vbox.addWidget(label)
             vbox.addWidget(value)
@@ -377,7 +377,7 @@ class BacktestResultWidget(QWidget):
             self._equity_chart.plot(x, equity, pen=pen)
             
             # 0 기준선
-            self._equity_chart.addLine(y=0, pen=pg.mkPen('#555', width=1, style=pg.QtCore.Qt.DashLine))
+            self._equity_chart.addLine(y=0, pen=pg.mkPen('#555', width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
             
             # 드로우다운 영역 (빨간색 채우기)
             peak = 0
@@ -485,7 +485,7 @@ class BacktestResultWidget(QWidget):
             
             # 현재 거래 데이터를 상세 형식으로 변환
             if not self._result or not self._result.trades:
-                from PyQt5.QtWidgets import QMessageBox
+                from PyQt6.QtWidgets import QMessageBox
                 QMessageBox.warning(self, "알림", "표시할 매매 데이터가 없습니다.")
                 return
             
@@ -519,7 +519,7 @@ class BacktestResultWidget(QWidget):
                 df_15m = pd.DataFrame()
             
             popup = TradeDetailPopup(detailed_trades, df_15m, self)
-            popup.exec_()
+            popup.exec()
             
         except Exception as e:
             logger.info(f"상세 매매 표시 오류: {e}")
@@ -529,7 +529,7 @@ class BacktestResultWidget(QWidget):
 
 # ============== 테스트 ==============
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     from strategies.common.strategy_interface import SignalType
     
     app = QApplication(sys.argv)
@@ -576,4 +576,4 @@ if __name__ == "__main__":
     widget.resize(800, 600)
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

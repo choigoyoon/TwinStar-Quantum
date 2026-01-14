@@ -7,13 +7,13 @@
 
 import sys
 import os
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit,
     QTabWidget, QWidget, QGroupBox, QMessageBox, QFrame,
     QComboBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -89,13 +89,13 @@ class LoginDialog(QDialog):
         # 헤더
         header = QLabel("🚀 TwinStar Quantum")
         header.setFont(QFont("Arial", 24, QFont.Bold))
-        header.setAlignment(Qt.AlignCenter)
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
         
         subtitle = QLabel("Professional Trading Bot")
         subtitle.setFont(QFont("Arial", 12))
         subtitle.setStyleSheet("color: #787b86;")
-        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
         
         # 탭
@@ -106,7 +106,7 @@ class LoginDialog(QDialog):
         
         # 라이선스 상태
         self.license_status = QLabel()
-        self.license_status.setAlignment(Qt.AlignCenter)
+        self.license_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.license_status.setStyleSheet("color: #787b86; font-size: 12px;")
         layout.addWidget(self.license_status)
     
@@ -253,7 +253,7 @@ class LoginDialog(QDialog):
     def _show_payment_dialog(self, user: dict):
         """결제 안내 다이얼로그"""
         dialog = PaymentDialog(user, self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             # 결제 확인됨
             self.login_successful.emit(user)
             self.accept()
@@ -460,10 +460,10 @@ class PaymentDialog(QDialog):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     dialog = LoginDialog()
     dialog.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 import py_compile
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 gui_dir = base / 'GUI'
 
 print("=" * 60)

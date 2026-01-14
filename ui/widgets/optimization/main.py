@@ -8,8 +8,8 @@ TwinStar Quantum - Optimization Main Widget
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
+from PyQt6.QtCore import pyqtSignal
 
 # 디자인 시스템
 try:
@@ -84,13 +84,13 @@ class OptimizationWidget(QWidget):
     
     def _add_placeholder_tab(self, name: str, icon: str):
         """플레이스홀더 탭 추가 (로드 실패 시)"""
-        from PyQt5.QtWidgets import QLabel
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtWidgets import QLabel
+        from PyQt6.QtCore import Qt
         
         placeholder = QWidget()
         layout = QVBoxLayout(placeholder)
         label = QLabel(f"{icon} {name}\n\n로드 중...")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 16px;")
         layout.addWidget(label)
         
@@ -149,7 +149,7 @@ class OptimizationWidget(QWidget):
 # 개발/테스트용 실행
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -164,4 +164,4 @@ if __name__ == "__main__":
     w.resize(1200, 800)
     w.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

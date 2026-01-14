@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=== Project Status Check ===")
 

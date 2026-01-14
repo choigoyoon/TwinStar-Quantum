@@ -23,7 +23,7 @@ os.chdir(PROJECT_ROOT)
 
 logging.basicConfig(level=logging.WARNING)
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 # Initialize QApplication once
 app = QApplication.instance() or QApplication(sys.argv)
@@ -119,8 +119,8 @@ def run_batch2_tests():
     print("\n[3. DataDownloadWidget]")
     try:
         # Define a Stub that inherits QWidget to satisfy addWidget()
-        from PyQt5.QtWidgets import QWidget
-        from PyQt5.QtCore import pyqtSignal
+        from PyQt6.QtWidgets import QWidget
+        from PyQt6.QtCore import pyqtSignal
         
         class StubExchangeSelector(QWidget):
             symbol_changed = pyqtSignal(str, str, str)

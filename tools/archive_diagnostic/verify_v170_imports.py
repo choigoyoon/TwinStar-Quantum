@@ -3,7 +3,7 @@ import sys
 import py_compile
 from pathlib import Path
 
-PROJECT_ROOT = Path(r'C:\매매전략')
+PROJECT_ROOT = Path(rstr(Path(__file__).parent))
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

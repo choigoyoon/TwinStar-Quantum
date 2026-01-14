@@ -6,7 +6,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 # updater 파일 찾기
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 files = list(base.rglob('*updat*.py'))
 
 print("Updater 파일:")

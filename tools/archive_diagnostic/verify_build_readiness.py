@@ -5,7 +5,7 @@ import json
 import sys
 import os
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("v1.2.3 빌드 전 최종 통합 검증")

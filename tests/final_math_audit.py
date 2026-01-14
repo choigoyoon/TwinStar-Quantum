@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 # Add paths for imports
-root_dir = Path(r"C:\매매전략")
+root_dir = Path(rstr(Path(__file__).parent))
 sys.path.insert(0, str(root_dir))
 
 from core.strategy_core import AlphaX7Core

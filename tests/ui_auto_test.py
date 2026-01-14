@@ -14,13 +14,13 @@ from datetime import datetime
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication, QPushButton, QComboBox, QSpinBox,
     QLineEdit, QLabel, QTabWidget, QGroupBox
 )
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtTest import QTest
-from PyQt5.QtGui import QPixmap
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtTest import QTest
+from PyQt6.QtGui import QPixmap
 
 class UIAutoTester:
     def __init__(self):
@@ -86,7 +86,7 @@ class UIAutoTester:
         """버튼 클릭"""
         btn = self.find_widget(QPushButton, text, name)
         if btn and btn.isEnabled():
-            QTest.mouseClick(btn, Qt.LeftButton)
+            QTest.mouseClick(btn, Qt.MouseButton.LeftButton)
             self.wait(300)
             return True
         return False
@@ -334,7 +334,7 @@ def main():
             return f"시작 버튼 비활성 (정상: 설정 필요)"
         
         # 클릭 시뮬레이션 (실제 매매 방지를 위해 주석)
-        # QTest.mouseClick(start_btn, Qt.LeftButton)
+        # QTest.mouseClick(start_btn, Qt.MouseButton.LeftButton)
         
         tester.screenshot("08_start_button")
         return f"시작 버튼: '{start_btn.text()}' (클릭 가능)"

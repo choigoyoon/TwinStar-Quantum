@@ -7,12 +7,12 @@ MultiTradeWidget - 멀티 매매 제어 위젯 (v2.0 단순화)
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
     QFrame
 )
-from PyQt5.QtCore import pyqtSignal, QTimer
+from PyQt6.QtCore import pyqtSignal, QTimer
 from locales.lang_manager import t
 
 

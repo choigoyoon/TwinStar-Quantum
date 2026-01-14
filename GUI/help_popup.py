@@ -2,7 +2,7 @@
 help_popup.py - TwinStar Quantum 도움말 팝업
 """
 
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, 
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, 
                              QTextBrowser, QPushButton)
 
 
@@ -197,10 +197,10 @@ class HelpPopup(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
     
     app = QApplication(sys.argv)
     popup = HelpPopup()
     popup.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

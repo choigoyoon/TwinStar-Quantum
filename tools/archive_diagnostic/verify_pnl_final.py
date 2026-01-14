@@ -1,7 +1,7 @@
 """v1.5.10 PnL 수정 최종 검증"""
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 
 print("=" * 70)

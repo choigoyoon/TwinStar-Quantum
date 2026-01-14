@@ -2,7 +2,7 @@
 TwinStar Quantum - Main Window
 사람 사고 기반 단계별 UI
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QFrame, QStackedWidget
 )
@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from GUI.styles.theme import COLORS, STYLESHEET
 from GUI.pages.step1_backtest import BacktestPage
@@ -34,7 +34,7 @@ class SidebarButton(QPushButton):
         
         self.setText(f"{icon}  {title}")
         self.setFixedHeight(50)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_style()
     
     def set_current(self, is_current: bool):
@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
 
 def main():
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -319,7 +319,7 @@ def main():
     window = MainWindow()
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

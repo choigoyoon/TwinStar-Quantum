@@ -6,7 +6,7 @@ import sys
 # Ensure proper encoding
 sys.stdout.reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("API 시간 동기화 + WS + 봉마감 정밀 검증")

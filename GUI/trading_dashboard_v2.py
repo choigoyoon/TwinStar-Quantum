@@ -2,11 +2,11 @@
 TwinStar Quantum - 프리미엄 트레이딩 대시보드 v2.0
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QGroupBox, QLabel, QTextEdit
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 from GUI.styles.theme import Theme
 from GUI.components.status_card import StatusCard
@@ -43,7 +43,7 @@ class TradingDashboardV2(QWidget):
         layout.addLayout(status_layout)
         
         # === 중단: 메인 스플리터 ===
-        main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
         
         # 좌측: 싱글 트레이딩
         single_group = QGroupBox("싱글 트레이딩")

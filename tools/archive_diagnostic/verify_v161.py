@@ -5,7 +5,7 @@ import logging
 # 로깅 비활성화 (검증 출력만 보기 위함)
 logging.getLogger().setLevel(logging.CRITICAL)
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 bot = base / 'core' / 'unified_bot.py'
 
 print("=" * 70)

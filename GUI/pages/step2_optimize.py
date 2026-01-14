@@ -2,13 +2,13 @@
 Step 2: 파라미터 찾기 (최적화)
 "최적의 설정값은?"
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QFrame, QTableWidget,
     QTableWidgetItem, QHeaderView, QSpinBox,
     QDoubleSpinBox, QCheckBox
 )
-from PyQt5.QtCore import pyqtSignal, QThread
+from PyQt6.QtCore import pyqtSignal, QThread
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -219,7 +219,7 @@ class OptimizePage(QWidget):
         table = QTableWidget()
         table.setColumnCount(4)
         table.setHorizontalHeaderLabels(["파라미터", "최소", "최대", "사용"])
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;
@@ -352,7 +352,7 @@ class OptimizePage(QWidget):
         self.params_table = QTableWidget()
         self.params_table.setColumnCount(2)
         self.params_table.setHorizontalHeaderLabels(["파라미터", "값"])
-        self.params_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.params_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.params_section.add_widget(self.params_table)
         layout.addWidget(self.params_section)
         

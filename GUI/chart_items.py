@@ -1,8 +1,8 @@
 # chart_items.py - PyQtGraph 차트 아이템들
 
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QRectF, QPointF
-from PyQt5.QtGui import QPainter, QPicture
+from PyQt6.QtCore import Qt, QRectF, QPointF
+from PyQt6.QtGui import QPainter, QPicture
 
 
 class CandlestickItem(pg.GraphicsObject):
@@ -112,8 +112,8 @@ class Crosshair:
     def __init__(self, plot_widget):
         self.pw = plot_widget
         
-        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.DashLine))
-        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.DashLine))
+        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.PenStyle.DashLine))
+        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.PenStyle.DashLine))
         
         plot_widget.addItem(self.vLine, ignoreBounds=True)
         plot_widget.addItem(self.hLine, ignoreBounds=True)
@@ -196,7 +196,7 @@ class TradeLabelItem(pg.GraphicsObject):
         else:
             points = [QPointF(x, y + size), QPointF(x - size/2, y), QPointF(x + size/2, y)]
         
-        from PyQt5.QtGui import QPolygonF
+        from PyQt6.QtGui import QPolygonF
         p.drawPolygon(QPolygonF(points))
     
     def paint(self, p, *args):
@@ -209,7 +209,7 @@ class TradeLabelItem(pg.GraphicsObject):
 # 테스트용
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -227,4 +227,4 @@ if __name__ == "__main__":
     crosshair = Crosshair(plot)
     
     win.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

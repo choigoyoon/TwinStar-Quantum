@@ -3,7 +3,7 @@ import ast
 import re
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("실행 흐름 추적")

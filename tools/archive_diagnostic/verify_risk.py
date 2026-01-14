@@ -1,6 +1,6 @@
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print("=" * 60)
 print("글로벌 리스크 매니저 구현 검증")

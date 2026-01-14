@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 # Add project root
-sys.path.insert(0, str(Path(r"C:\매매전략")))
+sys.path.insert(0, str(Path(rstr(Path(__file__).parent))))
 
 from core.strategy_core import AlphaX7Core
 from utils.indicators import calculate_rsi

@@ -12,13 +12,13 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication, QPushButton, QComboBox, QSpinBox,
     QDoubleSpinBox, QLineEdit, QLabel, QTabWidget,
     QGroupBox, QCheckBox, QTextEdit
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtTest import QTest
+from PyQt6.QtCore import Qt
+from PyQt6.QtTest import QTest
 
 class FunctionTester:
     def __init__(self):
@@ -299,7 +299,7 @@ def main():
         initial_text = scan_btn.text()
         
         # 클릭
-        QTest.mouseClick(scan_btn, Qt.LeftButton)
+        QTest.mouseClick(scan_btn, Qt.MouseButton.LeftButton)
         t.wait(2000)
         
         # 로그 확인
@@ -312,7 +312,7 @@ def main():
         stop_btn = stop_buttons.get('정지') or stop_buttons.get('stop')
         
         if stop_btn and stop_btn.isEnabled():
-            QTest.mouseClick(stop_btn, Qt.LeftButton)
+            QTest.mouseClick(stop_btn, Qt.MouseButton.LeftButton)
             t.wait(1000)
             t.screenshot("06_scan_stop_func")
         
@@ -359,7 +359,7 @@ def main():
         log_before = t.get_log_text()
         
         # 클릭 (실제 매매 주의!)
-        QTest.mouseClick(start_btn, Qt.LeftButton)
+        QTest.mouseClick(start_btn, Qt.MouseButton.LeftButton)
         t.wait(2000)
         
         # 클릭 후 로그
@@ -372,7 +372,7 @@ def main():
         stop_btn = stop_buttons.get('정지') or stop_buttons.get('stop')
         
         if stop_btn and stop_btn.isEnabled():
-            QTest.mouseClick(stop_btn, Qt.LeftButton)
+            QTest.mouseClick(stop_btn, Qt.MouseButton.LeftButton)
             t.wait(1000)
         
         log_added = len(log_after) - len(log_before)
@@ -413,7 +413,7 @@ def main():
                    t.find_buttons_by_text(['저장', 'save']).get('save')
         
         if save_btn and save_btn.isEnabled():
-            QTest.mouseClick(save_btn, Qt.LeftButton)
+            QTest.mouseClick(save_btn, Qt.MouseButton.LeftButton)
             t.wait(500)
             return "설정 탭 → 저장 클릭 OK"
         

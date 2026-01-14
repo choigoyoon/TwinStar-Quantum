@@ -1,6 +1,6 @@
 from pathlib import Path
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=== 1000개 제한 로직 전수 검색 ===\n')
 

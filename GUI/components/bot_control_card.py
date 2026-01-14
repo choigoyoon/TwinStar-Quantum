@@ -12,6 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 from PyQt6.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t
+from ui.design_system.tokens import Colors
 
 # [FALLBACK] Constants
 try:
@@ -120,7 +121,7 @@ class BotControlCard(QWidget):
         # 현재 잔액 (읽기 전용)
         self.current_label = QLabel("$100.00")
         self.current_label.setFixedWidth(75)
-        self.current_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
+        self.current_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold; font-family: 'Consolas', monospace;")
         self.current_label.setToolTip(t("dashboard.current_balance_tip", "현재 가용 자산 (초기시드 + 누적수익)"))
         layout.addWidget(self.current_label)
         
@@ -136,7 +137,7 @@ class BotControlCard(QWidget):
         self.mode_combo.addItems(["C", "F"]) # C=Compound, F=Fixed
         self.mode_combo.setFixedWidth(40)
         self.mode_combo.setToolTip("Capital Mode: C(Compound), F(Fixed)")
-        self.mode_combo.setStyleSheet("color: #FF9800; font-weight: bold;")
+        self.mode_combo.setStyleSheet(f"color: {Colors.warning}; font-weight: bold;")
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         layout.addWidget(self.mode_combo)
         
@@ -163,7 +164,7 @@ class BotControlCard(QWidget):
         self.reset_btn = QPushButton("↺")
         self.reset_btn.setFixedWidth(20)
         self.reset_btn.setToolTip(t("dashboard.reset_tip", "PnL 초기화 (거래 기록 리셋)"))
-        self.reset_btn.setStyleSheet("color: #FF9800; font-weight: bold; border-radius: 2px;") # background removed
+        self.reset_btn.setStyleSheet(f"color: {Colors.warning}; font-weight: bold; border-radius: 2px;") # background removed
         self.reset_btn.clicked.connect(lambda: self.reset_clicked.emit(self.get_config()))
         
         # 레버리지
@@ -196,8 +197,8 @@ class BotControlCard(QWidget):
         self.start_btn = QPushButton("▶")
         self.start_btn.setFixedWidth(30)
         self.start_btn.setStyleSheet("""
-            QPushButton { background: #4CAF50; color: white; border-radius: 3px; font-weight: bold; }
-            QPushButton:hover { background: #45a049; }
+            QPushButton {{ background: {Colors.success}; color: white; border-radius: 3px; font-weight: bold; }}
+            QPushButton:hover {{ background: #388e3c; }}
             QPushButton:disabled { background: #555; }
         """) # keep green for start
         self.start_btn.setToolTip(t("dashboard.start_bot_tip", "봇 시작"))
@@ -209,7 +210,7 @@ class BotControlCard(QWidget):
         self.stop_btn.setFixedWidth(30)
         self.stop_btn.setStyleSheet("""
             QPushButton { background: #666; color: white; border-radius: 3px; }
-            QPushButton:hover { background: #f44336; }
+            QPushButton:hover {{ background: {Colors.danger}; }}
         """)
         self.stop_btn.setToolTip(t("dashboard.stop_remove_tip", "실행 중: 정지 / 대기 중: 행 삭제"))
         self.stop_btn.clicked.connect(self._on_stop)
@@ -226,12 +227,12 @@ class BotControlCard(QWidget):
         self.balance_label.setFixedWidth(75)
         self.balance_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.balance_label.setToolTip(t("dashboard.balance_tip", "현재 잔액 (초기 시드 + 누적 익절)"))
-        self.balance_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
+        self.balance_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold; font-family: 'Consolas', monospace;")
         layout.addWidget(self.balance_label)
         
         # 로그/상태 메세지
         self.message_label = QLabel("-")
-        self.message_label.setStyleSheet("color: #a0a0a0; font-size: 11px;")
+        self.message_label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 11px;")
         self.message_label.setFixedWidth(150)
         self.message_label.setToolTip(t("dashboard.last_message_tip", "최근 봇 로그/상태"))
         layout.addWidget(self.message_label)
@@ -419,8 +420,8 @@ class BotControlCard(QWidget):
             self.start_btn.setEnabled(False)
             self.stop_btn.setText("⏹")
             self.stop_btn.setStyleSheet("""
-                QPushButton { background: #f44336; color: white; border-radius: 3px; }
-                QPushButton:hover { background: #d32f2f; }
+                QPushButton {{ background: {Colors.danger}; color: white; border-radius: 3px; }}
+                QPushButton:hover {{ background: #c62828; }}
             """)
             self.exchange_combo.setEnabled(False)
             self.symbol_combo.setEnabled(False)
@@ -431,7 +432,7 @@ class BotControlCard(QWidget):
             self.stop_btn.setText("✕")
             self.stop_btn.setStyleSheet("""
                 QPushButton { background: #666; color: white; border-radius: 3px; }
-                QPushButton:hover { background: #f44336; }
+                QPushButton:hover {{ background: {Colors.danger}; }}
             """)
             self.exchange_combo.setEnabled(True)
             self.symbol_combo.setEnabled(True)
@@ -457,9 +458,9 @@ class BotControlCard(QWidget):
 
         # 모드 변경 시 시드 자금 색상 업데이트
         if mode == 'compound':
-            self.mode_combo.setStyleSheet("color: #4CAF50; font-weight: bold;")  # 녹색
+            self.mode_combo.setStyleSheet(f"color: {Colors.success}; font-weight: bold;")  # 녹색
         else:
-            self.mode_combo.setStyleSheet("color: #FF9800; font-weight: bold;")  # 주황색
+            self.mode_combo.setStyleSheet(f"color: {Colors.warning}; font-weight: bold;")  # 주황색
 
     def _toggle_lock(self):
         is_locked = self.lock_btn.isChecked()
@@ -487,7 +488,7 @@ class BotControlCard(QWidget):
             self.seed_spin.setEnabled(True)
             self.seed_spin.setStyleSheet("color: white; padding: 3px;")
             self.adj_btn.setEnabled(True)
-            self.adj_btn.setStyleSheet("color: #4CAF50; font-weight: bold; border-radius: 2px;")
+            self.adj_btn.setStyleSheet(f"color: {Colors.success}; font-weight: bold; border-radius: 2px;")
 
         # 잠금 상태 저장
         self._save_lock_state(is_locked)
@@ -542,9 +543,9 @@ class BotControlCard(QWidget):
         
         if pnl_pct >= 0:
             self.pnl_label.setText(f"(+{pnl_pct:.2f}%)")
-            self.pnl_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
-            self.current_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
+            self.pnl_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold;")
+            self.current_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold; font-family: 'Consolas', monospace;")
         else:
             self.pnl_label.setText(f"({pnl_pct:.2f}%)")
-            self.pnl_label.setStyleSheet("color: #FF5252; font-weight: bold;")
-            self.current_label.setStyleSheet("color: #FF5252; font-weight: bold; font-family: 'Consolas', monospace;")
+            self.pnl_label.setStyleSheet(f"color: {Colors.danger}; font-weight: bold;")
+            self.current_label.setStyleSheet(f"color: {Colors.danger}; font-weight: bold; font-family: 'Consolas', monospace;")

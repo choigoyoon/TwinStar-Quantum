@@ -12,22 +12,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 from PyQt6.QtCore import pyqtSignal
 
 # 디자인 시스템
-try:
-    from ui.design_system import Colors, Typography, Spacing, Radius
-except ImportError:
-    # 폴백
-    class Colors:
-        bg_base = "#0d1117"
-        bg_surface = "#161b22"
-        text_secondary = "#8b949e"
-        accent_primary = "#00d4aa"
-        text_primary = "#f0f6fc"
-    class Typography:
-        font_semibold = 600
-    class Spacing:
-        pass
-    class Radius:
-        radius_md = "8px"
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius
 
 logger = logging.getLogger(__name__)
 
@@ -126,10 +111,17 @@ class OptimizationWidget(QWidget):
     
     def _load_data_sources(self):
         """데이터 소스 새로고침"""
-        if hasattr(self, 'single_widget') and hasattr(self.single_widget, '_load_data_sources'):
-            self.single_widget._load_data_sources()
-        if hasattr(self, 'batch_widget') and hasattr(self.batch_widget, '_load_data_sources'):
-            self.batch_widget._load_data_sources()
+        # SingleOptimizerWidget
+        if hasattr(self, 'single_widget'):
+            widget = self.single_widget
+            if hasattr(widget, '_load_data_sources') and callable(getattr(widget, '_load_data_sources', None)):
+                widget._load_data_sources()  # type: ignore[attr-defined]
+
+        # BatchOptimizerWidget
+        if hasattr(self, 'batch_widget'):
+            widget = self.batch_widget
+            if hasattr(widget, '_load_data_sources') and callable(getattr(widget, '_load_data_sources', None)):
+                widget._load_data_sources()  # type: ignore[attr-defined]
     
     @property
     def engine(self):

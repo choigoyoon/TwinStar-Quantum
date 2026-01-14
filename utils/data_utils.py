@@ -59,7 +59,7 @@ def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True)
             df['datetime'] = pd.to_datetime(df['timestamp'])
     
     df = df.set_index('datetime')
-    
+
     # 리샘플링
     agg_dict = {
         'open': 'first',
@@ -68,11 +68,12 @@ def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True)
         'close': 'last',
         'volume': 'sum'
     }
-    
+
     if 'timestamp' in df.columns:
         agg_dict['timestamp'] = 'first'
-    
-    resampled = df.resample(rule).agg(agg_dict).dropna().reset_index()
+
+    # pandas의 Resampler.agg는 dict[str, str]를 허용하지만 타입 스텁이 엄격함
+    resampled = df.resample(rule).agg(agg_dict).dropna().reset_index()  # type: ignore[arg-type]
     
     # 지표 추가
     if add_indicators:

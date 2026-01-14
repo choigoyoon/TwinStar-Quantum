@@ -28,8 +28,8 @@ try:
         sys.path.insert(0, project_root)
     
     # GUI.backtest_widget에서 직접 import
-    from GUI.backtest_widget import SingleBacktestWidget
-    
+    from GUI.backtest_widget import SingleBacktestWidget  # type: ignore[assignment]
+
     logger.debug("✅ SingleBacktestWidget 래핑 완료 (GUI/backtest_widget.py)")
     
 except ImportError as e:

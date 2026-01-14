@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtWidgets import QAbstractItemView
 import pandas as pd
 import logging
 
@@ -106,7 +107,7 @@ class OptimizationWidget(QWidget):
         for mode_id, label, tooltip in modes:
             radio = QRadioButton(label)
             radio.setToolTip(tooltip)
-            radio.mode_id = mode_id
+            radio.setProperty('mode_id', mode_id)  # Use setProperty instead of direct attribute
             self.mode_group.addButton(radio)
             mode_layout.addWidget(radio)
             if mode_id == 'quick':
@@ -192,14 +193,14 @@ class OptimizationWidget(QWidget):
         self.results_table.setColumnCount(len(columns))
         self.results_table.setHorizontalHeaderLabels(columns)
         
-        header = self.results_table.horizontalHeader()
-        header.setStretchLastSection(True)
-        for i in range(len(columns)):
-            header.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        if header := self.results_table.horizontalHeader():
+            header.setStretchLastSection(True)
+            for i in range(len(columns)):
+                header.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
         
-        self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.results_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.results_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.results_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.results_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.results_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.results_table.setSortingEnabled(True)
         
         # 더블클릭으로 적용
@@ -237,7 +238,8 @@ class OptimizationWidget(QWidget):
         """선택된 모드 반환"""
         for btn in self.mode_group.buttons():
             if btn.isChecked():
-                return btn.mode_id
+                mode = btn.property('mode_id')
+                return mode if mode else 'quick'
         return 'quick'
     
     def _run_optimization(self):
@@ -304,7 +306,7 @@ class OptimizationWidget(QWidget):
         grade_item = QTableWidgetItem(grade)
         grade_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         grade_item.setForeground(QColor(GRADE_COLORS.get(grade, COLORS['text'])))
-        grade_item.setFont(QFont('Arial', 11, QFont.Bold))
+        grade_item.setFont(QFont('Arial', 11, QFont.Weight.Bold))
         self.results_table.setItem(row, 0, grade_item)
         
         # 승률

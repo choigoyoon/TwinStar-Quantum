@@ -30,8 +30,8 @@ try:
         sys.path.insert(0, project_root)
     
     # GUI.optimization_widget에서 직접 import
-    from GUI.optimization_widget import BatchOptimizerWidget
-    
+    from GUI.optimization_widget import BatchOptimizerWidget  # type: ignore[assignment]
+
     logger.debug("✅ BatchOptimizerWidget 래핑 완료 (GUI/optimization_widget.py)")
     
 except ImportError as e:

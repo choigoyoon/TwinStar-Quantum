@@ -10,7 +10,10 @@ import time
 import logging
 import pandas as pd
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any, Dict, Union, List, cast
+from typing import Sequence
+import pandas as pd
+
 
 from .base_exchange import BaseExchange, Position
 
@@ -33,7 +36,7 @@ class BitgetExchange(BaseExchange):
         self.api_secret = config.get('api_secret', '')
         self.passphrase = config.get('passphrase', '')
         self.testnet = config.get('testnet', False)
-        self.exchange = None
+        self.exchange: Optional[Any] = None
         self.time_offset = 0
         self.hedge_mode = False
         
@@ -98,11 +101,19 @@ class BitgetExchange(BaseExchange):
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1h', '240': '4h'}
             timeframe = tf_map.get(interval, interval)
             
+            if self.exchange is None:
+                return None
             symbol = self._convert_symbol(self.symbol)
-            ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            ohlcv_raw = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            ohlcv = cast(List[Any], ohlcv_raw)
             
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            # [FIX] Explicit Casts for DataFrame
+            cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+            df = pd.DataFrame(cast(Any, ohlcv), columns=cast(Any, cols))
+            
+            # [FIX] Ensure timestamp is treated as a compatible Sequence for Pandas
+            timestamps: Any = df['timestamp']
+            df['timestamp'] = pd.to_datetime(timestamps, unit='ms')
             
             return df
             
@@ -112,28 +123,35 @@ class BitgetExchange(BaseExchange):
     
     def get_current_price(self) -> float:
         """현재 가격"""
+        if self.exchange is None:
+            return 0.0
         try:
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker['last'])
+            return float(ticker.get('last', 0) or 0)
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
-            return 0
+            return 0.0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """시장가 주문"""
         max_retries = 3
         
         for attempt in range(max_retries):
             try:
+                if self.exchange is None:
+                    return False
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
                 # [NEW] Hedge Mode Logic (Bitget uses 'posSide' -> 'long'/'short')
                 # User Script check: positionSide handled via posSide
-                params = {}
+                params: Dict[str, Any] = {}
                 if self.hedge_mode:
                     params['posSide'] = 'long' if side == 'Long' else 'short'
+                
+                if client_order_id:
+                    params['clientOrderId'] = client_order_id # Bitget CCXT common param
                 
                 order = self.exchange.create_order(
                     symbol=symbol,
@@ -149,7 +167,7 @@ class BitgetExchange(BaseExchange):
                     if stop_loss > 0:
                         try:
                             sl_side = 'sell' if side == 'Long' else 'buy'
-                            sl_params = {
+                            sl_params: Dict[str, Any] = {
                                 'stopPrice': stop_loss,
                                 'reduceOnly': True,
                                 'triggerType': 'mark_price'
@@ -162,14 +180,14 @@ class BitgetExchange(BaseExchange):
                                 symbol=symbol,
                                 type='stop_market',
                                 side=sl_side,
-                            amount=size,
-                            params=sl_params
-                        )
+                                amount=size,
+                                params=sl_params
+                            )
                         except Exception as sl_err:
                             # 🔴 CRITICAL: SL 실패 시 즉시 청산
                             logging.error(f"[Bitget] ❌ SL Setting FAILED! Closing position immediately: {sl_err}")
                             try:
-                                close_params = {'reduceOnly': True}
+                                close_params: Dict[str, Any] = {'reduceOnly': True}
                                 if self.hedge_mode:
                                     close_params['posSide'] = 'long' if side == 'Long' else 'short'
                                 self.exchange.create_order(
@@ -200,7 +218,27 @@ class BitgetExchange(BaseExchange):
                     )
                     
                     logging.info(f"[Bitget] Order placed: {side} {size} @ {price} (ID: {order_id})")
-                    return order_id
+                    
+                    # 익절 주문
+                    if take_profit > 0:
+                        try:
+                            tp_side = 'sell' if side == 'Long' else 'buy'
+                            tp_params = {'stopPrice': take_profit, 'reduceOnly': True}
+                            if self.hedge_mode:
+                                tp_params['posSide'] = 'long' if side == 'Long' else 'short'
+                            
+                            assert self.exchange is not None     
+                            self.exchange.create_order(
+                                symbol=symbol,
+                                type='take_profit_market',
+                                side=tp_side,
+                                amount=size,
+                                params=tp_params
+                            )
+                        except Exception as tp_err:
+                            logging.warning(f"[Bitget] Take profit setting failed: {tp_err}")
+
+                    return order
                     
             except Exception as e:
                 logging.error(f"[Bitget] Order error: {e}")
@@ -216,18 +254,19 @@ class BitgetExchange(BaseExchange):
             
             # 기존 스탑 주문 취소
             try:
-                orders = self.exchange.fetch_open_orders(symbol)
-                for order in orders:
-                    if order.get('type') in ['stop_market', 'stop']:
-                        if isinstance(order, dict) and order.get('id'):
-                            self.exchange.cancel_order(order['id'], symbol)
+                if self.exchange:
+                    orders = self.exchange.fetch_open_orders(symbol)
+                    for order in orders:
+                        if isinstance(order, dict) and order.get('type') in ['stop_market', 'stop']:
+                            if order.get('id'):
+                                self.exchange.cancel_order(order['id'], symbol)
             except Exception as e:
                 logging.debug(f"Order cancel ignored: {e}")
             
             # 새 스탑 주문
             if self.position:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
-                params = {
+                params: Dict[str, Any] = {
                     'stopPrice': new_sl,
                     'reduceOnly': True
                 }
@@ -235,16 +274,17 @@ class BitgetExchange(BaseExchange):
                 if self.hedge_mode:
                     params['posSide'] = 'long' if self.position.side == 'Long' else 'short'
 
-                self.exchange.create_order(
-                    symbol=symbol,
-                    type='stop_market',
-                    side=sl_side,
-                    amount=self.position.size,
-                    params=params
-                )
-                self.position.stop_loss = new_sl
-                logging.info(f"[Bitget] SL updated: {new_sl}")
-                return True
+                if self.exchange is not None:
+                    self.exchange.create_order(
+                        symbol=symbol,
+                        type='stop_market',
+                        side=sl_side,
+                        amount=self.position.size,
+                        params=params
+                    )
+                    self.position.stop_loss = new_sl
+                    logging.info(f"[Bitget] SL updated: {new_sl}")
+                    return True
             
             return False
             
@@ -261,11 +301,14 @@ class BitgetExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
             
-            params = {'reduceOnly': True}
+            params: Dict[str, Any] = {'reduceOnly': True}
             # [FIX] Hedge Mode Support (Bitget using posSide)
             if self.hedge_mode:
                 params['posSide'] = 'long' if self.position.side == 'Long' else 'short'
 
+            if self.exchange is None:
+                return False
+                
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -303,6 +346,9 @@ class BitgetExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             order_side = 'buy' if side == 'Long' else 'sell'
             
+            if self.exchange is None:
+                return False
+                
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -355,6 +401,9 @@ class BitgetExchange(BaseExchange):
             return False
         try:
             server_time = self.exchange.fetch_time()
+            if server_time is None:
+                logging.error("[Bitget] Failed to fetch server time")
+                return False
             local_time = int(time.time() * 1000)
             self.time_offset = server_time - local_time
             logging.info(f"[Bitget] Time synced. Offset: {self.time_offset}ms")
@@ -366,6 +415,8 @@ class BitgetExchange(BaseExchange):
     def get_positions(self) -> Optional[list]:
         """모든 열린 포지션 조회 (긴급청산용)"""
         try:
+            if self.exchange is None:
+                return []
             positions_data = self.exchange.fetch_positions()
             
             positions = []
@@ -387,9 +438,9 @@ class BitgetExchange(BaseExchange):
         except Exception as e:
             logging.error(f"포지션 조회 에러: {e}")
             return None
-    
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
+        if self.exchange is None: return False
         try:
             symbol = self._convert_symbol(self.symbol)
             self.exchange.set_leverage(leverage, symbol)
@@ -425,12 +476,10 @@ class BitgetExchange(BaseExchange):
             import asyncio
             asyncio.create_task(self.ws_handler.connect())
             
-            import logging
-            logging.info(f"[Bitget] WebSocket connected: {{self.symbol}}")
+            logging.info(f"[Bitget] WebSocket connected: {self.symbol}")
             return True
         except Exception as e:
-            import logging
-            logging.error(f"[Bitget] WebSocket failed: {{e}}")
+            logging.error(f"[Bitget] WebSocket failed: {e}")
             return False
     
     def stop_websocket(self):
@@ -447,39 +496,22 @@ class BitgetExchange(BaseExchange):
     
     def _auto_sync_time(self):
         """API 호출 전 자동 시간 동기화 (5분마다)"""
-        import time
         if not hasattr(self, '_last_sync'):
             self._last_sync = 0
-        
+
         if time.time() - self._last_sync > 300:
             self.sync_time()
             self._last_sync = time.time()
-    
-    def sync_time(self):
-        """서버 시간 동기화"""
-        import time
-        import logging
-        try:
-            # ccxt 기반 거래소의 경우
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                server_time = self.exchange.fetch_time()
-                local_time = int(time.time() * 1000)
-                self.time_offset = local_time - server_time
-                logging.debug(f"[Bitget] Time synced: offset={{self.time_offset}}ms")
-                return True
-        except Exception as e:
-            logging.debug(f"[Bitget] Time sync failed: {{e}}")
-        self.time_offset = 0
-        return False
-    
-    def fetchTime(self):
+
+    def fetchTime(self) -> int:
         """서버 시간 조회"""
-        import time
         try:
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                return self.exchange.fetch_time()
-        except Exception as e:
-            logging.debug(f"WS close ignored: {e}")
+            if self.exchange and hasattr(self.exchange, 'fetch_time'):
+                result = self.exchange.fetch_time()
+                if result is not None:
+                    return int(result)
+        except Exception:
+            pass
         return int(time.time() * 1000)
 
     # ========== [NEW] 매매 히스토리 API ==========
@@ -487,8 +519,10 @@ class BitgetExchange(BaseExchange):
     def get_trade_history(self, limit: int = 50) -> list:
         """API로 청산된 거래 히스토리 조회 (CCXT)"""
         try:
-            if not self.exchange:
+            if self.exchange is None:
                 return super().get_trade_history(limit)
+            
+            assert self.exchange is not None
             
             symbol = self._convert_symbol(self.symbol)
             raw_trades = self.exchange.fetch_my_trades(symbol, limit=limit)
@@ -517,7 +551,7 @@ class BitgetExchange(BaseExchange):
         """API로 실현 손익 조회"""
         try:
             trades = self.get_trade_history(limit=limit)
-            total_pnl = sum(t.get('pnl', 0) for t in trades)
+            total_pnl = float(sum(t.get('pnl', 0) for t in trades))
             logging.info(f"[Bitget] Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
             return total_pnl
         except Exception as e:

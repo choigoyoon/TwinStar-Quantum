@@ -28,11 +28,11 @@ class SidebarButton(QPushButton):
         super().__init__(parent)
         self.step = step
         self.title = title
-        self.icon = icon
+        self.icon_str = icon
         self.is_current = False
         self.is_completed = False
         
-        self.setText(f"{icon}  {title}")
+        self.setText(f"{self.icon_str}  {title}")
         self.setFixedHeight(50)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_style()

@@ -99,7 +99,7 @@ def test_get_positions_mock():
     ex = BybitExchange({'api_key': 'test', 'api_secret': 'test'})
     with patch.object(ex, 'get_positions', return_value=mock_positions):
         positions = ex.get_positions()
-        return len(positions) == 1 and positions[0]['symbol'] == 'BTCUSDT'
+        return positions is not None and len(positions) == 1 and positions[0]['symbol'] == 'BTCUSDT'
 
 # ========================================
 # 4. 주문 API 테스트 (Mock/dry_run)
@@ -119,7 +119,7 @@ def test_place_order_mock():
     ex = BybitExchange({'api_key': 'test', 'api_secret': 'test'})
     with patch.object(ex, 'place_market_order', return_value=mock_order):
         order = ex.place_market_order('Buy', 0.001, 94000)
-        return order is not None and 'orderId' in order
+        return order is not None and isinstance(order, dict) and 'orderId' in order
 
 def test_close_position_mock():
     """청산 Mock 테스트"""

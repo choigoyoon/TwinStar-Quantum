@@ -38,7 +38,7 @@ from .constants import (
 def run_strategy(
     df: pd.DataFrame,
     strategy: str = 'macd',
-    params: Dict = None,
+    params: Optional[Dict] = None,
     timeframe: str = '1h',
     apply_filters: bool = True,
 ) -> Dict:
@@ -91,7 +91,7 @@ def run_strategy(
 
 def compare_strategies(
     df: pd.DataFrame,
-    params: Dict = None,
+    params: Optional[Dict] = None,
     timeframe: str = '1h',
     apply_filters: bool = True,
 ) -> Dict:
@@ -211,9 +211,12 @@ def get_preset_params(preset_name: str) -> Dict:
     return get_preset(preset_name)
 
 
-def save_custom_preset(name: str, params: Dict, filepath: str = None) -> bool:
+def save_custom_preset(name: str, params: Dict, filepath: Optional[str] = None) -> bool:
     """커스텀 프리셋 저장"""
-    return save_preset_json(name, params, filepath)
+    if not filepath:
+        return False
+    save_preset_json(filepath, params, name)
+    return True
 
 
 def load_custom_preset(filepath: str) -> Dict:
@@ -314,8 +317,8 @@ class StrategyRunner:
         self,
         strategy: str = 'macd',
         timeframe: str = '1h',
-        preset: str = None,
-        params: Dict = None,
+        preset: Optional[str] = None,
+        params: Optional[Dict] = None,
         filters: bool = True,
     ) -> Dict:
         """백테스트 실행"""
@@ -333,7 +336,7 @@ class StrategyRunner:
     def compare(
         self,
         timeframe: str = '1h',
-        params: Dict = None,
+        params: Optional[Dict] = None,
         filters: bool = True,
     ) -> Dict:
         """두 전략 비교"""

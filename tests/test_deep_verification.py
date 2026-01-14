@@ -26,7 +26,7 @@ def check(category, name, condition, note=""):
 print("\n[1. 기능 완전성]")
 
 try:
-    from core.data_manager import DataManager
+    from core.data_manager import BotDataManager as DataManager
     check('functionality', '데이터 수집', True, 'DataManager')
 except Exception: check('functionality', '데이터 수집', False, 'Import 실패')
 

@@ -19,7 +19,7 @@ MACD 히스토그램 부호 전환을 이용한 W/M 패턴 탐지
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Any, cast, Optional
 
 from ..base import BaseStrategy
 
@@ -76,10 +76,10 @@ class MACDStrategy(BaseStrategy):
                 seg_low = low[segment_start:i]
                 if len(seg_high) > 0:
                     if current_sign > 0:  # 양(+) 구간 종료 → 고점
-                        max_idx = segment_start + np.argmax(seg_high)
+                        max_idx = segment_start + np.argmax(cast(Any, seg_high))
                         hl_points.append({'type': 'H', 'price': high[max_idx], 'idx': max_idx})
                     else:  # 음(-) 구간 종료 → 저점
-                        min_idx = segment_start + np.argmin(seg_low)
+                        min_idx = segment_start + np.argmin(cast(Any, seg_low))
                         hl_points.append({'type': 'L', 'price': low[min_idx], 'idx': min_idx})
                 segment_start = i
                 current_sign = new_sign
@@ -128,7 +128,7 @@ class MACDStrategy(BaseStrategy):
 # =============================================================================
 def run_macd_backtest(
     df: pd.DataFrame,
-    params: Dict = None,
+    params: Optional[Dict] = None,
     timeframe: str = '2h',
     apply_filters: bool = True,
 ) -> Dict:

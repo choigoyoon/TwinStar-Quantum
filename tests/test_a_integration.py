@@ -73,11 +73,11 @@ class IntegrationTest:
                 atr_period=14
             )
             
-            self.log(f"Detected {len(signals) if signals else 0} signals", 'PASS')
-            
             if signals:
-                last = signals[-1]
-                self.log(f"Last Signal: {last.signal_type} at {last.timestamp}", 'INFO')
+                self.log(f"Detected signal: {signals.signal_type} at {signals.timestamp}", 'PASS')
+                self.log(f"Last Signal: {signals.signal_type} at {signals.timestamp}", 'INFO')
+            else:
+                self.log("No signal detected", 'INFO')
             
             return True
             

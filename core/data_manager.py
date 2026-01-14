@@ -37,11 +37,11 @@ class BotDataManager:
     """
     
     def __init__(
-        self, 
-        exchange_name: str, 
-        symbol: str, 
-        strategy_params: dict = None,
-        cache_dir: str = None
+        self,
+        exchange_name: str,
+        symbol: str,
+        strategy_params: Optional[dict] = None,
+        cache_dir: Optional[str] = None
     ):
         """
         Args:
@@ -72,7 +72,8 @@ class BotDataManager:
         self.df_pattern_full: Optional[pd.DataFrame] = None     # 1H 패턴 데이터
         
         # 지표 캐시
-        self.indicator_cache = {
+        from typing import Any
+        self.indicator_cache: Dict[str, Any] = {
             'df_pattern': None,
             'df_entry': None,
             'last_update': None,
@@ -100,7 +101,7 @@ class BotDataManager:
     
     # ========== 데이터 로드 ==========
     
-    def load_historical(self, fetch_callback: Callable = None) -> bool:
+    def load_historical(self, fetch_callback: Optional[Callable] = None) -> bool:
         """
         Parquet에서 히스토리 로드 (없으면 REST API 시도)
         
@@ -186,7 +187,7 @@ class BotDataManager:
                 self.df_entry_resampled = self.df_entry_full.copy()
             else:
                 resample_rule = TF_RESAMPLE_FIX.get(entry_tf, entry_tf)
-                if resample_rule.endswith('m') and not resample_rule.endswith('min'):
+                if resample_rule and resample_rule.endswith('m') and not resample_rule.endswith('min'):
                     resample_rule = resample_rule.replace('m', 'min')
                 
                 logging.info(f"[DATA] Resampling: 15m -> {entry_tf}")
@@ -195,10 +196,13 @@ class BotDataManager:
                 if 'timestamp' in df_temp.columns:
                     df_temp = df_temp.set_index('timestamp')
                 
-                self.df_entry_resampled = df_temp.resample(resample_rule).agg({
-                    'open': 'first', 'high': 'max', 'low': 'min', 
-                    'close': 'last', 'volume': 'sum'
-                }).dropna().reset_index()
+                if resample_rule:
+                    self.df_entry_resampled = df_temp.resample(resample_rule).agg({
+                        'open': 'first', 'high': 'max', 'low': 'min', 
+                        'close': 'last', 'volume': 'sum'
+                    }).dropna().reset_index()
+                else:
+                    self.df_entry_resampled = self.df_entry_full.copy()
             
             # Entry 지표 추가
             self.df_entry_resampled = add_all_indicators(self.df_entry_resampled)
@@ -207,7 +211,7 @@ class BotDataManager:
             # 2. Pattern Data 생성 (기본 1h, 파라미터로 변경 가능)
             pattern_tf = self.strategy_params.get('pattern_tf', '1h')
             resample_rule_pattern = TF_RESAMPLE_FIX.get(pattern_tf, pattern_tf)
-            if resample_rule_pattern.endswith('m') and not resample_rule_pattern.endswith('min'):
+            if resample_rule_pattern and resample_rule_pattern.endswith('m') and not resample_rule_pattern.endswith('min'):
                 resample_rule_pattern = resample_rule_pattern.replace('m', 'min')
                 
             df_temp = self.df_entry_full.copy()
@@ -215,10 +219,13 @@ class BotDataManager:
                 df_temp = df_temp.set_index('timestamp')
             
             logging.info(f"[DATA] Resampling Pattern: 15m -> {pattern_tf}")
-            self.df_pattern_full = df_temp.resample(resample_rule_pattern).agg({
-                'open': 'first', 'high': 'max', 'low': 'min', 
-                'close': 'last', 'volume': 'sum'
-            }).dropna().reset_index()
+            if resample_rule_pattern:
+                self.df_pattern_full = df_temp.resample(resample_rule_pattern).agg({
+                    'open': 'first', 'high': 'max', 'low': 'min', 
+                    'close': 'last', 'volume': 'sum'
+                }).dropna().reset_index()
+            else:
+                self.df_pattern_full = df_temp.copy()
             
             # Pattern 지표 추가
             self.df_pattern_full = add_all_indicators(self.df_pattern_full)

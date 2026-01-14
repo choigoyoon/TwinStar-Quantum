@@ -18,6 +18,7 @@ installer/
 
 # Backup
 _backup*/
+refactor_backup/
 *.bak
 
 # Temp
@@ -45,3 +46,4 @@ api_keys*.json
 # Claude temp
 tmpclaude-*/
 venv*/
+.venv/

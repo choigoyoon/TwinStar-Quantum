@@ -7,8 +7,9 @@ import os
 import time
 import logging
 import pandas as pd
+from typing import Any, cast
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any, Dict, Union
 
 from .base_exchange import BaseExchange, Position
 
@@ -33,6 +34,7 @@ class BybitExchange(BaseExchange):
         self.session = None
         self.hedge_mode = False
         self.time_offset = 0
+        self._ws_last_price: float = 0.0  # [FIX] Pyright Attribute Issue
         
         # [FIX] Bybit 심볼 형식 정규화 (BTC/USDT -> BTCUSDT)
         self.symbol = self.symbol.replace('/', '').replace('-', '').upper()
@@ -59,9 +61,10 @@ class BybitExchange(BaseExchange):
             try:
                 # V5 API: /v5/position/list returns 'positionIdx'
                 # If any position has idx > 0, we assume Hedge Mode usage
-                pos_info = self.session.get_positions(category="linear", symbol=self.symbol)
-                if pos_info['retCode'] == 0:
-                     p_list = pos_info['result']['list']
+                from typing import cast
+                pos_info = cast(Dict[str, Any], self.session.get_positions(category="linear", symbol=self.symbol))
+                if pos_info.get('retCode') == 0:
+                     p_list = pos_info.get('result', {}).get('list', [])
                      self.hedge_mode = any(p.get('positionIdx', 0) > 0 for p in p_list)
                      logging.info(f"[Bybit] Position Mode: {'Hedge' if self.hedge_mode else 'One-Way'}")
                 else:
@@ -95,7 +98,7 @@ class BybitExchange(BaseExchange):
             logging.error(f"Bybit sync_time error: {e}")
             return False
 
-    def get_klines(self, symbol: str = None, interval: str = '15m', limit: int = 200) -> Optional[pd.DataFrame]:
+    def get_klines(self, symbol: Optional[str] = None, interval: str = '15m', limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
         try:
             target_symbol = symbol.upper() if symbol else self.symbol.upper()
@@ -109,12 +112,16 @@ class BybitExchange(BaseExchange):
             bybit_interval = interval_map.get(interval, interval)
 
             
-            result = self.session.get_kline(
+            if self.session is None:
+                return None
+                
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.get_kline(
                 category="linear",
                 symbol=target_symbol,
                 interval=bybit_interval,
                 limit=limit
-            )
+            ))
             
             if result.get('retCode') != 0:
                 logging.error(f"Kline error: {result.get('retMsg', 'Unknown')}")
@@ -123,7 +130,7 @@ class BybitExchange(BaseExchange):
             data = result.get('result', {}).get('list', [])
             if not data:
                 return None
-            df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
+            df = pd.DataFrame(data, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover']))
             df['timestamp'] = pd.to_datetime(df['timestamp'].astype(int), unit='ms')
             for col in ['open', 'high', 'low', 'close', 'volume']:
                 df[col] = df[col].astype(float)
@@ -151,8 +158,18 @@ class BybitExchange(BaseExchange):
                 idx = df.index[-1]
                 # Series or DataFrame row handling
                 row = df.iloc[-1]
+
+                # timestamp 처리
+                ts_value = row['timestamp']
+                if hasattr(ts_value, 'timestamp'):
+                    ts_ms = int(cast(Any, ts_value).timestamp() * 1000)
+                elif hasattr(idx, 'timestamp'):
+                    ts_ms = int(cast(Any, idx).timestamp() * 1000)  # type: ignore[attr-defined]
+                else:
+                    ts_ms = int(ts_value) if isinstance(ts_value, (int, float)) else 0
+
                 return {
-                    'timestamp': int(row['timestamp'].timestamp() * 1000) if hasattr(row['timestamp'], 'timestamp') else int(idx.timestamp() * 1000),
+                    'timestamp': ts_ms,
                     'open': float(row['open']),
                     'high': float(row['high']),
                     'low': float(row['low']),
@@ -166,22 +183,26 @@ class BybitExchange(BaseExchange):
             traceback.print_exc()
             return None
 
-    def get_current_price(self, symbol: str = None) -> float:
+    def get_current_price(self, symbol: Optional[str] = None) -> float:
         """현재 가격"""
+        if self.session is None:
+            return 0.0
         target_symbol = symbol.upper() if symbol else self.symbol.upper()
         try:
             # [FIX] API 호출 추가
-            result = self.session.get_tickers(category="linear", symbol=target_symbol)
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.get_tickers(category="linear", symbol=target_symbol))
             res_list = result.get('result', {}).get('list', [])
             if res_list:
-                return float(res_list[0].get('lastPrice', 0))
-            return 0
+                ticker_data = cast(Dict[str, Any], res_list[0])
+                return float(ticker_data.get('lastPrice', 0) or 0)
+            return 0.0
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
-            return 0
+            return 0.0
 
     
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """시장가 주문"""
         max_retries = 3
         
@@ -222,10 +243,15 @@ class BybitExchange(BaseExchange):
                 if tp_price > 0:
                     order_params["takeProfit"] = str(tp_price)
 
-                result = self.session.place_order(**order_params)
+                if self.session is None:
+                    return False
+                    
+                from typing import cast
+                result = cast(Dict[str, Any], self.session.place_order(**order_params))
                 
                 if result.get('retCode') == 0:
-                    order_id = result.get('result', {}).get('orderId', '')
+                    res_data = cast(Dict[str, Any], result.get('result', {}))
+                    order_id = res_data.get('orderId', '')
                     self.position = Position(
                         symbol=self.symbol,
                         side=side,
@@ -275,12 +301,16 @@ class BybitExchange(BaseExchange):
             if self.hedge_mode and self.position:
                 idx = 1 if self.position.side == 'Long' else 2
             
-            result = self.session.set_trading_stop(
+            if self.session is None:
+                return False
+                
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.set_trading_stop(
                 category="linear",
                 symbol=self.symbol,
                 stopLoss=str(sl_price),
                 positionIdx=idx
-            )
+            ))
             
             if result.get('retCode') == 0:
                 if self.position:
@@ -301,14 +331,18 @@ class BybitExchange(BaseExchange):
             if not self.position:
                 return True
             
-            result = self.session.place_order(
+            if self.session is None:
+                return False
+                
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.place_order(
                 category="linear",
                 symbol=self.symbol,
                 side="Sell" if self.position.side == 'Long' else "Buy",
                 orderType="Market",
                 qty=str(self.position.size),
                 reduceOnly=True
-            )
+            ))
             
             if result.get('retCode') == 0:
                 price = self.get_current_price()
@@ -351,14 +385,18 @@ class BybitExchange(BaseExchange):
             
             extra_params = {'recvWindow': 60000}
 
-            result = self.session.place_order(
+            if self.session is None:
+                return False
+                
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.place_order(
                 category="linear",
                 symbol=self.symbol,
                 side="Buy" if side == 'Long' else "Sell",
                 orderType="Market",
                 qty=str(qty),
                 **extra_params
-            )
+            ))
             
             if result.get('retCode') == 0:
                 order_id = result.get('result', {}).get('orderId', '')
@@ -390,7 +428,8 @@ class BybitExchange(BaseExchange):
             # 1. UNIFIED or CONTRACT Checking
             for acc_type in ["UNIFIED", "CONTRACT"]:
                 try:
-                    result = self.session.get_wallet_balance(accountType=acc_type, coin="USDT")
+                    from typing import cast
+                    result = cast(Dict[str, Any], self.session.get_wallet_balance(accountType=acc_type, coin="USDT"))
                     
                     # Safe Parsing
                     data = result.get('result', {}).get('list', [])
@@ -409,7 +448,8 @@ class BybitExchange(BaseExchange):
 
             # 2. If 0, Check Funding Wallet (User Aid)
             try:
-                result = self.session.get_wallet_balance(accountType="FUNDING", coin="USDT")
+                from typing import cast
+                result = cast(Dict[str, Any], self.session.get_wallet_balance(accountType="FUNDING", coin="USDT"))
                 data = result.get('result', {}).get('list', [])
                 if data:
                     coins = data[0].get('coin', [])
@@ -442,10 +482,11 @@ class BybitExchange(BaseExchange):
             
             # [FIX] UTA(Unified Trading Account) 호환성: settleCoin="USDT" 대신 category만 사용하거나 symbol 필터 권장
             # settleCoin="USDT"는 일부 UTA 환경에서 401 에러를 유발할 수 있음
-            result = self.session.get_positions(
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.get_positions(
                 category="linear",
                 symbol=self.symbol  # 특정 심볼 지정이 가장 안전함
-            )
+            ))
 
             
             if result.get('retCode') != 0:
@@ -491,12 +532,16 @@ class BybitExchange(BaseExchange):
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
         try:
-            result = self.session.set_leverage(
+            if self.session is None:
+                return False
+                
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.set_leverage(
                 category="linear",
                 symbol=self.symbol,
                 buyLeverage=str(leverage),
                 sellLeverage=str(leverage)
-            )
+            ))
             
             ret_code = result.get('retCode', -1)
             ret_msg = str(result.get('retMsg', ''))
@@ -532,11 +577,15 @@ class BybitExchange(BaseExchange):
     def get_trade_history(self, limit: int = 50) -> list:
         """API로 청산된 거래 히스토리 조회 (수수료 포함)"""
         try:
-            result = self.session.get_closed_pnl(
+            if self.session is None:
+                return []
+                
+            from typing import cast
+            result = cast(Dict[str, Any], self.session.get_closed_pnl(
                 category="linear",
                 symbol=self.symbol,
                 limit=limit
-            )
+            ))
             
             if result.get('retCode') != 0:
                 logging.error(f"Trade history error: {result.get('retMsg')}")
@@ -563,7 +612,7 @@ class BybitExchange(BaseExchange):
             logging.error(f"Trade history error: {e}")
             return []
     
-    def save_trade_history_to_log(self, trades: list = None):
+    def save_trade_history_to_log(self, trades: Optional[list] = None):
         """API 매매 내역을 로컬 로그 파일에 보관"""
         import json
         
@@ -610,7 +659,7 @@ class BybitExchange(BaseExchange):
     def get_realized_pnl(self, limit: int = 100) -> float:
         """누적 실현 손익 조회 (수수료 차감 후)"""
         trades = self.get_trade_history(limit=limit)
-        total_pnl = sum(t['pnl'] for t in trades)
+        total_pnl = float(sum(t['pnl'] for t in trades))
         logging.info(f"Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
         return total_pnl
     
@@ -681,7 +730,7 @@ class BybitExchange(BaseExchange):
     def stop_websocket(self):
         """웹소켓 중지"""
         if hasattr(self, 'ws_handler') and self.ws_handler:
-            self.ws_handler.stop()
+            self.ws_handler.disconnect()
             self.ws_handler = None
             logging.info("[WS] Stopped")
 

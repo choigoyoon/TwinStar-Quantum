@@ -11,6 +11,7 @@ import os
 from unittest.mock import MagicMock, patch, ANY
 from pathlib import Path
 import sys
+from typing import Any, cast
 
 # Setup paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -81,7 +82,7 @@ class TestCriticalGUI(unittest.TestCase):
         row1.seed_spin.value.return_value = 100
         row1.start_btn.text.return_value = "Run" # Active if "Stop"
         
-        dashboard.coin_rows = [row1]
+        cast(Any, dashboard).coin_rows = [row1]
         
         # Mock json dump
         with patch('json.dump') as mock_json_dump, \

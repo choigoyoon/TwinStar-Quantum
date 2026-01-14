@@ -10,6 +10,7 @@ import sys
 import os
 from datetime import datetime
 import multiprocessing
+from typing import Optional, Any, cast
 
 from core.optimization_logic import OptimizationEngine
 
@@ -50,12 +51,9 @@ except ImportError:
         TF_RESAMPLE_MAP = {}
 
 try:
-    from paths import Paths
+    from paths import Paths # type: ignore
 except ImportError:
-    try:
-        from paths import Paths
-    except ImportError:
-        class Paths:
+    class Paths:
             BASE = os.getcwd()
             CONFIG = os.path.join(BASE, 'config')
             PRESETS = os.path.join(CONFIG, 'presets')
@@ -175,7 +173,7 @@ class ParamRangeWidget(QWidget):
 
 class ParamChoiceWidget(QWidget):
     """Choice parameter widget (list)"""
-    def __init__(self, name: str, choices: list, checked_indices: list = None, tooltip: str = "", parent=None):
+    def __init__(self, name: str, choices: list, checked_indices: Optional[list] = None, tooltip: str = "", parent=None):
         super().__init__(parent)
         self.name = name
         self.choices = choices
@@ -248,7 +246,7 @@ class SingleOptimizerWidget(QWidget):
         try:
             from core.license_guard import LicenseGuard
             guard = LicenseGuard()
-            return guard.get_tier() or 'FREE'
+            return cast(Any, guard).get_tier() or 'FREE'
         except Exception:
             # 라이선스 모듈 없으면 FREE 취급
             return 'FREE'
@@ -285,7 +283,7 @@ class SingleOptimizerWidget(QWidget):
                 radio = QRadioButton(text)
                 radio.setToolTip(tooltip)
                 radio.setStyleSheet("color: white;")
-                radio.mode_id = mode_id
+                radio.mode_id = mode_id # type: ignore[attr-defined]
                 if mode_id == 1:  # Standard 기본 선택
                     radio.setChecked(True)
                 self.mode_group.addButton(radio, mode_id)
@@ -300,7 +298,7 @@ class SingleOptimizerWidget(QWidget):
             radio = QRadioButton(t("optimization.standard"))
             radio.setToolTip("~3,600 combinations")
             radio.setStyleSheet("color: white;")
-            radio.mode_id = 1
+            radio.mode_id = 1 # type: ignore[attr-defined]
             radio.setChecked(True)
             radio.setEnabled(False)  # 변경 불가
             self.mode_group.addButton(radio, 1)
@@ -521,12 +519,13 @@ class SingleOptimizerWidget(QWidget):
         """)
         
         # 컬럼 너비 자동 조절
-        header = self.result_table.horizontalHeader()
-        header.setStretchLastSection(True)
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        
+        if header := self.result_table.horizontalHeader():
+            header.setStretchLastSection(True)
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
         # 행 높이 고정 (20개가 화면에 맞도록)
-        self.result_table.verticalHeader().setDefaultSectionSize(24)
+        if v_header := self.result_table.verticalHeader():
+            v_header.setDefaultSectionSize(24)
         
         layout.addWidget(self.result_table)
         
@@ -567,9 +566,10 @@ class SingleOptimizerWidget(QWidget):
             QTableWidget { background: #131722; color: #888; border: 1px solid #363a45; font-size: 10px; }
             QHeaderView::section { background: #131722; color: #555; padding: 2px; }
         """)
-        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.grid_audit_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.grid_audit_table)
-        
+
         return result_group
 
     def _init_ui(self):
@@ -579,7 +579,7 @@ class SingleOptimizerWidget(QWidget):
         
         # Header
         header = QLabel("퀀텀 최적화 엔진")
-        header.setFont(QFont("Segoe UI", 22, QFont.Bold))
+        header.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         header.setStyleSheet("""
             color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2962ff, stop:1 #00b0ff);
             margin-bottom: 15px;
@@ -893,7 +893,7 @@ class SingleOptimizerWidget(QWidget):
             self.exchange_combo.blockSignals(False)
             self._filter_data_combo()
     
-    def _filter_data_combo(self, text: str = None):
+    def _filter_data_combo(self, text: Optional[str] = None):
         """거래소 및 심볼 검색 필터 적용"""
         if not hasattr(self, '_all_data_items'):
             return
@@ -1029,7 +1029,7 @@ class SingleOptimizerWidget(QWidget):
 
 
     
-    def _load_data(self) -> pd.DataFrame:
+    def _load_data(self) -> Optional[pd.DataFrame]:
         """Load selected data and resample to 1H for pattern detection"""
         try:
             from GUI.data_cache import DataManager
@@ -1072,7 +1072,7 @@ class SingleOptimizerWidget(QWidget):
             traceback.print_exc()
             return None
     
-    def _run_optimization(self, custom_grid: dict = None):
+    def _run_optimization(self, custom_grid: Optional[dict] = None):
         """Run optimization"""
         if not self.data_combo.currentText():
             QMessageBox.warning(self, t("common.warning"), "Please select a data source first")
@@ -1297,9 +1297,7 @@ class SingleOptimizerWidget(QWidget):
         else:
             self.refine_group.setVisible(False)
 
-    def _on_error(self, message: str):
-        QMessageBox.critical(self, t("common.error"), f"Optimization failed: {message}")
-        self._reset_ui()
+
     
     def _reset_ui(self):
         self.run_btn.setEnabled(True)
@@ -1419,7 +1417,8 @@ class SingleOptimizerWidget(QWidget):
             apply_btn.clicked.connect(lambda _, p=r.params, res=r: self._apply_settings(p, res))
             self.result_table.setCellWidget(row, 11, apply_btn)
         
-        self.result_table.viewport().update()
+        if self.result_table.viewport():
+            cast(Any, self.result_table.viewport()).update()
     
     def _apply_settings(self, params: dict, result=None):
         """Save settings as preset"""
@@ -1748,7 +1747,8 @@ class BatchOptimizerWidget(QWidget):
             QTableWidget { background: #131722; color: #cfcfcf; border: none; font-size: 10px; }
             QHeaderView::section { background: #131722; color: #555; padding: 2px; }
         """)
-        self.grid_audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.grid_audit_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         a_layout.addWidget(self.grid_audit_table)
         layout.addWidget(audit_group)
         
@@ -1839,9 +1839,9 @@ class BatchOptimizerWidget(QWidget):
         """로그 추가"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")
-        self.log_text.verticalScrollBar().setValue(
-            self.log_text.verticalScrollBar().maximum()
-        )
+        scrollbar = self.log_text.verticalScrollBar()
+        if scrollbar:
+            cast(Any, scrollbar).setValue(cast(Any, scrollbar).maximum())
     
     def _on_status_update(self, message: str):
         """상태 업데이트 (UI 스레드)"""
@@ -1938,7 +1938,8 @@ class BatchOptimizerWidget(QWidget):
     def _run_optimizer(self, resume: bool = False):
         """최적화 실행 (워커 스레드)"""
         try:
-            self.optimizer.run(resume=resume)
+            if self.optimizer:
+                cast(Any, self.optimizer).run(resume=resume)
         except Exception as e:
             self._status_callback(f"❌ 오류: {e}")
         finally:
@@ -1995,24 +1996,26 @@ class BatchOptimizerWidget(QWidget):
         
         state = temp_opt.state
         
+        state_any = cast(Any, state)
         reply = QMessageBox.question(
             self, "이어하기 확인",
             f"이전 작업을 이어서 진행하시겠습니까?\n\n"
-            f"거래소: {state.exchange}\n"
-            f"진행률: {state.completed}/{state.total_symbols}\n"
-            f"성공: {state.success_count}개\n"
-            f"마지막 심볼: {state.current_symbol}",
+            f"거래소: {getattr(state_any, 'exchange', 'Unknown')}\n"
+            f"진행률: {getattr(state_any, 'completed', 0)}/{getattr(state_any, 'total_symbols', 0)}\n"
+            f"성공: {getattr(state_any, 'success_count', 0)}개\n"
+            f"마지막 심볼: {getattr(state_any, 'current_symbol', 'None')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
         if reply != QMessageBox.StandardButton.Yes:
             return
         
+        state_any = cast(Any, state)
         self.optimizer = BatchOptimizer(
-            exchange=state.exchange,
-            timeframes=state.timeframes,
-            min_win_rate=state.min_win_rate,
-            min_trades=state.min_trades
+            exchange=getattr(state_any, 'exchange', 'binance'),
+            timeframes=getattr(state_any, 'timeframes', []),
+            min_win_rate=getattr(state_any, 'min_win_rate', 0.0),
+            min_trades=getattr(state_any, 'min_trades', 0)
         )
         self.optimizer.set_callbacks(
             status_cb=self._status_callback,

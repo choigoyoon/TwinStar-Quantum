@@ -1,8 +1,10 @@
 # fixed_param_check_debug.py
 import os
 import sys
+import io
 
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[union-attr]
 
 ROOT = r"c:\매매전략"
 PASS, FAIL = 0, 0

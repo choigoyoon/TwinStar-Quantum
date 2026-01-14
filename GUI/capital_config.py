@@ -8,6 +8,7 @@
 import json
 import os
 from dataclasses import dataclass, asdict
+from typing import Optional, Dict, Any
 
 # Logging
 import logging
@@ -65,16 +66,16 @@ def save_capital_config(config: CapitalConfig):
 class PositionSizer:
     """포지션 사이징 계산기"""
     
-    def __init__(self, config: CapitalConfig = None):
+    def __init__(self, config: Optional[CapitalConfig] = None):
         self.config = config or load_capital_config()
     
     def calculate_position_size(
         self,
         entry_price: float,
         stop_loss: float,
-        atr: float = None,
+        atr: Optional[float] = None,
         win_rate: float = 0.75
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
         포지션 크기 계산
         

@@ -14,7 +14,7 @@ from PyQt6.QtGui import QFont
 try:
     from locales import t
 except ImportError:
-    def t(key, default=None):
+    def t(key: str, default: str | None = None) -> str:
         return default if default else key.split('.')[-1]
 
 
@@ -70,7 +70,7 @@ class TierPopup(QDialog):
         
         # 제목
         title = QLabel("💎 TwinStar Quantum 등급 안내")
-        title.setFont(QFont("Arial", 16, QFont.Bold))
+        title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
@@ -118,10 +118,14 @@ class TierPopup(QDialog):
                 table.setItem(row, col, item)
         
         # 테이블 설정
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        table.verticalHeader().setVisible(False)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionMode(QTableWidget.NoSelection)
+        h_header = table.horizontalHeader()
+        if h_header:
+            h_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        v_header = table.verticalHeader()
+        if v_header:
+            v_header.setVisible(False)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         table.setRowHeight(0, 40)
         for i in range(5):
             table.setRowHeight(i, 40)

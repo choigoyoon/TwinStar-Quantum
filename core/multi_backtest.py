@@ -8,7 +8,7 @@ Multi Time-Series Backtester
 import json
 import logging
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 from pathlib import Path
 
 # Logging
@@ -129,13 +129,17 @@ class MultiBacktester:
             params = {k: v for k, v in params.items() if k in allowed_keys and k != 'filter_tf'}
             
             # 개별 백테스트 실행
-            trades = self.core.run_backtest(
+            if df_entry is None: continue
+            
+            result = self.core.run_backtest(
                 df_pattern=df_pattern,
                 df_entry=df_entry,
                 **params,
                 filter_tf=tf
             )
-            
+            # run_backtest는 List[Dict] 또는 Tuple[List[Dict], Dict]를 반환할 수 있음
+            trades: List[Dict[Any, Any]] = result[0] if isinstance(result, tuple) else result
+
             for t in trades:
                 t['symbol'] = symbol
                 # 간단 판별: BTCUSDT 이거나, BTC가 포함되고 USDT 페어인 경우 (ETHBTC 등 제외)
@@ -157,7 +161,7 @@ class MultiBacktester:
         alt_capital = self.initial_alt_capital
         btc_capital = 0.0 # BTC 총 수익 추적
         
-        active_positions = {
+        active_positions: Dict[str, Optional[Dict[str, Any]]] = {
             'btc': None,
             'alt': None
         }

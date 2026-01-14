@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # 프로젝트 루트 설정
-ROOT = Path(rstr(Path(__file__).parent))
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 class DeepVerifier:
@@ -251,7 +251,8 @@ class DeepVerifier:
                 class MockExchange:
                     def __init__(self): self.name = 'Bybit'; self.symbol='BTCUSDT'
                 try:
-                    ao = AutoOptimizer(MockExchange(), "BTCUSDT")
+                    from typing import Any, cast
+                    ao = AutoOptimizer(cast(str, MockExchange()), "BTCUSDT")
                 except Exception:
 
                     ao = None

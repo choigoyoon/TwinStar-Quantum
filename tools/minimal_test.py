@@ -1,6 +1,7 @@
 # minimal_test.py - 최소 테스트
 import json
-result = {"test": "start"}
+from typing import Any, Dict
+result: Dict[str, Any] = {"test": "start"}
 
 try:
     import sys

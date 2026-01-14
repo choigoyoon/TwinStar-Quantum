@@ -2,6 +2,8 @@
 import sys
 sys.path.insert(0, '.')
 import os
+import os
+from typing import Any, Dict, cast
 os.chdir('C:\\매매전략')
 
 def main():
@@ -64,7 +66,7 @@ def main():
         trades = strategy.run_backtest(
             df_pattern=df_1h,
             df_entry=df_1h,
-            **params
+            **cast(Dict[str, Any], params)
         )
         
         if trades and len(trades) >= 10:

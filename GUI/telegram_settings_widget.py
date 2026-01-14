@@ -192,7 +192,11 @@ class TelegramSettingsWidget(QFrame):
             self.notifier.enabled = self.enabled_check.isChecked()
             self.notifier.bot_token = self.token_input.text().strip()
             self.notifier.chat_id = self.chat_input.text().strip()
-            self.notifier.save_config()
+            self.notifier.save_config(
+                bot_token=self.token_input.text().strip(),
+                chat_id=self.chat_input.text().strip(),
+                enabled=self.enabled_check.isChecked()
+            )
             
             QMessageBox.information(self, t("common.success"), "Settings saved!")
     

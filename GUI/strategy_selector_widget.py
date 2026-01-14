@@ -17,6 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QFont
+from typing import Any, cast, Optional
 
 import sys
 import os
@@ -59,7 +60,7 @@ class StrategyCard(QFrame):
         header = QHBoxLayout()
         
         name_label = QLabel(self._info.name)
-        name_label.setFont(QFont("Arial", 12, QFont.Bold))
+        name_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         name_label.setStyleSheet("color: #ffffff;")
         header.addWidget(name_label)
         
@@ -119,7 +120,7 @@ class StrategyCard(QFrame):
             layout.addWidget(desc)
     
     def mousePressEvent(self, event):
-        self.selected.emit(self._info.id)
+        self.selected.emit(cast(Any, self._info).strategy_id)
         super().mousePressEvent(event)
     
     def set_selected(self, selected: bool):
@@ -155,7 +156,7 @@ class StrategySelectorWidget(QWidget):
         self._user_tier = user_tier
         self._loader = StrategyLoader()
         self._cards: dict = {}
-        self._selected_id: str = None
+        self._selected_id: Optional[str] = None
         self._selected_strategy = None
         self._init_ui()
         self._load_strategies()
@@ -168,7 +169,7 @@ class StrategySelectorWidget(QWidget):
         header = QHBoxLayout()
         
         title = QLabel("📊 전략 선택")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
+        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         title.setStyleSheet("color: #ffffff;")
         header.addWidget(title)
         
@@ -281,9 +282,10 @@ class StrategySelectorWidget(QWidget):
         
         for strategy_id, card in self._cards.items():
             info = self._loader.get_strategy_info(strategy_id)
+            info_any = cast(Any, info)
             if filter_tier is None:
                 card.show()
-            elif info.tier_required == filter_tier:
+            elif info and info_any.tier_required == filter_tier:
                 card.show()
             else:
                 card.hide()
@@ -300,8 +302,10 @@ class StrategySelectorWidget(QWidget):
         
         # 정보 업데이트
         info = self._loader.get_strategy_info(strategy_id)
-        self._selected_label.setText(f"✅ {info.name} (v{info.version})")
-        self._selected_label.setStyleSheet("color: #4CAF50;")
+        if info:
+            info_any = cast(Any, info)
+            self._selected_label.setText(f"✅ {info_any.name} (v{info_any.version})")
+            self._selected_label.setStyleSheet("color: #4CAF50;")
         
         self._load_btn.setEnabled(True)
     

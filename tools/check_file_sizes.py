@@ -1,11 +1,13 @@
 
 import os
 import sys
+from pathlib import Path
 
 # Windows console encoding fix
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[union-attr]
 
-root = rstr(Path(__file__).parent)
+root = str(Path(__file__).parent)
 large_files = []
 
 scan_folders = ['core', 'GUI', 'exchanges', 'utils', 'storage', 'config']

@@ -16,7 +16,7 @@
 """
 
 import warnings
-from typing import Dict, List
+from typing import Dict, List, Optional, Any, cast
 
 import pandas as pd
 
@@ -80,7 +80,7 @@ def detect_patterns_adxdi(
 # =============================================================================
 def run_backtest(
     df: pd.DataFrame,
-    params: Dict = None,
+    params: Optional[Dict] = None,
     timeframe: str = '2h',
     method: str = 'macd',
     slippage: float = DEFAULT_SLIPPAGE,

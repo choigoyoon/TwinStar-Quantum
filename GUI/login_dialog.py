@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QTabWidget, QWidget, QGroupBox, QMessageBox, QFrame,
     QComboBox
 )
+from typing import Any, cast
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
@@ -88,7 +89,7 @@ class LoginDialog(QDialog):
         
         # 헤더
         header = QLabel("🚀 TwinStar Quantum")
-        header.setFont(QFont("Arial", 24, QFont.Bold))
+        header.setFont(QFont("Arial", 24, QFont.Weight.Bold))
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
         
@@ -294,7 +295,7 @@ class PaymentDialog(QDialog):
         
         # 헤더
         header = QLabel("🔑 평생 라이선스 결제")
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         layout.addWidget(header)
         
         # 가격 정보
@@ -302,7 +303,10 @@ class PaymentDialog(QDialog):
             from core.crypto_payment import get_crypto_payment
             cp = get_crypto_payment()
             price = cp.get_price_usd()
-            payment_info = cp.get_payment_info(self.user.get('user_id'), self.user.get('email'))
+            payment_info = cp.get_payment_info(
+                cast(int, self.user.get('user_id', 0)), 
+                cast(str, self.user.get('email', ''))
+            )
         except Exception as e:
             price = 100.0
             payment_info = None
@@ -442,7 +446,7 @@ class PaymentDialog(QDialog):
             cp = get_crypto_payment()
             
             result = cp.verify_payment_manual(
-                user_id=self.user.get('user_id'),
+                user_id=cast(int, self.user.get('user_id', 0)),
                 tx_hash=tx_hash,
                 crypto_type=crypto_type
             )

@@ -10,8 +10,9 @@ OKX 거래소 어댑터
 import time
 import logging
 import pandas as pd
+from typing import Any, cast
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any, Dict, Union
 
 from .base_exchange import BaseExchange, Position
 
@@ -34,7 +35,7 @@ class OKXExchange(BaseExchange):
         self.api_secret = config.get('api_secret', '')
         self.passphrase = config.get('passphrase', '')
         self.testnet = config.get('testnet', False)
-        self.exchange = None
+        self.exchange: Optional[Any] = None
         self.time_offset = 0
         
         # [FIX] OKX 심볼 형식 정규화 - 내부 저장은 BTCUSDT, _convert_symbol에서 BTC/USDT:USDT로 변환
@@ -85,10 +86,12 @@ class OKXExchange(BaseExchange):
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1H', '240': '4H'}
             timeframe = tf_map.get(interval, interval)
             
+            if self.exchange is None:
+                return None
             symbol = self._convert_symbol(self.symbol)
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             
             return df
@@ -99,54 +102,63 @@ class OKXExchange(BaseExchange):
     
     def get_current_price(self) -> float:
         """현재 가격"""
+        if self.exchange is None:
+            return 0.0
         try:
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker['last'])
+            return float(ticker.get('last', 0) or 0)
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
-            return 0
+            return 0.0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """시장가 주문"""
         max_retries = 3
         
         for attempt in range(max_retries):
             try:
+                if self.exchange is None:
+                    return False
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
                 # OKX는 posSide 필요 (User Script check: positionSide)
                 pos_side = 'long' if side == 'Long' else 'short'
                 
+                params: Dict[str, Any] = {
+                    'posSide': pos_side,
+                    'tdMode': 'cross'
+                }
+                if client_order_id:
+                    params['clOrdId'] = client_order_id
+                
                 order = self.exchange.create_order(
                     symbol=symbol,
                     type='market',
                     side=order_side,
                     amount=size,
-                    params={
-                        'posSide': pos_side,
-                        'tdMode': 'cross'
-                    }
+                    params=params
                 )
                 
                 if order:
                     price = self.get_current_price()
-                    
+
                     if stop_loss > 0:
                         try:
                             sl_side = 'sell' if side == 'Long' else 'buy'
-                            self.exchange.create_order(
-                                symbol=symbol,
-                                type='stop_market',
-                            side=sl_side,
-                            amount=size,
-                            params={
+                            sl_params: Dict[str, Any] = {
                                 'stopPrice': stop_loss,
                                 'posSide': pos_side,
                                 'reduceOnly': True
                             }
-                        )
+                            self.exchange.create_order(
+                                symbol=symbol,
+                                type='stop_market',
+                                side=sl_side,
+                                amount=size,
+                                params=sl_params
+                            )
                         except Exception as sl_err:
                             # 🔴 CRITICAL: SL 실패 시 즉시 청산
                             logging.error(f"[OKX] ❌ SL Setting FAILED! Closing position immediately: {sl_err}")
@@ -179,7 +191,23 @@ class OKXExchange(BaseExchange):
                     )
                     
                     logging.info(f"[OKX] Order placed: {side} {size} @ {price} (ID: {order_id})")
-                    return order_id
+                    
+                    # 익절 주문 (take_profit > 0 인 경우)
+                    if take_profit > 0:
+                        try:
+                            tp_side = 'sell' if side == 'Long' else 'buy'
+                            assert self.exchange is not None
+                            self.exchange.create_order(
+                                symbol=symbol,
+                                type='take_profit_market',
+                                side=tp_side,
+                                amount=size,
+                                params={'stopPrice': take_profit, 'posSide': pos_side, 'reduceOnly': True}
+                            )
+                        except Exception as tp_err:
+                            logging.warning(f"[OKX] Take profit setting failed: {tp_err}")
+
+                    return order
                     
             except Exception as e:
                 logging.error(f"[OKX] Order error: {e}")
@@ -190,6 +218,7 @@ class OKXExchange(BaseExchange):
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
+        if self.exchange is None: return False
         try:
             symbol = self._convert_symbol(self.symbol)
             
@@ -231,6 +260,7 @@ class OKXExchange(BaseExchange):
     
     def close_position(self) -> bool:
         """포지션 청산"""
+        if self.exchange is None: return False
         try:
             if not self.position:
                 return True
@@ -280,6 +310,8 @@ class OKXExchange(BaseExchange):
             order_side = 'buy' if side == 'Long' else 'sell'
             pos_side = 'long' if side == 'Long' else 'short'
             
+            if self.exchange is None:
+                return False
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -327,6 +359,9 @@ class OKXExchange(BaseExchange):
             return False
         try:
             server_time = self.exchange.fetch_time()
+            if server_time is None:
+                logging.error("[OKX] Failed to fetch server time")
+                return False
             local_time = int(time.time() * 1000)
             self.time_offset = server_time - local_time
             logging.info(f"[OKX] Time synced. Offset: {self.time_offset}ms")
@@ -338,6 +373,8 @@ class OKXExchange(BaseExchange):
     def get_positions(self) -> Optional[list]:
         """모든 열린 포지션 조회 (긴급청산용)"""
         try:
+            if self.exchange is None:
+                return None
             positions_data = self.exchange.fetch_positions()
             
             positions = []
@@ -362,6 +399,7 @@ class OKXExchange(BaseExchange):
     
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
+        if self.exchange is None: return False
         try:
             symbol = self._convert_symbol(self.symbol)
             
@@ -401,14 +439,13 @@ class OKXExchange(BaseExchange):
             self.ws_handler.on_connect = on_connect
             
             import asyncio
-            asyncio.create_task(self.ws_handler.connect())
+            if self.ws_handler:
+                asyncio.create_task(self.ws_handler.connect())
             
-            import logging
-            logging.info(f"[Okx] WebSocket connected: {{self.symbol}}")
+            logging.info(f"[OKX] WebSocket connected: {self.symbol}")
             return True
         except Exception as e:
-            import logging
-            logging.error(f"[Okx] WebSocket failed: {{e}}")
+            logging.error(f"[OKX] WebSocket failed: {e}")
             return False
     
     def stop_websocket(self):
@@ -425,39 +462,24 @@ class OKXExchange(BaseExchange):
     
     def _auto_sync_time(self):
         """API 호출 전 자동 시간 동기화 (5분마다)"""
-        import time
         if not hasattr(self, '_last_sync'):
             self._last_sync = 0
-        
+
         if time.time() - self._last_sync > 300:
             self.sync_time()
             self._last_sync = time.time()
-    
-    def sync_time(self):
-        """서버 시간 동기화"""
-        import time
-        import logging
-        try:
-            # ccxt 기반 거래소의 경우
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                server_time = self.exchange.fetch_time()
-                local_time = int(time.time() * 1000)
-                self.time_offset = local_time - server_time
-                logging.debug(f"[Okx] Time synced: offset={{self.time_offset}}ms")
-                return True
-        except Exception as e:
-            logging.debug(f"[Okx] Time sync failed: {{e}}")
-        self.time_offset = 0
-        return False
-    
-    def fetchTime(self):
+
+    def fetchTime(self) -> int:
         """서버 시간 조회"""
-        import time
         try:
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                return self.exchange.fetch_time()
-        except Exception as e:
-            logging.debug(f"WS close ignored: {e}")
+            if self.exchange and hasattr(self.exchange, 'fetch_time'):
+                if self.exchange is None:
+                    return int(time.time() * 1000)
+                result = self.exchange.fetch_time()
+                if result is not None:
+                    return int(result)
+        except Exception:
+            pass
         return int(time.time() * 1000)
 
     # ========== [NEW] 매매 히스토리 API ==========
@@ -465,8 +487,10 @@ class OKXExchange(BaseExchange):
     def get_trade_history(self, limit: int = 50) -> list:
         """API로 청산된 거래 히스토리 조회 (CCXT)"""
         try:
-            if not self.exchange:
+            if self.exchange is None:
                 return super().get_trade_history(limit)
+            
+            assert self.exchange is not None
             
             symbol = self._convert_symbol(self.symbol)
             raw_trades = self.exchange.fetch_my_trades(symbol, limit=limit)
@@ -495,7 +519,7 @@ class OKXExchange(BaseExchange):
         """API로 실현 손익 조회"""
         try:
             trades = self.get_trade_history(limit=limit)
-            total_pnl = sum(t.get('pnl', 0) for t in trades)
+            total_pnl = float(sum(t.get('pnl', 0) for t in trades))
             logging.info(f"[OKX] Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
             return total_pnl
         except Exception as e:

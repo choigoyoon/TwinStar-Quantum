@@ -106,11 +106,9 @@ else:
     print('  ✅ None 체크 문제 없음')
 
 #############################################
-# [4] except Exception:
-     pass 남용
+# [4] except Exception: pass 남용
 #############################################
-print('\n📊 [4] except Exception:
-     pass 남용')
+print('\n📊 [4] except Exception: pass 남용')
 
 pass_issues = []
 for f in all_py:
@@ -129,15 +127,13 @@ for f in all_py:
         pass
 
 if pass_issues:
-    print(f'  ⚠️ except Exception:
-     pass: {len(pass_issues)}개')
+    print(f'  ⚠️ except Exception: pass: {len(pass_issues)}개')
     for issue in pass_issues[:10]:
         print(f'    {issue}')
     if len(pass_issues) > 10:
         print(f'    ... 외 {len(pass_issues)-10}개')
 else:
-    print('  ✅ except Exception:
-     pass 없음')
+    print('  ✅ except Exception: pass 없음')
 
 #############################################
 # [5] DataFrame 위험 패턴

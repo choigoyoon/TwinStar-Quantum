@@ -2,7 +2,7 @@
 utils/formatters 모듈 테스트
 """
 
-import pytest
+import pytest  # type: ignore
 from datetime import datetime, timedelta
 
 
@@ -142,8 +142,8 @@ class TestEdgeCases:
     def test_invalid_input(self):
         from utils.formatters import format_number, format_datetime
         
-        assert format_number('invalid') == '-'
-        assert format_datetime('invalid') == '-'
+        assert format_number('invalid') == '-'  # type: ignore[arg-type]
+        assert format_datetime('invalid') == '-'  # type: ignore[arg-type]
         
     def test_negative_values(self):
         from utils.formatters import format_number, format_pnl, abbreviate_number

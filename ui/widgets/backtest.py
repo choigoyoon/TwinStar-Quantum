@@ -206,12 +206,14 @@ class BacktestWidget(QWidget):
         self.progress.setValue(0)
         
         # 파라미터 가져오기
+        params: dict = {}
         try:
             from trading import get_preset
-            params = get_preset(self.preset_combo.currentText())
+            loaded_params = get_preset(self.preset_combo.currentText())
+            if loaded_params is not None:
+                params = loaded_params
         except Exception:
-
-            params = None
+            pass
         
         # 워커 생성 및 실행
         self.worker = BacktestWorker(

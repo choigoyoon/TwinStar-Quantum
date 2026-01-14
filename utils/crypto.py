@@ -11,9 +11,8 @@ logger = logging.getLogger(__name__)
 # 마스터 키 저장 경로 (user 폴더 내, .gitignore에 포함됨)
 try:
     from paths import Paths
-    KEY_FILE = Path(Paths.USER_DIR) / "secret.key"
+    KEY_FILE = Path(Paths.USER) / "secret.key"
 except Exception:
-
     KEY_FILE = Path("user") / "secret.key"
 
 class CryptoManager:

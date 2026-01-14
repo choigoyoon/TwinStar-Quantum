@@ -314,12 +314,15 @@ class TestCoreDeep(unittest.TestCase):
         
         res = ub._finalize_results()
         
-        self.log_result("unified_backtest", "win_rate", 50.0, res.win_rate)
-        # Check MDD
-        self.log_result("unified_backtest", "mdd", 25.0, res.max_drawdown)
-        
-        # Profit Factor: Gross Win 10, Gross Loss 5 -> 2.0
-        self.log_result("unified_backtest", "profit_factor", 2.0, res.profit_factor)
+        if res is not None:
+            self.log_result("unified_backtest", "win_rate", 50.0, res.win_rate)
+            # Check MDD
+            self.log_result("unified_backtest", "mdd", 25.0, res.max_drawdown)
+            
+            # Profit Factor: Gross Win 10, Gross Loss 5 -> 2.0
+            self.log_result("unified_backtest", "profit_factor", 2.0, res.profit_factor)
+        else:
+            self.log_result("unified_backtest", "result_obj", "UnifiedResult", None)
 
 
 if __name__ == '__main__':

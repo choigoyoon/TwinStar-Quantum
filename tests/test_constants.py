@@ -2,7 +2,7 @@
 config/constants 모듈 테스트
 """
 
-import pytest
+import pytest  # type: ignore
 
 
 class TestExchangeConstants:

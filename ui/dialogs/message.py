@@ -7,19 +7,22 @@ TwinStar Quantum - Message Dialogs
 
 from PyQt6.QtWidgets import QLabel
 from PyQt6.QtCore import Qt
+from typing import Any
 
 from .base import BaseDialog
 
 # 디자인 시스템
 try:
-    from ui.design_system import Colors
+    from ui.design_system import Colors as _DesignColors
+    Colors: Any = _DesignColors
 except ImportError:
-    class Colors:
+    class _Colors:
         success = "#3fb950"
         danger = "#f85149"
         warning = "#d29922"
         info = "#58a6ff"
         text_primary = "#f0f6fc"
+    Colors: Any = _Colors
 
 
 class MessageDialog(BaseDialog):
@@ -43,20 +46,20 @@ class MessageDialog(BaseDialog):
     }
     
     def __init__(
-        self, 
+        self,
         message: str,
         msg_type: str = "info",
-        title: str = None,
+        title: str | None = None,
         parent=None
     ):
         icon, color = self.ICONS.get(msg_type, self.ICONS["info"])
         
-        if title is None:
-            title = msg_type.capitalize()
+        dialog_title: str = title if title is not None else msg_type.capitalize()
         
-        super().__init__(title, parent=parent)
+        super().__init__(dialog_title, parent=parent)
         
-        self._build_content(message, icon, color)
+        color_str: str = color if color is not None else "#58a6ff"
+        self._build_content(message, icon, color_str)
         self._add_buttons()
     
     def _build_content(self, message: str, icon: str, color: str):
@@ -81,10 +84,10 @@ class MessageDialog(BaseDialog):
     def _add_buttons(self):
         """버튼 추가"""
         self.add_stretch()
-        self.add_button("확인", variant="primary")
+        self.add_button("확인", callback=None, variant="primary")
     
     @classmethod
-    def show(cls, message: str, msg_type: str = "info", title: str = None, parent=None):
+    def show(cls, message: str, msg_type: str = "info", title: str | None = None, parent=None):
         """다이얼로그 표시"""
         dialog = cls(message, msg_type, title, parent)
         return dialog.exec()

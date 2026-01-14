@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt
 
 # Logging
 import logging
+from typing import Any, cast
 logger = logging.getLogger(__name__)
 
 # Add project root
@@ -23,6 +24,11 @@ try:
     from candle_aggregator import CandleAggregator, Candle
 except ImportError:
     from GUI.candle_aggregator import CandleAggregator, Candle
+
+try:
+    from nowcast_widget import NowcastWidget
+except ImportError:
+    from GUI.nowcast_widget import NowcastWidget
 
 # websocket_manager가 있으면
 try:
@@ -102,7 +108,7 @@ class EnhancedChartWidget(QWidget):
         
         # pyqtgraph 차트
         try:
-            import pyqtgraph as pg
+            import pyqtgraph as pg # type: ignore
             self.chart_view = pg.PlotWidget()
             self.chart_view.setBackground('#0d1117')
             self.chart_view.showGrid(x=True, y=True, alpha=0.3)
@@ -133,6 +139,10 @@ class EnhancedChartWidget(QWidget):
         status_layout.addWidget(self.candle_count_label)
         
         main_layout.addLayout(status_layout)
+        
+        # ===== 4. 나우캐스트 설정 위젯 (하단) =====
+        self.nowcast_widget = NowcastWidget()
+        main_layout.addWidget(self.nowcast_widget)
     
     def _setup_nowcast(self):
         """Aggregator 콜백 연결"""
@@ -283,15 +293,15 @@ class EnhancedChartWidget(QWidget):
     
     def _redraw_chart(self):
         """차트 다시 그리기"""
-        if not hasattr(self, '_has_chart') or not self._has_chart:
+        if not getattr(self, '_has_chart', False):
             return
         if not hasattr(self, '_chart_prices') or len(self._chart_prices) == 0:
             return
         
         try:
-            import pyqtgraph as pg
+            import pyqtgraph as pg # type: ignore
             
-            self.chart_view.clear()
+            cast(Any, self.chart_view).clear()
             
             prices = self._chart_prices
             x = list(range(len(prices)))
@@ -303,7 +313,8 @@ class EnhancedChartWidget(QWidget):
                 color = '#26a69a'
             
             pen = pg.mkPen(color=color, width=2)
-            self.chart_view.plot(x, prices, pen=pen)
+            if hasattr(self.chart_view, 'plot'):
+                cast(Any, self.chart_view).plot(x, prices, pen=pen)
             
         except Exception as e:
             logger.info(f"[Chart] 리드로우 에러: {e}")
@@ -350,9 +361,9 @@ class EnhancedChartWidget(QWidget):
             return
         
         try:
-            import pyqtgraph as pg
+            import pyqtgraph as pg # type: ignore
             
-            self.chart_view.clear()
+            cast(Any, self.chart_view).clear()
             
             # 종가 라인 차트
             prices = df['close'].values
@@ -365,7 +376,8 @@ class EnhancedChartWidget(QWidget):
                 color = '#26a69a'
             
             pen = pg.mkPen(color=color, width=2)
-            self.chart_view.plot(x, prices, pen=pen)
+            if hasattr(self.chart_view, 'plot'):
+                 cast(Any, self.chart_view).plot(x, prices, pen=pen)
             
             # 현재가 업데이트
             if len(prices) > 0:
@@ -386,7 +398,7 @@ if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
     
     try:
-        from styles import StarUTheme
+        from GUI.styles.theme import Theme as StarUTheme
         style = StarUTheme.get_stylesheet()
     except ImportError:
         style = "QWidget { background-color: #0d1117; color: #f0f6fc; }"

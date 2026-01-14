@@ -7,6 +7,7 @@ import os
 import io
 import unittest
 import importlib
+import importlib.util
 import traceback
 from pathlib import Path
 from datetime import datetime
@@ -54,8 +55,9 @@ def run_stage1():
         try:
             module_name = tf.stem
             spec = importlib.util.spec_from_file_location(module_name, tf)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
             
             tests = loader.loadTestsFromModule(module)
             suite.addTests(tests)
@@ -161,7 +163,7 @@ def run_stage3():
     print_header(3, "API 연동 테스트")
     
     try:
-        import ccxt
+        import ccxt # type: ignore
         
         # Binance Testnet (no auth needed for public endpoints)
         exchange = ccxt.binance({
@@ -172,7 +174,8 @@ def run_stage3():
         
         # Test 1: Fetch Ticker
         ticker = exchange.fetch_ticker('BTC/USDT')
-        assert 'last' in ticker and ticker['last'] > 0
+        from typing import Any, cast
+        assert ticker is not None and 'last' in cast(dict[str, Any], ticker) and cast(dict[str, Any], ticker)['last'] > 0
         print(f"  ✅ 티커 조회 성공 (BTC: ${ticker['last']:.2f})")
         RESULTS['stage3']['passed'] += 1
         
@@ -184,8 +187,8 @@ def run_stage3():
         
         # Test 3: Markets Load
         exchange.load_markets()
-        assert 'BTC/USDT' in exchange.markets
-        print(f"  ✅ 마켓 로드 성공 ({len(exchange.markets)}개)")
+        assert exchange.markets is not None and 'BTC/USDT' in exchange.markets
+        print(f"  ✅ 마켓 로드 성공 ({len(exchange.markets) if exchange.markets else 0}개)")
         RESULTS['stage3']['passed'] += 1
         
         print(f"✅ API 연동 3/3 성공")

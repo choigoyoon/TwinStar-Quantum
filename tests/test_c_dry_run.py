@@ -112,7 +112,7 @@ class DryRunTest:
             
             if signals:
                 # Handle both list and single signal
-                if hasattr(signals, '__len__') and not isinstance(signals, str):
+                if isinstance(signals, list):
                     sig_list = signals
                 else:
                     sig_list = [signals]
@@ -174,12 +174,20 @@ class DryRunTest:
             
             positions = em.get_positions(exchange_name)
             
-            active = [p for p in positions if float(p.size) != 0]
+            active = []
+            if positions and isinstance(positions, list):
+                for p in positions:
+                    size = p.get('size', 0) if isinstance(p, dict) else getattr(p, 'size', 0)
+                    if float(size) != 0:
+                        active.append(p)
             
             if active:
                 self.log(f"Found {len(active)} active positions:", 'INFO')
                 for p in active[:5]:
-                    self.log(f"  {p.symbol}: {p.size} @ {p.entry_price}", 'INFO')
+                    size = p['size'] if isinstance(p, dict) else getattr(p, 'size', 0)
+                    symbol = p['symbol'] if isinstance(p, dict) else getattr(p, 'symbol', 'Unknown')
+                    entry = p['entry_price'] if isinstance(p, dict) else getattr(p, 'entry_price', 0)
+                    self.log(f"  {symbol}: {size} @ {entry}", 'INFO')
             else:
                 self.log("No active positions", 'INFO')
             

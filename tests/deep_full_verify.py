@@ -113,7 +113,7 @@ class DeepFullVerify(unittest.TestCase):
             logger.error(f"[PnL Long] ❌ ({e})")
 
         # 2. MDD
-        equity = [100, 110, 105, 95, 100, 90]
+        equity: list[float] = [100.0, 110.0, 105.0, 95.0, 100.0, 90.0]
         # Peak 110, Bottom 90 -> (110-90)/110 = 18.18%
         expected_mdd = 18.18
         
@@ -180,7 +180,7 @@ class DeepFullVerify(unittest.TestCase):
             # we check the implementation of get_top_n in core/optimization_logic.py
             # Since it was recently modified with fallback, we verify it.
             source = inspect.getsource(OptimizationEngine.run_staged_optimization)
-            self.assertIn("Fallback", source) or self.assertIn("relaxed", source)
+            self.assertTrue("Fallback" in source or "relaxed" in source)
             logger.info("[Optimizer Fallback] Logic verified in source ✅")
         except Exception as e:
             logger.error(f"[Optimizer Fallback] ❌ ({e})")

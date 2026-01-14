@@ -35,7 +35,7 @@ def get_project_root() -> str:
     """
     try:
         from paths import Paths
-        return Paths.ROOT
+        return str(Paths.ROOT)
     except ImportError:
         # Fallback: 이 파일 기준으로 추정
         current = os.path.dirname(os.path.abspath(__file__))

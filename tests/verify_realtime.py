@@ -15,6 +15,7 @@ def run():
     
     # 1. API 연결
     print("\n[API 연결]")
+    adapter = None
     try:
         from exchanges.exchange_manager import ExchangeManager
         em = ExchangeManager()
@@ -44,6 +45,8 @@ def run():
     # 2. 데이터 조회
     print("\n[데이터 조회]")
     try:
+        if adapter is None:
+            raise Exception("Adapter not initialized")
         df = adapter.get_klines(symbol='BTCUSDT', interval='15m', limit=10)
         
         if df is not None and len(df) > 0:
@@ -65,6 +68,8 @@ def run():
         from core.strategy_core import AlphaX7Core
         
         core = AlphaX7Core()
+        if adapter is None:
+             raise Exception("Adapter not initialized")
         df = adapter.get_klines(symbol='BTCUSDT', interval='15m', limit=100)
         
         if df is not None and len(df) >= 50:
@@ -74,6 +79,8 @@ def run():
             # I must check if detect_pattern exists or if I should simulate detect_signal.
             # Strategy core viewed in 1393 has detect_signal(self, df_1h, df_15m, ...).
             # It does NOT have detect_pattern.
+            # So I must construct inputs for detect_signal.
+            
             # So I must construct inputs for detect_signal.
             
             df_pattern = adapter.get_klines(symbol='BTCUSDT', interval='1h', limit=100)

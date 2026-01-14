@@ -11,6 +11,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
@@ -19,8 +20,8 @@ class StaruMainVerifier:
     def __init__(self):
         self.results = []
         self.errors = []
-        self.app = None
-        self.main_window = None
+        self.app: Any = None
+        self.main_window: Any = None
     
     def log(self, msg):
         print(f"  {msg}")

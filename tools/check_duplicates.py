@@ -4,8 +4,9 @@
 import os
 import re
 from collections import defaultdict
+from pathlib import Path
 
-BASE = rstr(Path(__file__).parent)
+BASE = str(Path(__file__).parent)
 os.chdir(BASE)
 
 print('=' * 60)

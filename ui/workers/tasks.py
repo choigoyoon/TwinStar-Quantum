@@ -27,13 +27,13 @@ class BacktestWorker(QThread):
     finished = pyqtSignal(dict)
     error = pyqtSignal(str)
     
-    def __init__(self, df: pd.DataFrame, strategy: str, timeframe: str, 
-                 params: dict = None, apply_filters: bool = True):
+    def __init__(self, df: pd.DataFrame, strategy: str, timeframe: str,
+                 params: dict | None = None, apply_filters: bool = True):
         super().__init__()
         self.df = df
         self.strategy = strategy
         self.timeframe = timeframe
-        self.params = params
+        self.params = params or {}
         self.apply_filters = apply_filters
         self._cancelled = False
     

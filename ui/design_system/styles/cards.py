@@ -33,9 +33,9 @@ class CardStyles:
         """
     
     @staticmethod
-    def status_card(accent_color: str = None) -> str:
+    def status_card(accent_color: str | None = None) -> str:
         """상태 카드 (대시보드용)"""
-        accent = accent_color or Colors.accent_primary
+        accent: str = accent_color if accent_color is not None else Colors.accent_primary
         
         return f"""
             QFrame {{

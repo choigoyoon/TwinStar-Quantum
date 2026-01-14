@@ -22,12 +22,17 @@ def get_single_optimizer_widget():
         "optimization_widget_original", 
         os.path.join(gui_dir, "optimization_widget.py")
     )
+    if spec is None:
+        return None
+        
     module = importlib.util.module_from_spec(spec)
     
     # 임시로 sys.modules에 등록하지 않고 로드
     try:
-        spec.loader.exec_module(module)
-        return module.SingleOptimizerWidget
+        if spec.loader:
+            spec.loader.exec_module(module)
+            return getattr(module, "SingleOptimizerWidget", None)
+        return None
     except Exception as e:
         print(f"SingleOptimizerWidget 로드 실패: {e}")
         return None

@@ -26,7 +26,7 @@ class PresetStorage:
     STATUS_SUSPENDED = 'suspended'
     STATUS_NEEDS_REOPTIMIZE = 'needs_reoptimize'
     
-    def __init__(self, base_path: str = None):
+    def __init__(self, base_path: str | None = None):
         """
         Args:
             base_path: 프리셋 저장 기본 경로
@@ -68,8 +68,8 @@ class PresetStorage:
         return self.base_path / f"{key}.json"
     
     def save_preset(self, symbol: str, tf: str, params: Dict,
-                   optimization_result: Dict = None,
-                   chart_profile: Dict = None) -> bool:
+                   optimization_result: Dict | None = None,
+                   chart_profile: Dict | None = None) -> bool:
         """
         프리셋 저장
         

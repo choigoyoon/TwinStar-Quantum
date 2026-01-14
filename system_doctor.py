@@ -6,6 +6,7 @@ System Doctor Module
 import platform
 import logging
 
+from typing import Any, Dict
 logger = logging.getLogger(__name__)
 
 # psutil은 선택적 (없으면 기본값 반환)
@@ -16,9 +17,9 @@ except ImportError:
     HAS_PSUTIL = False
 
 
-def check_system() -> dict:
+def check_system() -> Dict[str, Any]:
     """시스템 상태 확인"""
-    info = {
+    info: Dict[str, Any] = {
         "status": "ok",
         "os": platform.system(),
         "python": platform.python_version(),

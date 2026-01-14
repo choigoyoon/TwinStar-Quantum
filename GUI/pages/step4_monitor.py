@@ -269,7 +269,8 @@ class MonitorPage(QWidget):
         self.trades_table = QTableWidget()
         self.trades_table.setColumnCount(5)
         self.trades_table.setHorizontalHeaderLabels(["시간", "코인", "방향", "가격", "수익"])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.trades_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;

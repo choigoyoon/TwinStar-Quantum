@@ -58,8 +58,8 @@ class BacktestEngine:
         if isinstance(strategy, str):
             strategy = get_strategy(strategy)
         
-        # 데이터 준비
-        df_tf = prepare_data(df, timeframe)
+        # 데이터 준비 (지표 추가)
+        df_tf = prepare_data(df, None)
         
         if len(df_tf) < 100:
             return {

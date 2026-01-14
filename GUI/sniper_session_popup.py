@@ -14,6 +14,8 @@ import logging
 logger = logging.getLogger(__name__)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
+from typing import Any, cast, Optional
+from PyQt6.QtWidgets import QAbstractItemView
 
 
 class SniperSessionPopup(QDialog):
@@ -22,7 +24,7 @@ class SniperSessionPopup(QDialog):
     def __init__(self, session_summary: dict, parent=None):
         super().__init__(parent)
         self.session_summary = session_summary
-        self.result = None  # "compound", "reset", "cancel"
+        self.result: Optional[str] = None  # "compound", "reset", "cancel"
         
         self.setWindowTitle("💰 이전 매매 기록 발견")
         self.setMinimumWidth(550)
@@ -74,10 +76,12 @@ class SniperSessionPopup(QDialog):
         self.table.setHorizontalHeaderLabels([
             "코인", "초기 시드", "현재 시드", "수익률", "거래"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionMode(QTableWidget.NoSelection)
-        self.table.verticalHeader().setVisible(False)
+        if header := self.table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        if v_header := self.table.verticalHeader():
+            v_header.setVisible(False)
         
         coins = self.session_summary.get("coins", [])
         self.table.setRowCount(len(coins))
@@ -237,7 +241,7 @@ class SniperSessionPopup(QDialog):
         self.result = "cancel"
         self.reject()
     
-    def get_result(self) -> str:
+    def get_result(self) -> Optional[str]:
         return self.result
 
 

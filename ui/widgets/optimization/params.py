@@ -12,16 +12,7 @@ from PyQt6.QtWidgets import (
 )
 
 # 디자인 시스템 import
-try:
-    from ui.design_system import Colors, Typography
-except ImportError:
-    # 폴백
-    class Colors:
-        text_secondary = "#8b949e"
-        bg_elevated = "#21262d"
-        text_primary = "#f0f6fc"
-    class Typography:
-        pass
+from ui.design_system.tokens import Colors, Typography
 
 
 class ParamRangeWidget(QWidget):
@@ -129,10 +120,10 @@ class ParamChoiceWidget(QWidget):
     """
     
     def __init__(
-        self, 
-        name: str, 
-        choices: list, 
-        checked_indices: list = None, 
+        self,
+        name: str,
+        choices: list,
+        checked_indices: list | None = None,
         tooltip: str = "",
         parent=None
     ):

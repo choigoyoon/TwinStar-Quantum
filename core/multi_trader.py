@@ -9,10 +9,12 @@ import threading
 import time
 import requests
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from paths import Paths
-PRESET_DIR = Paths.PRESETS
+from exchanges.base_exchange import BaseExchange
+
+PRESET_DIR: Path = Paths.PRESETS
 
 from core.strategy_core import AlphaX7Core
 from core.capital_manager import CapitalManager
@@ -24,8 +26,8 @@ logger = logging.getLogger("MultiTrader")
 
 class MultiTrader:
     """멀티 매매 시스템"""
-    
-    def __init__(self, config: dict = None):
+
+    def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
         self.exchange_name = self.config.get('exchange', 'bybit')
         self.watch_count = self.config.get('watch_count', 50)
@@ -45,9 +47,9 @@ class MultiTrader:
         self.em = ExchangeManager()
         self.cm = CapitalManager(initial_capital=self.seed, fixed_amount=self.seed)
         self.core = AlphaX7Core()
-        
-        self.adapter = None
-        self.executor = None
+
+        self.adapter: Optional[Any] = None  # BaseExchange 또는 ccxt 객체
+        self.executor: Optional[OrderExecutor] = None
         
         self.stats = {'watching': 0, 'pending': [], 'active': None}
 
@@ -86,8 +88,36 @@ class MultiTrader:
             logger.error(f"[MultiTrader] 최적화 에러: {e}")
             return None
 
+    # === 간단한 패턴 감지 ===
+
+    def _detect_simple_pattern(self, df) -> Optional[Dict]:
+        """간단한 RSI 기반 패턴 감지"""
+        try:
+            if df is None or len(df) < 20:
+                return None
+
+            close = df['close'].astype(float)
+
+            # RSI 계산
+            delta = close.diff()
+            gain = delta.where(delta > 0, 0).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss.replace(0, 1e-10)
+            rsi = 100 - (100 / (1 + rs))
+            curr_rsi = float(rsi.iloc[-1])
+
+            # 과매수/과매도 감지
+            if curr_rsi < 30:
+                return {'detected': True, 'direction': 'Long', 'strength': 30 - curr_rsi}
+            elif curr_rsi > 70:
+                return {'detected': True, 'direction': 'Short', 'strength': curr_rsi - 70}
+
+            return None
+        except Exception:
+            return None
+
     # === 레버리지 ===
-    
+
     def _get_adaptive_leverage(self, symbol: str) -> int:
         """차등 레버리지 (BTC/ETH 기준, 알트 1.6배)"""
         base = self.leverage
@@ -99,7 +129,7 @@ class MultiTrader:
 
     # === 시작/정지 ===
     
-    def start(self, config: dict = None):
+    def start(self, config: Optional[Dict] = None):
         if self.running:
             return True
         
@@ -111,11 +141,11 @@ class MultiTrader:
             self.leverage = self.config.get('leverage', 10)
             self.capital_mode = self.config.get('capital_mode', 'compound')
         
-        self.adapter = self.em.get_adapter(self.exchange_name)
+        self.adapter = self.em.get_exchange(self.exchange_name)
         if not self.adapter:
             logger.error("[MultiTrader] Adapter 없음")
             return False
-        
+
         self.executor = OrderExecutor(self.adapter, dry_run=False)
         self.cm.switch_mode(self.capital_mode)
         
@@ -180,11 +210,14 @@ class MultiTrader:
                 break
             
             try:
+                if not self.adapter:
+                    continue
                 df = self.adapter.get_klines(symbol=symbol, interval='15m', limit=100)
                 if df is None or len(df) < 50:
                     continue
-                
-                result = self.core.detect_pattern(df)
+
+                # detect_signal 대신 간단한 패턴 감지 (RSI 기반)
+                result = self._detect_simple_pattern(df)
                 if result and result.get('detected'):
                     signals.append({
                         'symbol': symbol,
@@ -193,7 +226,6 @@ class MultiTrader:
                         'price': float(df['close'].iloc[-1])
                     })
             except Exception:
-
                 continue
         
         self.pending_signals = signals
@@ -239,14 +271,18 @@ class MultiTrader:
         else:
             lev = self._get_adaptive_leverage(symbol)
             
+        if not self.executor:
+            logger.error("[MultiTrader] Executor 없음")
+            return
+
         self.executor.set_leverage(lev)
-        
+
         # 5. 주문
         size = self.cm.get_trade_size()
         sl = price * 0.98 if direction == 'Long' else price * 1.02
-        
+
         logger.info(f"🚀 [MultiTrader] {symbol} {direction} (Size: ${size:.1f}, Lev: {lev}x)")
-        
+
         result = self.executor.place_order_with_retry(side=direction, size=size, stop_loss=sl)
         
         if result:
@@ -267,6 +303,8 @@ class MultiTrader:
             return
         
         try:
+            if not self.adapter:
+                return
             symbol = self.active_position['symbol']
             df = self.adapter.get_klines(symbol=symbol, interval='1m', limit=1)
             
@@ -295,7 +333,10 @@ class MultiTrader:
     def _close_position(self, pnl_pct: float):
         """청산"""
         logger.info(f"🚪 [MultiTrader] 청산 (PnL: {pnl_pct:.2f}%)")
-        
+
+        if not self.executor or not self.active_position:
+            return
+
         if self.executor.close_position_with_retry():
             lev = self.active_position.get('leverage', self.leverage)
             size = self.active_position['size']

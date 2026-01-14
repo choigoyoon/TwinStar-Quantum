@@ -272,7 +272,7 @@ def detect_wm_patterns(
 # =============================================================================
 # 데이터 전처리
 # =============================================================================
-def prepare_dataframe(df: pd.DataFrame, timeframe: str = None) -> pd.DataFrame:
+def prepare_dataframe(df: pd.DataFrame, timeframe: str | None = None) -> pd.DataFrame:
     """데이터프레임 전처리"""
     df_work = df.copy()
     
@@ -478,7 +478,7 @@ def run_backtest_core(
 # =============================================================================
 def run_single_tf_backtest(
     df: pd.DataFrame,
-    params: Dict[str, Any] = None,
+    params: Optional[Dict[str, Any]] = None,
     timeframe: str = '2h',
     method: str = 'adxdi',
     slippage: float = DEFAULT_SLIPPAGE,

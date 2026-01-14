@@ -8,14 +8,14 @@ import logging
 import asyncio
 import pandas as pd
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 from .base_exchange import BaseExchange, Position
 
 try:
-    import lighter
+    import lighter  # type: ignore
 except ImportError:
-    lighter = None
+    lighter: Any = None
 
 
 class LighterExchange(BaseExchange):
@@ -112,6 +112,8 @@ class LighterExchange(BaseExchange):
                 start_time = end_time - (limit * 3600)
             
             async def fetch():
+                if self.candlestick_api is None:
+                    return None
                 return await self.candlestick_api.candlesticks(
                     market_id=self.market_index,
                     resolution=lighter_interval,
@@ -122,6 +124,8 @@ class LighterExchange(BaseExchange):
                 )
             
             result = self._run_async(fetch())
+            if result is None:
+                return None
             
             # 결과 파싱
             data = result.data if hasattr(result, 'data') else result
@@ -173,6 +177,8 @@ class LighterExchange(BaseExchange):
             avg_price_int = int(avg_price * 100)  # 2 decimals
             
             async def create_order():
+                if self.client is None:
+                    return None, None, "Client not initialized"
                 return await self.client.create_market_order(
                     market_index=self.market_index,
                     client_order_index=int(time.time()),
@@ -230,6 +236,8 @@ class LighterExchange(BaseExchange):
             avg_price_int = int(avg_price * 100)
             
             async def close_order():
+                if self.client is None:
+                    return None, None, "Client not initialized"
                 return await self.client.create_market_order(
                     market_index=self.market_index,
                     client_order_index=int(time.time()),
@@ -264,6 +272,10 @@ class LighterExchange(BaseExchange):
         """잔고 조회"""
         return self.capital  # Lighter는 로컬 추적
     
+    def sync_time(self) -> bool:
+        """시간 동기화 (DEX는 블록체인 시간 사용으로 불필요)"""
+        return True
+
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (물타기)"""
         try:
@@ -280,6 +292,8 @@ class LighterExchange(BaseExchange):
             avg_price_int = int(avg_price * 100)
             
             async def add_order():
+                if self.client is None:
+                    return None, None, "Client not initialized"
                 return await self.client.create_market_order(
                     market_index=self.market_index,
                     client_order_index=int(time.time()),

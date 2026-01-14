@@ -131,6 +131,7 @@ class TestMultiTradingSystem(unittest.TestCase):
         
         # Run
         res = ub.run()
+        assert res is not None
         
         # Verify
         # Should have 1 trade (since BTC and ETH start at same time T1, sort stable? or random?)
@@ -140,9 +141,12 @@ class TestMultiTradingSystem(unittest.TestCase):
         # Code: `if ts < current_position_end_time: continue`
         # 12:00 < Min(Min) -> False -> Take BTC. End Time = 13:00.
         # Next iter ETH at 12:00. 12:00 < 13:00 -> True -> Continue (Block).
-        
-        print(f"Total Trades: {res.total_trades}")
-        self.assertEqual(res.total_trades, 1) # Only BTC should execute
+
+        if res:
+            print(f"Total Trades: {res.total_trades}")
+            self.assertEqual(res.total_trades, 1)  # Only BTC should execute
+        else:
+            self.fail("Backtest result is None")
         print("Unified Backtest Lock Verified.")
 
     @patch('core.auto_scanner.get_exchange_manager')

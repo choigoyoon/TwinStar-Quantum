@@ -2,7 +2,8 @@
 GUI → Core 전체 흐름 분석 스크립트
 """
 import sys
-sys.path.insert(0, rstr(Path(__file__).parent))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 print('=' * 70)
 print('=== 전체 흐름 분석 결과 ===')

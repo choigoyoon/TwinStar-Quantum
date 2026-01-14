@@ -14,6 +14,7 @@ import logging
 import traceback
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
 
 # 프로젝트 루트 설정
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -75,8 +76,8 @@ class StrictTestResult:
     def __init__(self, name):
         self.name = name
         self.passed = False
-        self.error = None
-        self.traceback = None
+        self.error: 'str | None' = None
+        self.traceback: 'str | None' = None
         self.checks = []
         
     def add_check(self, name, passed, detail=""):
@@ -123,8 +124,8 @@ class StrictGUITest:
             from PyQt6.QtGui import QPixmap
             
             if self.window:
-                pixmap = QPixmap(self.window.size())
-                self.window.render(pixmap)
+                pixmap = QPixmap(cast(Any, self.window).size())
+                cast(Any, self.window).render(pixmap)
                 path = self.screenshot_dir / f"{name}.png"
                 pixmap.save(str(path))
                 return str(path)
@@ -208,7 +209,7 @@ class StrictGUITest:
         
         self.log("Staru_main import...")
         try:
-            from staru_main import StarUWindow
+            from GUI.staru_main import StarUWindow
             result.add_check("staru_main import", True)
         except Exception as e:
             result.add_check("staru_main import", False, str(e))
@@ -223,8 +224,8 @@ class StrictGUITest:
             raise
             
         self.log("윈도우 표시...")
-        self.window.show()
-        QTest.qWait(3000)
+        cast(Any, self.window).show()
+        cast(Any, QTest).qWait(3000)
         
         # 윈도우 상태 검증
         checks, detail = self.check_widget(self.window, "MainWindow")
@@ -232,10 +233,10 @@ class StrictGUITest:
         
         # 탭 위젯 검증
         if hasattr(self.window, 'tabs'):
-            checks, detail = self.check_widget(self.window.tabs, "TabWidget")
+            checks, detail = self.check_widget(cast(Any, self.window).tabs, "TabWidget")
             result.add_check("탭 위젯 상태", all(checks.values()), detail)
-            result.add_check("탭 개수", self.window.tabs.count() > 0, 
-                f"{self.window.tabs.count()}개")
+            result.add_check("탭 개수", cast(Any, self.window).tabs.count() > 0, 
+                f"{cast(Any, self.window).tabs.count()}개")
         else:
             result.add_check("탭 위젯 존재", False, "tabs 속성 없음")
             
@@ -250,23 +251,23 @@ class StrictGUITest:
             result.add_check("사전 조건", False, "윈도우/탭 없음")
             return
             
-        tab_count = self.window.tabs.count()
+        tab_count = cast(Any, self.window).tabs.count()
         self.log(f"총 {tab_count}개 탭 전환 테스트...")
         
         for i in range(tab_count):
-            tab_name = self.window.tabs.tabText(i)
+            tab_name = cast(Any, self.window).tabs.tabText(i)
             self.log(f"  탭 {i}: {tab_name}")
             
             try:
-                self.window.tabs.setCurrentIndex(i)
-                QTest.qWait(500)
+                cast(Any, self.window).tabs.setCurrentIndex(i)
+                cast(Any, QTest).qWait(500)
                 
                 # 현재 탭 확인
-                current = self.window.tabs.currentIndex()
+                current = cast(Any, self.window).tabs.currentIndex()
                 switched = (current == i)
                 
                 # 현재 위젯 확인
-                widget = self.window.tabs.currentWidget()
+                widget = cast(Any, self.window).tabs.currentWidget()
                 checks, detail = self.check_widget(widget, f"Tab[{i}] Widget")
                 
                 result.add_check(f"탭 '{tab_name}' 전환", switched and all(checks.values()), 
@@ -282,13 +283,13 @@ class StrictGUITest:
         from PyQt6.QtTest import QTest
         
         # 최적화 탭으로 이동
-        for i in range(self.window.tabs.count()):
-            if "최적화" in self.window.tabs.tabText(i):
-                self.window.tabs.setCurrentIndex(i)
+        for i in range(cast(Any, self.window).tabs.count()):
+            if "최적화" in cast(Any, self.window).tabs.tabText(i):
+                cast(Any, self.window).tabs.setCurrentIndex(i)
                 break
-        QTest.qWait(1000)
+        cast(Any, QTest).qWait(1000)
         
-        page = self.window.optimization_widget
+        page = cast(Any, self.window).optimization_widget
         if hasattr(page, 'single_widget'):
             page = page.single_widget
             
@@ -300,7 +301,7 @@ class StrictGUITest:
             if hasattr(page, '_load_data_sources'):
                 self.log("_load_data_sources() 호출...")
                 page._load_data_sources()
-                QTest.qWait(2000)
+                cast(Any, QTest).qWait(2000)
                 
             count = page.data_combo.count()
             result.add_check("데이터 소스 로딩", count > 0, f"{count}개 항목")
@@ -318,13 +319,13 @@ class StrictGUITest:
         from PyQt6.QtWidgets import QPushButton
         
         # 백테스트 탭으로 이동
-        for i in range(self.window.tabs.count()):
-            if "백테스트" in self.window.tabs.tabText(i):
-                self.window.tabs.setCurrentIndex(i)
+        for i in range(cast(Any, self.window).tabs.count()):
+            if "백테스트" in cast(Any, self.window).tabs.tabText(i):
+                cast(Any, self.window).tabs.setCurrentIndex(i)
                 break
-        QTest.qWait(1000)
+        cast(Any, QTest).qWait(1000)
         
-        page = self.window.backtest_widget
+        page = cast(Any, self.window).backtest_widget
         if hasattr(page, 'single_widget'):
             page = page.single_widget
             

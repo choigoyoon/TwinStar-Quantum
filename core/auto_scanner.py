@@ -12,23 +12,46 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from PyQt6.QtCore import QObject, pyqtSignal
+from typing import Any, Optional, Dict, List, Callable, cast
+
+# Type-safe fallback initialization
+QObject: Any = object
+pyqtSignal: Any = None
+
+try:
+    from PyQt6.QtCore import QObject, pyqtSignal  # type: ignore
+except ImportError:
+    # GUI 환경이 아닐 경우 더미 클래스 제공
+    class _DummySignal:
+        """pyqtSignal 더미 클래스"""
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+        def emit(self, *args: Any, **kwargs: Any) -> None:
+            pass
+        def connect(self, *args: Any, **kwargs: Any) -> None:
+            pass
+    pyqtSignal = _DummySignal
 
 # Core Modules
+AlphaX7Core: Any = None
 try:
     from core.strategy_core import AlphaX7Core
 except ImportError:
-    AlphaX7Core = None
+    pass
 
+# Preset Manager
+get_preset_manager: Optional[Callable[[], Any]] = None
 try:
     from utils.preset_manager import get_preset_manager
 except ImportError:
-    get_preset_manager = None
+    pass
 
+# Exchange Manager
+get_exchange_manager: Optional[Callable[[], Any]] = None
 try:
     from exchanges.exchange_manager import get_exchange_manager
 except ImportError:
-    get_exchange_manager = None
+    pass
 
 # Paths
 CONFIG_DIR = Path("config")
@@ -49,7 +72,9 @@ class AutoScanner(QObject):
         self._load_config() # Load saved config override
         if config: self.config.update(config)
         
-        self.preset_manager = get_preset_manager()
+        pm_func = get_preset_manager
+        self.preset_manager = pm_func() if pm_func else None
+
         self.verified_symbols = []
         self.monitoring_candidates = {} # {symbol: {params, ws_handler, detected_at}}
         self.active_positions = {} 
@@ -101,7 +126,11 @@ class AutoScanner(QObject):
 
     def load_verified_symbols(self):
         """Load symbols that have passed verification along with their params"""
+        if not self.preset_manager:
+            self.log("PresetManager not loaded.", "error")
+            return []
         all_presets = self.preset_manager.list_presets()
+
         verified = []
         for name in all_presets:
             status = self.preset_manager.get_verification_status(name)
@@ -176,7 +205,13 @@ class AutoScanner(QObject):
 
     def _scan_chunk(self, chunk):
         """Scan a chunk of symbols for 4H Filter"""
-        em = get_exchange_manager()
+        em_func = get_exchange_manager
+        if not em_func:
+            self.log("ExchangeManager not loaded.", "error")
+            return
+        em = em_func()
+        if not em: return
+
         
         for item in chunk:
             sys_id = f"{item['symbol']}_{item['exchange']}"
@@ -189,7 +224,7 @@ class AutoScanner(QObject):
             ex_name = item['exchange']
             
             try:
-                exchange = em.get_exchange(ex_name)
+                exchange: Any = em.get_exchange(ex_name)
                 if not exchange: continue
                 
                 # [FIX] 15m 단일 소스 원칙: 15m 조회 → 4H 리샘플
@@ -220,7 +255,7 @@ class AutoScanner(QObject):
                 
                 # Logic: If 4H RSI is not extreme, candidate!
                 rsi = self._calc_rsi(df_4h['close'], 14)
-                if 30 < rsi.iloc[-1] < 70:
+                if 30 < cast(Any, rsi).iloc[-1] < 70:
                     self._start_monitoring(item)
                     
             except Exception as e:
@@ -307,8 +342,16 @@ class AutoScanner(QObject):
             direction = opp['direction']
             
             try:
-                em = get_exchange_manager()
-                exchange = em.get_exchange(ex_name)
+                em_func = get_exchange_manager
+                if not em_func: return
+                em = em_func()
+                if not em: return
+                
+                exchange: Any = em.get_exchange(ex_name)
+                if not exchange:
+                    self.log(f"Exchange {ex_name} not found", "warning")
+                    return
+
                 
                 # Calc Quantity
                 amt_usd = self.config.get('entry_amount', 100)
@@ -377,10 +420,15 @@ class AutoScanner(QObject):
             if not em.test_connection(ex_name): continue
             
             try:
-                positions = em.get_positions(ex_name) # List of Position objects
+                positions = em.get_positions(ex_name) 
                 for p in positions:
-                    if float(p.size) != 0:
-                        active[p.symbol] = float(p.entry_price)
+                    # p가 딕셔너리인 경우와 객체인 경우를 모두 대응 (Robustness)
+                    p_size = getattr(p, 'size', None) or p.get('size', 0)
+                    if float(p_size) != 0:
+                        p_symbol = getattr(p, 'symbol', None) or p.get('symbol', 'UNKNOWN')
+                        p_entry = getattr(p, 'entry_price', None) or p.get('entry_price', 0)
+                        active[p_symbol] = float(p_entry)
+
             except Exception as e:
                  pass
         

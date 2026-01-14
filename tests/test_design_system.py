@@ -19,8 +19,11 @@ def load_module(module_name, file_path):
     """PyQt5 의존성 없이 모듈 직접 로드"""
     import importlib.util
     spec = importlib.util.spec_from_file_location(module_name, file_path)
+    if spec is None:
+        raise ImportError(f"Could not load specifications for {module_name} from {file_path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    if spec.loader:
+        spec.loader.exec_module(module)
     return module
 
 

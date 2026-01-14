@@ -29,7 +29,8 @@ FAILED = 0
 ERRORS = []
 
 
-def check(name: str, expected_type: type, expected_cond: str, value: Any, cond_func: Callable = None) -> bool:
+from typing import Any, Callable, Optional
+def check(name: str, expected_type: Any, expected_cond: str, value: Any, cond_func: Optional[Callable] = None) -> bool:
     """Check a single value against expected type and condition"""
     global PASSED, FAILED
     
@@ -68,7 +69,7 @@ def verify_core():
             side='long',
             entry_price=50000,
             exit_price=51000,
-            quantity=0.01,
+            size=0.01,
             leverage=10
         )
         check("order_executor.calculate_pnl (Long Profit)", 
@@ -209,7 +210,7 @@ def verify_exchanges():
     
     # Live API test (Binance Testnet)
     try:
-        import ccxt
+        import ccxt  # type: ignore
         exchange = ccxt.binance({
             'enableRateLimit': True,
             'options': {'defaultType': 'future'}

@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import datetime
+from typing import Any, cast
 
 # Setup paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -126,7 +127,7 @@ class CoreVerifier:
                 # 2. Backtest
                 bt_result = strategy.run_backtest(
                     df_pattern=df_1h,
-                    df_15m=df_15m, 
+                    df_entry=df_15m, 
                     balance=1000,
                     leverage=1
                 )
@@ -167,11 +168,12 @@ class CoreVerifier:
                 # Looking at outline, _run_single(self, params...) uses self.df_pattern and self.df_entry
                 # But we initialized with just df.
                 # Let's check if we need to set df_entry manually.
-                opt.df_entry = dm.df_entry_full
+                cast(Any, opt).df_entry = dm.df_entry_full
                 
                 # Run optimization
-                results = opt.optimize(
-                    param_grid=param_grid,
+                results = opt.run_optimization(
+                    df=dm.df_pattern_full,
+                    grid=param_grid,
                     metric='total_return',
                     n_cores=1 # Single thread
                 )

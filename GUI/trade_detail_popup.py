@@ -12,14 +12,23 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor
 import pandas as pd
+from typing import TYPE_CHECKING, Any, cast
 
 # Matplotlib 임포트
+HAS_MATPLOTLIB = False
+FigureCanvas: Any = None
+Figure: Any = None
+
 try:
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas # type: ignore
+    from matplotlib.figure import Figure # type: ignore
     HAS_MATPLOTLIB = True
 except ImportError:
-    HAS_MATPLOTLIB = False
+    pass
+
+if TYPE_CHECKING:
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas  # type: ignore[import-not-found]
+    from matplotlib.figure import Figure  # type: ignore[import-not-found]
 
 
 class TradeDetailPopup(QDialog):
@@ -276,7 +285,7 @@ class TradeDetailPopup(QDialog):
                 marker_y = row['high'] + offset
                 marker_symbol = 'v'
                 
-            ax.scatter([entry_x], [marker_y], color=marker_color, s=200, zorder=5, marker=marker_symbol)
+            ax.scatter(cast(Any, [entry_x]), cast(Any, [marker_y]), color=marker_color, s=200, zorder=5, marker=marker_symbol)
             ax.axhline(y=entry_price, color='#2962ff', linestyle='--', linewidth=1, alpha=0.7, label='Entry Price')
         
         if 0 <= exit_x < len(df_slice):
@@ -293,7 +302,7 @@ class TradeDetailPopup(QDialog):
             
             # 그냥 X로 통일하고 위치만 조정하는게 깔끔할 수 있음
             # 사용자 요청: "캔들 지나가는 위치 말고" -> 캔들 위아래가 확실함
-            ax.scatter([exit_x], [marker_y], color='white', s=200, zorder=5, marker='x')
+            ax.scatter(cast(Any, [exit_x]), cast(Any, [marker_y]), color='white', s=200, zorder=5, marker='x')
             ax.axhline(y=exit_price, color='white', linestyle='--', linewidth=1, alpha=0.7, label='Exit Price')
         
         # SL 라인
@@ -354,9 +363,9 @@ class TradeListWidget(QTableWidget):
         self.setColumnCount(8)
         self.setHorizontalHeaderLabels(['번호', '날짜', '구분', '진입', '청산', '수익률', 'BE', '📊'])
         
-        header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        if header := self.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         
         self.setStyleSheet("""
             QTableWidget {

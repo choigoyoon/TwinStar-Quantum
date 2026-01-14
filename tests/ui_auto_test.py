@@ -16,8 +16,9 @@ sys.path.insert(0, str(ROOT))
 
 from PyQt6.QtWidgets import (
     QApplication, QPushButton, QComboBox, QSpinBox,
-    QLineEdit, QLabel, QTabWidget, QGroupBox
+    QLineEdit, QLabel, QTabWidget, QGroupBox, QWidget
 )
+from typing import Any, cast
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtTest import QTest
 from PyQt6.QtGui import QPixmap
@@ -25,7 +26,7 @@ from PyQt6.QtGui import QPixmap
 class UIAutoTester:
     def __init__(self):
         self.app = QApplication.instance() or QApplication(sys.argv)
-        self.window = None
+        self.window: Any = None
         self.results = []
         self.screenshots = []
         self.screenshot_dir = ROOT / "tests" / "screenshots"
@@ -86,7 +87,7 @@ class UIAutoTester:
         """버튼 클릭"""
         btn = self.find_widget(QPushButton, text, name)
         if btn and btn.isEnabled():
-            QTest.mouseClick(btn, Qt.MouseButton.LeftButton)
+            cast(Any, QTest).mouseClick(btn, Qt.MouseButton.LeftButton)
             self.wait(300)
             return True
         return False
@@ -96,7 +97,7 @@ class UIAutoTester:
         combo = self.find_widget(QComboBox, name=combo_name)
         if combo:
             if text:
-                idx = combo.findText(text, Qt.MatchContains)
+                idx = combo.findText(text, Qt.MatchFlag.MatchContains)
                 if idx >= 0:
                     combo.setCurrentIndex(idx)
             else:

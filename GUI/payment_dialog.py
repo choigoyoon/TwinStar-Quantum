@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 import logging
 logger = logging.getLogger(__name__)
 from PyQt6.QtCore import Qt
+from typing import Any, cast, Optional
 from locales.lang_manager import t
 
 
@@ -218,8 +219,9 @@ class PaymentDialog(QDialog):
     def _copy_wallet(self):
         """지갑 주소 복사"""
         clipboard = QApplication.clipboard()
-        clipboard.setText(self.wallet_input.text())
-        QMessageBox.information(self, t("license.copy_success"), t("license.copy_success_msg"))
+        if clipboard:
+            cast(Any, clipboard).setText(cast(Any, self.wallet_input).text())
+            QMessageBox.information(self, t("license.copy_success"), t("license.copy_success_msg"))
     
     def _on_submit(self):
         """결제 제출"""

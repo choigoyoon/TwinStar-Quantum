@@ -889,9 +889,9 @@ class ComponentStyles:
     """
     
     @staticmethod
-    def status_card(title_color: str = None) -> str:
+    def status_card(title_color: str | None = None) -> str:
         """상태 카드 스타일"""
-        title_color = title_color or Colors.accent_primary
+        color = title_color if title_color is not None else Colors.accent_primary
         return f"""
             QFrame {{
                 background-color: {Colors.bg_surface};
@@ -899,7 +899,7 @@ class ComponentStyles:
                 border-radius: {Radius.radius_lg};
             }}
             QFrame:hover {{
-                border-color: {title_color};
+                border-color: {color};
             }}
             QLabel#title {{
                 color: {Colors.text_secondary};

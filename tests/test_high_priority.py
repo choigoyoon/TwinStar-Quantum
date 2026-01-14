@@ -110,6 +110,7 @@ class TestPhase2(unittest.TestCase):
             # Load
             loaded = storage.load_preset('BTCUSDT', '1h')
             self.assertIsNotNone(loaded)
+            assert loaded is not None
             self.assertEqual(loaded['params']['a'], 1)
             
             # Index check

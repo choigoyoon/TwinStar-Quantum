@@ -13,12 +13,7 @@ from PyQt6.QtCore import pyqtSignal
 from .status_cards import BalanceCard, PnLCard, ActiveBotsCard, RiskCard
 
 # 디자인 시스템
-try:
-    from ui.design_system import Colors
-except ImportError:
-    class Colors:
-        bg_surface = "#161b22"
-        accent_primary = "#00d4aa"
+from ui.design_system.tokens import Colors
 
 
 class DashboardHeader(QWidget):

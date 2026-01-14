@@ -15,7 +15,7 @@ import json
 import importlib
 import traceback
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 # 프로젝트 루트 설정
 ROOT = Path(__file__).parent.parent
@@ -33,7 +33,7 @@ class VerificationReport:
             'deps': {'passed': [], 'failed': []}
         }
     
-    def add(self, category: str, name: str, passed: bool, error: str = None):
+    def add(self, category: str, name: str, passed: bool, error: Optional[str] = None):
         status = 'passed' if passed else 'failed'
         self.results[category][status].append({
             'name': name,

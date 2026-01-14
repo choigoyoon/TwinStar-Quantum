@@ -12,7 +12,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 base = Path(__file__).parent
 if not (base / 'core').exists():
     # If not in root, try C:\매매전략 as fallback but prioritize current dir
-    fallback = Path(rstr(Path(__file__).parent))
+    fallback = Path(str(Path(__file__).parent))
     if fallback.exists():
         base = fallback
     else:

@@ -148,8 +148,8 @@ class TestPhase5Utils(unittest.TestCase):
         """[Paths] Directory Structure"""
         # Check basic constants
         self.assertTrue(str(Paths.BASE).endswith("매매전략") or "TwinStar" in str(Paths.BASE))
-        self.assertTrue(Paths.USER.endswith("user"))
-        self.assertTrue(Paths.LOGS.endswith("logs"))
+        self.assertTrue(str(Paths.USER).endswith("user"))
+        self.assertTrue(str(Paths.LOGS).endswith("logs"))
         
         # Ensure Dirs (Mock makedirs to avoid side effects on real sys if possible, but temp dir is handled in tearDown? 
         # Actually Paths uses its own static paths based on __file__.

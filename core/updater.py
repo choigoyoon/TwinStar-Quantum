@@ -11,6 +11,8 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Callable
 
+logger = logging.getLogger(__name__)
+
 
 class Updater:
     """앱 내 자동 업데이트 관리 (Silent Install 방식)"""

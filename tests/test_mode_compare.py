@@ -24,6 +24,7 @@ def main():
     df_test = df_1h.tail(2000)  # 속도를 위해 2000개
     print(f"테스트 데이터: {len(df_test)} 캔들 (1H)\n")
 
+    from typing import Any, cast
     from core.optimizer import (
         BacktestOptimizer, 
         generate_quick_grid, 
@@ -68,7 +69,7 @@ def main():
         optimizer = BacktestOptimizer(AlphaX7Core, df_test)
         
         start = time.time()
-        results = optimizer.optimize(grid, metric='sharpe', slippage=0.0005, fee=0.0006, n_cores=4)
+        results = cast(Any, optimizer).optimize(grid, metric='sharpe', slippage=0.0005, fee=0.0006, n_cores=4)
         elapsed = time.time() - start
         
         # 최고 결과

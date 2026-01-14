@@ -255,7 +255,8 @@ class ResultsPage(QWidget):
         self.trades_table.setHorizontalHeaderLabels([
             "날짜", "코인", "방향", "진입가", "청산가", "수익", "수익률"
         ])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.trades_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;

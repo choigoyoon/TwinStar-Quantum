@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Add project root
-sys.path.insert(0, str(Path(rstr(Path(__file__).parent))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.bot_state import BotStateManager
 from core.unified_bot import UnifiedBot

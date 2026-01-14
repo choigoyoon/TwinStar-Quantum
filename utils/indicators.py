@@ -7,30 +7,44 @@ utils/indicators.py
 
 import numpy as np
 import pandas as pd
-from typing import Union, Tuple
+from typing import Union, Tuple, overload, Literal
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
 
 
+@overload
 def calculate_rsi(
-    data: Union[np.ndarray, pd.Series], 
+    data: Union[np.ndarray, pd.Series],
+    period: int = 14,
+    return_series: Literal[False] = False
+) -> float: ...
+
+@overload
+def calculate_rsi(
+    data: Union[np.ndarray, pd.Series],
+    period: int = 14,
+    return_series: Literal[True] = ...
+) -> pd.Series: ...
+
+def calculate_rsi(
+    data: Union[np.ndarray, pd.Series],
     period: int = 14,
     return_series: bool = False
 ) -> Union[float, pd.Series]:
     """
     RSI (Relative Strength Index) 계산
-    
+
     Args:
         data: 종가 배열 (numpy array 또는 pandas Series)
         period: RSI 기간 (기본값: 14)
         return_series: True면 전체 Series 반환, False면 마지막 값만 반환
-        
+
     Returns:
         float: 마지막 RSI 값 (return_series=False)
         pd.Series: 전체 RSI 시리즈 (return_series=True)
-        
+
     Note:
         - SMA 방식 사용 (strategy_core.run_backtest와 동일)
         - 데이터가 부족하면 기본값 50 반환
@@ -62,7 +76,7 @@ def calculate_rsi(
             if avg_loss == 0:
                 return 100.0
             rs = avg_gain / avg_loss
-            return 100 - (100 / (1 + rs))
+            return float(100 - (100 / (1 + rs)))
     
     elif isinstance(data, pd.Series):
         # [OPT] 성능 최적 화 (긴 데이터 제한)
@@ -91,46 +105,60 @@ def calculate_rsi(
         raise TypeError(f"data must be numpy.ndarray or pandas.Series, got {type(data)}")
 
 
+@overload
 def calculate_atr(
-    df: pd.DataFrame, 
+    df: pd.DataFrame,
+    period: int = 14,
+    return_series: Literal[False] = False
+) -> float: ...
+
+@overload
+def calculate_atr(
+    df: pd.DataFrame,
+    period: int = 14,
+    return_series: Literal[True] = ...
+) -> pd.Series: ...
+
+def calculate_atr(
+    df: pd.DataFrame,
     period: int = 14,
     return_series: bool = False
 ) -> Union[float, pd.Series]:
     """
     ATR (Average True Range) 계산
-    
+
     Args:
         df: OHLC 데이터프레임 (high, low, close 컬럼 필수)
         period: ATR 기간 (기본값: 14)
         return_series: True면 전체 Series 반환, False면 마지막 값만 반환
-        
+
     Returns:
         float: 마지막 ATR 값 (return_series=False)
         pd.Series: 전체 ATR 시리즈 (return_series=True)
-        
+
     Note:
         - SMA (Simple Moving Average) 방식 사용
         - 데이터가 부족하면 0 반환
     """
     if df is None or len(df) < period + 1:
         return pd.Series([0.0] * len(df) if df is not None else []) if return_series else 0.0
-    
-    highs = df['high'].values
-    lows = df['low'].values
-    closes = df['close'].values
-    
+
+    highs = np.asarray(df['high'].values)
+    lows = np.asarray(df['low'].values)
+    closes = np.asarray(df['close'].values)
+
     # True Range 계산
     # TR = max(H-L, |H-Pc|, |L-Pc|)
     high_low = highs - lows
     high_close = np.abs(highs - np.roll(closes, 1))
     low_close = np.abs(lows - np.roll(closes, 1))
-    
+
     # 첫 번째 값 보정 (roll로 인한 잘못된 값)
     high_close[0] = high_low[0]
     low_close[0] = high_low[0]
-    
+
     true_range = np.maximum(np.maximum(high_low, high_close), low_close)
-    
+
     if return_series:
         atr = pd.Series(true_range, index=df.index).rolling(window=period).mean()
         return atr.fillna(0)

@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QGroupBox, QComboBox, QMessageBox, QTimeEdit
 )
 from PyQt6.QtCore import QTime
+from typing import Any, cast
 
 from GUI.notification_manager import NotificationManager
 
@@ -310,7 +311,7 @@ class NotificationWidget(QWidget):
     
     def _on_save(self):
         """설정 저장"""
-        self.notification_manager.update_settings(
+        cast(Any, self.notification_manager).update_settings(
             telegram_enabled=self.chk_telegram.isChecked(),
             telegram_token=self.txt_telegram_token.text(),
             telegram_chat_id=self.txt_telegram_chat.text(),

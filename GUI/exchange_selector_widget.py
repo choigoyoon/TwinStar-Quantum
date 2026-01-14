@@ -20,7 +20,7 @@ class ExchangeSelectorWidget(QWidget):
     # Signal: (exchange_id, market_type, symbol)
     symbol_changed = pyqtSignal(str, str, str)
     
-    def __init__(self, exchange_manager: ExchangeManager = None):
+    def __init__(self, exchange_manager: ExchangeManager | None = None):
         super().__init__()
         self.em = exchange_manager if exchange_manager else ExchangeManager()
         
@@ -78,7 +78,7 @@ class ExchangeSelectorWidget(QWidget):
         lbl_sym.setFixedWidth(70)
         self.combo_symbol = QComboBox()
         self.combo_symbol.setEditable(True)
-        self.combo_symbol.setInsertPolicy(QComboBox.NoInsert)
+        self.combo_symbol.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.combo_symbol.currentIndexChanged.connect(self.on_symbol_changed)
         
         # Auto-complete
@@ -209,15 +209,23 @@ class ExchangeSelectorWidget(QWidget):
         """Update price and 24h change display"""
         ticker = self.em.get_ticker(self.current_exchange, self.current_symbol)
         if ticker:
-            price = ticker['price']
-            change = ticker['change_24h']
+            price = ticker.get('price')
+            change = ticker.get('change_24h')
             
-            self.lbl_price.setText(f"Price: {price:,.4f}")
+            if price is not None:
+                self.lbl_price.setText(f"Price: {float(price):,.4f}")
+            else:
+                self.lbl_price.setText("Price: -")
             
-            color = "#ff4d4d" if change < 0 else "#00cc00" if change > 0 else "#c9d1d9"
-            sign = "+" if change > 0 else ""
-            self.lbl_change.setText(f"24h: {sign}{change:.2f}%")
-            self.lbl_change.setStyleSheet(f"color: {color}; font-weight: bold;")
+            if change is not None:
+                change = float(change)
+                color = "#ff4d4d" if change < 0 else "#00cc00" if change > 0 else "#c9d1d9"
+                sign = "+" if change > 0 else ""
+                self.lbl_change.setText(f"24h: {sign}{change:.2f}%")
+                self.lbl_change.setStyleSheet(f"color: {color}; font-weight: bold;")
+            else:
+                self.lbl_change.setText("24h: -")
+                self.lbl_change.setStyleSheet("color: #c9d1d9;")
         else:
             self.lbl_price.setText("Price: -")
             self.lbl_change.setText("24h: -")

@@ -8,45 +8,43 @@ from typing import List, Dict, Optional
 
 # [FIX] EXE 호환 import
 try:
-    from paths import Paths
+    from paths import Paths  # type: ignore[assignment]
 except ImportError:
-    try:
-        from .paths import Paths
-    except ImportError:
-        class Paths:
-            @staticmethod
-            def _get_base():
-                if getattr(sys, 'frozen', False):
-                    return os.path.dirname(sys.executable)
-                return os.path.dirname(os.path.abspath(__file__))
-            
-            @classmethod
-            def history(cls, exchange, symbol):
-                base = cls._get_base()
-                return os.path.join(base, 'user', 'exchanges', 
-                                   exchange.lower(), 
-                                   symbol.upper().replace('/', '_'), 
-                                   'history.json')
-            
-            @classmethod
-            def state(cls, exchange, symbol):
-                base = cls._get_base()
-                return os.path.join(base, 'user', 'exchanges',
-                                   exchange.lower(),
-                                   symbol.upper().replace('/', '_'),
-                                   'state.json')
-            
-            @classmethod
-            def ensure_dirs(cls, exchange=None, symbol=None):
-                base = cls._get_base()
-                dirs = [os.path.join(base, 'user'), os.path.join(base, 'user', 'exchanges')]
-                if exchange:
-                    dirs.append(os.path.join(base, 'user', 'exchanges', exchange.lower()))
-                if exchange and symbol:
-                    dirs.append(os.path.join(base, 'user', 'exchanges', 
-                                            exchange.lower(), symbol.upper().replace('/', '_')))
-                for d in dirs:
-                    os.makedirs(d, exist_ok=True)
+    class Paths:  # type: ignore[no-redef]
+        """Fallback Paths 클래스"""
+        @staticmethod
+        def _get_base() -> str:
+            if getattr(sys, 'frozen', False):
+                return os.path.dirname(sys.executable)
+            return os.path.dirname(os.path.abspath(__file__))
+
+        @classmethod
+        def history(cls, exchange: str, symbol: str) -> str:
+            base = cls._get_base()
+            return os.path.join(base, 'user', 'exchanges',
+                               exchange.lower(),
+                               symbol.upper().replace('/', '_'),
+                               'history.json')
+
+        @classmethod
+        def state(cls, exchange: str, symbol: str) -> str:
+            base = cls._get_base()
+            return os.path.join(base, 'user', 'exchanges',
+                               exchange.lower(),
+                               symbol.upper().replace('/', '_'),
+                               'state.json')
+
+        @classmethod
+        def ensure_dirs(cls, exchange: str | None = None, symbol: str | None = None) -> None:
+            base = cls._get_base()
+            dirs = [os.path.join(base, 'user'), os.path.join(base, 'user', 'exchanges')]
+            if exchange:
+                dirs.append(os.path.join(base, 'user', 'exchanges', exchange.lower()))
+            if exchange and symbol:
+                dirs.append(os.path.join(base, 'user', 'exchanges',
+                                        exchange.lower(), symbol.upper().replace('/', '_')))
+            for d in dirs:
+                os.makedirs(d, exist_ok=True)
 
 
 class TradeStorage:
@@ -155,26 +153,9 @@ class TradeStorage:
     def get_recent_trades(self, limit: int = 50) -> List[Dict]:
         """최근 거래 기록 반환"""
         with self._lock:
-            # 효율성을 위해 전체 로드 후 슬라이싱 (파일이 아주 크지 않다면 OK)
-            # 개선점: 파일 끝부분만 읽는 방식이 좋으나 JSON 구조상 전체 파싱 필요
             all_trades = self.get_all_trades()
             return all_trades[:limit]
-            
-    def get_stats(self) -> Dict:
-            all_trades = existing + self._buffer.copy()
-            # 날짜순 정렬 (내림차순)
-            try:
-                all_trades.sort(key=lambda x: x.get('time', ''), reverse=True)
-            except Exception:
 
-                pass
-            return all_trades
-
-    def get_recent_trades(self, limit: int = 5) -> List[Dict]:
-        """최근 거래 기록 반환"""
-        trades = self.get_all_trades()
-        return trades[:limit]
-    
     def get_stats(self) -> Dict:
         """거래 통계 계산"""
         trades = self.get_all_trades()

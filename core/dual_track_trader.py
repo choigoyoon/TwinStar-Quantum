@@ -8,33 +8,51 @@ Dual-Track Live Trader
 import logging
 import threading
 import time
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
+
+# 필요한 모듈 import
+UnifiedBot: Any = None
+DataManager: Any = None
+
+try:
+    from core.unified_bot import UnifiedBot
+except ImportError:
+    pass
+
+try:
+    from GUI.data_cache import DataManager
+except ImportError:
+    pass
 
 from core.capital_manager import CapitalManager
 from core.preset_health import get_health_monitor
 
 class DualTrackTrader:
     """2-Track 실매매 매니저"""
-    
-    def __init__(self, 
-                 exchange_client,
+
+    def __init__(self,
+                 exchange_client: Any,
                  btc_fixed_usd: float = 100.0,
                  initial_alt_capital: float = 1000.0):
-        
+
+        # 거래소 클라이언트 저장
+        self.exchange: Any = exchange_client
+        self.alt_capital: float = initial_alt_capital
+
         # [MODULAR] Capital Management
         self.capital_manager = CapitalManager()
         self.btc_fixed_usd = btc_fixed_usd
         self.initial_alt_capital = initial_alt_capital
-        
+
         # 봇 인스턴스 저장 {symbol: bot_instance}
         self.bots: Dict[str, Any] = {}
-        
+
         # 활성 포지션 추적
-        self.active_positions = {
-            'btc': None, # symbol string
-            'alt': None  # symbol string
+        self.active_positions: Dict[str, Optional[str]] = {
+            'btc': None,  # symbol string
+            'alt': None   # symbol string
         }
-        
+
         self.is_running = False
         self._lock = threading.Lock()
         

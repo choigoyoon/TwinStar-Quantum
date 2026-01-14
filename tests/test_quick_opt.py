@@ -25,6 +25,7 @@ def main():
     print(f"테스트 데이터: {len(df_test)} 캔들 (1H)\n")
 
     # 2. 최적화 실행
+    from typing import Any, cast
     from core.optimizer import BacktestOptimizer, generate_quick_grid
     from core.strategy_core import AlphaX7Core
 
@@ -41,7 +42,7 @@ def main():
     print(f"총 조합 수: {total}\n")
 
     print("최적화 시작...\n")
-    results = optimizer.optimize(grid, metric='sharpe', slippage=0.0005, fee=0.0006, n_cores=4)
+    results = cast(Any, optimizer).optimize(grid, metric='sharpe', slippage=0.0005, fee=0.0006, n_cores=4)
 
     # 3. 결과 출력
     print(f"\n=== 결과 ({len(results)}개) ===\n")

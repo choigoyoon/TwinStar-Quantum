@@ -21,22 +21,8 @@ from .header import DashboardHeader
 from .status_cards import StatusCard
 
 # 디자인 시스템
-try:
-    from ui.design_system import Colors, Typography, Radius, ThemeGenerator
-except ImportError:
-    class Colors:
-        bg_base = "#0d1117"
-        bg_surface = "#161b22"
-        text_secondary = "#8b949e"
-        terminal_bg = "#000000"
-        terminal_green = "#00ff00"
-        border_default = "#30363d"
-    class Typography:
-        font_mono = "monospace"
-        text_sm = "12px"
-    class Radius:
-        radius_md = "8px"
-    ThemeGenerator = None
+from ui.design_system.tokens import Colors, Typography, Radius
+from ui.design_system import ThemeGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -236,11 +222,11 @@ class TradingDashboard(QWidget):
         self.log_text.append(f"{ts} {message}")
     
     def update_header(
-        self, 
-        balance: float = None,
-        pnl: float = None,
-        active_bots: int = None,
-        risk_level: str = None
+        self,
+        balance: float | None = None,
+        pnl: float | None = None,
+        active_bots: int | None = None,
+        risk_level: str | None = None
     ):
         """헤더 상태 업데이트"""
         if balance is not None:

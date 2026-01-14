@@ -20,7 +20,8 @@ class TestAutoPipeline(unittest.TestCase):
             cls.app = QApplication.instance()
 
     def setUp(self):
-        self.widget = AutoPipelineWidget()
+        from typing import Any, cast
+        self.widget = cast(Any, AutoPipelineWidget())
         
     def test_step_navigation(self):
         """Verify navigation between 5 steps"""

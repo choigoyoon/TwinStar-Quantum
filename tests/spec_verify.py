@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-ROOT = Path(rstr(Path(__file__).parent))
+ROOT = Path(__file__).resolve().parent.parent
 SPEC_FILE = ROOT / "twinstar.spec"
 
 # 제외할 폴더/파일

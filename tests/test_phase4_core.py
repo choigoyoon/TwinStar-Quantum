@@ -172,6 +172,7 @@ class TestPhase4Core(unittest.TestCase):
         # Test Enter Position
         self.assertTrue(msb.enter_position(sig))
         self.assertIsNotNone(msb.position)
+        assert msb.position is not None
         self.assertEqual(msb.position.symbol, 'BTCUSDT')
         
         # Test Exit Conditions (SL)

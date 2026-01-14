@@ -12,8 +12,9 @@ import tempfile
 
 import json
 import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from pathlib import Path
 
 
@@ -30,10 +31,10 @@ class BotStateManager:
         self, 
         exchange_name: str, 
         symbol: str, 
-        storage_dir: str = None,
+        storage_dir: Optional[str] = None,
         use_new_storage: bool = False,
-        state_storage = None,
-        trade_storage = None
+        state_storage: Optional[Any] = None,
+        trade_storage: Optional[Any] = None
     ):
         """
         Args:
@@ -50,12 +51,8 @@ class BotStateManager:
         if storage_dir:
             self.storage_dir = Path(storage_dir)
         else:
-            try:
-                from paths import Paths
-                self.storage_dir = Path(Paths.USER_DATA) / 'storage'
-            except ImportError:
-                # Fallback
-                self.storage_dir = Path(__file__).parent.parent / 'storage'
+            from config.constants.paths import DATA_DIR
+            self.storage_dir = Path(DATA_DIR) / 'storage'
         
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         

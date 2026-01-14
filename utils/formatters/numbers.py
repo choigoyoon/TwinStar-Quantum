@@ -5,7 +5,7 @@
 from typing import Union, Optional
 
 
-def format_number(value: Union[int, float], decimals: int = 2, 
+def format_number(value: Union[int, float, None], decimals: int = 2, 
                   thousand_sep: bool = True) -> str:
     """
     숫자 포맷팅
@@ -34,7 +34,7 @@ def format_number(value: Union[int, float], decimals: int = 2,
         return '-'
 
 
-def format_currency(value: Union[int, float], currency: str = 'USDT',
+def format_currency(value: Union[int, float, None], currency: str = 'USDT',
                     decimals: int = 2) -> str:
     """
     통화 포맷팅
@@ -71,7 +71,7 @@ def format_currency(value: Union[int, float], currency: str = 'USDT',
         return '-'
 
 
-def format_percent(value: Union[int, float], decimals: int = 2,
+def format_percent(value: Union[int, float, None], decimals: int = 2,
                    include_sign: bool = True) -> str:
     """
     퍼센트 포맷팅
@@ -102,7 +102,7 @@ def format_percent(value: Union[int, float], decimals: int = 2,
         return '-'
 
 
-def format_pnl(value: Union[int, float], currency: str = 'USDT',
+def format_pnl(value: Union[int, float, None], currency: str = 'USDT',
                decimals: int = 2) -> str:
     """
     손익 포맷팅 (부호 포함)
@@ -141,7 +141,7 @@ def format_pnl(value: Union[int, float], currency: str = 'USDT',
         return '-'
 
 
-def format_price(value: Union[int, float], decimals: Optional[int] = None) -> str:
+def format_price(value: Union[int, float, None], decimals: Optional[int] = None) -> str:
     """
     가격 포맷팅 (자동 소수점 결정)
     
@@ -174,7 +174,7 @@ def format_price(value: Union[int, float], decimals: Optional[int] = None) -> st
         return '-'
 
 
-def format_volume(value: Union[int, float]) -> str:
+def format_volume(value: Union[int, float, None]) -> str:
     """
     거래량 포맷팅 (자동 단위)
     
@@ -191,7 +191,7 @@ def format_volume(value: Union[int, float]) -> str:
     return abbreviate_number(value)
 
 
-def format_with_sign(value: Union[int, float], decimals: int = 2) -> str:
+def format_with_sign(value: Union[int, float, None], decimals: int = 2) -> str:
     """
     부호 포함 숫자 포맷팅
     
@@ -219,7 +219,7 @@ def format_with_sign(value: Union[int, float], decimals: int = 2) -> str:
         return '-'
 
 
-def abbreviate_number(value: Union[int, float], decimals: int = 2) -> str:
+def abbreviate_number(value: Union[int, float, None], decimals: int = 2) -> str:
     """
     큰 숫자 축약 (K, M, B)
     

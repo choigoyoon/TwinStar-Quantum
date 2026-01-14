@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QLabel, QComboBox, QSpinBox, QDoubleSpinBox,
     QPushButton
 )
+from typing import Dict, Any
 from PyQt6.QtCore import pyqtSignal
 
 class TradePanel(QWidget):
@@ -134,7 +135,8 @@ class TradePanel(QWidget):
             # [FALLBACK] 빌드 환경 고려
             import sys
             if getattr(sys, 'frozen', False):
-                 preset_dir = Path(sys._MEIPASS) / "config/presets"
+                 base_path = getattr(sys, '_MEIPASS', '.')
+                 preset_dir = Path(base_path) / "config/presets"
         
         if not preset_dir.exists():
             self.preset_combo.addItem("기본값 (Default)", None)

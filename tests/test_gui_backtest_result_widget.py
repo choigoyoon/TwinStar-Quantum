@@ -9,6 +9,7 @@ import sys
 import os
 from pathlib import Path
 import logging
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -146,7 +147,7 @@ def run_backtest_result_tests():
                     # 필요한 경우 추가 속성 정의
             
             mock_res = MockResult()
-            widget.set_result(mock_res)
+            widget.set_result(cast(Any, mock_res))
             result.ok("set_result 호출", True)
         except Exception as e:
             result.ok("set_result 호출", False, str(e)[:60])

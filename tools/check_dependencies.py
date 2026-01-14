@@ -1,7 +1,8 @@
 import sys
 import os
 import re
-sys.path.insert(0, rstr(Path(__file__).parent))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 print('=' * 60)
 print('=== 1. 패키지 의존성 체크 ===')
@@ -108,7 +109,7 @@ print('-' * 50)
 
 type_hint_issues = []
 for filepath in files:
-    full_path = os.path.join(rstr(Path(__file__).parent), filepath)
+    full_path = os.path.join(str(Path(__file__).parent), filepath)
     if os.path.exists(full_path):
         with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()

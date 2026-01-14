@@ -1,9 +1,10 @@
 
 import sys
 import os
+from pathlib import Path
 
 # Add project root to path
-sys.path.append(rstr(Path(__file__).parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 def verify_parameter_centralization():
     print("Starting Phase 3 Verification...")

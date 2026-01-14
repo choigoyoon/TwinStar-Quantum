@@ -8,9 +8,10 @@ import numpy as np
 import logging
 import tempfile
 import inspect
+from pathlib import Path
 
 # Setup paths
-sys.path.insert(0, rstr(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 # Configure logging to suppress during tests
 logging.basicConfig(level=logging.CRITICAL)
@@ -57,6 +58,7 @@ else:
 print("\n--- 2. Calculation Consistency ---")
 try:
     from utils.indicators import calculate_rsi, calculate_atr, calculate_macd
+    from typing import cast
     
     np.random.seed(42)
     close = pd.Series(np.cumsum(np.random.randn(100)) + 100)
@@ -64,9 +66,10 @@ try:
     low = close - abs(np.random.randn(100))
     df = pd.DataFrame({'high': high, 'low': low, 'close': close})
     
-    rsi = calculate_rsi(close, 14, return_series=True)
-    atr = calculate_atr(df, 14, return_series=True)
-    macd, signal, hist = calculate_macd(close, 12, 26, 9, return_all=True)
+    rsi = cast(pd.Series, calculate_rsi(close, 14, return_series=True))
+    atr = cast(pd.Series, calculate_atr(df, 14, return_series=True))
+    macd_result = calculate_macd(close, 12, 26, 9, return_all=True)
+    macd = cast(pd.Series, macd_result[0])
     
     print(f"RSI[-1]: {rsi.iloc[-1]:.2f}")
     print(f"ATR[-1]: {atr.iloc[-1]:.4f}")

@@ -1,3 +1,4 @@
+from typing import Any, List, cast
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtCore import pyqtSignal
 import pandas as pd
@@ -7,6 +8,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 # PyQtGraph 또는 Matplotlib 사용 여부에 따라 import
+pg: Any = None
+FigureCanvasQTAgg: Any = None
+Figure: Any = None
+
 try:
     import pyqtgraph as pg
     HAS_PYQTGRAPH = True
@@ -14,7 +19,11 @@ except ImportError:
     HAS_PYQTGRAPH = False
 
 try:
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+    # PyQt6 호환: backend_qtagg 우선, fallback으로 backend_qt5agg
+    try:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg # type: ignore
+    except ImportError:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg # type: ignore
     from matplotlib.figure import Figure
     HAS_MATPLOTLIB = True
 except ImportError:
@@ -52,14 +61,16 @@ class InteractiveChart(QWidget):
         self.plot_widget.setLabel('left', 'Price')
         self.plot_widget.setLabel('bottom', 'Time')
         self.plot_widget.setBackground('#1a1a2e')
-        self.layout().addWidget(self.plot_widget)
+        if (layout := self.layout()) is not None:
+            layout.addWidget(self.plot_widget)
     
     def _init_matplotlib(self):
         """Matplotlib 기반 차트"""
         self.figure = Figure(figsize=(10, 6))
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.ax = self.figure.add_subplot(111)
-        self.layout().addWidget(self.canvas)
+        if (layout := self.layout()) is not None:
+            layout.addWidget(self.canvas)
     
     def set_data(self, df: pd.DataFrame):
         """OHLCV 데이터 설정"""
@@ -77,17 +88,23 @@ class InteractiveChart(QWidget):
             self._render_matplotlib_candles()
     
     def _render_pyqtgraph_candles(self):
-        """PyQtGraph 캔들스틱"""
+        """PyQtGraph 캔들스틱 처리"""
+        if self.df is None or self.df.empty:
+            return
+            
         self.plot_widget.clear()
         
         # 간단한 라인 차트 (성능을 위해 전체 데이터는 라인으로 표시)
         # NOTE: 성능을 위해 라인 차트 사용 (줌 레벨별 캔들스틱 전환은 선택적 개선사항)
-        close = self.df['close'].values
+        close = cast(Any, self.df['close'].values)
         x = np.arange(len(close))
         self.plot_widget.plot(x, close, pen='w')
     
     def _render_matplotlib_candles(self):
         """Matplotlib 캔들스틱"""
+        if self.df is None or self.df.empty:
+            return
+            
         self.ax.clear()
         
         # 간단한 라인 차트
@@ -159,9 +176,12 @@ class InteractiveChart(QWidget):
     
     def add_indicator(self, name: str, data: pd.Series, color: str = 'yellow'):
         """지표 오버레이 추가"""
+        if self.df is None:
+            return
+            
         if HAS_PYQTGRAPH:
             x = np.arange(len(data))
-            self.plot_widget.plot(x, data.values, pen=color, name=name)
+            self.plot_widget.plot(x, cast(Any, data.values), pen=color, name=name)
         elif HAS_MATPLOTLIB:
             self.ax.plot(self.df.index, data, color=color, label=name, alpha=0.7)
             self.ax.legend()
@@ -199,9 +219,9 @@ class EquityCurveChart(QWidget):
             self.plot_widget = pg.PlotWidget()
             self.plot_widget.setBackground('#1a1a2e')
             self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
-            self.layout().addWidget(self.plot_widget)
+            layout.addWidget(self.plot_widget)
 
-    def set_equity(self, equity: list):
+    def set_equity(self, equity: List[float]):
         """에쿼티 커브 설정"""
         if HAS_MATPLOTLIB:
             self.ax.clear()

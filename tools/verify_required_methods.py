@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, rstr(Path(__file__).parent))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 print('=== unified_bot.py 필수 메서드 검증 ===')
 print()

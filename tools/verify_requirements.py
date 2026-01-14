@@ -1,9 +1,11 @@
 
 import sys
 import os
+from pathlib import Path
 
 # Add project root
-sys.path.insert(0, rstr(Path(__file__).parent))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 print("=== STARTING REQUIREMENTS VERIFICATION ===\n")
 
@@ -12,7 +14,7 @@ print("--- 1. Existing Position Filtering ---")
 
 # 1.1 Position Query Logic
 try:
-    filepath = r'C:\매매전략\core\unified_bot.py'
+    filepath = PROJECT_ROOT / 'core' / 'unified_bot.py'
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
@@ -34,9 +36,9 @@ except Exception as e:
 # 1.2 Bot Position Tracking
 try:
     files = [
-        r'C:\매매전략\core\bot_state.py',
-        r'C:\매매전략\core\position_manager.py',
-        r'C:\매매전략\core\order_executor.py'
+        PROJECT_ROOT / 'core' / 'bot_state.py',
+        PROJECT_ROOT / 'core' / 'position_manager.py',
+        PROJECT_ROOT / 'core' / 'order_executor.py'
     ]
 
     tracking_patterns = {
@@ -66,7 +68,7 @@ print("\n--- 2. GUI Position Display ---")
 
 # 2.1 GUI Source
 try:
-    filepath = r'C:\매매전략\GUI\trading_dashboard.py'
+    filepath = PROJECT_ROOT / 'GUI' / 'trading_dashboard.py'
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
@@ -91,7 +93,7 @@ except Exception as e:
 
 # 2.2 Self Tracking Logic
 try:
-    filepath = r'C:\매매전략\core\position_manager.py'
+    filepath = PROJECT_ROOT / 'core' / 'position_manager.py'
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
@@ -121,7 +123,7 @@ try:
 
     print('[3.1 Exchange History API]')
     for ex in exchanges:
-        filepath = fr'C:\매매전략\exchanges\{ex}_exchange.py'
+        filepath = PROJECT_ROOT / 'exchanges' / f'{ex}_exchange.py'
         if os.path.exists(filepath):
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -136,7 +138,7 @@ except Exception as e:
 
 # 3.2 PnL Calculation Style
 try:
-    filepath = r'C:\매매전략\core\order_executor.py'
+    filepath = PROJECT_ROOT / 'core' / 'order_executor.py'
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
@@ -156,7 +158,7 @@ except Exception as e:
 
 # 3.3 Trade Storage
 try:
-    filepath = r'C:\매매전략\storage\trade_storage.py'
+    filepath = PROJECT_ROOT / 'storage' / 'trade_storage.py'
     if os.path.exists(filepath):
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -180,9 +182,9 @@ except Exception as e:
 # 3.4 Compound Interest
 try:
     files = [
-        r'C:\매매전략\core\strategy_core.py',
-        r'C:\매매전략\core\order_executor.py',
-        r'C:\매매전략\GUI\trading_dashboard.py'
+        PROJECT_ROOT / 'core' / 'strategy_core.py',
+        PROJECT_ROOT / 'core' / 'order_executor.py',
+        PROJECT_ROOT / 'GUI' / 'trading_dashboard.py'
     ]
 
     compound_patterns = {

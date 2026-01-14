@@ -1,5 +1,6 @@
 """프리미엄 상태 카드 컴포넌트"""
 
+from typing import Optional
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
 
 class StatusCard(QFrame):
@@ -24,7 +25,7 @@ class StatusCard(QFrame):
         layout.addWidget(title_label)
         layout.addWidget(self.value_label)
     
-    def set_value(self, value: str, color: str = None):
+    def set_value(self, value: str, color: Optional[str] = None):
         self.value_label.setText(value)
         if color:
             self.value_label.setStyleSheet(f"""
@@ -32,3 +33,16 @@ class StatusCard(QFrame):
                 font-weight: 700;
                 color: {color};
             """)
+    
+    def set_positive(self, value: str):
+        """녹색(이익) 상태로 값 설정"""
+        self.set_value(value, "#26a69a")
+    
+    def set_negative(self, value: str):
+        """빨강(손실) 상태로 값 설정"""
+        self.set_value(value, "#ef5350")
+    
+    def set_neutral(self, value: str):
+        """회색(중립) 상태로 값 설정"""
+        self.set_value(value, "#888888")
+

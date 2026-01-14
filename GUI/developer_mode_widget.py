@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 )
 from PyQt6.QtGui import QFont
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -27,7 +28,7 @@ class DeveloperModeWidget(QWidget):
         
         # 헤더
         header = QLabel("🔧 Developer Mode")
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -188,7 +189,8 @@ class DeveloperModeWidget(QWidget):
         self.result_table.setHorizontalHeaderLabels([
             "Rank", "Score", "Trades", "Win Rate", "Total PnL", "Max DD", "PF"
         ])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.result_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.result_table.setStyleSheet("""
             QTableWidget {
                 background: #131722;
@@ -262,7 +264,7 @@ class DeveloperModeWidget(QWidget):
         
         try:
             import PyQt6.QtCore
-            info_text.append(f"PyQt5: {PyQt5.QtCore.QT_VERSION_STR}")
+            info_text.append(f"PyQt6: {PyQt6.QtCore.QT_VERSION_STR}")
         except ImportError:
             pass
         

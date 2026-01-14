@@ -8,6 +8,7 @@ import json
 import sys
 import os
 from pathlib import Path
+from typing import Optional, cast
 
 
 class LangManager:
@@ -33,11 +34,11 @@ class LangManager:
         """locales 폴더 경로 반환"""
         if getattr(sys, 'frozen', False):
             # PyInstaller 번들 환경
-            base_path = Path(sys._MEIPASS)
+            base_path = Path(cast(str, getattr(sys, '_MEIPASS', '')))
         else:
             # 개발 환경
             base_path = Path(__file__).parent
-        
+
         return base_path
     
     def set_language(self, lang_code: str):
@@ -83,7 +84,7 @@ class LangManager:
         # 설정 저장
         self._save_preference(lang_code)
     
-    def get(self, key: str, default: str = None) -> str:
+    def get(self, key: str, default: str | None = None) -> str:
         """
         번역 텍스트 가져오기
         
@@ -105,7 +106,7 @@ class LangManager:
         
         return value if isinstance(value, str) else (default if default is not None else key)
     
-    def t(self, key: str, default: str = None) -> str:
+    def t(self, key: str, default: str | None = None) -> str:
         """get()의 단축 메서드"""
         return self.get(key, default)
     
@@ -162,7 +163,7 @@ class LangManager:
 
 # ============ 전역 인스턴스 및 편의 함수 ============
 
-_lang_manager: LangManager = None
+_lang_manager: Optional[LangManager] = None
 
 
 def get_lang_manager() -> LangManager:
@@ -173,7 +174,7 @@ def get_lang_manager() -> LangManager:
     return _lang_manager
 
 
-def t(key: str, default: str = None) -> str:
+def t(key: str, default: str | None = None) -> str:
     """
     전역 번역 함수
     

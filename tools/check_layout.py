@@ -3,7 +3,8 @@ GUI 레이아웃 분석 스크립트
 """
 import os
 import re
-os.chdir(rstr(Path(__file__).parent))
+from pathlib import Path
+os.chdir(str(Path(__file__).parent))
 
 print('=' * 70)
 print('=== GUI 레이아웃 분석 ===')

@@ -55,17 +55,17 @@ class MultiSymbolBacktest:
     def __init__(
         self,
         exchange: str = 'bybit',
-        symbols: List[str] = None,
-        timeframes: List[str] = ['4h', '1d'],
+        symbols: Optional[List[str]] = None,
+        timeframes: Optional[List[str]] = None,
         initial_capital: float = 100.0,
         max_positions: int = 1,
         leverage: int = 5,
-        preset_params: dict = None,
+        preset_params: Optional[dict] = None,
         capital_mode: str = "compound"
     ):
         self.exchange = exchange.lower()
         self.symbols = symbols or []
-        self.timeframes = timeframes
+        self.timeframes = timeframes or ['4h', '1d']
         self.initial_capital = initial_capital
         self.capital = initial_capital
         self.capital_mode = capital_mode.lower() # "compound" or "fixed"
@@ -96,7 +96,7 @@ class MultiSymbolBacktest:
         """상태 업데이트 콜백 설정"""
         self.status_callback = callback
     
-    def _update_status(self, message: str, progress: float = None):
+    def _update_status(self, message: str, progress: Optional[float] = None):
         """상태 업데이트"""
         if progress is not None:
             self.progress = progress
@@ -194,8 +194,7 @@ class MultiSymbolBacktest:
             df = dm.download(
                 symbol=symbol,
                 timeframe=timeframe,
-                exchange=self.exchange,
-                limit=None
+                exchange=self.exchange
             )
             if df is not None and len(df) > 0:
                 self.all_candles[cache_key] = df
@@ -220,9 +219,12 @@ class MultiSymbolBacktest:
             strategy = AlphaX7Core()
             
             # 시그널 추출
+            tolerance = self.preset_params.get('pattern_tolerance', 0.03)
+            validity_hours = self.preset_params.get('validity_hours', 24.0)
             extracted = strategy._extract_all_signals(
-                df=df,
-                params=self.preset_params
+                df_1h=df,
+                tolerance=tolerance,
+                validity_hours=validity_hours
             )
             
             for sig in extracted:
@@ -539,7 +541,7 @@ class MultiSymbolBacktest:
             'symbols_traded': list(set(t.symbol for t in self.trades))
         }
     
-    def save_result(self, filepath: str = None) -> str:
+    def save_result(self, filepath: Optional[str] = None) -> str:
         """결과 저장"""
         import json
         

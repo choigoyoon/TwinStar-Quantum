@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any, cast
 from dataclasses import dataclass
 import json
 import time
@@ -29,7 +29,7 @@ class DataManager:
     
     TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '3d', '1w']
     
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[str] = None):
         if cache_dir:
             self.cache_dir = Path(cache_dir)
         else:
@@ -110,8 +110,8 @@ class DataManager:
         
         # timestamp를 datetime index로 변환
         df = df.copy()
-        df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
-        df = df.set_index('datetime')
+        cast(Any, df)['datetime'] = pd.to_datetime(cast(Any, df)['timestamp'], unit='ms', utc=True)
+        df = cast(Any, df).set_index('datetime')
         
         # OHLCV 리샘플링
         resampled = df.resample(rule).agg({
@@ -138,7 +138,10 @@ class DataManager:
         """
         # 15분 이하면 직접 로드
         if timeframe in ['1m', '3m', '5m', '15m'] or not use_resample:
-            return self.load(symbol, timeframe, exchange, limit)
+            df = self.load(symbol, timeframe, exchange)
+            if df.empty:
+                 return df
+            return df.tail(limit).reset_index(drop=True)
         
         # 상위 TF는 15분 데이터에서 리샘플링
         # 필요한 15분 캔들 수 계산
@@ -151,11 +154,19 @@ class DataManager:
         needed_15m = limit * multiplier
         
         # 15분 데이터 로드
-        df_15m = self.load(symbol, '15m', exchange, needed_15m)
+        # 15분 데이터 로드 (needed_15m은 limit이 아님, load는 날짜필터만 있음. 
+        # 여기서는 전체 로드 후 tail하거나, start_date 계산이 필요함. 
+        # 일단 전체 로드 후 Slicing으로 처리)
+        df_15m = self.load(symbol, '15m', exchange)
+        if not df_15m.empty:
+            df_15m = df_15m.tail(needed_15m)
         
         if df_15m is None or len(df_15m) == 0:
             logger.info(f"⚠️ 15분 데이터 없음, 직접 다운로드 시도...")
-            return self.load(symbol, timeframe, exchange, limit)
+            df = self.load(symbol, timeframe, exchange)
+            if df.empty:
+                return df
+            return df.tail(limit).reset_index(drop=True)
         
         # 리샘플링
         resampled = self.resample(df_15m, timeframe)
@@ -175,8 +186,8 @@ class DataManager:
         return self.cache_dir / filename
     
     def download(self, symbol: str, timeframe: str, 
-                 start_date: str = None, end_date: str = None,
-                 exchange: str = "bybit", limit: int = None,  # None = 전체 수집 (상장일부터)
+                 start_date: Optional[str] = None, end_date: Optional[str] = None,
+                 exchange: str = "bybit", limit: Optional[int] = None,  # None = 전체 수집 (상장일부터)
                  progress_callback=None, processor=None) -> pd.DataFrame:
         """
         데이터 다운로드 및 캐시 저장
@@ -197,7 +208,7 @@ class DataManager:
         existing_df = self._load_cache(cache_path)
         
         # [FIX] 캐시가 있더라도 사용자가 요청한 start_date가 더 과거라면 히스토리 채우기 수행
-        cache_start_ts = existing_df['timestamp'].min() if existing_df is not None and not existing_df.empty else None
+        cache_start_ts = cast(Any, existing_df)['timestamp'].min() if existing_df is not None and not existing_df.empty else None
         
         if start_date:
             try:
@@ -210,14 +221,15 @@ class DataManager:
 
         if existing_df is not None and not existing_df.empty:
             # 캐시가 있고, 요청한 시작일이 캐시 시작점보다 이후면: 최신 데이터만 업데이트
-            if req_start_ts is None or req_start_ts >= cache_start_ts:
-                last_time = existing_df['timestamp'].max()
+            if req_start_ts is None or (cache_start_ts is not None and req_start_ts >= cache_start_ts):
+                last_time = cast(Any, existing_df)['timestamp'].max()
                 start_ts = int(last_time) + 1
                 logger.info(f"📦 캐시 업데이트: {len(existing_df)}개 이후부터 다운로드")
             else:
                 # 요청한 시작일이 캐시보다 더 과거라면: 과거부터 전체 수집 (병합 로직이 중복 제거함)
                 start_ts = req_start_ts
-                logger.info(f"📦 히스토리 채우기: 캐시 시작점({datetime.fromtimestamp(cache_start_ts/1000)})보다 과거인 {start_date}부터 수집 시작")
+                cache_start_dt = datetime.fromtimestamp(cache_start_ts/1000) if cache_start_ts else 'unknown'
+                logger.info(f"📦 히스토리 채우기: 캐시 시작점({cache_start_dt})보다 과거인 {start_date}부터 수집 시작")
         else:
             start_ts = req_start_ts
             existing_df = pd.DataFrame()
@@ -237,9 +249,9 @@ class DataManager:
         
         # 4. 병합 및 중복 제거
         if len(existing_df) > 0:
-            combined = pd.concat([existing_df, new_df], ignore_index=True)
-            combined = combined.drop_duplicates(subset=['timestamp'], keep='last')
-            combined = combined.sort_values('timestamp').reset_index(drop=True)
+            combined = pd.concat([cast(Any, existing_df), cast(Any, new_df)], ignore_index=True)
+            combined = cast(Any, combined).drop_duplicates(subset=['timestamp'], keep='last')
+            combined = cast(Any, combined).sort_values('timestamp').reset_index(drop=True)
         else:
             combined = new_df
         
@@ -303,7 +315,7 @@ class DataManager:
         'BNBUSDT': '2020-02-01',
     }
     
-    def _get_listing_date(self, symbol: str, exchange: str = 'bybit') -> str:
+    def _get_listing_date(self, symbol: str, exchange: str = 'bybit') -> Optional[str]:
         """코인 상장일 반환 (SymbolCache 우선, 폴백으로 하드코딩)"""
         clean = symbol.replace('/', '').replace(':', '').upper()
         
@@ -338,7 +350,7 @@ class DataManager:
         'bingx': 1000,
     }
 
-    def _fetch_upbit_pyupbit(self, symbol: str, timeframe: str, since: int = None, limit: int = 1000, progress_callback=None) -> List:
+    def _fetch_upbit_pyupbit(self, symbol: str, timeframe: str, since: Optional[int] = None, limit: Optional[int] = 1000, progress_callback=None) -> List:
         """Pyupbit를 사용한 Upbit 데이터 수집 (Pagination 지원)"""
         try:
             import pyupbit
@@ -367,9 +379,10 @@ class DataManager:
             logger.info(f"📥 [Upbit-Pyupbit] {symbol} {interval} 수집 시작 (Target: {limit})")
             
             # 3. Backward Loop
-            while fetched_count < limit:
+            safe_limit = limit if limit is not None else 1000  # Default fallback if None
+            while fetched_count < safe_limit:
                 # 한 번에 200개 (Upbit API 제한)
-                count = min(200, limit - fetched_count)
+                count = min(200, safe_limit - fetched_count)
                 
                 df = pyupbit.get_ohlcv(symbol, interval=interval, to=to_date, count=count)
                 
@@ -380,7 +393,7 @@ class DataManager:
                 df = df.reset_index().rename(columns={'index': 'timestamp'})
                 
                 # timestamp를 ms int로 변환
-                df['timestamp'] = df['timestamp'].astype(np.int64) // 10**6
+                df['timestamp'] = cast(Any, df['timestamp']).astype(np.int64) // 10**6
                 
                 # since 필터링
                 if since:
@@ -428,7 +441,7 @@ class DataManager:
             return []
 
     def _fetch_ohlcv(self, symbol: str, timeframe: str, exchange: str,
-                     since: int = None, limit: int = 1000,
+                     since: Optional[int] = None, limit: Optional[int] = 1000,
                      progress_callback=None) -> List:
         """OHLCV 데이터 가져오기 (ccxt 사용)"""
         try:
@@ -451,9 +464,6 @@ class DataManager:
                         exchange_id = 'upbit'
                         # 업비트 형식으로 심볼 변환
                         symbol = f"{coin}/KRW"
-                except Exception as e:
-                    logger.info(f"⚠️ [HYBRID] Redirection failed: {e}")
-
                 except Exception as e:
                     logger.info(f"⚠️ [HYBRID] Redirection failed: {e}")
 
@@ -497,7 +507,10 @@ class DataManager:
             listing_ts = None
             if listing_date:
                 try:
-                    listing_ts = int(pd.Timestamp(listing_date).timestamp() * 1000)
+                    # [FIX] Handle NaT safely (convert to str to avoid ambiguous boolean eval)
+                    ts = pd.Timestamp(listing_date)
+                    if str(ts) != 'NaT':
+                        listing_ts = int(ts.timestamp() * 1000)
                 except Exception:
                     pass  # Error silenced
             
@@ -534,7 +547,8 @@ class DataManager:
                     current_batch = min(batch_size, limit - fetched)
                     
                     # [DEBUG] Readable timestamp
-                    readable_since = datetime.fromtimestamp(since/1000).strftime('%Y-%m-%d %H:%M')
+                    since_ts = since if since else 0
+                    readable_since = datetime.fromtimestamp(since_ts/1000).strftime('%Y-%m-%d %H:%M')
                     logger.info(f"[DataManager] Batch {fetched//batch_size + 1}: {fetched:,}/{limit:,} candles (since={readable_since})")
                     data = ex.fetch_ohlcv(symbol, timeframe, since=since, limit=current_batch)
                     retry_count = 0
@@ -552,7 +566,8 @@ class DataManager:
                     if fetched == 0 and since is not None:
                         # [CAUTION] 'since=None'은 거래소에 따라 최신 1000개만 반환하고 끝날 수 있음
                         # 여기서는 log만 남기고 루프를 종료하거나, 다른 전략을 취해야 함
-                        logger.info(f"ℹ️ {exchange_id}: {datetime.fromtimestamp(since/1000)} 이후 데이터 없음 (상장 전 또는 서버 제한)")
+                        since_ts = since if since else 0
+                        logger.info(f"ℹ️ {exchange_id}: {datetime.fromtimestamp(since_ts/1000)} 이후 데이터 없음 (상장 전 또는 서버 제한)")
                     break
                 
                 # [FIX] CCXT 페이지네이션의 고질적인 중복 체크 개선
@@ -586,7 +601,10 @@ class DataManager:
             
             # 중복 제거 (혹시 모를 상황 대비)
             if all_data:
-                df_temp = pd.DataFrame(all_data, columns=['ts', 'o', 'h', 'l', 'c', 'v'])
+                # [FIX] Cast columns to Any to satisfy Pyright
+                from typing import cast, Any
+                cols = cast(Any, ['ts', 'o', 'h', 'l', 'c', 'v'])
+                df_temp = pd.DataFrame(all_data, columns=cols)
                 df_temp = df_temp.drop_duplicates(subset=['ts']).sort_values('ts')
                 all_data = df_temp.values.tolist()
                 
@@ -606,7 +624,8 @@ class DataManager:
                 # [FIX] Timestamp 형식이 datetime인 경우 int64(ms)로 정규화
                 if 'timestamp' in df.columns:
                     if pd.api.types.is_datetime64_any_dtype(df['timestamp']):
-                        df['timestamp'] = df['timestamp'].astype(np.int64) // 10**6
+                        # Explicit conversion to avoid "NaTType" access issues
+                        df['timestamp'] = df['timestamp'].view(np.int64) // 10**6
                 return df
             except Exception as e:
                 logger.info(f"⚠️ Parquet 로드 실패: {e}")
@@ -633,7 +652,7 @@ class DataManager:
         logger.info(f"💾 Parquet 저장: {cache_path.name} ({len(df):,}행)")
     
     def load(self, symbol: str, timeframe: str, exchange: str = "bybit",
-             start_date: str = None, end_date: str = None) -> pd.DataFrame:
+             start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
         """캐시에서 데이터 로드 (없으면 빈 DataFrame)"""
         cache_path = self._get_cache_path(exchange, symbol, timeframe)
         df = self._load_cache(cache_path)
@@ -652,7 +671,7 @@ class DataManager:
         return df
     
     def load_data(self, symbol: str, exchange_id: str, timeframe: str,
-                  start_date: str = None, end_date: str = None) -> pd.DataFrame:
+                  start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
         """backtest_widget 호환용 load_data 메서드
         
         Args:

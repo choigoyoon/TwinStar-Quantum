@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.ERROR)
 sys.stdout = open("debug_log.txt", "w", encoding="utf-8")
 sys.stderr = sys.stdout
 
+from typing import Any, Dict, Optional, cast
 from core.strategy_core import AlphaX7Core
 from core.unified_bot import UnifiedBot
 
@@ -26,7 +27,7 @@ class MockExchange:
         self.preset_name = None
         self.timeframe = '1h'
     
-    def get_current_candle(self):
+    def get_current_candle(self) -> 'Dict[str, Any]':
         return {} # Mocked elsewhere or not needed if we push data
     
     def get_kline(self, timeframe, limit):
@@ -114,29 +115,7 @@ def verify_websocket_sim():
     
     # ... (rest of code) ...
     
-    def mock_add_patterns(df_pattern, pattern_tf_minutes=60):
-        if df_pattern is None or len(df_pattern) < 50: return 0
-        
-        # Call strategy
-        all_signals = bot.mod_signal.strategy._extract_all_signals(
-            df_pattern, 
-            bot.mod_signal._pattern_tolerance, 
-            bot.mod_signal._validity_hours
-        )
-        
-        # DEBUG: Trace Data at critical time
-        last_ts = pd.Timestamp(df_pattern.iloc[-1]['timestamp'])
-        # Check around Jan 7th 16:00
-        target_ts = pd.Timestamp("2024-01-07 16:00:00")
-        if last_ts == target_ts:
-             print(f"DEBUG SIM df_pattern at {last_ts} (Target Match):")
-             print(df_pattern.tail(3))
-             print(f"DEBUG SIM Params: Tol={bot.mod_signal._pattern_tolerance}, Val={bot.mod_signal._validity_hours}")
-             print(f"DEBUG SIM Signals Found: {len(all_signals)}")
-             if len(all_signals) > 0:
-                 print(f"DEBUG First Sig: {all_signals[0]}")
-        
-        return original_add_patterns(df_pattern, pattern_tf_minutes)
+    # Function removed (duplicate)
     
     # Calculate Metrics
     bt_pnls = [t['pnl'] for t in trades_bt]
@@ -153,7 +132,7 @@ def verify_websocket_sim():
     # Mock Exchange
     exchange = MockExchange()
     # Initialize Bot in simulation mode
-    bot = UnifiedBot(exchange, simulation_mode=True)
+    bot = cast(Any, UnifiedBot(exchange, simulation_mode=True))
     
     # Patch Parameters
     bot.strategy_params.update(params)
@@ -176,8 +155,12 @@ def verify_websocket_sim():
     warmup_candles = []
     for row in df_warmup.itertuples():
         candle = {
-            'timestamp': pd.Timestamp(row.timestamp),
-            'open': row.open, 'high': row.high, 'low': row.low, 'close': row.close, 'volume': row.volume
+            'timestamp': pd.Timestamp(str(row.timestamp)),
+            'open': float(cast(Any, row.open)), 
+            'high': float(cast(Any, row.high)), 
+            'low': float(cast(Any, row.low)), 
+            'close': float(cast(Any, row.close)), 
+            'volume': float(cast(Any, row.volume))
         }
         warmup_candles.append(candle)
     
@@ -196,7 +179,7 @@ def verify_websocket_sim():
     bot.df_entry_resampled = bot.mod_data.df_entry_resampled
     bot.df_pattern_full = bot.mod_data.df_pattern_full
     
-    bot.mod_signal.add_patterns_from_df(bot.mod_data.df_pattern_full)
+    bot.mod_signal.add_patterns_from_df(cast(Any, bot.mod_data.df_pattern_full))
 
     # [FIX] Time-Travel Simulation Support
     # Monkey patch SignalProcessor to use bot.current_sim_time instead of datetime.utcnow()
@@ -231,9 +214,8 @@ def verify_websocket_sim():
                     valid.append(sig)
                 else:
                     # DEBUG Filter
-                    pass
+                    pass # Original code had 'pass' here. The user's snippet was malformed.
             except Exception:
-
                 continue
         
         if len(valid) < len(signals):
@@ -269,9 +251,11 @@ def verify_websocket_sim():
         rsi = 50.0
         rsi_long_met, rsi_short_met = False, False
         if df_entry is not None and len(df_entry) >= 20:
-             if 'rsi' in df_entry.columns: rsi = float(df_entry['rsi'].iloc[-1])
-             pullback_long = params.get('pullback_rsi_long', 45)
-             pullback_short = params.get('pullback_rsi_short', 55)
+             if 'rsi' in df_entry.columns: 
+                 rsi_val = df_entry['rsi'].iloc[-1]
+                 rsi = float(rsi_val) if rsi_val is not None else 50.0
+             pullback_long = float(params.get('pullback_rsi_long', 45))
+             pullback_short = float(params.get('pullback_rsi_short', 55))
              rsi_long_met = rsi < pullback_long
              rsi_short_met = rsi > pullback_short
         
@@ -284,7 +268,7 @@ def verify_websocket_sim():
         will_enter_short = pending_short and rsi_short_met and mtf_short_met
         
         return {
-            'ready': will_enter_long or will_enter_short,
+            'ready': bool(will_enter_long or will_enter_short),
             'direction': 'LONG' if will_enter_long else 'SHORT' if will_enter_short else None,
             'data': {'pattern': {'desc': f"Found {len(valid_pending)}"}, 'rsi':{'value': rsi}}
         }
@@ -295,7 +279,7 @@ def verify_websocket_sim():
     # [FIX] Patch add_patterns_from_df to debug signal extraction
     original_add_patterns = bot.mod_signal.add_patterns_from_df
     def mock_add_patterns(df_pattern, pattern_tf_minutes=60):
-        if df_pattern is None or len(df_pattern) < 50: return 0
+        if df_pattern is None or not isinstance(df_pattern, pd.DataFrame) or len(df_pattern) < 50: return 0
         
         # Call strategy directly to see signals
         all_signals = bot.mod_signal.strategy._extract_all_signals(
@@ -339,7 +323,7 @@ def verify_websocket_sim():
     t_start = datetime.now()
     
     for i, row in enumerate(df_sim.itertuples()):
-        curr_time = pd.Timestamp(row.timestamp)
+        curr_time = pd.Timestamp(cast(Any, row.timestamp))
         # Mock current candle for bot
         candle = {
             'timestamp': curr_time,
@@ -364,11 +348,11 @@ def verify_websocket_sim():
              if len(bot.df_entry_resampled) > 0 and 'rsi' in bot.df_entry_resampled.columns:
                  rsi = bot.df_entry_resampled.iloc[-1]['rsi']
              
-             trend = bot.mod_signal.strategy.get_filter_trend(bot.df_pattern_full, filter_tf='4h')
+             trend = bot.mod_signal.strategy.get_filter_trend(cast(Any, bot.df_pattern_full), filter_tf='4h')
              
              print(f"DEBUG Loop {i} [{bot.current_sim_time}]: Pending={len(bot.mod_signal.pending_signals)}, Signal={signal}")
              print(f"DEBUG Cond: RSI={rsi:.2f} (Long<{params.get('pullback_rsi_long')}, Short>{params.get('pullback_rsi_short')}), Trend={trend}")
-             print(f"DEBUG Loop {i}: EntryLen={len(bot.df_entry_full)}, PatternLen={len(bot.df_pattern_full)}")
+             print(f"DEBUG Loop {i}: EntryLen={len(cast(Any, bot.df_entry_full))}, PatternLen={len(cast(Any, bot.df_pattern_full))}")
         
         if signal:
             print(f"DEBUG Signal Detected: {signal} at {candle['timestamp']}")

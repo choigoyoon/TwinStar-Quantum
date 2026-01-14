@@ -8,10 +8,18 @@ import threading
 import os
 import json
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, cast
 
 from core.trade_common import CoinStatus, CoinState, WS_LIMITS
 from core.capital_manager import CapitalManager
+from core.strategy_core import AlphaX7Core
+from config.constants.paths import DATA_DIR, CONFIG_DIR, PRESET_DIR
+
+class Paths:
+    BASE = os.path.dirname(CONFIG_DIR)
+    CONFIG = CONFIG_DIR
+    PRESETS = PRESET_DIR
+    CACHE = os.path.join(DATA_DIR, 'cache')
 
 
 class MultiCoinSniper:
@@ -35,7 +43,6 @@ class MultiCoinSniper:
         self.logger = logging.getLogger("MultiSniper")
         
         # [NEW] AlphaX7 전략 코어 엔진 연동
-        from core.strategy_core import AlphaX7Core
         self.strategy = AlphaX7Core()
         
         # [MODULAR] Capital Management
@@ -279,8 +286,8 @@ class MultiCoinSniper:
                 self.logger.debug(f"{symbol} 리샘플링 후 데이터 부족")
                 return 75.0
             
-            # 전략 실행
-            core = AlphaX7Core(params)
+            # 전략 실행 - AlphaX7Core는 use_mtf: bool만 받음
+            core = AlphaX7Core(use_mtf=True)
             result = core.run_backtest(
                 df_pattern=df_resampled,
                 df_entry=df_resampled,
@@ -355,7 +362,7 @@ class MultiCoinSniper:
             # 새 캔들 DataFrame
             ts = candle.get('start') or candle.get('timestamp') or candle.get('t')
             new_row = pd.DataFrame([{
-                'timestamp': pd.to_datetime(ts, unit='ms'),
+                'timestamp': pd.to_datetime(ts, unit='ms') if ts is not None else pd.Timestamp.now(),
                 'open': float(candle.get('open', candle.get('o', 0))),
                 'high': float(candle.get('high', candle.get('h', 0))),
                 'low': float(candle.get('low', candle.get('l', 0))),
@@ -652,16 +659,19 @@ class MultiCoinSniper:
             if len(df) < 50:
                 return 0
             
-            # 최근 50개 캔들로 패턴 분석
-            core = AlphaX7Core(state.params)
+            # 최근 50개 캔들로 패턴 분석 - detect_signal 사용
+            core = AlphaX7Core(use_mtf=False)
             df_recent = df.tail(50).copy()
-            pattern = core.detect_pattern(df_recent)
-            
-            if pattern and pattern.get('detected'):
-                # 패턴 방향과 신뢰도
-                confidence = pattern.get('confidence', 0.5)
-                return min(100, confidence * 100)
-            
+            signal = core.detect_signal(
+                df_1h=df_recent,
+                df_15m=df_recent,
+                pattern_tolerance=state.params.get('pattern_tolerance', 0.05)
+            )
+
+            if signal:
+                # 신호 존재 시 높은 점수 반환
+                return 80.0
+
             return 0
             
         except Exception as e:
@@ -823,37 +833,41 @@ class MultiCoinSniper:
             if len(df) < 50:
                 return None
             
-            core = AlphaX7Core(params)
+            core = AlphaX7Core(use_mtf=False)
             df_recent = df.tail(50).copy()
-            
-            # 패턴 감지
-            pattern = core.detect_pattern(df_recent)
-            
-            if pattern and pattern.get('detected'):
-                direction = pattern.get('direction', 'Long')
+
+            # 패턴 감지 - detect_signal 사용
+            signal = core.detect_signal(
+                df_1h=df_recent,
+                df_15m=df_recent,
+                pattern_tolerance=params.get('pattern_tolerance', 0.05)
+            )
+
+            if signal:
+                direction = signal.signal_type  # TradeSignal: 'Long' or 'Short'
                 entry_price = float(candle.get('close', 0))
-                
+
                 # [FIX] ATR 기반 SL 계산 (Centralized)
                 atr = core.calculate_atr(df_recent, period=params.get('atr_period', 14))
                 atr_mult = params.get('atr_mult', params.get('atr_multiplier', 1.5))
-                
+
                 if direction == 'Long':
                     sl_price = entry_price - (atr * atr_mult)
                 else:
                     sl_price = entry_price + (atr * atr_mult)
-                
+
                 # [FIX] 고정 TP 제거 (Trailing Stop에 위임)
-                tp_price = None 
-                
+                tp_price = None
+
                 return {
                     'direction': direction,
                     'entry_price': entry_price,
                     'sl_price': sl_price,
                     'tp_price': tp_price,
-                    'pattern_type': pattern.get('type', 'unknown'),
+                    'pattern_type': signal.pattern,
                     'atr': atr
                 }
-            
+
             return None
             
         except Exception as e:
@@ -944,7 +958,9 @@ class MultiCoinSniper:
                 if os.path.exists(cache_path):
                     df_15m = pd.read_parquet(cache_path)
                     if len(df_15m) >= 20:
-                        current_rsi = self.strategy.calculate_rsi(df_15m['close'].values, period=14)
+                        import numpy as np
+                        close_arr = np.asarray(df_15m['close'].values, dtype=np.float64)
+                        current_rsi = self.strategy.calculate_rsi(close_arr, period=14)
             except Exception:
                 pass  # Error silenced
 
@@ -1131,7 +1147,7 @@ class MultiCoinSniper:
     
     # === [NEW] 메인 루프 ===
     
-    def start(self, exchange: str = None):
+    def start(self, exchange: Optional[str] = None):
         """멀티스나이퍼 시작"""
         import time
         
@@ -1177,7 +1193,7 @@ class MultiCoinSniper:
         # WS 연결 종료
         if hasattr(self, 'ws') and self.ws:
             try:
-                self.ws.close()
+                self.ws.close()  # type: ignore[attr-defined]
             except Exception as e:
                 self.logger.debug(f"WS stop ignored: {e}")
         
@@ -1235,7 +1251,7 @@ class MultiCoinSniper:
         self.running = False
         if hasattr(self, 'ws') and self.ws:
             try:
-                self.ws.close()
+                self.ws.close()  # type: ignore[attr-defined]
             except Exception as e:
                 self.logger.debug(f"WS close ignored: {e}")
         self.logger.info("웹소켓 중지됨")
@@ -1401,7 +1417,8 @@ class MultiCoinSniper:
                 # 중복 제거
                 df = df[df["timestamp"] != new_row["timestamp"]]
                 df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                df = df.sort_values("timestamp").reset_index(drop=True)
+                from typing import cast, Any as TypingAny
+                df = cast(TypingAny, df).sort_values(by="timestamp").reset_index(drop=True)
             else:
                 os.makedirs(os.path.dirname(cache_path), exist_ok=True)
                 df = pd.DataFrame([new_row])
@@ -1435,7 +1452,7 @@ class MultiCoinSniper:
             self.logger.error(f"PnL API 오류: {e}")
             return []
     
-    def sync_real_pnl(self, symbol: str, order_id: str = None) -> Optional[float]:
+    def sync_real_pnl(self, symbol: str, order_id: Optional[str] = None) -> Optional[float]:
         """청산 후 실제 PnL로 시드 동기화"""
         pnl_list = self.get_closed_pnl(symbol, limit=1)
         
@@ -1546,11 +1563,11 @@ class MultiCoinSniper:
         """이전 세션 데이터 로드 (재시작 시 사용)"""
         return self._load_history()
     
-    def get_trade_summary(self, symbol: str = None) -> dict:
+    def get_trade_summary(self, symbol: Optional[str] = None) -> dict:
         """거래 요약 조회"""
         history = self._load_history()
-        
-        if symbol:
+
+        if symbol is not None:
             return history.get(symbol, {})
         
         # 전체 요약

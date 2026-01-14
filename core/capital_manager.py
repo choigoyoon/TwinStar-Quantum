@@ -33,8 +33,9 @@ class CapitalManager:
         """매매 모드 전환"""
         with self._lock:
             if mode.lower() in ["compound", "fixed"]:
-                self.mode = mode.lower()
-                self.logger.info(f"🔄 자본 관리 모출 전환: {self.mode.upper()}")
+                from typing import cast
+                self.mode = cast(Literal["compound", "fixed"], mode.lower())
+                self.logger.info(f"🔄 자본 관리 모드 전환: {self.mode.upper()}")
             else:
                 self.logger.warning(f"⚠️ 잘못된 모드 요청: {mode}")
     
@@ -67,7 +68,8 @@ class CapitalManager:
             initial_capital=data.get("initial_capital", 1000.0),
             fixed_amount=data.get("fixed_amount", 100.0)
         )
-        manager.mode = data.get("mode", "compound")
+        from typing import cast
+        manager.mode = cast(Literal["compound", "fixed"], data.get("mode", "compound"))
         manager.current_capital = data.get("current_capital", manager.initial_capital)
         manager.total_pnl = data.get("total_pnl", 0.0)
         return manager

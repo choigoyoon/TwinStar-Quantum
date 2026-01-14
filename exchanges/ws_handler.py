@@ -9,7 +9,7 @@
 import asyncio
 import json
 import logging
-from typing import Callable, Optional, Dict
+from typing import Callable, Optional, Dict, Union, List, Any
 from datetime import datetime
 import time
 
@@ -98,7 +98,7 @@ class WebSocketHandler:
             raise ValueError(f"Unsupported exchange: {self.exchange}")
         return url
     
-    def get_subscribe_message(self) -> dict:
+    def get_subscribe_message(self) -> Union[dict, list]:
         """거래소별 구독 메시지 생성"""
         
         if self.exchange.lower() == 'bybit':
@@ -357,7 +357,8 @@ class WebSocketHandler:
                 def _force_close():
                     try:
                         new_loop = asyncio.new_event_loop()
-                        new_loop.run_until_complete(self.ws.close())
+                        if self.ws:
+                            new_loop.run_until_complete(self.ws.close())
                         new_loop.close()
                     except Exception:
 
@@ -378,7 +379,7 @@ class WebSocketHandler:
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self.connect())
         except Exception as e:
-            logger.error(f"[WS-SYNC] Fatal Error: {e}")
+            logging.error(f"[WS-SYNC] Fatal Error: {e}")
         finally:
             self.disconnect()
 

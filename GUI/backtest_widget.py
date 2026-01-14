@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QGroupBox, QCheckBox,
     QProgressBar, QMessageBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QSplitter, QFrame, QDoubleSpinBox, QSpinBox,
-    QComboBox, QFileDialog, QInputDialog, QGridLayout
+    QComboBox, QFileDialog, QInputDialog, QGridLayout, QAbstractItemView
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -33,12 +33,18 @@ if not getattr(sys, 'frozen', False):
 
 # Imports with fallbacks
 try:
-    from utils.preset_manager import get_preset_manager, get_backtest_params, save_strategy_params
-    from constants import DEFAULT_PARAMS, EXCHANGE_INFO, TF_MAPPING, TF_RESAMPLE_MAP
+    from utils.preset_manager import get_preset_manager, get_backtest_params, save_strategy_params # type: ignore
+    from constants import EXCHANGE_INFO, TF_MAPPING, TF_RESAMPLE_MAP
+    # Try importing DEFAULT_PARAMS, if not found, use empty dict
+    try:
+        from constants import DEFAULT_PARAMS # type: ignore
+    except ImportError:
+        DEFAULT_PARAMS = {}
 except ImportError:
-    def get_preset_manager(): return None
-    def get_backtest_params(name=None): return {}
-    def save_strategy_params(params): pass
+    from typing import Dict, Any, Optional
+    def get_preset_manager() -> Optional[Any]: return None
+    def get_backtest_params(preset_name: Optional[str] = None) -> Dict[str, Any]: return {}
+    def save_strategy_params(params: Dict[str, Any]) -> bool: return False
     DEFAULT_PARAMS = {}
     EXCHANGE_INFO = {
         "bybit": {"type": "CEX", "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]},
@@ -55,7 +61,7 @@ except ImportError:
 
 
 try:
-    from paths import Paths
+    from paths import Paths # type: ignore
 except ImportError:
     class Paths:
         CACHE = "data/cache"
@@ -99,7 +105,7 @@ class BacktestWorker(QThread):
     def run(self):
         try:
             self.progress.emit(10)
-            self.df_15m = self.strategy.df_15m
+            self.df_15m = getattr(self.strategy, 'df_15m', None)
             self.progress.emit(30)
             
             # Merge parameters
@@ -298,11 +304,11 @@ class SingleBacktestWidget(QWidget):
             
             if df is not None and not df.empty:
                 self.strategy = AlphaX7Core()
-                self.strategy.df_15m = df
+                setattr(self.strategy, 'df_15m', df) # type: ignore
                 logger.info(f"Alpha-X7 Core Loaded with {len(df)} candles")
             else:
                 self.strategy = AlphaX7Core()
-                self.strategy.df_15m = None
+                setattr(self.strategy, 'df_15m', None) # type: ignore
                 logger.info("Alpha-X7 Core Loaded (No Data)")
                 
         except Exception as e:
@@ -570,21 +576,23 @@ class SingleBacktestWidget(QWidget):
         lbl.setStyleSheet(style)
         return lbl
     
-    def _create_stat_label(self, title, value):
+    def _create_stat_label(self, title, value) -> QFrame:
+        """통계 라벨 생성 (value_label 속성 포함)"""
         frame = QFrame()
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
-        
+
         title_lbl = QLabel(f"{title}:")
         title_lbl.setStyleSheet("color: #787b86; font-size: 13px;")
         layout.addWidget(title_lbl)
-        
+
         value_lbl = QLabel(value)
         value_lbl.setStyleSheet("color: white; font-size: 15px; font-weight: bold;")
         layout.addWidget(value_lbl)
-        
-        frame.value_label = value_lbl
+
+        # 동적 속성 추가 (타입 체커 무시)
+        frame.value_label = value_lbl  # type: ignore[attr-defined]
         return frame
     
     def _on_exchange_changed(self, exchange_name: str):
@@ -801,9 +809,10 @@ class SingleBacktestWidget(QWidget):
             t("trade.pnl_pct_header"), t("dashboard.balance"), t("backtest.mdd"), t("backtest.header_duration") if t("backtest.header_duration") != "backtest.header_duration" else "Duration"
         ])
         self.result_table.setStyleSheet(self._get_table_style())
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.result_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.result_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        if (header := self.result_table.horizontalHeader()) is not None:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.result_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.result_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.result_table.itemSelectionChanged.connect(self._on_trade_selected)
         self.result_splitter.addWidget(self.result_table)
 
@@ -832,8 +841,9 @@ class SingleBacktestWidget(QWidget):
         self.logic_table.setColumnCount(5)
         self.logic_table.setHorizontalHeaderLabels(['Timestamp', 'Signal/Logic', 'Action', 'PnL/Status', 'Details'])
         self.logic_table.setStyleSheet(self._get_table_style())
-        self.logic_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.logic_table.horizontalHeader().setStretchLastSection(True)
+        if (header := self.logic_table.horizontalHeader()) is not None:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+            header.setStretchLastSection(True)
         
         audit_layout.addWidget(self.logic_table)
         self.result_tabs.addTab(self.audit_tab, "🔍 Logic Audit")
@@ -923,7 +933,8 @@ class SingleBacktestWidget(QWidget):
             QMessageBox.warning(self, t("common.error"), "Strategy not loaded")
             return
         
-        if self.strategy.df_15m is None or self.strategy.df_15m.empty:
+        df_15m = getattr(self.strategy, 'df_15m', None)
+        if df_15m is None or df_15m.empty:
             QMessageBox.warning(self, "No Data", "No data for backtest. Download data first.")
             return
         
@@ -932,7 +943,7 @@ class SingleBacktestWidget(QWidget):
         self.chart_widget.clear()
         self.trades_detail = []
         for stat in [self._stat_trades, self._stat_winrate, self._stat_simple, self._stat_compound, self._stat_mdd]:
-            stat.value_label.setText("...")
+            stat.value_label.setText("...")  # type: ignore[attr-defined]
         
         self._progress.setVisible(True)
         self._progress.setValue(0)
@@ -980,15 +991,16 @@ class SingleBacktestWidget(QWidget):
         if self.worker and self.worker.trades_detail:
             trades = self.worker.trades_detail
             df_15m = self.worker.df_15m
-            
+            r = {}
+
             if self.worker.result_stats:
                 r = self.worker.result_stats
-                self._stat_trades.value_label.setText(str(r.get('count', len(trades))))
-                self._stat_winrate.value_label.setText(f"{r.get('win_rate', 0):.1f}%")
-                self._stat_simple.value_label.setText(f"{r.get('simple_return', 0):+.1f}%")
-                self._stat_compound.value_label.setText(f"{r.get('compound_return', 0):+.1f}%")
-                self._stat_mdd.value_label.setText(f"-{r.get('mdd', 0):.1f}%")
-            
+                self._stat_trades.value_label.setText(str(r.get('count', len(trades))))  # type: ignore[attr-defined]
+                self._stat_winrate.value_label.setText(f"{r.get('win_rate', 0):.1f}%")  # type: ignore[attr-defined]
+                self._stat_simple.value_label.setText(f"{r.get('simple_return', 0):+.1f}%")  # type: ignore[attr-defined]
+                self._stat_compound.value_label.setText(f"{r.get('compound_return', 0):+.1f}%")  # type: ignore[attr-defined]
+                self._stat_mdd.value_label.setText(f"-{r.get('mdd', 0):.1f}%")  # type: ignore[attr-defined]
+
             # 결과 저장용 데이터 보관
             self.last_result = {
                 'stats': r,
@@ -1003,8 +1015,9 @@ class SingleBacktestWidget(QWidget):
             self._populate_audit_table(self.worker.audit_logs)
             
             # [MOD] Update InteractiveChart
-            self.chart_widget.set_data(df_15m)
-            self.chart_widget.add_trades(trades)
+            if df_15m is not None:
+                self.chart_widget.set_data(df_15m)
+                self.chart_widget.add_trades(trades)
             
             self.backtest_finished.emit(trades, df_15m, None)
         else:
@@ -1218,7 +1231,8 @@ class SingleBacktestWidget(QWidget):
         if 'timestamp' in df.columns:
             agg_dict['timestamp'] = 'first'
         
-        resampled = df.resample(rule).agg(agg_dict).dropna().reset_index()
+        from typing import Any, cast
+        resampled = df.resample(rule).agg(cast(Any, agg_dict)).dropna().reset_index()
         
         try:
             from utils.indicators import IndicatorGenerator
@@ -1348,7 +1362,8 @@ class MultiBacktestWidget(QWidget):
         self.result_table = QTableWidget()
         self.result_table.setColumnCount(4)
         self.result_table.setHorizontalHeaderLabels(['항목', '값', '항목', '값'])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if (header := self.result_table.horizontalHeader()) is not None:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.result_table.setStyleSheet("""
             QTableWidget { background: #1e222d; color: white; }
             QHeaderView::section { background: #2b2b2b; color: white; }
@@ -1377,7 +1392,8 @@ class MultiBacktestWidget(QWidget):
         self.trades_table.setHorizontalHeaderLabels([
             '심볼', '방향', '진입시간', '청산시간', '청산사유', 'PnL%', 'PnL$'
         ])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.trades_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget { background: #1e222d; color: white; }
             QHeaderView::section { background: #2b2b2b; color: white; }
@@ -1489,6 +1505,9 @@ class MultiBacktestWidget(QWidget):
     def _run_backtest(self):
         """백테스트 실행 (워커 스레드)"""
         try:
+            if not self.backtest:
+                return
+                
             result = self.backtest.run()
             from PyQt6.QtCore import QMetaObject, Qt, Q_ARG
             QMetaObject.invokeMethod(

@@ -49,8 +49,8 @@ class MultiOptimizer:
     
     def __init__(self, 
                  exchange: str = 'bybit',
-                 presets_dir: str = None,
-                 data_dir: str = None):
+                 presets_dir: Optional[str] = None,
+                 data_dir: Optional[str] = None):
         
         self.exchange = exchange.lower()
         self.presets_dir = Path(presets_dir or PRESETS_DIR)
@@ -336,11 +336,11 @@ class MultiOptimizer:
             return False
     
     def run(self, 
-            symbols: List[str] = None,
-            timeframes: List[str] = None,
+            symbols: Optional[List[str]] = None,
+            timeframes: Optional[List[str]] = None,
             resume: bool = True,
-            on_progress: Callable = None,
-            on_complete: Callable = None):
+            on_progress: Optional[Callable] = None,
+            on_complete: Optional[Callable] = None):
         """
         최적화 실행
         

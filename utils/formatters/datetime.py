@@ -3,10 +3,10 @@
 """
 
 from datetime import datetime, timedelta
-from typing import Union
+from typing import Union, Optional
 
 
-def format_datetime(dt: Union[datetime, str, int, float], 
+def format_datetime(dt: Union[datetime, str, int, float, None], 
                     fmt: str = '%Y-%m-%d %H:%M:%S') -> str:
     """
     날짜시간 포맷팅
@@ -39,19 +39,19 @@ def format_datetime(dt: Union[datetime, str, int, float],
         return '-'
 
 
-def format_date(dt: Union[datetime, str, int, float], 
+def format_date(dt: Union[datetime, str, int, float, None], 
                 fmt: str = '%Y-%m-%d') -> str:
     """날짜 포맷팅"""
     return format_datetime(dt, fmt)
 
 
-def format_time(dt: Union[datetime, str, int, float], 
+def format_time(dt: Union[datetime, str, int, float, None], 
                 fmt: str = '%H:%M:%S') -> str:
     """시간 포맷팅"""
     return format_datetime(dt, fmt)
 
 
-def format_duration(seconds: Union[int, float]) -> str:
+def format_duration(seconds: Union[int, float, None]) -> str:
     """
     시간 간격 포맷팅
     
@@ -99,7 +99,7 @@ def format_duration(seconds: Union[int, float]) -> str:
         return '-'
 
 
-def format_relative_time(dt: Union[datetime, str, int, float]) -> str:
+def format_relative_time(dt: Union[datetime, str, int, float, None]) -> str:
     """
     상대 시간 포맷팅 ('3분 전', '1시간 후' 등)
     
@@ -159,7 +159,7 @@ def format_relative_time(dt: Union[datetime, str, int, float]) -> str:
         return '-'
 
 
-def format_timestamp(ts: Union[int, float], ms: bool = False) -> str:
+def format_timestamp(ts: Union[int, float, None], ms: bool = False) -> str:
     """
     타임스탬프 포맷팅
     

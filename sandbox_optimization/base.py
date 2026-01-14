@@ -7,7 +7,7 @@
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, cast
 from abc import ABC, abstractmethod
 
 from .constants import DEFAULT_SLIPPAGE, DEFAULT_FEE, INITIAL_CAPITAL
@@ -36,10 +36,10 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     
     # True Range & ATR (14)
     tr = np.maximum(
-        high - low,
+        cast(Any, high - low),  # type: ignore
         np.maximum(
-            np.abs(high - np.roll(close, 1)),
-            np.abs(low - np.roll(close, 1))
+            cast(Any, np.abs(high - np.roll(close, 1))),  # type: ignore
+            cast(Any, np.abs(low - np.roll(close, 1)))  # type: ignore
         )
     )
     tr[0] = high[0] - low[0]
@@ -52,21 +52,23 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     # MACD (12, 26, 9)
     ema_12 = pd.Series(close).ewm(span=12, adjust=False).mean().values
     ema_26 = pd.Series(close).ewm(span=26, adjust=False).mean().values
-    macd = ema_12 - ema_26
+    macd = cast(Any, ema_12 - ema_26)  # type: ignore
     macd_signal = pd.Series(macd).ewm(span=9, adjust=False).mean().values
-    df['macd_hist'] = macd - macd_signal
+    df['macd_hist'] = cast(Any, macd - macd_signal)  # type: ignore
     
     # ADX (14) + DI
-    plus_dm = np.diff(high, prepend=high[0])
-    minus_dm = -np.diff(low, prepend=low[0])
+    high_arr = np.asarray(high)
+    low_arr = np.asarray(low)
+    plus_dm = np.diff(high_arr, prepend=high_arr[0])
+    minus_dm = -np.diff(low_arr, prepend=low_arr[0])
     plus_dm = np.where((plus_dm > minus_dm) & (plus_dm > 0), plus_dm, 0)
     minus_dm = np.where((minus_dm > plus_dm) & (minus_dm > 0), minus_dm, 0)
     
     atr_smooth = pd.Series(tr).rolling(14).mean().values
-    plus_di = 100 * pd.Series(plus_dm).rolling(14).mean().values / (atr_smooth + 1e-10)
-    minus_di = 100 * pd.Series(minus_dm).rolling(14).mean().values / (atr_smooth + 1e-10)
+    plus_di = 100 * cast(Any, pd.Series(plus_dm).rolling(14).mean().values) / (atr_smooth + 1e-10)  # type: ignore
+    minus_di = 100 * cast(Any, pd.Series(minus_dm).rolling(14).mean().values) / (atr_smooth + 1e-10)  # type: ignore
     
-    dx = 100 * np.abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)
+    dx = 100 * cast(Any, np.abs(plus_di - minus_di)) / (plus_di + minus_di + 1e-10)  # type: ignore
     df['adx'] = pd.Series(dx).rolling(14).mean().values
     df['plus_di'] = plus_di
     df['minus_di'] = minus_di
@@ -74,13 +76,13 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     # Stochastic K (14) - 필터용
     low_14 = pd.Series(low).rolling(14).min().values
     high_14 = pd.Series(high).rolling(14).max().values
-    df['stoch_k'] = 100 * (close - low_14) / (high_14 - low_14 + 1e-10)
+    df['stoch_k'] = 100 * cast(Any, close - low_14) / (high_14 - low_14 + 1e-10)  # type: ignore
     
     # Volume Ratio (선택적)
     if 'volume' in df.columns:
         vol = df['volume'].values
         vol_ma = pd.Series(vol).rolling(20).mean().values
-        df['vol_ratio'] = vol / (vol_ma + 1e-10)
+        df['vol_ratio'] = cast(Any, vol) / (vol_ma + 1e-10)  # type: ignore
     else:
         df['vol_ratio'] = 1.0
     
@@ -294,7 +296,7 @@ class BaseStrategy(ABC):
     name: str = "Base"
     description: str = ""
     
-    def __init__(self, params: Dict = None):
+    def __init__(self, params: Optional[Dict[str, Any]] = None):
         from .presets import SANDBOX_PARAMS
         self.params = params if params else SANDBOX_PARAMS.copy()
     

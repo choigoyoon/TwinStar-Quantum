@@ -32,6 +32,10 @@ class FeatureCheck:
         return self
         
     def check(self, name, condition, detail=""):
+        if self.current is None:
+            print(f"  ❌ {name} (Category skipped)")
+            return condition
+            
         self.current["total"] += 1
         if condition:
             self.current["passed"] += 1

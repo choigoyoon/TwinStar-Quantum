@@ -1,8 +1,9 @@
 import sys
 import os
 import inspect
+from pathlib import Path
 
-sys.path.insert(0, rstr(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 def verify_1_original_functions():
     print('=== 1. unified_bot.py 원래 기능 (추정) ===')

@@ -9,7 +9,7 @@
 """
 
 import numpy as np
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 
 
 class SignalFilter:
@@ -92,7 +92,7 @@ class SignalFilter:
         direction: str,
         stoch_k: float,
         is_downtrend: bool,
-        adx_value: float = None
+        adx_value: Optional[float] = None
     ) -> Tuple[bool, str]:
         """
         모든 필터 체크
@@ -128,7 +128,7 @@ def apply_filters(
     stoch_k: float,
     is_downtrend: bool,
     params: Dict[str, Any],
-    adx_value: float = None
+    adx_value: Optional[float] = None
 ) -> Tuple[bool, str]:
     """
     함수형 인터페이스 (클래스 없이 사용)

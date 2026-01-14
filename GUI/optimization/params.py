@@ -2,6 +2,7 @@
 """파라미터 위젯 - 범위/선택 입력"""
 
 import numpy as np
+from typing import Optional
 from .common import *
 
 
@@ -69,11 +70,12 @@ class ParamRangeWidget(QWidget):
 class ParamChoiceWidget(QWidget):
     """Choice parameter widget (list)"""
     
-    def __init__(self, name: str, choices: list, checked_indices: list = None, 
+    def __init__(self, name: str, choices: list, checked_indices: Optional[list] = None, 
                  tooltip: str = "", parent=None):
         super().__init__(parent)
         self.name = name
         self.choices = choices
+        self.tooltip = tooltip
         self.checkboxes = []
         self._init_ui(checked_indices or [0])
     

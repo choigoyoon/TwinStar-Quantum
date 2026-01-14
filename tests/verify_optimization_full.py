@@ -3,6 +3,7 @@ import sys
 import os
 import time
 import pandas as pd
+from typing import Any, cast
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer, Qt
 
@@ -31,14 +32,14 @@ def run_verification():
     
     # Mocking MessageBox to avoid blocking
     from PyQt6.QtWidgets import QMessageBox
-    QMessageBox.question = lambda *args: QMessageBox.StandardButton.Yes
-    QMessageBox.warning = lambda *args: None
-    QMessageBox.information = lambda *args: None
-    QMessageBox.critical = lambda *args: print(f"CRITICAL: {args[2]}") if len(args) > 2 else print(f"CRITICAL: {args}")
+    cast(Any, QMessageBox).question = lambda *args: QMessageBox.StandardButton.Yes
+    cast(Any, QMessageBox).warning = lambda *args: None
+    cast(Any, QMessageBox).information = lambda *args: None
+    cast(Any, QMessageBox).critical = lambda *args: print(f"CRITICAL: {args[2]}") if len(args) > 2 else print(f"CRITICAL: {args}")
     
     # Instantiate Main Widget
     main_widget = OptimizationWidget()
-    single_widget = main_widget.sub_tabs.widget(0)
+    single_widget = cast(Any, main_widget.sub_tabs.widget(0))
     
     # FORCE SINGLE WORKER for stability in test environment
     single_widget.current_cores = 1
@@ -136,7 +137,7 @@ def run_verification():
     print("## 4) CSV 내보내기 테스트")
     test_csv = "test_opt_export_final.csv"
     from PyQt6.QtWidgets import QFileDialog
-    QFileDialog.getSaveFileName = lambda *args: (test_csv, "")
+    QFileDialog.getSaveFileName = lambda *args: (test_csv, "") # type: ignore
     try:
         single_widget._export_csv()
         if os.path.exists(test_csv):
@@ -162,5 +163,4 @@ def run_verification():
 if __name__ == "__main__":
     run_verification()
 
-if __name__ == "__main__":
-    run_verification()
+

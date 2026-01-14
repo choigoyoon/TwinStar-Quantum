@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # Add project root
-sys.path.insert(0, str(Path(rstr(Path(__file__).parent))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.unified_bot import UnifiedBot
 
@@ -62,7 +62,7 @@ class TestLiveLoop(unittest.TestCase):
             # Check if internal processing triggered
             # In UnifiedBot._on_candle_close:
             #   self.mod_data.append_candle(candle)
-            #   self._process_historical_data() -> this calls self.mod_data.process_data() usually, 
+            #   self._process_historical_data() # -> this calls self.mod_data.process_data() usually, 
             #   but _process_historical_data is a method on bot.
             
             # 3. Signal Check?
@@ -76,7 +76,8 @@ class TestLiveLoop(unittest.TestCase):
         print("[SIM] Candle flow verified.")
         
         # 4. Simulate Price Update (Live Position Management)
-        bot.position = {'side': 'Long', 'entry_price': 100, 'size': 1}
+        from typing import Any, cast
+        bot.position = cast(Any, {'side': 'Long', 'entry_price': 100, 'size': 1})
         price = 110.0 # Profit
         
         # Mock position manager decision
@@ -93,3 +94,4 @@ class TestLiveLoop(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

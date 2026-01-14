@@ -130,7 +130,10 @@ def test_all_features():
     
     # 5. 테이블 컬럼 확인
     logger.info("\n[5] 테이블 컬럼 확인...")
-    columns = [widget.table.horizontalHeaderItem(i).text() for i in range(widget.table.columnCount())]
+    columns = []
+    for i in range(widget.table.columnCount()):
+        item = widget.table.horizontalHeaderItem(i)
+        columns.append(item.text() if item else f"Col{i}")
     logger.info(f"   컬럼: {columns}")
     if "#" in columns:
         logger.info("   ✅ 매매 번호(#) 컬럼 있음")

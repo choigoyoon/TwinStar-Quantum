@@ -13,19 +13,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
 
 # 디자인 시스템
-try:
-    from ui.design_system import Colors, Typography, Radius
-except ImportError:
-    class Colors:
-        bg_base = "#0d1117"
-        bg_surface = "#161b22"
-        text_secondary = "#8b949e"
-        text_primary = "#f0f6fc"
-        success = "#3fb950"
-    class Typography:
-        font_semibold = 600
-    class Radius:
-        radius_md = "8px"
+from ui.design_system.tokens import Colors, Typography, Radius
 
 logger = logging.getLogger(__name__)
 

@@ -30,7 +30,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 os.chdir(PROJECT_ROOT)
 
 # Results storage
-RESULTS = {
+RESULTS: Dict[str, Dict[str, Any]] = {
     'imports': {'passed': 0, 'failed': 0, 'details': {}},
     'core': {'passed': 0, 'failed': 0, 'details': {}},
     'utils': {'passed': 0, 'failed': 0, 'details': {}},
@@ -362,7 +362,7 @@ def verify_api():
     print_header(7, "API 연동 점검")
     
     try:
-        import ccxt
+        import ccxt # type: ignore
         
         exchange = ccxt.binance({
             'enableRateLimit': True,
@@ -374,7 +374,8 @@ def verify_api():
         start = time.time()
         ticker = exchange.fetch_ticker('BTC/USDT')
         elapsed = (time.time() - start) * 1000
-        if ticker.get('last', 0) > 0:
+        last_price = float(ticker.get('last') or 0)
+        if last_price > 0:
             RESULTS['api']['passed'] += 1
             print(f"  ✅ ticker 조회: {elapsed:.0f}ms")
         else:
@@ -394,7 +395,7 @@ def verify_api():
         start = time.time()
         exchange.load_markets()
         elapsed = (time.time() - start) * 1000
-        if 'BTC/USDT' in exchange.markets:
+        if exchange.markets and 'BTC/USDT' in exchange.markets:
             RESULTS['api']['passed'] += 1
             print(f"  ✅ 마켓 로드: {elapsed:.0f}ms ({len(exchange.markets)}개)")
         else:
@@ -521,7 +522,7 @@ def verify_errors():
     try:
         from utils.preset_manager import get_preset_manager
         pm = get_preset_manager()
-        result = pm.load_preset('NONEXISTENT_SYMBOL_12345', '1h')
+        result = pm.load_preset('NONEXISTENT_SYMBOL_12345')
         if result is None:
             RESULTS['errors']['passed'] += 1
             print("  ✅ 없는 프리셋 None 반환")

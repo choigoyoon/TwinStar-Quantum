@@ -7,7 +7,7 @@ import re
 import ast
 from pathlib import Path
 
-BASE = Path(rstr(Path(__file__).parent))
+BASE = Path(__file__).parent
 DIRS = ['core', 'GUI', 'exchanges', 'utils']
 
 def get_imports(content):

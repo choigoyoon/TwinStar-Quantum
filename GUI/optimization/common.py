@@ -5,6 +5,16 @@ import sys
 import os
 import logging
 
+# PyQt6 imports
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTabWidget, QDoubleSpinBox, QCheckBox, QGroupBox,
+    QProgressBar, QTableWidget, QTableWidgetItem, QHeaderView,
+    QComboBox, QSpinBox, QMessageBox, QFileDialog
+)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QColor
+
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +42,7 @@ except ImportError:
 
 # Paths
 try:
-    from paths import Paths
+    from paths import Paths # type: ignore
 except ImportError:
     class Paths:
         BASE = os.getcwd()

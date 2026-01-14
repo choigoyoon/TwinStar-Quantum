@@ -123,7 +123,7 @@ def main():
         from tools.realtime_simulator import RealtimeSimulator
         
         sim = RealtimeSimulator(parquet_path, "default")
-        sim.df = df  # 이미 로드한 데이터 사용
+        sim.df_15m = df  # 이미 로드한 데이터 사용 (df_15m is the correct attribute)
         sim.load_preset()
         
         # 시뮬레이션 실행 (조용한 모드)

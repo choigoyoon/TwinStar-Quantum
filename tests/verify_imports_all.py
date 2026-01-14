@@ -8,7 +8,7 @@ from pathlib import Path
 from collections import defaultdict
 
 # Setup Paths
-PROJECT_ROOT = Path(rstr(Path(__file__).parent))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 DIRS_TO_CHECK = ['core', 'GUI', 'utils']

@@ -143,7 +143,7 @@ class BotStatusWidget(QFrame):
     
     def _refresh(self):
         """상태 새로고침"""
-        if load_bot_status is None:
+        if load_bot_status is None or get_bot_state_text is None:
             self.status_label.setText("Status unavailable")
             return
         

@@ -12,8 +12,30 @@ logger = logging.getLogger(__name__)
 import itertools
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Any, cast
 from dataclasses import dataclass
+
+def optimize_strategy(symbol: str, timeframe: str, exchange: str = 'bybit') -> Optional[dict]:
+    """배치 최적화에서 사용하는 래퍼 함수 (BatchOptimizer 호환)"""
+    # Circular import 방지를 위해 내부에서 임포트
+    from core.strategy_core import AlphaX7Core
+    from core.data_manager import BotDataManager
+    
+    dm = BotDataManager(exchange, symbol, {'entry_tf': timeframe})
+    if dm.load_historical() and dm.df_entry_full is not None:
+        opt = BacktestOptimizer(AlphaX7Core, dm.df_entry_full)
+        grid = generate_fast_grid(timeframe)
+        results = opt.run_optimization(dm.df_entry_full, grid)
+        if results:
+            best = results[0]
+            return {
+                'win_rate': best.win_rate,
+                'profit_factor': best.profit_factor,
+                'max_drawdown': best.max_drawdown,
+                'total_trades': best.trades,
+                'best_params': best.params
+            }
+    return None
 
 import sys
 import os
@@ -23,18 +45,10 @@ from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
 # TF_MAPPING, TF_RESAMPLE_MAP import
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'GUI'))
-try:
-    from constants import TF_MAPPING, TF_RESAMPLE_MAP, DEFAULT_PARAMS
-    from utils.data_utils import resample_data as shared_resample
-except ImportError:
-    TF_MAPPING = {'1h': '15min', '4h': '1h', '1d': '4h', '1w': '1d'}
-    TF_RESAMPLE_MAP = {
-        '15min': '15min', '15m': '15min', '30min': '30min', '30m': '30min',
-        '1h': '1h', '1H': '1h', '4h': '4h', '4H': '4h', '1d': '1D', '1D': '1D', '1w': '1W', '1W': '1W'
-    }
-    DEFAULT_PARAMS = {'atr_mult': 1.25, 'slippage': 0.0005, 'fee': 0.00055}
-    shared_resample = None  # fallback
+# 상수 및 유틸리티 임포트 (Phase 3 SSOT)
+from config.constants import TF_MAPPING, TF_RESAMPLE_MAP
+from config.parameters import DEFAULT_PARAMS
+from utils.data_utils import resample_data as shared_resample
 
 
 # ==================== 최적화 상수 ====================
@@ -199,18 +213,18 @@ def generate_fast_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
     return grid
 
 
-def estimate_combinations(param_grid: Dict) -> tuple:
+def estimate_combinations(grid: Dict) -> tuple:
     """
     파라미터 조합 수 및 예상 시간 계산
     
     Args:
-        param_grid: 파라미터 grid dict
+        grid: 파라미터 grid dict
     
     Returns:
         (조합수, 예상시간분)
     """
     total = 1
-    for key, values in param_grid.items():
+    for key, values in grid.items():
         if isinstance(values, list):
             total *= len(values)
     
@@ -404,7 +418,7 @@ class BacktestOptimizer:
     
     # TF 매핑은 상단에서 import한 TF_MAPPING 사용
     
-    def __init__(self, strategy_class, df: pd.DataFrame = None):
+    def __init__(self, strategy_class, df: Optional[pd.DataFrame] = None):
         """
         Args:
             strategy_class: X7PlusStrategy 등 전략 클래스
@@ -420,7 +434,7 @@ class BacktestOptimizer:
         """데이터 설정"""
         self.df = df
     
-    def set_progress_callback(self, callback: Callable) -> None:
+    def set_progress_callback(self, callback: Optional[Callable]) -> None:
         """진행률 콜백 설정"""
         self.progress_callback = callback
     
@@ -459,9 +473,9 @@ class BacktestOptimizer:
         if not quiet: logger.info(f"📊 [OPT] 지표 재계산: {target_tf} ({len(resampled)}캔들)")
         return resampled
     
-    def run_optimization(self, df: pd.DataFrame, grid: Dict, max_workers: int = 4, 
-                         metric: str = 'WinRate', task_callback: Callable = None, 
-                         capital_mode: str = 'compound') -> List[OptimizationResult]:
+    def run_optimization(self, df: Optional[pd.DataFrame], grid: Dict, max_workers: int = 4,
+                         metric: str = 'WinRate', task_callback: Optional[Callable] = None,
+                         capital_mode: str = 'compound', n_cores: Optional[int] = None) -> List[OptimizationResult]:
         """그리드 서치 최적화 실행"""
         self.df = df
         self.results = []
@@ -487,8 +501,8 @@ class BacktestOptimizer:
         self._resample_cache = {}
         
         # 모든 파라미터 조합 생성
-        keys = list(param_grid.keys())
-        values = list(param_grid.values())
+        keys = list(grid.keys())
+        values = list(grid.values())
         combinations = list(itertools.product(*values))
         total = len(combinations)
         
@@ -498,8 +512,8 @@ class BacktestOptimizer:
             n_cores = multiprocessing.cpu_count()
         
         # [NEW] 지표 선행 계산 (ThreadPool 경합 방지)
-        all_trend_tfs = set(param_grid.get('trend_interval', []))
-        all_entry_tfs = set(param_grid.get('entry_tf', []))
+        all_trend_tfs = set(grid.get('trend_interval', []))
+        all_entry_tfs = set(grid.get('entry_tf', []))
         
         for tf in all_trend_tfs:
             key = f"p_{tf}"
@@ -544,26 +558,21 @@ class BacktestOptimizer:
                 df_pattern = self._resample_cache.get(f"p_{trend_tf}")
                 df_entry = self._resample_cache.get(f"e_{entry_tf}")
                 
-                # Backtest 실행
-                # [NEW] MultiSymbolBacktest를 사용하여 정밀 테스트
-                from core.multi_symbol_backtest import MultiSymbolBacktest
-                msb = MultiSymbolBacktest(
-                    exchange=params.get('exchange', 'bybit'),
-                    symbols=[symbol],
-                    initial_capital=1000.0,
-                    leverage=leverage,
-                    preset_params=params,
-                    capital_mode=self.capital_mode # [NEW]
-                )
-                
+                # 파라미터에서 값 추출
+                _symbol = params.get('symbol', 'BTCUSDT')
+                _leverage = params.get('leverage', 3)
+                if isinstance(_leverage, list): _leverage = _leverage[0]
+                _slippage = params.get('slippage', DEFAULT_PARAMS.get('slippage', 0.0005))
+                _fee = params.get('fee', DEFAULT_PARAMS.get('fee', 0.00055))
+
                 futures.append(executor.submit(
                     _worker_run_single,
                     self.strategy_class,
                     params,
                     df_pattern,
                     df_entry,
-                    slippage,
-                    fee
+                    _slippage,
+                    _fee
                 ))
             
             for i, future in enumerate(as_completed(futures)):
@@ -624,6 +633,11 @@ class BacktestOptimizer:
     
     def _run_single(self, params: Dict, slippage: float, fee: float = 0.00055) -> Optional[OptimizationResult]:
         """단일 파라미터 조합으로 백테스트 실행"""
+        if self.df is None:
+            return None
+            
+        assert self.df is not None, "self.df cannot be None here"
+        
         try:
             # 파라미터 추출 (리스트일 경우 단일 값으로 변환)
             filter_tf = params.get('filter_tf', '4h')
@@ -793,6 +807,32 @@ class BacktestOptimizer:
             return None
     
     @staticmethod
+    def calculate_mdd(equity_curve: List[float]) -> float:
+        """
+        Equity Curve에서 MDD 계산
+        Args:
+            equity_curve: 자산 곡선 (List[float])
+        Returns:
+            MDD (%)
+        """
+        if not equity_curve:
+            return 0.0
+            
+        peak = equity_curve[0]
+        max_drawdown = 0.0
+        
+        for val in equity_curve:
+            if val > peak:
+                peak = val
+            
+            if peak > 1e-9:
+                drawdown = (peak - val) / peak * 100
+                if drawdown > max_drawdown:
+                    max_drawdown = drawdown
+                    
+        return min(max_drawdown, 100.0)
+
+    @staticmethod
     def calculate_metrics(trades: List[Dict]) -> Dict:
         """
         거래 결과에서 메트릭 계산 (통합 정적 메서드)
@@ -888,13 +928,22 @@ class BacktestOptimizer:
                 
                 if hasattr(first_entry, 'astype'):  # numpy datetime64
                     first_entry = pd.Timestamp(first_entry)
-                    last_entry = pd.Timestamp(last_entry)
-                
+                    last_entry_ts = pd.Timestamp(last_entry)
+                    # NaT 체크
+                    if isinstance(last_entry_ts, type(pd.NaT)):
+                        raise ValueError("last_entry is NaT")
+                    last_entry = last_entry_ts
+
                 if isinstance(first_entry, (pd.Timestamp, np.datetime64)):
-                    total_days = max((pd.Timestamp(last_entry) - pd.Timestamp(first_entry)).days, 1)
+                    first_ts = pd.Timestamp(first_entry)
+                    last_ts = pd.Timestamp(last_entry)
+                    # NaT 체크
+                    if isinstance(first_ts, type(pd.NaT)) or isinstance(last_ts, type(pd.NaT)):
+                        raise ValueError("Timestamp is NaT")
+                    total_days = max((last_ts - first_ts).days, 1)  # type: ignore[operator]
                 else:
                     # index 기반 (대략 1시간봉 기준 24캔들 = 1일)
-                    total_days = max((last_entry - first_entry) / 24, 1)
+                    total_days = max((last_entry - first_entry) / 24, 1)  # type: ignore[operator]
                 
                 avg_trades_per_day = round(len(trades) / total_days, 2)
             except Exception:
@@ -1067,7 +1116,7 @@ class BacktestOptimizer:
         
         return new_grid
 
-    def filter_unique_results(self, results: List[OptimizationResult] = None, 
+    def filter_unique_results(self, results: Optional[List[OptimizationResult]] = None, 
                               max_count: int = 30) -> List[OptimizationResult]:
         """
         중복/유사 결과 제거 + 상위 N개 선택
@@ -1182,7 +1231,7 @@ if __name__ == "__main__":
             grid = generate_fast_grid('1h')
             
             logger.info(f"🚀 [Stage 1] Fast Grid Search Starting...")
-            results = optimizer.optimize(grid, metric='sharpe_ratio')
+            results = optimizer.run_optimization(df, grid, metric='sharpe_ratio')
             logger.info(f"✅ Found {len(results)} combinations.")
             
             # 2. 분석 및 범위 축소 (신규 기능 테스트)
@@ -1192,7 +1241,7 @@ if __name__ == "__main__":
             if refined_grid:
                 logger.info(f"✨ [Analysis] Refined Grid calculated: {refined_grid}")
                 logger.info(f"🚀 [Stage 2] Iterative Scan Starting...")
-                refined_results = optimizer.optimize(refined_grid, metric='sharpe_ratio')
+                refined_results = optimizer.run_optimization(df, refined_grid, metric='sharpe_ratio')
                 logger.info(f"🏆 Final Best Results: {len(refined_results)}")
                 
                 for res in refined_results[:5]:

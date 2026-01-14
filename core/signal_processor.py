@@ -12,7 +12,11 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from collections import deque
-from typing import Callable
+from typing import Any, Callable, Optional, Dict
+
+# Core 및 Utils (Phase 2)
+from core.strategy_core import AlphaX7Core
+from utils.indicators import calculate_rsi as calc_rsi
 
 # Logging
 from utils.logger import get_module_logger
@@ -33,8 +37,8 @@ class SignalProcessor:
     DEFAULT_PATTERN_TOLERANCE = 0.03
     
     def __init__(
-        self, 
-        strategy_params: dict = None,
+        self,
+        strategy_params: Optional[Dict[str, Any]] = None,
         direction: str = 'Both',
         maxlen: int = 100
     ):
@@ -55,24 +59,23 @@ class SignalProcessor:
         self._strategy_core = None
         
         # 파라미터 캐시 (성능 최적화)
-        self._validity_hours = self.strategy_params.get(
+        self._validity_hours: float = float(self.strategy_params.get(
             'entry_validity_hours', self.DEFAULT_VALIDITY_HOURS
-        )
-        self._pattern_tolerance = self.strategy_params.get(
+        ))
+        self._pattern_tolerance: float = float(self.strategy_params.get(
             'pattern_tolerance', self.DEFAULT_PATTERN_TOLERANCE
-        )
+        ))
     
     @property
     def strategy(self):
-        """AlphaX7Core 지연 로드"""
+        """AlphaX7Core 반환 (Phase 2 정적 임포트)"""
         if self._strategy_core is None:
-            from .strategy_core import AlphaX7Core
             self._strategy_core = AlphaX7Core(use_mtf=True)
         return self._strategy_core
     
     # ========== 시그널 필터링 ==========
     
-    def filter_valid_signals(self, signals: list, validity_hours: float = None) -> list:
+    def filter_valid_signals(self, signals: list, validity_hours: Optional[float] = None) -> list:
         """
         유효 시간 내 신호만 필터링
         
@@ -123,7 +126,7 @@ class SignalProcessor:
     
     # ========== 시그널 큐 관리 ==========
     
-    def add_signal(self, signal: dict, save_callback: Callable = None) -> bool:
+    def add_signal(self, signal: dict, save_callback: Optional[Callable[[], None]] = None) -> bool:
         """
         시그널을 큐에 추가 (유효성 체크 후)
         
@@ -178,17 +181,29 @@ class SignalProcessor:
         """
         if df_pattern is None or len(df_pattern) < 50:
             return 0
-        
+
         try:
-            current_time = pd.Timestamp(df_pattern.iloc[-1]['timestamp'])
-            
+            # timestamp 추출 및 NaT 체크
+            raw_ts = df_pattern.iloc[-1]['timestamp']
+            if raw_ts is None or (hasattr(raw_ts, '__class__') and raw_ts.__class__.__name__ == 'NaTType'):
+                logger.warning("[SignalProcessor] 패턴 데이터의 timestamp가 NaT입니다")
+                return 0
+            if isinstance(raw_ts, float) and np.isnan(raw_ts):
+                logger.warning("[SignalProcessor] 패턴 데이터의 timestamp가 NaN입니다")
+                return 0
+
+            current_time = pd.Timestamp(raw_ts)
+            if current_time is pd.NaT:
+                logger.warning("[SignalProcessor] timestamp 변환 결과가 NaT입니다")
+                return 0
+
             # 마지막 체크 시간 초기화
             if self.last_pattern_check_time is None:
                 self.last_pattern_check_time = current_time - timedelta(hours=self._validity_hours)
-            
+
             # 마지막 캔들이 확정되었는지 확인
             now_utc = datetime.utcnow()
-            last_candle_time = pd.Timestamp(df_pattern.iloc[-1]['timestamp'])
+            last_candle_time = current_time  # 이미 위에서 변환 및 검증됨
             is_candle_closed = (now_utc - last_candle_time.to_pydatetime()).total_seconds() >= (pattern_tf_minutes * 60)
             
             # 확정된 봉만 사용
@@ -214,20 +229,35 @@ class SignalProcessor:
             new_count = 0
             for s in all_signals:
                 signal_time = pd.Timestamp(s['time'])
-                
+
+                # NaT 체크: signal_time이 유효하지 않으면 건너뛰기
+                if signal_time is pd.NaT:
+                    continue
+
+                # last_pattern_check_time NaT 체크
+                if isinstance(self.last_pattern_check_time, type(pd.NaT)):
+                    continue
+
                 # [FIX] Allow signals >= last_check_time (handle retroactive confirmation)
-                if signal_time >= self.last_pattern_check_time:
-                    expire_time = signal_time + timedelta(hours=self._validity_hours)
-                    
-                    if expire_time > current_time:
-                        s['expire_time'] = expire_time
-                        
-                        # 중복 체크 후 추가
-                        sig_key = f"{s.get('time', '')}_{s.get('type', '')}"
-                        existing_keys = {f"{p.get('time', '')}_{p.get('type', '')}" for p in self.pending_signals}
-                        
-                        if sig_key not in existing_keys:
-                            self.pending_signals.append(s)
+                # Timestamp 비교 시 NaT 체크
+                if not isinstance(signal_time, type(pd.NaT)) and not isinstance(self.last_pattern_check_time, type(pd.NaT)):
+                    # type: ignore를 사용하여 Pyright의 NaT 비교 경고 무시
+                    if signal_time >= self.last_pattern_check_time:  # type: ignore[operator]
+                        expire_time = signal_time + timedelta(hours=self._validity_hours)
+
+                        # expire_time NaT 체크
+                        if isinstance(expire_time, type(pd.NaT)):
+                            continue
+
+                        if not isinstance(current_time, type(pd.NaT)) and expire_time > current_time:  # type: ignore[operator]
+                            s['expire_time'] = expire_time
+
+                            # 중복 체크 후 추가
+                            sig_key = f"{s.get('time', '')}_{s.get('type', '')}"
+                            existing_keys = {f"{p.get('time', '')}_{p.get('type', '')}" for p in self.pending_signals}
+
+                            if sig_key not in existing_keys:
+                                self.pending_signals.append(s)
                             new_count += 1
             
             # 마지막 체크 시간 갱신
@@ -266,7 +296,7 @@ class SignalProcessor:
         self,
         df_pattern: pd.DataFrame,
         df_entry: pd.DataFrame,
-        bt_state: dict = None,
+        bt_state: Optional[Dict[str, Any]] = None,
         calculate_rsi_inline: bool = True
     ) -> dict:
         """
@@ -314,18 +344,20 @@ class SignalProcessor:
                 # RSI NaN 시 즉시 계산
                 if calculate_rsi_inline and (np.isnan(rsi) or rsi == 50.0):
                     try:
-                        from utils.indicators import calculate_rsi as calc_rsi
-                        rsi = calc_rsi(df_entry['close'].values, period=params.get('rsi_period', 14))
+                        close_values = np.asarray(df_entry['close'].values)
+                        rsi_period = int(params.get('rsi_period', 14))
+                        rsi = calc_rsi(close_values, period=rsi_period)
                     except Exception:
                         pass
                 
-                pullback_long = params.get('pullback_rsi_long', 45)
-                pullback_short = params.get('pullback_rsi_short', 55)
+                pullback_long = float(params.get('pullback_rsi_long', 45))
+                pullback_short = float(params.get('pullback_rsi_short', 55))
                 rsi_long_met = rsi < pullback_long
                 rsi_short_met = rsi > pullback_short
             
             # 3. MTF 트렌드 확인
-            trend = self.strategy.get_filter_trend(df_pattern, filter_tf=params.get('filter_tf', '4h'))
+            filter_tf_val = str(params.get('filter_tf', '4h'))
+            trend = self.strategy.get_filter_trend(df_pattern, filter_tf=filter_tf_val)
             
             mtf_long_met = trend in ('up', 'neutral', None)
             mtf_short_met = trend in ('down', 'neutral', None)

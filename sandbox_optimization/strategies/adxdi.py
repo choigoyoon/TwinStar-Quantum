@@ -23,7 +23,7 @@ ADX/DI 전략 모듈
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Any, cast, Optional
 
 from ..base import BaseStrategy
 
@@ -73,7 +73,7 @@ class ADXDIStrategy(BaseStrategy):
             if plus_di[i-1] < minus_di[i-1] and plus_di[i] > minus_di[i]:
                 window_start = max(0, i-10)
                 window_low = low[window_start:i+1]
-                trough_idx = window_start + np.argmin(window_low)
+                trough_idx = window_start + np.argmin(cast(Any, window_low))
                 hl_points.append({
                     'type': 'L', 
                     'idx': trough_idx,
@@ -86,7 +86,7 @@ class ADXDIStrategy(BaseStrategy):
             if minus_di[i-1] < plus_di[i-1] and minus_di[i] > plus_di[i]:
                 window_start = max(0, i-10)
                 window_high = high[window_start:i+1]
-                peak_idx = window_start + np.argmax(window_high)
+                peak_idx = window_start + np.argmax(cast(Any, window_high))
                 hl_points.append({
                     'type': 'H', 
                     'idx': peak_idx,
@@ -141,7 +141,7 @@ class ADXDIStrategy(BaseStrategy):
 # =============================================================================
 def run_adxdi_backtest(
     df: pd.DataFrame,
-    params: Dict = None,
+    params: Optional[Dict] = None,
     timeframe: str = '2h',
     apply_filters: bool = True,
 ) -> Dict:

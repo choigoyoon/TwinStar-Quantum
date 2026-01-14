@@ -9,6 +9,7 @@ import sys
 import os
 from pathlib import Path
 import logging
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -90,7 +91,7 @@ def run_strategy_selector_tests():
                 self.version = "1.0"
                 self.author = "Test"
         
-        card = StrategyCard(MockInfo())
+        card = StrategyCard(cast(Any, MockInfo()))
         result.ok("인스턴스 생성", card is not None)
         
         # 메서드 확인

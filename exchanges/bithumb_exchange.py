@@ -7,10 +7,12 @@
 - 특이사항: 레버리지 없음, SL은 로컬 관리
 """
 
+import time
 import logging
 import pandas as pd
+from typing import Any, cast
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any, Dict, Union
 
 from .base_exchange import BaseExchange, Position
 
@@ -40,17 +42,15 @@ except ImportError:
 
 class BithumbExchange(BaseExchange):
     """빗썸 거래소 어댑터 (현물 전용)"""
-    
+
     @property
-
-    def fetchTime(self):
-        """Bithumb는 시간 API 미지원 - 로컬 시간 반환"""
-        import time
-        return int(time.time() * 1000)
-
     def name(self) -> str:
         return "Bithumb"
-    
+
+    def fetchTime(self) -> int:
+        """Bithumb는 시간 API 미지원 - 로컬 시간 반환"""
+        return int(time.time() * 1000)
+
     def sync_time(self) -> bool:
         """Bithumb은 fetchTime 미지원 → 스킵 (로컬 시간 사용)"""
         self.time_offset = 0
@@ -59,9 +59,8 @@ class BithumbExchange(BaseExchange):
 
     def get_server_time(self) -> int:
         """로컬 시간 반환 (ms)"""
-        import time
         return int(time.time() * 1000)
-    
+
     def __init__(self, config: dict):
         super().__init__(config)
         
@@ -71,11 +70,11 @@ class BithumbExchange(BaseExchange):
         
         self.api_key = config.get('api_key', '')
         self.api_secret = config.get('api_secret', '')
-        self.bithumb = None
+        self.bithumb: Optional[Any] = None
         self.use_ccxt = False
         
         # 심볼 변환 (BTCUSDT -> BTC)
-        raw_symbol = config.get('symbol', 'BTCUSDT')
+        raw_symbol = str(config.get('symbol', 'BTCUSDT') or 'BTCUSDT')
         self.symbol = self._normalize_symbol(raw_symbol)
         self.coin = self.symbol  # 코인 심볼 (BTC, ETH 등)
     
@@ -97,12 +96,12 @@ class BithumbExchange(BaseExchange):
     def _connect_pybithumb(self) -> bool:
         """pybithumb로 연결"""
         try:
-            if self.api_key and self.api_secret:
+            if pybithumb is not None and self.api_key and self.api_secret:
                 self.bithumb = pybithumb.Bithumb(self.api_key, self.api_secret)
                 balance = self.get_balance()
                 logging.info(f"Bithumb connected (pybithumb). KRW Balance: {balance:,.0f}원")
             else:
-                logging.info("Bithumb connected (read-only mode)")
+                logging.info("Bithumb connected (read-only mode or missing pybithumb)")
             return True
             
         except Exception as e:
@@ -112,13 +111,16 @@ class BithumbExchange(BaseExchange):
     def _connect_ccxt(self) -> bool:
         """ccxt로 연결"""
         try:
+            if ccxt is None:
+                return False
             self.bithumb = ccxt.bithumb({
                 'apiKey': self.api_key,
                 'secret': self.api_secret,
                 'enableRateLimit': True,
             })
             self.use_ccxt = True
-            self.bithumb.load_markets()
+            if self.bithumb:
+                self.bithumb.load_markets()
             logging.info("Bithumb connected (ccxt)")
             return True
             
@@ -126,7 +128,8 @@ class BithumbExchange(BaseExchange):
             logging.error(f"Bithumb ccxt connect error: {e}")
             return False
     
-    def get_klines(self, symbol=None, interval: str = '15m', limit: int = 500) -> list:
+    def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
+        symbol = self.symbol
         """
         빗썸 캔들 데이터 조회
         - 업비트 데이터를 마스터로 사용
@@ -178,7 +181,7 @@ class BithumbExchange(BaseExchange):
                     
                     all_candles.sort(key=lambda x: x['timestamp'])
                     logging.info(f"[Bithumb] Loaded {len(all_candles)} candles from Upbit (master)")
-                    return all_candles
+                    return pd.DataFrame(all_candles)
                     
                 except Exception as e:
                     logging.warning(f"[Bithumb] Upbit fallback failed: {e}, using native API")
@@ -188,7 +191,7 @@ class BithumbExchange(BaseExchange):
             
         except Exception as e:
             logging.error(f"[Bithumb] get_klines error: {e}")
-            return []
+            return None
 
     def _convert_to_upbit_symbol(self, symbol):
         """빗썸 심볼 → 업비트 심볼 변환"""
@@ -230,7 +233,7 @@ class BithumbExchange(BaseExchange):
             data = response.json()
             
             if data.get('status') != '0000':
-                return []
+                return None
             
             candles = data.get('data', [])[-limit:]
             
@@ -246,11 +249,11 @@ class BithumbExchange(BaseExchange):
                 })
             
             logging.info(f"[Bithumb] Loaded {len(result)} candles (native, max 3000)")
-            return result
+            return pd.DataFrame(result)
             
         except Exception as e:
             logging.error(f"[Bithumb] native API error: {e}")
-            return []
+            return None
     
     def _get_klines_pybithumb(self, interval: str, limit: int) -> Optional[pd.DataFrame]:
         """pybithumb로 캔들 조회"""
@@ -260,6 +263,8 @@ class BithumbExchange(BaseExchange):
         }
         chart_interval = interval_map.get(interval, '1h')
         
+        if pybithumb is None:
+            return None
         df = pybithumb.get_candlestick(self.coin, chart_intervals=chart_interval)
         
         if df is None or len(df) == 0:
@@ -268,8 +273,12 @@ class BithumbExchange(BaseExchange):
         df = df.reset_index()
         df = df.rename(columns={'time': 'timestamp'})
         # df = df.tail(limit)  # [REMOVED] 전체 데이터 반환
-        
-        return df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+
+        result = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+        # Series가 반환될 수 있으므로 DataFrame으로 캐스팅
+        if isinstance(result, pd.Series):
+            return None
+        return cast(pd.DataFrame, result)
     
     def _get_klines_ccxt(self, interval: str, limit: int) -> Optional[pd.DataFrame]:
         """ccxt로 캔들 조회"""
@@ -277,9 +286,11 @@ class BithumbExchange(BaseExchange):
         timeframe = tf_map.get(interval, '1h')
         
         symbol = f"{self.coin}/KRW"
+        if self.bithumb is None:
+            return None
         ohlcv = self.bithumb.fetch_ohlcv(symbol, timeframe, limit=limit)
         
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         
         return df
@@ -287,17 +298,23 @@ class BithumbExchange(BaseExchange):
     def get_current_price(self) -> float:
         """현재 가격"""
         try:
+            if self.bithumb is None:
+                return 0.0
             if self.use_ccxt:
+                assert self.bithumb is not None, "Bithumb client must be initialized for CCXT"
                 symbol = f"{self.coin}/KRW"
                 ticker = self.bithumb.fetch_ticker(symbol)
-                return float(ticker['last'])
+                return float(ticker.get('last', 0) or 0)
             else:
-                return pybithumb.get_current_price(self.coin)
+                if pybithumb is None:
+                    return 0.0
+                price = pybithumb.get_current_price(self.coin)
+                return float(price) if price is not None else 0.0
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
-            return 0
+            return 0.0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """시장가 주문"""
         try:
             if self.bithumb is None:
@@ -315,8 +332,10 @@ class BithumbExchange(BaseExchange):
             logging.error(f"[Bithumb] Order error: {e}")
             return False
     
-    def _place_order_pybithumb(self, side: str, size: float, stop_loss: float, price: float) -> bool:
+    def _place_order_pybithumb(self, side: str, size: float, stop_loss: float, price: float) -> Union[bool, dict]:
         """pybithumb로 주문"""
+        if self.bithumb is None:
+            return False
         if side == 'Long':
             result = self.bithumb.buy_market_order(self.coin, size)
         else:
@@ -337,16 +356,19 @@ class BithumbExchange(BaseExchange):
                 order_id=order_id
             )
             logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
-            return order_id
+            return {'id': order_id, 'symbol': self.symbol, 'side': side, 'price': price, 'amount': size}
         
         logging.error(f"[Bithumb] Order failed: {result}")
         return False
     
-    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, price: float) -> bool:
+    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, price: float) -> Union[bool, dict]:
         """ccxt로 주문"""
         symbol = f"{self.coin}/KRW"
         order_side = 'buy' if side == 'Long' else 'sell'
         
+        if self.bithumb is None:
+            return False
+            
         order = self.bithumb.create_order(
             symbol=symbol,
             type='market',
@@ -369,7 +391,7 @@ class BithumbExchange(BaseExchange):
                 order_id=order_id
             )
             logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
-            return order_id
+            return {'id': order_id, 'symbol': self.symbol, 'side': side, 'price': price, 'amount': size}
         
         return False
     
@@ -395,9 +417,11 @@ class BithumbExchange(BaseExchange):
             if balance > 0:
                 if self.use_ccxt:
                     symbol = f"{self.coin}/KRW"
-                    self.bithumb.create_order(symbol, 'market', 'sell', balance)
+                    if self.bithumb:
+                        self.bithumb.create_order(symbol, 'market', 'sell', balance)
                 else:
-                    self.bithumb.sell_market_order(self.coin, balance)
+                    if self.bithumb:
+                        self.bithumb.sell_market_order(self.coin, balance)
                 
                 price = self.get_current_price()
                 pnl = (price - self.position.entry_price) / self.position.entry_price * 100
@@ -422,8 +446,10 @@ class BithumbExchange(BaseExchange):
             if self.use_ccxt:
                 symbol = f"{self.coin}/KRW"
                 order_side = 'buy' if side == 'Long' else 'sell'
+                if self.bithumb is None: return False
                 result = self.bithumb.create_order(symbol, 'market', order_side, size)
             else:
+                if self.bithumb is None: return False
                 if side == 'Long':
                     result = self.bithumb.buy_market_order(self.coin, size)
                 else:
@@ -444,7 +470,7 @@ class BithumbExchange(BaseExchange):
                 self.position.order_id = order_id
                 
                 logging.info(f"[Bithumb] Added: {size} @ {price:,.0f}원 (ID: {order_id})")
-                return order_id
+                return True
             
             return False
             
@@ -517,7 +543,7 @@ class BithumbExchange(BaseExchange):
             logging.error(f"포지션 조회 에러: {e}")
             return None
 
-    def get_realized_pnl(self, symbol: str = None) -> float:
+    def get_realized_pnl(self, limit: int = 100) -> float:
         """현물은 API 미지원 - 0 반환"""
         return 0.0
     
@@ -564,12 +590,10 @@ class BithumbExchange(BaseExchange):
             import asyncio
             asyncio.create_task(self.ws_handler.connect())
             
-            import logging
-            logging.info(f"[Bithumb] WebSocket connected: {{self.symbol}}")
+            logging.info(f"[Bithumb] WebSocket connected: {self.symbol}")
             return True
         except Exception as e:
-            import logging
-            logging.error(f"[Bithumb] WebSocket failed: {{e}}")
+            logging.error(f"[Bithumb] WebSocket failed: {e}")
             return False
     
     def stop_websocket(self):
@@ -585,53 +609,30 @@ class BithumbExchange(BaseExchange):
         return await self.start_websocket()
     
     def _auto_sync_time(self):
-        """API 호출 전 자동 시간 동기화 (5분마다)"""
-        import time
-        if not hasattr(self, '_last_sync'):
-            self._last_sync = 0
-        
-        if time.time() - self._last_sync > 300:
-            self.sync_time()
-            self._last_sync = time.time()
-    
-    def sync_time(self):
-        """서버 시간 동기화"""
-        import time
-        import logging
-        try:
-            # ccxt 기반 거래소의 경우
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                server_time = self.exchange.fetch_time()
-                local_time = int(time.time() * 1000)
-                self.time_offset = local_time - server_time
-                logging.debug(f"[Bithumb] Time synced: offset={{self.time_offset}}ms")
-                return True
-        except Exception as e:
-            logging.debug(f"[Bithumb] Time sync failed: {{e}}")
-        self.time_offset = 0
-        return False
-    
-    def fetchTime(self):
-        """서버 시간 조회"""
-        import time
-        try:
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                return self.exchange.fetch_time()
-        except Exception as e:
-            logging.debug(f"WS close ignored: {e}")
-        return int(time.time() * 1000)
+        """API 호출 전 자동 시간 동기화 (Bithumb는 스킵)"""
+        pass  # Bithumb는 시간 동기화 불필요
+
+    def _convert_symbol(self, symbol: str) -> str:
+        """심볼 변환 (BTC -> BTC/KRW)"""
+        if '/' in symbol:
+            return symbol
+        if '_' in symbol:
+            base = symbol.split('_')[0]
+            return f"{base}/KRW"
+        return f"{symbol}/KRW"
 
     # ========== [NEW] 매매 히스토리 API ==========
-    
+
     def get_trade_history(self, limit: int = 50) -> list:
         """API로 청산된 거래 히스토리 조회 (Bithumb/CCXT)"""
         try:
-            if not self.exchange:
+            # Bithumb은 self.bithumb 사용 (ccxt일 때만 fetch_my_trades 가능)
+            if not self.use_ccxt or not self.bithumb:
                 return super().get_trade_history(limit)
-            
+
             symbol = self._convert_symbol(self.symbol)
-            raw_trades = self.exchange.fetch_my_trades(symbol, limit=limit)
-            
+            raw_trades = self.bithumb.fetch_my_trades(symbol, limit=limit)
+
             trades = []
             for t in raw_trades:
                 trades.append({
@@ -644,10 +645,10 @@ class BithumbExchange(BaseExchange):
                     'created_time': str(t.get('timestamp', '')),
                     'updated_time': str(t.get('timestamp', ''))
                 })
-            
+
             logging.info(f"[Bithumb] Trade history loaded: {len(trades)} trades")
             return trades
-            
+
         except Exception as e:
             logging.warning(f"[Bithumb] Trade history error: {e}")
             return super().get_trade_history(limit)

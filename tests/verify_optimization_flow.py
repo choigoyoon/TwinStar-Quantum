@@ -8,6 +8,7 @@ import unittest
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from typing import Any, cast
 
 # Path setup
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -34,6 +35,8 @@ class TestOptimizationFlow(unittest.TestCase):
         
         # 1. Symbol Loading
         fetched = self.optimizer.fetch_symbols()
+        if fetched is None:
+            fetched = []
         print(f"✅ Symbol Load: {len(fetched)} symbols loaded ({fetched})")
         self.assertEqual(len(fetched), 3)
         
@@ -43,7 +46,8 @@ class TestOptimizationFlow(unittest.TestCase):
         for sym in self.test_symbols:
             res = self.optimizer.optimize_symbol(sym, '1h')
             results[sym] = res
-            print(f"  - Optimized {sym}: WR={res['win_rate']}%, Grade={res['grade']}")
+            if res:
+                print(f"  - Optimized {sym}: WR={res['win_rate']}%, Grade={res['grade']}")
             
         self.assertEqual(len(results), 3)
         print("✅ Batch Execution Complete")

@@ -33,7 +33,7 @@ class AutoUpdater:
             response = requests.get(self.UPDATE_URL, timeout=5)
             if response.status_code == 200:
                 self.latest_info = response.json()
-                latest_version = self.latest_info.get('version', '1.0.0')
+                latest_version = self.latest_info.get('version', '1.0.0') if self.latest_info else '1.0.0'
                 
                 needs_update = self._compare_versions(self.current_version, latest_version)
                 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     updater = AutoUpdater("v1.7.0")
     # 실제 서버가 없으므로 로컬 테스트 시에는 URL을 모킹하거나 예외 처리됨
     needs_update, info = updater.check_for_updates()
-    if needs_update:
+    if needs_update and info:
         logger.info(f"새 버전 발견: {info['version']}")
         logger.info(f"다운로드: {updater.get_download_url()}")
     else:

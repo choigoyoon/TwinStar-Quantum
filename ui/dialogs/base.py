@@ -7,28 +7,33 @@ TwinStar Quantum - Base Dialog
 
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import Qt
+from typing import Any
 
 # 디자인 시스템
 try:
     from ui.design_system import Colors, Typography, Spacing, Radius
     from ui.design_system.styles import ButtonStyles
 except ImportError:
-    class Colors:
+    class _Colors:
         bg_surface = "#161b22"
         bg_base = "#0d1117"
         border_default = "#30363d"
         text_primary = "#f0f6fc"
         text_secondary = "#8b949e"
         accent_primary = "#00d4aa"
-    class Typography:
+    class _Typography:
         text_xl = "18px"
         text_base = "14px"
         font_semibold = 600
-    class Spacing:
+    class _Spacing:
         space_4 = "16px"
         space_6 = "24px"
-    class Radius:
+    class _Radius:
         radius_lg = "12px"
+    Colors: Any = _Colors
+    Typography: Any = _Typography
+    Spacing: Any = _Spacing
+    Radius: Any = _Radius
     ButtonStyles = None
 
 
@@ -195,7 +200,9 @@ class BaseDialog(QDialog):
         """콘텐츠 위젯 설정"""
         while self.content_layout.count():
             item = self.content_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is not None:
+                w = item.widget()
+                if w is not None:
+                    w.deleteLater()
         
         self.content_layout.addWidget(widget)

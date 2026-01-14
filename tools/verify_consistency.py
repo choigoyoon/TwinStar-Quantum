@@ -4,8 +4,11 @@
 import sys
 import os
 import re
-sys.path.insert(0, rstr(Path(__file__).parent))
-os.chdir(rstr(Path(__file__).parent))
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+os.chdir(PROJECT_ROOT)
 
 print('=' * 70)
 print('=== 계산식 일치 검증 결과 ===')

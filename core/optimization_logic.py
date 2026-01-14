@@ -1,7 +1,9 @@
-from typing import Dict, List, Optional, Callable
+from __future__ import annotations
+from typing import Dict, List, Optional, Callable, Any, TYPE_CHECKING
 from dataclasses import dataclass
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import pandas as pd
 
 try:
     from config.parameters import PARAM_RANGES, DEFAULT_PARAMS
@@ -13,7 +15,7 @@ except ImportError:
 try:
     from core.strategy_core import AlphaX7Core
 except ImportError:
-    AlphaX7Core = None
+    AlphaX7Core: Any = None
 
 logger = logging.getLogger(__name__)
 
@@ -328,16 +330,16 @@ class OptimizationEngine:
     
     def __init__(
         self,
-        strategy: AlphaX7Core = None,
-        param_ranges: Dict = None,
-        progress_callback: Callable[[int, int], None] = None
+        strategy: Any = None,
+        param_ranges: Optional[Dict] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None
     ):
         self.strategy = strategy or (AlphaX7Core() if AlphaX7Core else None)
         self.param_ranges = param_ranges or PARAM_RANGES
         self.progress_callback = progress_callback
         self._stop_requested = False
-    
-    def generate_param_grid(self, selected_params: List[str] = None) -> List[Dict]:
+
+    def generate_param_grid(self, selected_params: Optional[List[str]] = None) -> List[Dict]:
         """파라미터 그리드 생성"""
         import itertools
         import numpy as np
@@ -494,7 +496,7 @@ class OptimizationEngine:
         df,
         param_grid: List[Dict],
         max_workers: int = 4,
-        task_callback: Callable[[OptimizationResult], None] = None,
+        task_callback: Optional[Callable[[OptimizationResult], None]] = None,
         capital_mode: str = 'COMPOUND'
     ) -> List[OptimizationResult]:
         """전체 최적화 실행"""
@@ -576,15 +578,16 @@ class OptimizationEngine:
         self,
         results: List[OptimizationResult],
         sort_by: str = 'total_return',
-        top_n: int = 10
+        top_n: int = 10,
+        capital_mode: str = 'COMPOUND'
     ) -> List[OptimizationResult]:
         """최적 파라미터 정렬"""
         if not results:
             return []
-        
+
         # sort_by mapping
         key_map = {
-            'Return': 'compound_return' if kwargs.get('capital_mode', '').upper() == 'COMPOUND' else 'simple_return',
+            'Return': 'compound_return' if capital_mode.upper() == 'COMPOUND' else 'simple_return',
             'WinRate': 'win_rate',
             'Sharpe': 'sharpe_ratio',
             'MDD': 'max_drawdown',
@@ -602,10 +605,10 @@ class OptimizationEngine:
     
     def run_staged_optimization(
         self,
-        df,
+        df: pd.DataFrame,
         target_mdd: float = 20.0,
         max_workers: int = 4,
-        stage_callback: Callable[[int, str, dict], None] = None,
+        stage_callback: Optional[Callable[[int, str, Optional[dict]], None]] = None,
         mode: str = 'standard',
         capital_mode: str = 'COMPOUND'
     ) -> Dict:

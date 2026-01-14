@@ -24,6 +24,7 @@ from unittest.mock import MagicMock, patch, mock_open
 from pathlib import Path
 import sys
 import os
+from typing import Any, cast
 
 # Setup paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -70,6 +71,7 @@ class TestPhase3(unittest.TestCase):
         
         # Test Load
         loaded = manager.load_state()
+        assert loaded is not None
         self.assertEqual(loaded['capital'], 1000)
         self.assertEqual(loaded['exchange'], 'bybit') # Auto-added field
         
@@ -114,7 +116,7 @@ class TestPhase3(unittest.TestCase):
     # =========================================================================
     def test_04_cache_manager(self):
         """[CacheManager] TTL Eviction"""
-        cache = TTLCache(default_ttl=0.1) # 100ms TTL
+        cache = TTLCache(default_ttl=cast(Any, 0.1)) # 100ms TTL
         
         cache.set('key', 'val')
         self.assertEqual(cache.get('key'), 'val')
@@ -213,6 +215,7 @@ class TestPhase3(unittest.TestCase):
         oid = ex.place_market_order('Long', 0.1, 49000)
         self.assertEqual(oid, '12345')
         self.assertIsNotNone(ex.position)
+        assert ex.position is not None
         self.assertEqual(ex.position.entry_price, 50000)
 
 if __name__ == '__main__':

@@ -6,6 +6,8 @@ strategy_core.py의 run_backtest를 직접 사용하여
 import sys
 sys.path.insert(0, 'c:/매매전략')
 import os
+import os
+from typing import Any
 os.chdir('c:/매매전략')
 
 import pandas as pd
@@ -22,13 +24,13 @@ except ImportError:
 try:
     from utils.preset_manager import get_preset_manager
 except ImportError:
-    def get_preset_manager(): return None
+    def get_preset_manager() -> Any: return None
 
 
 class RealtimeSimulator:
     """strategy_core.run_backtest 직접 호출 시뮬레이터"""
     
-    def __init__(self, parquet_path: str, preset_name: str = None):
+    def __init__(self, parquet_path: str, preset_name: str | None = None):
         self.parquet_path = parquet_path
         self.preset_name = preset_name
         self.df_15m = None
@@ -50,8 +52,9 @@ class RealtimeSimulator:
         
         self.df_15m = self.df_15m.sort_values('timestamp').reset_index(drop=True)
         
-        print(f"📁 파일: {os.path.basename(self.parquet_path)}")
-        print(f"📊 봉 수: {len(self.df_15m):,}개")
+        if self.df_15m is not None:
+            print(f"📁 파일: {os.path.basename(self.parquet_path)}")
+            print(f"📊 봉 수: {len(self.df_15m):,}개")
         
         return self
     
@@ -94,6 +97,10 @@ class RealtimeSimulator:
     
     def run(self, start_idx=200, end_idx=None, verbose=True):
         """시뮬레이션 실행 - 봉 1개씩 추가하며 run_backtest 호출"""
+        if self.df_15m is None:
+            print("❌ 데이터가 로드되지 않았습니다.")
+            return []
+            
         df = self.df_15m
         end_idx = end_idx or len(df)
         total = end_idx - start_idx

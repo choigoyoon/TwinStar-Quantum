@@ -11,6 +11,7 @@ import traceback
 import logging
 import warnings
 import multiprocessing
+from typing import Any, cast
 
 # 라이브러리 경고(DeprecationWarning) 및 불필요한 노이즈 억제
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -28,7 +29,7 @@ if sys.platform == 'win32':
 
 # ============ EXE 환경 경로 설정 (가장 먼저!) ============
 if getattr(sys, 'frozen', False):
-    _MEIPASS = sys._MEIPASS
+    _MEIPASS = sys._MEIPASS # type: ignore
     _EXE_DIR = os.path.dirname(sys.executable)
     sys.path.insert(0, _MEIPASS)
     sys.path.insert(0, os.path.join(_MEIPASS, 'GUI'))
@@ -197,7 +198,7 @@ class StarUWindow(QMainWindow):
         # 폰트 시스템 초기화 및 적용
         app = QApplication.instance()
         if app:
-            FontSystem.apply_to_app(app)
+            FontSystem.apply_to_app(cast(Any, app))
         
         # EXE/개발 환경 전환 경로 처리
         if getattr(sys, 'frozen', False):
@@ -218,13 +219,17 @@ class StarUWindow(QMainWindow):
             logger.info("🎨 레거시 테마 (PremiumTheme) 적용됨")
         
         # 화면 해상도 처리
-        screen = QApplication.primaryScreen().geometry()
-        width = min(1920, int(screen.width() * 0.9))
-        height = min(1080, int(screen.height() * 0.9))
-        self.resize(width, height)
-        
-        # 창 중앙 배치
-        self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
+        primary_screen = QApplication.primaryScreen()
+        if primary_screen:
+            screen_geo = primary_screen.geometry()
+            width = min(1920, int(screen_geo.width() * 0.9))
+            height = min(1080, int(screen_geo.height() * 0.9))
+            self.resize(width, height)
+            
+            # 창 중앙 배치
+            self.move((screen_geo.width() - width) // 2, (screen_geo.height() - height) // 2)
+        else:
+            self.resize(1200, 800)
         
         # 위젯 초기화 (Lazy Loading 제거 - 모두 미리 생성)
         logger.info("=" * 60)
@@ -237,59 +242,8 @@ class StarUWindow(QMainWindow):
         
         logger.info("\n✅ TwinStar Quantum 초기화 완료!\n")
     
-    def closeEvent(self, event):
-        """종료 시 모든 프로세스 정리"""
-        logger.info("🔄 프로그램 종료 중...")
-        
-        import os
-        import multiprocessing
-        
-        try:
-            # 1) 최적화 엔진 정리
-            if hasattr(self, 'optimization') and self.optimization:
-                widget = self.optimization
-                if hasattr(widget, 'engine') and widget.engine:
-                    if hasattr(widget.engine, '_cleanup_executor'):
-                        widget.engine._cleanup_executor()
-                    if hasattr(widget.engine, 'cancel'):
-                        widget.engine.cancel()
-                        
-            # 2) 워커 스레드 정리
-            if hasattr(self, 'optimization') and hasattr(self.optimization, 'worker'):
-                if self.optimization.worker:
-                    self.optimization.worker.cancel()
-            
-            # 3) 모든 자식 프로세스 종료
-            for child in multiprocessing.active_children():
-                try:
-                    child.terminate()
-                    child.join(timeout=0.5)
-                except Exception:
-
-                    pass
-            
-            # 4) 현재 프로세스의 자식들 강제 종료
-            import subprocess
-            current_pid = os.getpid()
-            try:
-                # Windows에서 자식 프로세스 강제 종료
-                subprocess.run(
-                    ['taskkill', '/F', '/T', '/PID', str(current_pid)],
-                    capture_output=True,
-                    timeout=2
-                )
-            except Exception:
-
-                pass
-                
-        except Exception as e:
-            logger.info(f"종료 정리 중 오류: {e}")
-        
-        logger.info("✅ 종료 완료")
-        event.accept()
-        
-        # 강제 종료
-        os._exit(0)
+        # [삭제됨: 중복 정의 및 강제 종료 로직 하단으로 이동]
+        pass
         
 
     def init_widgets(self):
@@ -472,7 +426,7 @@ class StarUWindow(QMainWindow):
         title_label.setStyleSheet("color: #00d4ff; font-weight: bold; font-size: 13px;")
         title_label.setCursor(Qt.CursorShape.PointingHandCursor)
         title_label.setToolTip("클릭하여 도움말 보기")
-        title_label.mousePressEvent = self._on_title_click
+        title_label.mousePressEvent = cast(Any, self._on_title_click)
         header_layout.addWidget(title_label)
         
         header_layout.addStretch()
@@ -555,7 +509,7 @@ class StarUWindow(QMainWindow):
             import logging
             logging.debug(f"[LOCALE] 언어 설정 실패: {e}")
             current_lang = 'ko'
-            def set_language(lang): pass
+            def set_language(lang_code: str): pass
         
         self.lang_combo = QComboBox()
         self.lang_combo.addItem("🌐 한국어", "ko")
@@ -661,33 +615,33 @@ class StarUWindow(QMainWindow):
         
         # 1. 백테스트 완료 시그널
         if hasattr(self.backtest_widget, 'backtest_finished'):
-            self.backtest_widget.backtest_finished.connect(self.on_backtest_finished)
+            cast(Any, self.backtest_widget).backtest_finished.connect(self.on_backtest_finished)
             logger.info("  ✅ backtest_finished 시그널 연결")
         else:
             logger.info("  ⚠️ backtest_finished 시그널 없음")
         
         # 2. Dashboard 시그널
         if hasattr(self.dashboard, 'start_trading_clicked'):
-            self.dashboard.start_trading_clicked.connect(self.on_start_trading)
+            cast(Any, self.dashboard).start_trading_clicked.connect(self.on_start_trading)
             logger.info("  ✅ start_trading_clicked 시그널 연결")
             
         if hasattr(self.dashboard, 'stop_trading_clicked'):
-            self.dashboard.stop_trading_clicked.connect(self.on_stop_trading)
+            cast(Any, self.dashboard).stop_trading_clicked.connect(self.on_stop_trading)
             logger.info("  ✅ stop_trading_clicked 시그널 연결")
             
         # 3. DataCollector 시그널
         if hasattr(self.data_collector_widget, 'download_finished'):
-            self.data_collector_widget.download_finished.connect(self.on_data_downloaded)
+            cast(Any, self.data_collector_widget).download_finished.connect(self.on_data_downloaded)
             logger.info("  ✅ download_finished 시그널 연결")
 
         # 4. Optimization 시그널
         if hasattr(self.optimization_widget, 'settings_applied'):
-            self.optimization_widget.settings_applied.connect(self.on_settings_optimized)
+            cast(Any, self.optimization_widget).settings_applied.connect(self.on_settings_optimized)
             logger.info("  ✅ settings_applied 시그널 연결")
         
         # 5. Dashboard go_to_tab 시그널 (빠른 실행 버튼)
         if hasattr(self.dashboard, 'go_to_tab'):
-            self.dashboard.go_to_tab.connect(self.tabs.setCurrentIndex)
+            cast(Any, self.dashboard).go_to_tab.connect(self.tabs.setCurrentIndex)
             logger.info("  ✅ go_to_tab 시그널 연결 (빠른 실행 버튼)")
             
         # 6. 탭 변경 시그널
@@ -698,7 +652,7 @@ class StarUWindow(QMainWindow):
         # 백테스트 탭(3)으로 진입 시 파라미터 리로드
         if index == 3 and hasattr(self.backtest_widget, 'load_strategy_params'):
             logger.info("📊 백테스트 탭 진입: 파라미터 갱신")
-            self.backtest_widget.load_strategy_params()
+            cast(Any, self.backtest_widget).load_strategy_params()
             
     def on_backtest_finished(self, trades, candle_data, timestamps=None):
         """백테스트 완료 핸들러"""
@@ -719,7 +673,7 @@ class StarUWindow(QMainWindow):
         # History 탭으로 전환
         logger.info("→ 결과 탭으로 전환...")
         if hasattr(self.history_widget, 'refresh_trades'):
-            self.history_widget.refresh_trades()
+            cast(Any, self.history_widget).refresh_trades()
         
     def on_start_trading(self):
         """트레이딩 시작 - Dashboard에서 처리"""
@@ -734,21 +688,21 @@ class StarUWindow(QMainWindow):
         """최적화된 설정 적용 핸들러"""
         logger.info("⚙️ 최적화 설정 적용됨")
         if hasattr(self.backtest_widget, 'apply_params'):
-            self.backtest_widget.apply_params(params)
+            cast(Any, self.backtest_widget).apply_params(params)
         elif hasattr(self.backtest_widget, 'load_strategy_params'):
-            self.backtest_widget.load_strategy_params()
+            cast(Any, self.backtest_widget).load_strategy_params()
         if hasattr(self.dashboard, 'update_params'):
-            self.dashboard.update_params()
+            cast(Any, self.dashboard).update_params()
 
     def on_data_downloaded(self, symbol, count):
         """데이터 다운로드 완료 핸들러"""
         logger.info(f"📥 데이터 수신 확인: {symbol} ({count:,}건)")
         
         if hasattr(self.backtest_widget, '_refresh_data_sources'):
-            self.backtest_widget._refresh_data_sources()
+            cast(Any, self.backtest_widget)._refresh_data_sources()
             
         if hasattr(self.optimization_widget, '_load_data_sources'):
-            self.optimization_widget._load_data_sources()
+            cast(Any, self.optimization_widget)._load_data_sources()
         
     def apply_styles(self):
         """스타일 적용"""
@@ -772,7 +726,7 @@ class StarUWindow(QMainWindow):
             
             if PaymentDialog:
                 lm = get_license_manager()
-                dlg = PaymentDialog(lm)
+                dlg = cast(Any, PaymentDialog)(lm)
                 dlg.exec()
                 
                 # 결제 후 등급 갱신
@@ -781,9 +735,9 @@ class StarUWindow(QMainWindow):
                 days = lm.get_days_left()
                 
                 if hasattr(self, 'tier_label'):
-                    self.tier_label.setText(f"🏷️ {tier}")
+                    cast(Any, self.tier_label).setText(f"🏷️ {tier}")
                 if hasattr(self, 'days_label'):
-                    self.days_label.setText(t("license.days_left").replace("{days}", str(days)))
+                    cast(Any, self.days_label).setText(t("license.days_left").replace("{days}", str(days)))
             else:
                 QMessageBox.warning(self, "오류", "결제 다이얼로그를 로드할 수 없습니다.")
         except Exception as e:
@@ -791,7 +745,7 @@ class StarUWindow(QMainWindow):
     
     def _on_language_changed(self, index):
         """언어 변경 핸들러"""
-        lang_code = self.lang_combo.currentData()
+        lang_code = cast(Any, self.lang_combo).currentData()
         try:
             from locales import set_language
             set_language(lang_code)
@@ -847,24 +801,24 @@ class StarUWindow(QMainWindow):
             logger.info(f"Update popup error: {e}")
     
     def closeEvent(self, event):
-        """안전한 종료 - 봇 정지 및 포지션 경고"""
+        """안전하고 확실한 종료 - 봇 정지, 탭 정리 및 프로세스 트리 제거"""
         import logging
+        import multiprocessing
+        import subprocess
         
         # 1. 실행 중인 봇 확인 및 정지
         running_bots = []
         for i in range(self.tabs.count()):
             widget = self.tabs.widget(i)
-            if hasattr(widget, 'running_bots') and widget.running_bots:
-                running_bots.extend(list(widget.running_bots.keys()))
+            widget_any = cast(Any, widget)
+            if hasattr(widget, 'running_bots') and widget_any.running_bots:
+                running_bots.extend(list(widget_any.running_bots.keys()))
         
         if running_bots:
             from PyQt6.QtWidgets import QMessageBox
             reply = QMessageBox.warning(
-                self, "⚠️ 종료 확인",
-                f"실행 중인 봇이 {len(running_bots)}개 있습니다:\n"
-                f"{', '.join(running_bots[:5])}{'...' if len(running_bots) > 5 else ''}\n\n"
-                "봇을 정지하고 종료하시겠습니까?\n"
-                "(포지션은 유지됩니다)",
+                self, t("app.exit_confirm_title", "종료 확인"),
+                t("app.exit_confirm_msg", "실행 중인 봇이 있습니다. 종료하시겠습니까?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No
             )
@@ -878,25 +832,51 @@ class StarUWindow(QMainWindow):
                 widget = self.tabs.widget(i)
                 if hasattr(widget, '_stop_all_bots'):
                     try:
-                        # 확인 없이 강제 정지
-                        for bot_key in list(getattr(widget, 'running_bots', {}).keys()):
-                            if hasattr(widget, '_on_row_stop'):
-                                widget._on_row_stop(bot_key)
+                        widget_any = cast(Any, widget)
+                        for bot_key in list(getattr(widget_any, 'running_bots', {}).keys()):
+                            if hasattr(widget_any, '_on_row_stop'):
+                                widget_any._on_row_stop(bot_key)
                     except Exception as e:
                         logging.warning(f"봇 정지 중 오류: {e}")
         
-        logging.info("🛑 프로그램 종료 중...")
+        logging.info("🛑 프로그램 종료 프로세스 시작...")
         
-        # 2. 모든 탭 위젯 종료
+        # 2. 모든 탭 위젯 종료 (리소스 해제)
         for i in range(self.tabs.count()):
             widget = self.tabs.widget(i)
             if hasattr(widget, 'closeEvent') and widget != self:
                 try:
-                    widget.closeEvent(event)
+                    # 탭별 개별 종료 로직 실행
+                    from PyQt6.QtGui import QCloseEvent
+                    cast(Any, widget).closeEvent(QCloseEvent())
                 except Exception as e:
                     logging.debug(f"[CLOSE] 탭 종료 중 예외: {e}")
         
-        super().closeEvent(event)
+        # 3. 최적화 엔진 등 특수 컴포넌트 정리
+        try:
+            if hasattr(self, 'optimization_widget'):
+                opt = cast(Any, self.optimization_widget)
+                if hasattr(opt, 'engine') and opt.engine:
+                    if hasattr(opt.engine, 'cancel'): opt.engine.cancel()
+        except Exception:
+            pass
+
+        # 4. 자식 프로세스 및 프로세스 트리 강제 정리
+        try:
+            for child in multiprocessing.active_children():
+                child.terminate()
+                child.join(timeout=0.2)
+            
+            # Windows 강제 종료 (좀비 프로세스 방지)
+            if sys.platform == 'win32':
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(os.getpid())], 
+                               capture_output=True, timeout=1)
+        except Exception:
+            pass
+            
+        logging.info("✅ 종료 완료")
+        event.accept()
+        os._exit(0)
 
 
 def main():
@@ -906,8 +886,8 @@ def main():
         multiprocessing.freeze_support()
         
     from PyQt6.QtCore import Qt
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    # QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # Removed in PyQt6
+    # QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)    # Removed in PyQt6
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -944,16 +924,18 @@ def main():
         logger.info("🔍 시스템 자동 점검 중...")
         check_result = auto_startup_check()
         
-        if check_result.get('fixed'):
-            logger.info(f"🔧 자동 수정 완료: {check_result.get('fixed')}")
+        if isinstance(check_result, dict):
+            if cast(Any, check_result).get('fixed'):
+                logger.info(f"🔧 자동 수정 완료: {cast(Any, check_result).get('fixed')}")
 
-        
-        if check_result.get('issues'):
-            QMessageBox.warning(
-                None, "⚠️ 시스템 점검",
-                "다음 문제가 발견되었습니다:\n\n" + 
-                "\n".join(f"• {issue}" for issue in check_result.get('issues', []))
-            )
+            if cast(Any, check_result).get('issues'):
+                QMessageBox.warning(
+                    None, "⚠️ 시스템 점검",
+                    "다음 문제가 발견되었습니다:\n\n" + 
+                    "\n".join(f"• {issue}" for issue in cast(Any, check_result).get('issues', []))
+                )
+        elif check_result is False:
+            logger.warning("🔍 시스템 점검에서 이슈가 발견되었습니다.")
     except Exception as e:
         logger.info(f"시스템 점검 건너뜀: {e}")
     

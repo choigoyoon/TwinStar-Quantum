@@ -6,7 +6,8 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog
 from PyQt6.QtGui import QFont
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.patches as patches
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas # type: ignore
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 from datetime import datetime
@@ -25,7 +26,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from strategies.common.strategy_interface import TradeSignal, Candle
-from typing import List
+from typing import List, Any, cast
 
 
 class TradeChartDialog(QDialog):
@@ -53,7 +54,7 @@ class TradeChartDialog(QDialog):
         header_layout = QHBoxLayout()
         
         info_label = QLabel(info_text)
-        info_label.setFont(QFont("Arial", 11, QFont.Bold))
+        info_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         info_label.setStyleSheet("color: #ffffff; padding: 10px; background-color: #2d2d2d; border-radius: 4px;")
         header_layout.addWidget(info_label)
         
@@ -141,8 +142,8 @@ class TradeChartDialog(QDialog):
             color = '#26a69a' if closes[i] >= opens[i] else '#ef5350'  # TradingView 색상
             
             # 캔들 몸통
-            ax.add_patch(plt.Rectangle(
-                (mdates.date2num(times[i]) - width/2, min(opens[i], closes[i])),
+            ax.add_patch(patches.Rectangle(
+                (cast(Any, mdates.date2num(times[i])) - width/2, min(opens[i], closes[i])),
                 width,
                 abs(closes[i] - opens[i]),
                 facecolor=color,
@@ -240,7 +241,7 @@ class TradeChartDialog(QDialog):
             
             # 청산 가격에 텍스트 주석
             ax.annotate(f'{exit_marker}\n${self._trade.exit_price:,.0f}',
-                       xy=(mdates.date2num(times[exit_plot_idx]), self._trade.exit_price),
+                       xy=cast(Any, (mdates.date2num(times[exit_plot_idx]), self._trade.exit_price)),
                        xytext=(10, 20), textcoords='offset points',
                        color=exit_color, fontsize=11, fontweight='bold',
                        bbox=dict(boxstyle='round,pad=0.5', facecolor='#2d2d2d', edgecolor=exit_color, alpha=0.8),
@@ -270,7 +271,7 @@ class TradeChartDialog(QDialog):
                     color=pnl_color, fontsize=12, fontweight='bold', pad=15)
         
         # 타이트 레이아웃 (간격 조정)
-        self._figure.tight_layout(rect=[0, 0.03, 1, 0.97])  # 위아래 여백 확보
+        self._figure.tight_layout(rect=(0, 0.03, 1, 0.97))  # 위아래 여백 확보 (튜플로 변경)
         
         self._canvas.draw()
 

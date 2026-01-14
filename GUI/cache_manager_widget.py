@@ -3,7 +3,8 @@
 from locales.lang_manager import t
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
+    QAbstractItemView
 )
 
 # Logging
@@ -48,12 +49,12 @@ class CacheManagerWidget(QWidget):
         ])
         
         # 헤더 스타일
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # Symbol
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch) # Range
+        if header := self.table.horizontalHeader():
+            header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # Symbol
+            header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch) # Range
         
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setStyleSheet("""
             QTableWidget {
                 background-color: #0d1117;

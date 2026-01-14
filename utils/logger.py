@@ -55,7 +55,7 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     return logger
 
 
-def get_module_logger(module_name: str = None) -> logging.Logger:
+def get_module_logger(module_name: str | None = None) -> logging.Logger:
     """
     모듈별 로거 (간편 버전)
     

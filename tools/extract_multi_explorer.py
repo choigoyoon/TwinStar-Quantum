@@ -3,8 +3,10 @@ MultiExplorer extraction script
 Creates multi_explorer.py from trading_dashboard.py
 """
 import os
+from pathlib import Path
 
-BASE = rstr(Path(__file__).parent)
+PROJECT_ROOT = Path(__file__).parent.parent
+BASE = str(PROJECT_ROOT)
 SOURCE = os.path.join(BASE, 'GUI', 'trading_dashboard.py')
 TARGET = os.path.join(BASE, 'GUI', 'dashboard', 'multi_explorer.py')
 INIT_FILE = os.path.join(BASE, 'GUI', 'dashboard', '__init__.py')

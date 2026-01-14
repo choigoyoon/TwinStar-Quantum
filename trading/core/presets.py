@@ -135,7 +135,7 @@ def create_preset_json(
     exchange: str = "bybit",
     timeframe: str = "1h",
     strategy: str = "macd",
-    result: Dict = None,
+    result: Optional[Dict] = None,
 ) -> Dict:
     """
     v1.8.3 형식의 프리셋 JSON 생성
@@ -153,19 +153,27 @@ def create_preset_json(
         v1.8.3 형식 JSON 딕셔너리
     """
     from .constants import calculate_grade
-    
-    # numpy 타입 변환
-    result = _convert_to_json_serializable(result) if result else None
-    params = _convert_to_json_serializable(params)
-    
+
+    # numpy 타입 변환 - 새 변수에 할당
+    result_data: Optional[Dict[str, Any]] = None
+    if result:
+        converted = _convert_to_json_serializable(result)
+        if isinstance(converted, dict):
+            result_data = converted
+
+    params_data: Dict[str, Any] = {}
+    converted_params = _convert_to_json_serializable(params)
+    if isinstance(converted_params, dict):
+        params_data = converted_params
+
     # 등급 계산
     grade = 'C'
-    if result:
-        win_rate = result.get('win_rate', 0)
-        pf = result.get('profit_factor', 0)
-        mdd = result.get('max_drawdown', result.get('mdd', 100))
+    if result_data:
+        win_rate = result_data.get('win_rate', 0)
+        pf = result_data.get('profit_factor', 0)
+        mdd = result_data.get('max_drawdown', result_data.get('mdd', 100))
         grade = calculate_grade(win_rate, pf, mdd)
-    
+
     return {
         "_meta": {
             "symbol": symbol,
@@ -174,25 +182,25 @@ def create_preset_json(
             "strategy": strategy,
             "optimized_at": datetime.now().isoformat(),
             "version": "2.0.0",
-            "verified": result is not None,
-            "verified_date": datetime.now().strftime("%Y-%m-%d") if result else None,
+            "verified": result_data is not None,
+            "verified_date": datetime.now().strftime("%Y-%m-%d") if result_data else None,
             "verification_stats": {
-                "passed": result.get('win_rate', 0) >= 60 if result else False,
-                "win_rate": result.get('win_rate', 0) if result else 0,
+                "passed": result_data.get('win_rate', 0) >= 60 if result_data else False,
+                "win_rate": result_data.get('win_rate', 0) if result_data else 0,
             },
             "name": name,
             "updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         },
         "_result": {
-            "trades": result.get('trades', 0) if result else 0,
-            "win_rate": result.get('win_rate', 0) if result else 0,
-            "simple_pnl": result.get('simple_pnl', 0) if result else 0,
-            "compound_pnl": result.get('compound_pnl', 0) if result else 0,
-            "max_drawdown": result.get('max_drawdown', result.get('mdd', 0)) if result else 0,
-            "profit_factor": result.get('profit_factor', 0) if result else 0,
+            "trades": result_data.get('trades', 0) if result_data else 0,
+            "win_rate": result_data.get('win_rate', 0) if result_data else 0,
+            "simple_pnl": result_data.get('simple_pnl', 0) if result_data else 0,
+            "compound_pnl": result_data.get('compound_pnl', 0) if result_data else 0,
+            "max_drawdown": result_data.get('max_drawdown', result_data.get('mdd', 0)) if result_data else 0,
+            "profit_factor": result_data.get('profit_factor', 0) if result_data else 0,
             "grade": grade,
         },
-        "params": params.copy(),
+        "params": params_data.copy(),
     }
 
 
@@ -215,8 +223,8 @@ def save_preset_json(
     exchange: str = "bybit",
     timeframe: str = "1h",
     strategy: str = "macd",
-    result: Dict = None,
-    custom_path: str = None,
+    result: Optional[Dict] = None,
+    custom_path: Optional[str] = None,
 ) -> str:
     """
     프리셋을 JSON 파일로 저장

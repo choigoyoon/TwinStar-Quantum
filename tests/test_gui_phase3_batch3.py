@@ -15,6 +15,7 @@ from pathlib import Path
 import logging
 import unittest
 from unittest.mock import MagicMock, patch
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -88,7 +89,7 @@ def run_batch3_tests():
             sys.modules['user_guide'].get_trading_method.return_value = {"strategy": "Trading Method Content"}
             sys.modules['user_guide'].get_faq.return_value = "FAQ Content"
             
-            sys.modules['referral_links'].REFERRAL_LINKS = {
+            cast(Any, sys.modules['referral_links']).REFERRAL_LINKS = {
                 'binance': {
                     'benefits': ['Benefit 1'],
                     'guide': 'Guide Text',
@@ -108,16 +109,20 @@ def run_batch3_tests():
             
             # Test usage of mocks
             from PyQt6.QtWidgets import QTextBrowser
-            current_tab = dialog.findChild(QTabWidget).currentWidget()
-            browser = current_tab.findChild(QTextBrowser)
+            tab_widget = dialog.findChild(QTabWidget)
+            current_tab = tab_widget.currentWidget() if tab_widget else None
             
-            # If findChild fails (sometimes nested layouts complicate things), iterate children
-            if not browser:
-                 # Fallback
-                 for child in current_tab.children():
-                     if isinstance(child, QTextBrowser):
-                         browser = child
-                         break
+            browser = None
+            if current_tab:
+                browser = current_tab.findChild(QTextBrowser)
+            
+                # If findChild fails (sometimes nested layouts complicate things), iterate children
+                if not browser:
+                     # Fallback
+                     for child in current_tab.children():
+                         if isinstance(child, QTextBrowser):
+                             browser = child
+                             break
             
             if browser:
                 result.ok("Quick Start loaded", "Quick Start Content" in browser.toPlainText())

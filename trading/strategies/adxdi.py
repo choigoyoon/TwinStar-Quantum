@@ -62,7 +62,7 @@ class ADXDIStrategy(BaseStrategy):
             if plus_di[i-1] < minus_di[i-1] and plus_di[i] > minus_di[i]:
                 window_start = max(0, i-10)
                 window_low = low[window_start:i+1]
-                trough_idx = window_start + np.argmin(window_low)
+                trough_idx = window_start + int(np.argmin(np.asarray(window_low)))
                 hl_points.append({
                     'type': 'L', 
                     'idx': trough_idx,
@@ -74,7 +74,7 @@ class ADXDIStrategy(BaseStrategy):
             if minus_di[i-1] < plus_di[i-1] and minus_di[i] > plus_di[i]:
                 window_start = max(0, i-10)
                 window_high = high[window_start:i+1]
-                peak_idx = window_start + np.argmax(window_high)
+                peak_idx = window_start + int(np.argmax(np.asarray(window_high)))
                 hl_points.append({
                     'type': 'H', 
                     'idx': peak_idx,

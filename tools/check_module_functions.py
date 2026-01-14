@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, rstr(Path(__file__).parent))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 def check_module(module_path, class_name, required_funcs):
     print(f'=== {class_name} 기능 체크 ===')

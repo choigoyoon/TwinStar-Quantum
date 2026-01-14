@@ -39,12 +39,12 @@ class MACDStrategy(BaseStrategy):
         min_vol_ratio = self.params.get('min_vol_ratio', 0.0)
         
         patterns = []
-        macd_hist = df['macd_hist'].values
-        high = df['high'].values
-        low = df['low'].values
-        close = df['close'].values
-        adx = df['adx'].values
-        vol_ratio = df['vol_ratio'].values if 'vol_ratio' in df.columns else np.ones(len(df))
+        macd_hist = np.asarray(df['macd_hist'].values)
+        high = np.asarray(df['high'].values)
+        low = np.asarray(df['low'].values)
+        close = np.asarray(df['close'].values)
+        adx = np.asarray(df['adx'].values)
+        vol_ratio = np.asarray(df['vol_ratio'].values) if 'vol_ratio' in df.columns else np.ones(len(df))
         
         n = len(macd_hist)
         hl_points = []
@@ -68,11 +68,11 @@ class MACDStrategy(BaseStrategy):
                 seg_low = low[segment_start:i]
                 if len(seg_high) > 0:
                     if current_sign > 0:  # 양(+) 구간 종료 → 고점
-                        max_idx = segment_start + np.argmax(seg_high)
-                        hl_points.append({'type': 'H', 'price': high[max_idx], 'idx': max_idx})
+                        max_idx = segment_start + int(np.argmax(seg_high))
+                        hl_points.append({'type': 'H', 'price': float(high[max_idx]), 'idx': max_idx})
                     else:  # 음(-) 구간 종료 → 저점
-                        min_idx = segment_start + np.argmin(seg_low)
-                        hl_points.append({'type': 'L', 'price': low[min_idx], 'idx': min_idx})
+                        min_idx = segment_start + int(np.argmin(seg_low))
+                        hl_points.append({'type': 'L', 'price': float(low[min_idx]), 'idx': min_idx})
                 segment_start = i
                 current_sign = new_sign
         

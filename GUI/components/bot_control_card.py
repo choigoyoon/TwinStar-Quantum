@@ -3,6 +3,7 @@ from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton
 )
+from typing import Dict, Any
 
 # Logging
 import logging
@@ -23,7 +24,7 @@ except ImportError:
 
 # [FALLBACK] Paths
 try:
-    from paths import Paths
+    from paths import Paths # type: ignore
 except ImportError:
     class Paths:
         PRESETS = "config/presets"
@@ -32,7 +33,7 @@ except ImportError:
 try:
     from license_manager import get_license_manager
 except ImportError:
-    def get_license_manager(): return None
+    def get_license_manager() -> Any: return None
 
 
 class BotControlCard(QWidget):
@@ -80,7 +81,7 @@ class BotControlCard(QWidget):
         # 심볼
         self.symbol_combo = QComboBox()
         self.symbol_combo.setEditable(True)
-        self.symbol_combo.setInsertPolicy(QComboBox.NoInsert)
+        self.symbol_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.symbol_combo.setFixedWidth(100)
         self.symbol_combo.setToolTip(t("dashboard.symbol_tip", "거래 코인 선택 (검색 가능)"))
         self.symbol_combo.setStyleSheet("""
@@ -88,8 +89,10 @@ class BotControlCard(QWidget):
                 color: white; padding: 3px;
             }
         """) # Removed hardcoded background
-        self.symbol_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        self.symbol_combo.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer = self.symbol_combo.completer()
+        if completer:
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.symbol_combo.currentTextChanged.connect(self._on_symbol_changed)
         layout.addWidget(self.symbol_combo)
         
@@ -398,7 +401,7 @@ class BotControlCard(QWidget):
             self.symbol_combo.setEnabled(True)
             self.preset_combo.setEnabled(True)
     
-    def get_config(self) -> dict:
+    def get_config(self) -> Dict[str, Any]:
         return {
             'exchange': self.exchange_combo.currentText(),
             'symbol': self.symbol_combo.currentText(),

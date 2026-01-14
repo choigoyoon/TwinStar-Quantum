@@ -88,7 +88,10 @@ class TradeSignal:
         timestamp = data.get('timestamp')
         if isinstance(timestamp, str):
             timestamp = datetime.fromisoformat(timestamp)
-        
+        elif timestamp is None:
+            # timestamp가 없으면 현재 시간 사용
+            timestamp = datetime.now()
+
         return cls(
             signal_type=data['signal_type'],
             pattern=data['pattern'],

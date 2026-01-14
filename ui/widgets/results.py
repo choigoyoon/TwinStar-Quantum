@@ -80,7 +80,7 @@ class StatCard(QFrame):
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label)
     
-    def set_value(self, value: str, color: str = None):
+    def set_value(self, value: str, color: str | None = None):
         """값 설정"""
         self.value_label.setText(value)
         if color:
@@ -283,17 +283,17 @@ class ResultsTable(QTableWidget):
         self.setHorizontalHeaderLabels([c[0] for c in self.COLUMNS])
         
         # 컬럼 너비 설정
-        header = self.horizontalHeader()
         for i, (_, width) in enumerate(self.COLUMNS):
             self.setColumnWidth(i, width)
-        header.setStretchLastSection(True)
+        if header := self.horizontalHeader():
+            header.setStretchLastSection(True)
         
         # 선택 모드
-        self.setSelectionBehavior(QTableWidget.SelectRows)
-        self.setSelectionMode(QTableWidget.SingleSelection)
-        
+        self.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+
         # 편집 불가
-        self.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         
         # 정렬 가능
         self.setSortingEnabled(True)
@@ -311,7 +311,7 @@ class ResultsTable(QTableWidget):
             grade_item = QTableWidgetItem(grade)
             grade_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             grade_item.setForeground(QColor(GRADE_COLORS.get(grade, COLORS['text'])))
-            grade_item.setFont(QFont('Arial', 12, QFont.Bold))
+            grade_item.setFont(QFont('Arial', 12, QFont.Weight.Bold))
             self.setItem(row, 0, grade_item)
             
             # 승률
@@ -349,15 +349,19 @@ class ResultsTable(QTableWidget):
         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         return item
     
-    def get_selected_result(self) -> dict:
+    def get_selected_result(self) -> dict | None:
         """선택된 행의 결과 반환"""
         row = self.currentRow()
         if row < 0:
             return None
-        
+
         # 테이블에서 데이터 추출 (실제로는 원본 데이터 참조 필요)
+        item0 = self.item(row, 0)
+        item1 = self.item(row, 1)
+        item2 = self.item(row, 2)
+
         return {
-            'grade': self.item(row, 0).text() if self.item(row, 0) else 'C',
-            'win_rate': float(self.item(row, 1).text().replace('%', '')) if self.item(row, 1) else 0,
-            'simple_pnl': float(self.item(row, 2).text().replace('%', '').replace('+', '')) if self.item(row, 2) else 0,
+            'grade': item0.text() if item0 else 'C',
+            'win_rate': float(item1.text().replace('%', '')) if item1 else 0,
+            'simple_pnl': float(item2.text().replace('%', '').replace('+', '')) if item2 else 0,
         }

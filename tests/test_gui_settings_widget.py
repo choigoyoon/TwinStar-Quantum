@@ -11,6 +11,7 @@ import sys
 import os
 from pathlib import Path
 import logging
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -123,8 +124,8 @@ def run_settings_widget_tests():
         result.ok("_show_api_guide", hasattr(card, '_show_api_guide'))
         
         if hasattr(card, 'api_key_input'):
-            card.api_key_input.setText('test')
-            card.secret_input.setText('test')
+            cast(Any, card).api_key_input.setText('test')
+            cast(Any, card).secret_input.setText('test')
             
             ret_config = card.get_config()
             result.ok("API 키 유지", ret_config.get('api_key') == 'test')

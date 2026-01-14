@@ -3,10 +3,11 @@ TwinStar Quantum - 멀티 트레이더 세션 복원 팝업
 이전 매매 기록 발견 시 복리/리셋 선택
 """
 
+from typing import Optional
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QTableWidget, QTableWidgetItem,
-    QHeaderView, QFrame
+    QHeaderView, QFrame, QAbstractItemView
 )
 
 # Logging
@@ -22,7 +23,7 @@ class MultiSessionPopup(QDialog):
     def __init__(self, session_summary: dict, parent=None):
         super().__init__(parent)
         self.session_summary = session_summary
-        self.result = None  # "compound", "reset", "cancel"
+        self.user_choice: Optional[str] = None  # "compound", "reset", "cancel"
         
         self.setWindowTitle("💰 이전 매매 기록 발견")
         self.setMinimumWidth(550)
@@ -74,10 +75,12 @@ class MultiSessionPopup(QDialog):
         self.table.setHorizontalHeaderLabels([
             "코인", "초기 시드", "현재 시드", "수익률", "거래"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionMode(QTableWidget.NoSelection)
-        self.table.verticalHeader().setVisible(False)
+        if header := self.table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        if v_header := self.table.verticalHeader():
+            v_header.setVisible(False)
         
         coins = self.session_summary.get("coins", [])
         self.table.setRowCount(len(coins))
@@ -226,19 +229,19 @@ class MultiSessionPopup(QDialog):
         layout.addLayout(btn_layout)
     
     def _on_compound(self):
-        self.result = "compound"
+        self.user_choice = "compound"
         self.accept()
     
     def _on_reset(self):
-        self.result = "reset"
+        self.user_choice = "reset"
         self.accept()
     
     def _on_cancel(self):
-        self.result = "cancel"
+        self.user_choice = "cancel"
         self.reject()
     
-    def get_result(self) -> str:
-        return self.result
+    def get_result(self) -> str | None:
+        return self.user_choice
 
 
 # 테스트용

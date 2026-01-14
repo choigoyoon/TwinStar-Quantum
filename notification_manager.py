@@ -4,7 +4,7 @@ Notification Manager Wrapper
 """
 
 try:
-    from GUI.notification_manager import *
+    from GUI.notification_manager import *  # type: ignore[assignment]
 except ImportError:
     # 폴백: 최소 구현
     import logging

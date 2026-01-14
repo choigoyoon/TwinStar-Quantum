@@ -41,7 +41,8 @@ class RealtimeGUITester:
         self.log(f"⏳ {seconds}초 대기 ({reason})")
         
         for i in range(int(seconds * 10)):
-            self.app.processEvents()
+            if self.app:
+                self.app.processEvents()
             time.sleep(0.1)
             
             # 매 초마다 상태 출력
@@ -136,6 +137,9 @@ class RealtimeGUITester:
         
         # === Stage 2: 화면 표시 ===
         def show_dashboard():
+            if not self.dashboard:
+                raise Exception("대시보드 없음")
+                
             self.dashboard.show()
             self.dashboard.raise_()
             self.dashboard.activateWindow()
@@ -164,8 +168,11 @@ class RealtimeGUITester:
             from GUI.single_trade_widget import SingleTradeWidget
             from GUI.multi_trade_widget import MultiTradeWidget
             
-            if self.dashboard.findChild(SingleTradeWidget): components['single_trade_widget'] = True
-            if self.dashboard.findChild(MultiTradeWidget): components['multi_trade_widget'] = True
+            if self.dashboard:
+                if self.dashboard.findChild(SingleTradeWidget): components['single_trade_widget'] = True
+                if self.dashboard.findChild(MultiTradeWidget): components['multi_trade_widget'] = True
+            else:
+                raise Exception("대시보드 없음")
             
             for comp in components:
                 if hasattr(self.dashboard, comp):
@@ -256,11 +263,12 @@ class RealtimeGUITester:
             self.log("📺 10초간 GUI 유지...")
             
             for i in range(10):
-                self.app.processEvents()
+                if self.app:
+                    self.app.processEvents()
                 time.sleep(1)
                 
                 # 매 초 상태 체크
-                if not self.dashboard.isVisible():
+                if self.dashboard and not self.dashboard.isVisible():
                     raise Exception(f"{i+1}초 후 화면 사라짐")
             
             return "10초 유지 성공"
@@ -273,11 +281,12 @@ class RealtimeGUITester:
             self.log("🚪 종료 시작...")
             
             # closeEvent 트리거
-            self.dashboard.close()
+            if self.dashboard:
+                self.dashboard.close()
             
             self.wait(2, "종료 처리")
             
-            if self.dashboard.isVisible():
+            if self.dashboard and self.dashboard.isVisible():
                 raise Exception("종료 실패")
             
             return "정상 종료"
@@ -287,7 +296,8 @@ class RealtimeGUITester:
         
         # === Stage 9: 메모리 정리 ===
         def cleanup():
-            self.dashboard.deleteLater()
+            if self.dashboard:
+                self.dashboard.deleteLater()
             self.wait(1, "deleteLater 처리")
             
             import gc

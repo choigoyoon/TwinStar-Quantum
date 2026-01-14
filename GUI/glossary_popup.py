@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QScrollArea, QWidget, QFrame
 )
 from PyQt6.QtCore import Qt
+from typing import Any, cast
 
 
 class GlossaryPopup(QDialog):
@@ -166,10 +167,10 @@ class GlossaryPopup(QDialog):
     
     def _populate_glossary(self, filter_text=""):
         # 기존 위젯 제거
-        while self.content_layout.count():
+        while self.content_layout.count() > 0:
             child = self.content_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+            if child and child.widget():
+                cast(Any, child.widget()).deleteLater()
         
         # 용어 추가
         for term, data in sorted(self.GLOSSARY.items()):

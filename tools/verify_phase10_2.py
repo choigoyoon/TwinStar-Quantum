@@ -3,7 +3,8 @@ Phase 10.2 검증 스크립트
 """
 import sys
 import os
-sys.path.insert(0, rstr(Path(__file__).parent))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 print('=' * 60)
 print('=== Phase 10.2 검증 결과 ===')
@@ -96,7 +97,7 @@ files = [
     'core/unified_bot.py',
 ]
 for f in files:
-    full_path = os.path.join(rstr(Path(__file__).parent), f)
+    full_path = os.path.join(str(Path(__file__).parent), f)
     if os.path.exists(full_path):
         with open(full_path, 'r', encoding='utf-8') as file:
             lines = len(file.readlines())

@@ -1,15 +1,14 @@
 """
 Unified Auto-Trading Pipeline UI (Step-by-Step)
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
 Step 1: Symbol Selection
 Step 2: Batch Optimization
 Step 3: Backtest Verification
 Step 4: Scanner Configuration
 Step 5: Live Dashboard
 """
+import logging
+logger = logging.getLogger(__name__)
 import sys
 import os
 from datetime import datetime
@@ -19,6 +18,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QListWidgetItem,
     QAbstractItemView, QMessageBox, QSpinBox, QGridLayout
 )
+from typing import Optional, Any
 from PyQt6.QtCore import Qt, QTimer
 
 # Add project root
@@ -33,21 +33,21 @@ class StepWidget(QWidget):
     """Base class for pipeline steps"""
     def __init__(self, title, parent=None):
         super().__init__(parent)
-        self.layout = QVBoxLayout(self)
+        self.main_layout = QVBoxLayout(self)
         
         # Header
         header = QLabel(title)
         header.setStyleSheet("font-size: 18px; font-weight: bold; color: #4CAF50; margin-bottom: 10px;")
-        self.layout.addWidget(header)
+        self.main_layout.addWidget(header)
         
         # Content placeholder
         self.content_layout = QVBoxLayout()
-        self.layout.addLayout(self.content_layout)
+        self.main_layout.addLayout(self.content_layout)
         
         # Navigation Buttons
         self.nav_layout = QHBoxLayout()
         self.nav_layout.addStretch()
-        self.layout.addLayout(self.nav_layout)
+        self.main_layout.addLayout(self.nav_layout)
 
     def add_nav_buttons(self, back_cb=None, next_cb=None, next_text="Next >"):
         if back_cb:
@@ -248,7 +248,7 @@ class AutoPipelineWidget(QWidget):
         self.selected_symbols = []
         for i in range(self.symbol_list.count()):
             item = self.symbol_list.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
+            if item and item.checkState() == Qt.CheckState.Checked:
                 count += 1
                 self.selected_symbols.append(item.text())
         self.sel_label.setText(f"Selected: {count}")
@@ -497,8 +497,8 @@ class AutoPipelineWidget(QWidget):
         QMessageBox.critical(self, "Backtest Error", err)
         self.ub_status.setText("Error occurred.")
         
-    def _on_ub_finished(self, result):
-        if not result:
+    def _on_ub_finished(self, result: Optional[Any]):
+        if result is None:
             self.ub_status.setText("No trades generated or no presets found.")
             return
             
@@ -725,7 +725,8 @@ class AutoPipelineWidget(QWidget):
         self.pos_table = QTableWidget()
         self.pos_table.setColumnCount(4)
         self.pos_table.setHorizontalHeaderLabels(["Symbol", "Type", "Entry Price", "Size"])
-        self.pos_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if header := self.pos_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.pos_table.setStyleSheet("background: #1a1a1a; color: white; gridline-color: #444;")
         self.pos_table.setMaximumHeight(150)
         step.content_layout.addWidget(self.pos_table)

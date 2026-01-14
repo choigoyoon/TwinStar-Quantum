@@ -2,7 +2,7 @@
 trading.core 및 trading.backtest 모듈 테스트
 """
 
-import pytest
+import pytest  # type: ignore
 import pandas as pd
 import numpy as np
 from datetime import datetime

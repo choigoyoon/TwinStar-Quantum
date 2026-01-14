@@ -33,7 +33,7 @@ class CandleAggregator:
         '1d': 1440, '3d': 4320, '1w': 10080
     }
     
-    def __init__(self, target_timeframes: List[str] = None):
+    def __init__(self, target_timeframes: Optional[List[str]] = None):
         """
         Args:
             target_timeframes: 집계할 타임프레임 리스트 (예: ['5m', '15m', '1h'])

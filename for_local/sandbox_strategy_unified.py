@@ -36,7 +36,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from itertools import product
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -110,9 +110,9 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """모든 기술적 지표 계산 (필터용 지표 포함)"""
     df = df.copy()
     
-    high = df['high'].values
-    low = df['low'].values
-    close = df['close'].values
+    high = cast(Any, df['high'].values)
+    low = cast(Any, df['low'].values)
+    close = cast(Any, df['close'].values)
     
     # True Range & ATR (14)
     tr = np.maximum(
@@ -130,10 +130,10 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['ema_50'] = pd.Series(close).ewm(span=50, adjust=False).mean().values
     
     # MACD (12, 26, 9)
-    ema_12 = pd.Series(close).ewm(span=12, adjust=False).mean().values
-    ema_26 = pd.Series(close).ewm(span=26, adjust=False).mean().values
+    ema_12 = cast(Any, pd.Series(close).ewm(span=12, adjust=False).mean().values)
+    ema_26 = cast(Any, pd.Series(close).ewm(span=26, adjust=False).mean().values)
     macd = ema_12 - ema_26
-    macd_signal = pd.Series(macd).ewm(span=9, adjust=False).mean().values
+    macd_signal = cast(Any, pd.Series(macd).ewm(span=9, adjust=False).mean().values)
     df['macd_hist'] = macd - macd_signal
     
     # ADX (14)
@@ -142,24 +142,24 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     plus_dm = np.where((plus_dm > minus_dm) & (plus_dm > 0), plus_dm, 0)
     minus_dm = np.where((minus_dm > plus_dm) & (minus_dm > 0), minus_dm, 0)
     
-    atr_smooth = pd.Series(tr).rolling(14).mean().values
-    plus_di = 100 * pd.Series(plus_dm).rolling(14).mean().values / (atr_smooth + 1e-10)
-    minus_di = 100 * pd.Series(minus_dm).rolling(14).mean().values / (atr_smooth + 1e-10)
+    atr_smooth = cast(Any, pd.Series(tr).rolling(14).mean().values)
+    plus_di = 100 * cast(Any, pd.Series(plus_dm).rolling(14).mean().values) / (atr_smooth + 1e-10)
+    minus_di = 100 * cast(Any, pd.Series(minus_dm).rolling(14).mean().values) / (atr_smooth + 1e-10)
     
     dx = 100 * np.abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)
-    df['adx'] = pd.Series(dx).rolling(14).mean().values
+    df['adx'] = cast(Any, pd.Series(dx).rolling(14).mean().values)
     df['plus_di'] = plus_di
     df['minus_di'] = minus_di
     
     # ⭐ Stochastic K (14) - 필터용
-    low_14 = pd.Series(low).rolling(14).min().values
-    high_14 = pd.Series(high).rolling(14).max().values
+    low_14 = cast(Any, pd.Series(low).rolling(14).min().values)
+    high_14 = cast(Any, pd.Series(high).rolling(14).max().values)
     df['stoch_k'] = 100 * (close - low_14) / (high_14 - low_14 + 1e-10)
     
     # Volume Ratio (선택적)
     if 'volume' in df.columns:
-        vol = df['volume'].values
-        vol_ma = pd.Series(vol).rolling(20).mean().values
+        vol = cast(Any, df['volume'].values)
+        vol_ma = cast(Any, pd.Series(vol).rolling(20).mean().values)
         df['vol_ratio'] = vol / (vol_ma + 1e-10)
     else:
         df['vol_ratio'] = 1.0
@@ -182,12 +182,12 @@ def detect_patterns_macd(
 ) -> List[Dict]:
     """MACD 히스토그램 기반 W/M 패턴 탐지"""
     patterns = []
-    macd_hist = df['macd_hist'].values
-    high = df['high'].values
-    low = df['low'].values
-    close = df['close'].values
-    adx = df['adx'].values
-    vol_ratio = df['vol_ratio'].values if 'vol_ratio' in df.columns else np.ones(len(df))
+    macd_hist = cast(Any, df['macd_hist'].values)
+    high = cast(Any, df['high'].values)
+    low = cast(Any, df['low'].values)
+    close = cast(Any, df['close'].values)
+    adx = cast(Any, df['adx'].values)
+    vol_ratio = cast(Any, df['vol_ratio'].values if 'vol_ratio' in df.columns else np.ones(len(df)))
     
     n = len(macd_hist)
     hl_points = []
@@ -279,13 +279,13 @@ def run_backtest_core(
     stoch_short_min = params.get('stoch_short_min', 50)
     use_downtrend_filter = params.get('use_downtrend_filter', True)
     
-    high = df['high'].values
-    low = df['low'].values
-    close = df['close'].values
-    open_ = df['open'].values
-    atr = df['atr'].values
-    stoch_k = df['stoch_k'].values if 'stoch_k' in df.columns else np.full(len(df), 50)
-    downtrend = df['downtrend'].values if 'downtrend' in df.columns else np.zeros(len(df), dtype=bool)
+    high = cast(Any, df['high'].values)
+    low = cast(Any, df['low'].values)
+    close = cast(Any, df['close'].values)
+    open_ = cast(Any, df['open'].values)
+    atr = cast(Any, df['atr'].values)
+    stoch_k = cast(Any, df['stoch_k'].values if 'stoch_k' in df.columns else np.full(len(df), 50))
+    downtrend = cast(Any, df['downtrend'].values if 'downtrend' in df.columns else np.zeros(len(df), dtype=bool))
     n = len(df)
     
     trades = []
@@ -417,7 +417,7 @@ def run_backtest_core(
 # =============================================================================
 def run_backtest(
     df: pd.DataFrame,
-    params: Dict = None,
+    params: Optional[Dict] = None,
     timeframe: str = '2h',
     method: str = 'macd',
     slippage: float = DEFAULT_SLIPPAGE,
@@ -483,7 +483,7 @@ def run_optimization(
     df: pd.DataFrame,
     timeframe: str = '2h',
     method: str = 'macd',
-    grid: Dict = None,
+    grid: Optional[Dict] = None,
     apply_filters: bool = True,  # ⭐ 기본값 True - 백테스트와 동일
 ) -> List[Dict]:
     """
@@ -595,7 +595,7 @@ def print_results(results: List[Dict], top_n: int = 20):
               f"{p['trail_dist']:>8.2f} {p['tolerance']:>6.2f} {p['adx_min']:>4}")
 
 
-def compare_optimization_vs_backtest(df: pd.DataFrame, params: Dict = None, timeframe: str = '2h'):
+def compare_optimization_vs_backtest(df: pd.DataFrame, params: Optional[Dict] = None, timeframe: str = '2h'):
     """최적화 결과와 백테스트 결과 비교"""
     if params is None:
         params = SANDBOX_PARAMS.copy()

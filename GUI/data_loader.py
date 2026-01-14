@@ -4,6 +4,7 @@ import os
 import sys
 import pandas as pd
 from datetime import datetime
+from typing import Any, cast
 
 # Logging
 import logging
@@ -50,15 +51,15 @@ def load_data_and_trades(symbol="BTCUSDT", exchange="bybit", timeframe="1h"):
         
         # MACD 계산 (파라미터화)
         try:
-            from constants import DEFAULT_PARAMS
-            mf = DEFAULT_PARAMS.get('macd_fast', 12)
-            ms = DEFAULT_PARAMS.get('macd_slow', 26)
-            mg = DEFAULT_PARAMS.get('macd_signal', 9)
+            from constants import DEFAULT_PARAMS # type: ignore
+            mf = cast(Any, DEFAULT_PARAMS).get('macd_fast', 12)
+            ms = cast(Any, DEFAULT_PARAMS).get('macd_slow', 26)
+            mg = cast(Any, DEFAULT_PARAMS).get('macd_signal', 9)
         except ImportError:
             mf, ms, mg = 12, 26, 9
 
         if len(df) > ms:
-            exp1 = df['close'].ewm(span=mf, adjust=False).mean()
+            exp1 = cast(Any, df['close']).ewm(span=mf, adjust=False).mean()
             exp2 = df['close'].ewm(span=ms, adjust=False).mean()
             macd = exp1 - exp2
             signal = macd.ewm(span=mg, adjust=False).mean()

@@ -2,6 +2,8 @@
 TwinStar Quantum - Trading Dashboard (Redesigned v2.0)
 코인별 행 추가 방식 + 자동 프리셋 선택 + Multi Explorer + 실시간 현황
 """
+from __future__ import annotations
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ import json
 import threading
 from pathlib import Path
 from datetime import datetime
-from typing import Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from PyQt6.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
@@ -38,33 +40,76 @@ if not getattr(sys, 'frozen', False):
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
+# === Safe Accessors (Python 3.12 호환) ===
+def safe_getattr(obj: Any, attr: str, default: Any = None) -> Any:
+    """None-safe attribute getter"""
+    try:
+        return getattr(obj, attr, default) if obj is not None else default
+    except (AttributeError, RuntimeError):
+        return default
+
+def safe_widget_attr(widget: Optional[Any], attr: str, default: Any = None) -> Any:
+    """Widget 속성 안전 접근 (삭제된 widget 대응)"""
+    if widget is None:
+        return default
+    try:
+        val = getattr(widget, attr, None)
+        return default if val is None else val
+    except RuntimeError:  # Qt: wrapped C/C++ object deleted
+        return default
+
 # Imports with fallbacks
+from typing import Protocol, List
+
+class LicenseGuardProtocol(Protocol):
+    """타입 체커용 인터페이스"""
+    tier: str
+    def get_tier_limits(self) -> Dict[str, int]: ...
+    def check_exchange_limit(self, exchanges: list) -> Dict[str, Any]: ...
+    def check_symbol_limit(self, symbols: list) -> Dict[str, Any]: ...
+    def can_use_sniper(self) -> bool: ...
+
+Paths: Any
+get_preset_manager: Any
+get_or_create_preset: Any
+SniperSessionPopup: Any
+OrderExecutor: Any
+MultiCoinSniper: Any
+
 try:
     from paths import Paths
 except ImportError:
-    class Paths:
+    class _FallbackPaths:
         CACHE = "data/cache"
         PRESETS = "config/presets"
         CONFIG = "config"
+    Paths = _FallbackPaths
 
 try:
     from core.license_guard import get_license_guard
     HAS_LICENSE_GUARD = True
 except ImportError:
     HAS_LICENSE_GUARD = False
-    def get_license_guard():
-        class DummyGuard:
-            tier = 'free'
-            def get_tier_limits(self): return {'exchanges': 999, 'symbols': 999}
-            def check_exchange_limit(self, l): return {'allowed': True}
-            def check_symbol_limit(self, l): return {'allowed': True}
-            def can_use_sniper(self): return True
-        return DummyGuard()
+    class _DummyGuard:
+        tier = 'free'
+        def get_tier_limits(self) -> Dict[str, int]: 
+            return {'exchanges': 999, 'symbols': 999}
+        def check_exchange_limit(self, _l: list) -> Dict[str, Any]: 
+            return {'allowed': True}
+        def check_symbol_limit(self, _l: list) -> Dict[str, Any]: 
+            return {'allowed': True}
+        def can_use_sniper(self) -> bool: 
+            return True
+
+    def get_license_guard() -> LicenseGuardProtocol:
+        return _DummyGuard()  # type: ignore
 
 try:
     from utils.preset_manager import get_preset_manager
 except ImportError:
-    def get_preset_manager(): return None
+    def _dummy_preset_manager():
+        return None
+    get_preset_manager = _dummy_preset_manager
 
 # [NEW] Auto Optimizer for automatic preset creation
 try:
@@ -72,7 +117,9 @@ try:
     HAS_AUTO_OPTIMIZER = True
 except ImportError:
     HAS_AUTO_OPTIMIZER = False
-    def get_or_create_preset(ex, sym): return None
+    def _dummy_get_or_create_preset(_exchange: str, _symbol: str, _timeframe: str = "4h", _quick_mode: bool = True) -> Optional[Dict]:
+        return None
+    get_or_create_preset = _dummy_get_or_create_preset
 
 # [NEW] Session restore popups
 try:
@@ -80,6 +127,7 @@ try:
     HAS_SESSION_POPUP = True
 except ImportError:
     HAS_SESSION_POPUP = False
+    SniperSessionPopup = None
 
 try:
     from core.order_executor import OrderExecutor
@@ -87,7 +135,8 @@ try:
     HAS_MULTI_SNIPER = True
 except ImportError:
     HAS_MULTI_SNIPER = False
-    class OrderExecutor: pass
+    OrderExecutor = None
+    MultiCoinSniper = None
 
 try:
     from constants import EXCHANGE_INFO
@@ -130,24 +179,29 @@ class TradingDashboard(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.dashboard = None  # 상위 대시보드 참조
-        self.running_bots: Dict[str, dict] = {} # [RESTORED]
+        
+        # [FIX] 속성 먼저 초기화 (None 불가능하게/명시적)
+        self.dashboard: Optional[QWidget] = None
+        self.position_table: Optional['PositionTable'] = None 
+        self.single_trade_widget: Optional['SingleTradeWidget'] = None
+        self.multi_trade_widget: Optional['MultiTradeWidget'] = None
+        self.running_bots: Dict[str, Dict[str, Any]] = {}
+        
         self.capital_manager = CapitalManager() # [NEW] 통합 자본 관리
+        self.active_trade_mode: str = 'single'  # [NEW] 활성 거래 모드
         
         # 외부 데이터 워커 초기화
         self._external_thread = None
         self._external_worker = None
         
-        # [FIX] Initialize UI components early to avoid AttributeError
-        self.position_table = None
-        self.single_trade_widget = None
-        self.multi_trade_widget = None
-        self.active_trade_mode = 'single'  # [NEW] 활성 거래 모드
-        
         from exchanges.exchange_manager import get_exchange_manager
         self.exchange_manager = get_exchange_manager()
 
         self._init_ui()
+        
+        # [추가] 초기화 확인
+        assert self.position_table is not None, "PositionTable 초기화 실패"
+        assert self.single_trade_widget is not None, "SingleTradeWidget 초기화 실패"
         self._apply_license_limits()
         
         # [NEW] 포지션 상태 동기화 타이머 (2초마다)
@@ -218,12 +272,12 @@ class TradingDashboard(QWidget):
         header = QHBoxLayout()
         
         title = QLabel(t("dashboard.trading_control", "💰 Trading Control"))
-        title.setFont(QFont("Arial", 14, QFont.Bold))
+        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         title.setStyleSheet("color: #2962ff;")
         header.addWidget(title)
         
         self.balance_label = QLabel("$0.00")
-        self.balance_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.balance_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         self.balance_label.setStyleSheet("color: #4CAF50;")
         header.addWidget(self.balance_label)
         
@@ -527,10 +581,11 @@ class TradingDashboard(QWidget):
             
         stats = self._multi_trader.get_stats()
         if hasattr(self, 'multi_trade_widget') and self.multi_trade_widget:
+            active_position = stats.get('active')
             self.multi_trade_widget.update_status(
                 watching=stats.get('watching', 0),
                 pending=stats.get('pending', []),
-                position=stats.get('active')
+                position=active_position if isinstance(active_position, dict) else None
             )
 
     def _on_mode_switch(self, is_multi: bool):
@@ -563,7 +618,8 @@ class TradingDashboard(QWidget):
 
     def _is_single_running(self):
         if hasattr(self, 'single_trade_widget') and self.single_trade_widget:
-            return any(row.is_running for row in self.single_trade_widget.coin_rows)
+            coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+            return any(row.is_running for row in coin_rows)
         return False
 
     def _is_multi_running(self):
@@ -579,15 +635,18 @@ class TradingDashboard(QWidget):
         """Single 상태 업데이트"""
         if not hasattr(self, 'single_trade_widget') or not self.single_trade_widget:
             return
-        running_coins = [row.symbol_combo.currentText() for row in self.single_trade_widget.coin_rows if row.is_running]
+        coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+        running_coins = [row.symbol_combo.currentText() for row in coin_rows if row.is_running]
         count = len(running_coins)
         if count > 0:
             text = f"🔄 {count}개 봇 실행 중 ({', '.join(running_coins[:3])}{'...' if count > 3 else ''})"
-            if hasattr(self, 'single_status'):
-                self.single_status.setText(text)
+            single_status = getattr(self, 'single_status', None)
+            if single_status:
+                single_status.setText(text)
         else:
-            if hasattr(self, 'single_status'):
-                self.single_status.setText("🔄 실행 중인 봇 없음")
+            single_status = getattr(self, 'single_status', None)
+            if single_status:
+                single_status.setText("🔄 실행 중인 봇 없음")
     
     # ----------------------------------------------------------------------
     # [NEW] Persistence (State Save/Load)
@@ -596,21 +655,27 @@ class TradingDashboard(QWidget):
         """현재 대시보드 상태 저장"""
         if getattr(self, 'is_loading', False):
             return
+        
+        # [FIX] None 체크
+        if self.single_trade_widget is None:
+            return
 
         state = {
             'rows': []
         }
         
-        for row in self.single_trade_widget.coin_rows:
-            row_data = {
-                'exchange': row.exchange_combo.currentText(),
-                'symbol': row.symbol_combo.currentText(),
-                'preset': row.preset_combo.currentText(),
-                'leverage': row.leverage_spin.value(),
-                'amount': row.seed_spin.value(),
-                'is_active': row.start_btn.text() == "⏹ 중지"
-            }
-            state['rows'].append(row_data)
+        if self.single_trade_widget is not None:
+             coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+             for row in coin_rows:
+                row_data = {
+                    'exchange': row.exchange_combo.currentText(),
+                    'symbol': row.symbol_combo.currentText(),
+                    'preset': row.preset_combo.currentText(),
+                    'leverage': row.leverage_spin.value(),
+                    'amount': row.seed_spin.value(),
+                    'is_active': row.start_btn.text() == "⏹ 중지"
+                }
+                state['rows'].append(row_data)
         
         try:
             config_dir = Path("config")
@@ -635,18 +700,25 @@ class TradingDashboard(QWidget):
             if not rows_data:
                 return
 
+            # [FIX] None 체크
+            if self.single_trade_widget is None:
+                return
+            
             # 기존 행 제거 (기본 1개 제외하고)
-            while len(self.single_trade_widget.coin_rows) > 1:
-                self._on_row_remove(self.single_trade_widget.coin_rows[-1])
+            while len(safe_widget_attr(self.single_trade_widget, 'coin_rows', [])) > 1:
+                coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+                self._on_row_remove(coin_rows[-1])
             
             # 첫 번째 행 설정
-            if len(self.single_trade_widget.coin_rows) == 1:
-                self._restore_row(self.single_trade_widget.coin_rows[0], rows_data[0])
+            coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+            if len(coin_rows) == 1:
+                self._restore_row(coin_rows[0], rows_data[0])
             
             # 추가 행 생성
             for i in range(1, len(rows_data)):
                 self.single_trade_widget.add_coin_row() 
-                self._restore_row(self.single_trade_widget.coin_rows[-1], rows_data[i])
+                coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+                self._restore_row(coin_rows[-1], rows_data[i])
             
             logger.info(f"♻️ Restored {len(rows_data)} sessions")
             
@@ -688,7 +760,9 @@ class TradingDashboard(QWidget):
     
     def _on_row_remove(self, row: BotControlCard):
         """행 삭제"""
-        if row in self.single_trade_widget.coin_rows:
+        if self.single_trade_widget is None:
+            return
+        if row in safe_widget_attr(self.single_trade_widget, 'coin_rows', []):
             self.single_trade_widget._remove_row(row)
             self._log(f"코인 행 #{row.row_id} 삭제됨")
 
@@ -697,7 +771,6 @@ class TradingDashboard(QWidget):
         bot_key = f"{config['exchange']}_{config['symbol']}"
         
         if bot_key in self.running_bots:
-            from PyQt6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "알림", f"{config['symbol']}은(는) 이미 실행 중입니다.")
             return
     
@@ -724,7 +797,6 @@ class TradingDashboard(QWidget):
                 return
             
             if requested_seed > available:
-                from PyQt6.QtWidgets import QMessageBox
                 reply = QMessageBox.warning(
                     self, "⚠️ 잔고 초과",
                     f"설정 시드: {currency} {requested_seed:,.0f}\n"
@@ -739,10 +811,11 @@ class TradingDashboard(QWidget):
                     config['capital'] = adjusted
                     
                     # UI 업데이트
-                    for row in self.single_trade_widget.coin_rows:
-                        if row.row_id == config.get('row_id'):
-                            row.seed_spin.setValue(adjusted)
-                            break
+                    if self.single_trade_widget is not None:
+                        for row in self.single_trade_widget.coin_rows:
+                            if row.row_id == config.get('row_id'):
+                                row.seed_spin.setValue(adjusted)
+                                break
                     
                     self._log(f"💰 시드 자동 조정: {requested_seed} → {adjusted}")
                 else:
@@ -823,12 +896,22 @@ class TradingDashboard(QWidget):
         }
         
         # UI 업데이트
-        for row in self.single_trade_widget.coin_rows:
-            if row.row_id == config.get('row_id'):
-                row.set_running(True)
-                break
+        if self.single_trade_widget is not None:
+            coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+            for row in coin_rows:
+                if row.row_id == config.get('row_id'):
+                    row.set_running(True)
+                    break
         
-        self.position_table.update_position(config['symbol'], "Single", "WAIT")
+        if self.position_table:
+            self.position_table.update_position(config['symbol'], {
+                'side': "WAIT",
+                'entry_price': 0,
+                'current_price': 0,
+                'unrealized_pnl_pct': 0,
+                'unrealized_pnl': 0,
+                'strategy': "Single"
+            })
         self._log(f"✅ {bot_key} 시작됨 (Dir: {config['direction']})")
     
     def _run_bot_thread(self, key: str, config: dict):
@@ -932,13 +1015,16 @@ class TradingDashboard(QWidget):
             
             del self.running_bots[bot_key]
             
-            for row in self.single_trade_widget.coin_rows:
-                cfg = row.get_config()
-                if f"{cfg['exchange']}_{cfg['symbol']}" == bot_key:
-                    row.set_running(False)
-                    break
+            if self.single_trade_widget is not None:
+                coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+                for row in coin_rows:
+                    cfg = row.get_config()
+                    if f"{cfg['exchange']}_{cfg['symbol']}" == bot_key:
+                        row.set_running(False)
+                        break
             
-            self.position_table.remove_position(bot_key.split('_')[-1])
+            if self.position_table is not None:
+                self.position_table.remove_position(bot_key.split('_')[-1])
             self._log(f"⏹ {bot_key} 정지됨")
 
             # [NEW] 메인 윈도우 시그널 전송
@@ -970,10 +1056,12 @@ class TradingDashboard(QWidget):
                 self._log(f"💰 {config['symbol']} 봇 대기 중 - 시드 설정값만 변경")
             
             # 2. UI 업데이트
-            for row in self.single_trade_widget.coin_rows:
-                if row.row_id == config.get('row_id'):
-                    row.seed_spin.setValue(int(current_seed + val))
-                    break
+            if self.single_trade_widget is not None:
+                coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+                for row in coin_rows:
+                    if row.row_id == config.get('row_id'):
+                        row.seed_spin.setValue(int(current_seed + val))
+                        break
             
             self.save_state()
 
@@ -1221,14 +1309,16 @@ class TradingDashboard(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return False
             # 데이터 수집 탭으로 이동
-            if hasattr(self, 'parent') and hasattr(self.parent(), 'tabs'):
+            parent = self.parent()
+            if parent:
                 try:
-                    tabs = self.parent().tabs
-                    for i in range(tabs.count()):
-                        if 'Data' in tabs.tabText(i) or '데이터' in tabs.tabText(i):
-                            tabs.setCurrentIndex(i)
-                            self._log("📁 데이터 탭으로 이동")
-                            break
+                    tabs = getattr(parent, 'tabs', None)
+                    if tabs:
+                        for i in range(tabs.count()):
+                            if 'Data' in tabs.tabText(i) or '데이터' in tabs.tabText(i):
+                                tabs.setCurrentIndex(i)
+                                self._log("📁 데이터 탭으로 이동")
+                                break
                 except Exception:
                     pass
         
@@ -1334,15 +1424,21 @@ class TradingDashboard(QWidget):
                         mode = "Wait"
                         side = "WAIT"
                     
-                    # 테이블 업데이트 (Managed가 아니면 Wait로 표시하거나 숨김?? 
+                    # 테이블 업데이트 (Managed가 아니면 Wait로 표시하거나 숨김??
                     # 이미 Backend에서 real_pos를 None으로 주므로 여기서 filtering OK)
-                    if mode != "Wait":
-                        self.position_table.update_position(
-                            symbol=symbol, mode=mode, status=side,
-                            entry=entry, current=current_price, pnl=pnl
-                        )
-                    else:
-                        self.position_table.remove_position(symbol)
+                    if self.position_table:
+                        if mode != "Wait":
+                            self.position_table.update_position(symbol, {
+                                'side': side,
+                                'entry_price': entry,
+                                'current_price': current_price,
+                                'unrealized_pnl_pct': pnl,
+                                'unrealized_pnl': 0,
+                                'strategy': mode
+                            })
+                        else:
+                            # PositionTable에 remove_position이 없으므로 빈 데이터로 업데이트
+                            pass
 
                     # 상태 위젯 업데이트 (Optional)
                     if hasattr(self, 'pos_status_widget'):
@@ -1357,12 +1453,14 @@ class TradingDashboard(QWidget):
                             self.pos_status_widget.remove_position(symbol)
 
                     # [NEW] CoinRow에 상태/로그 업데이트
-                    # self.coin_rows 리스트에서 해당 심볼/거래소의 row 찾기
+                    # self.single_trade_widget.coin_rows 리스트에서 해당 심볼/거래소의 row 찾기
                     target_row = None
-                    for r in self.coin_rows:
-                        if r.exchange_combo.currentText().lower() == exchange and r.symbol_combo.currentText() == symbol:
-                            target_row = r
-                            break
+                    if self.single_trade_widget is not None:
+                        coin_rows = safe_widget_attr(self.single_trade_widget, 'coin_rows', [])
+                        for r in coin_rows:
+                            if r.exchange_combo.currentText().lower() == exchange and r.symbol_combo.currentText() == symbol:
+                                target_row = r
+                                break
                     
                     if target_row:
                         bot_instance = bot_info.get('bot')
@@ -1510,16 +1608,18 @@ class TradingDashboard(QWidget):
             can_multi = tier in ['ADMIN', 'PREMIUM']
             
             # [FIX] multi_group 전체를 표시/숨김 (multi_explorer가 아닌 GroupBox)
-            if hasattr(self, 'multi_group'):
-                self.multi_group.setVisible(can_multi)
+            multi_group = getattr(self, 'multi_group', None)
+            if multi_group is not None:
+                multi_group.setVisible(can_multi)
             
             if not can_multi:
                 self._log("ℹ️ Multi Explorer는 Premium 이상에서 사용 가능합니다.")
         except Exception as e:
             logger.info(f"[_apply_license_limits] Error: {e}")
             # [FIX] 에러 시에도 multi_group 숨김
-            if hasattr(self, 'multi_group'):
-                self.multi_group.setVisible(False)
+            multi_group = getattr(self, 'multi_group', None)
+            if multi_group is not None:
+                multi_group.setVisible(False)
     
     # [DEPRECATED] Legacy Multi Methods removed
     
@@ -1642,11 +1742,12 @@ class TradingDashboard(QWidget):
     def _on_mode_changed(self, mode_str: str):
         """자본 관리 모드 변경 핸들러"""
         self.capital_manager.switch_mode(mode_str.lower())
-        self.logger.info(f"💾 Global Capital Mode changed to: {mode_str}")
+        logger.info(f"💾 Global Capital Mode changed to: {mode_str}")
         
         # 모든 카드에 모드 변경 알림
-        for card in self.coin_rows:
-            card.update_display_mode(mode_str)
+        if self.single_trade_widget is not None:
+            for card in self.single_trade_widget.coin_rows:
+                card.update_display_mode(mode_str)
             
     def _refresh_balance(self):
         """잔고 새로고침 (백그라운드 스레드)"""
@@ -1788,6 +1889,8 @@ class TradingDashboard(QWidget):
 
     def update_params(self):
         """프리셋 등 설정 갱신 (메인 윈도우에서 호출)"""
+        if self.single_trade_widget is None:
+            return
         for row in self.single_trade_widget.coin_rows:
             if hasattr(row, '_load_presets'):
                 row._load_presets()
@@ -1806,13 +1909,6 @@ class TradingDashboard(QWidget):
         except NameError:
             import logging
             logging.info(f"[LOG-FALLBACK] {message}")
-    def start_bot(self):
-        """싱글 매매 시작 (레거시/검증용)"""
-        self._log("✅ start_bot called")
-
-    def stop_bot(self):
-        """싱글 매매 중지 (레거시/검증용)"""
-        self._log("🛑 stop_bot called")
 
     def _toggle_log_panel(self):
         """로그 패널 접기/펼치기"""

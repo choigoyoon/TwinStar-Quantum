@@ -145,8 +145,10 @@ class MultiExplorer(QGroupBox):
             t("multi_explorer.header_candles", "캔들"),
             t("multi_explorer.header_action", "액션")
         ])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.result_table.verticalHeader().setVisible(False)
+        if header := self.result_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if v_header := self.result_table.verticalHeader():
+            v_header.setVisible(False)
         self.result_table.setMinimumHeight(200)
         self.result_table.setStyleSheet("""
             QTableWidget {
@@ -272,9 +274,9 @@ class MultiExplorer(QGroupBox):
         while parent:
             if hasattr(parent, '_start_sniper') and hasattr(parent, '_stop_sniper'):
                 # 현재 상태 확인
-                if hasattr(parent, '_sniper') and parent._sniper and getattr(parent._sniper, 'running', False):
+                if hasattr(parent, '_sniper') and parent._sniper and getattr(parent._sniper, 'running', False): # type: ignore
                     # 종료
-                    parent._stop_sniper()
+                    parent._stop_sniper() # type: ignore
                     self.sniper_btn.setText(t("multi_explorer.btn_sniper", "🎯 Sniper"))
                     self.sniper_btn.setStyleSheet("""
                         QPushButton {
@@ -288,7 +290,7 @@ class MultiExplorer(QGroupBox):
                 else:
                     # 시작
                     exchange = self.exchange_combo.currentText().lower()
-                    parent._start_sniper(exchange=exchange, total_seed=1000)
+                    parent._start_sniper(exchange=exchange, total_seed=1000) # type: ignore
                     self.sniper_btn.setText(t("multi_explorer.btn_stop_sniper", "⏹ Sniper 종료"))
                     self.sniper_btn.setStyleSheet("""
                         QPushButton {
@@ -496,11 +498,19 @@ class MultiExplorer(QGroupBox):
             try:
                 from core.strategy_core import AlphaX7Core
                 
+                df_1h = dm.resample(df, '1h') if hasattr(dm, 'resample') else df
                 strategy = AlphaX7Core()
-                signal = None
                 
-                if hasattr(strategy, 'detect_pattern'):
-                    signal = strategy.detect_pattern(df)
+                # [수정] AlphaX7Core에는 detect_pattern 대신 detect_signal이 있음
+                if hasattr(strategy, 'detect_signal'):
+                    # detect_signal(df_1h, df_15m, ...)
+                    signal_obj = strategy.detect_signal(df_1h, df)
+                    if signal_obj:
+                        # signal_obj는 TradeSignal 객체임
+                        signal = {
+                            'direction': getattr(signal_obj, 'signal_type', None),
+                            'strength': 80
+                        }
                 
                 # 시그널 처리
                 if signal:

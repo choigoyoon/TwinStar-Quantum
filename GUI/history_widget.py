@@ -1,11 +1,13 @@
 # history_widget.py - 거래 히스토리 위젯 (확장 버전 v2)
 
 from locales.lang_manager import t
+from typing import Dict, Any, Optional
 import sys
 import os
 import json
 import csv
 import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -119,8 +121,15 @@ class TradeChartPopup(QDialog):
         # 차트 영역 (matplotlib 사용)
         try:
             import matplotlib
-            matplotlib.use('Qt5Agg')
-            from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+            # PyQt6 호환
+            try:
+                matplotlib.use('QtAgg')
+            except Exception:
+                matplotlib.use('Qt5Agg')
+            try:
+                from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas # type: ignore
+            except ImportError:
+                from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas # type: ignore
             from matplotlib.figure import Figure
             
             fig = Figure(figsize=(10, 5), facecolor='#131722')
@@ -227,7 +236,7 @@ class HistoryWidget(QWidget):
         # 헤더
         header_layout = QHBoxLayout()
         header = QLabel("📜 " + t("history.title"))
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         header_layout.addWidget(header)
         
@@ -392,9 +401,9 @@ class HistoryWidget(QWidget):
             t("common.num_header"), t("common.date_time"), t("trade.coin"), t("common.category"), 
             t("trade.entry"), t("trade.exit"), t("common.amount"), t("common.profit_usd"), t("common.profit_pct"), t("common.be")
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setColumnWidth(0, 50)  # # 컬럼 좁게
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        if header := self.table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setStyleSheet("""
             QTableWidget {
                 background: #131722;
@@ -421,7 +430,7 @@ class HistoryWidget(QWidget):
         chart_layout = QVBoxLayout(chart_widget)
         
         self.equity_label = QLabel("📈 Equity Curve")
-        self.equity_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.equity_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         self.equity_label.setStyleSheet("color: white;")
         chart_layout.addWidget(self.equity_label)
         
@@ -467,19 +476,22 @@ class HistoryWidget(QWidget):
     
     # ========== 드래그앤드롭 ==========
     def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
+        mime = event.mimeData()
+        if mime and mime.hasUrls():
+            for url in mime.urls():
                 if url.toLocalFile().lower().endswith('.csv'):
                     event.acceptProposedAction()
                     return
         event.ignore()
     
     def dropEvent(self, event: QDropEvent):
-        for url in event.mimeData().urls():
-            filepath = url.toLocalFile()
-            if filepath.lower().endswith('.csv'):
-                self._load_csv_file(filepath)
-                return
+        mime = event.mimeData()
+        if mime:
+            for url in mime.urls():
+                filepath = url.toLocalFile()
+                if filepath.lower().endswith('.csv'):
+                    self._load_csv_file(filepath)
+                    return
     
     # ========== CSV 임포트 ==========
     def _import_csv(self):
@@ -502,7 +514,7 @@ class HistoryWidget(QWidget):
                 col_map = self._detect_columns(headers)
                 
                 for i, row in enumerate(reader, 1):
-                    trade = {'id': i}
+                    trade: Dict[str, Any] = {'id': i}
                     
                     # 시간
                     if col_map.get('time'):
@@ -774,7 +786,7 @@ class HistoryWidget(QWidget):
             # # (매매 번호)
             id_item = QTableWidgetItem(f"#{trade.get('id', i+1)}")
             id_item.setForeground(QColor('#2962FF'))
-            id_item.setFont(QFont("Arial", 10, QFont.Bold))
+            id_item.setFont(QFont("Arial", 10, QFont.Weight.Bold))
             id_item.setData(Qt.ItemDataRole.UserRole, trade)  # 거래 데이터 저장
             self.table.setItem(i, 0, id_item)
             

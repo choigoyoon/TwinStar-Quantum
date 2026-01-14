@@ -2,11 +2,9 @@
 StarU 나우캐스트 설정 위젯
 - 기준 TF 선택
 - 나우캐스트 TF 체크박스 (1m ~ 1w)
-
-# Logging
+"""
 import logging
 logger = logging.getLogger(__name__)
-"""
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
@@ -14,6 +12,7 @@ from PyQt6.QtWidgets import (
     QFrame
 )
 from PyQt6.QtCore import pyqtSignal
+from typing import Any, cast
 
 
 class NowcastWidget(QWidget):
@@ -253,7 +252,7 @@ class NowcastWidget(QWidget):
         for tf, cb in self.tf_checkboxes.items():
             cb.setChecked(tf in tfs)
     
-    def set_connection_status(self, connected: bool, status_text: str = None):
+    def set_connection_status(self, connected: bool, status_text: str | None = None):
         """연결 상태 업데이트"""
         self._is_connected = connected
         
@@ -270,8 +269,9 @@ class NowcastWidget(QWidget):
             self.connect_btn.setObjectName("startBtn")
         
         # 스타일 새로고침
-        self.connect_btn.style().unpolish(self.connect_btn)
-        self.connect_btn.style().polish(self.connect_btn)
+        if self.connect_btn.style():
+            cast(Any, self.connect_btn.style()).unpolish(self.connect_btn)
+            cast(Any, self.connect_btn.style()).polish(self.connect_btn)
     
     def set_connecting(self):
         """연결 중 상태"""
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     
     # 스타일 적용
     try:
-        from styles import StarUTheme
+        from GUI.styles.theme import Theme as StarUTheme
         style = StarUTheme.get_stylesheet()
     except ImportError:
         style = """

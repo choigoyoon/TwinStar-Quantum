@@ -4,9 +4,12 @@
 모든 거래소는 이 인터페이스를 구현해야 함
 """
 
+import os
+import json
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union, Dict, Any
 from datetime import datetime
 import pandas as pd
 
@@ -22,7 +25,7 @@ class Position:
     initial_sl: float
     risk: float
     be_triggered: bool = False
-    entry_time: datetime = None
+    entry_time: Optional[datetime] = None
     # ATR Trailing Fields
     atr: float = 0.0
     extreme_price: float = 0.0
@@ -81,7 +84,7 @@ class Signal:
     pattern: str  # 'W', 'M', 'Triangle'
     stop_loss: float
     atr: float
-    timestamp: datetime = None
+    timestamp: Optional[datetime] = None
 
 
 class BaseExchange(ABC):
@@ -99,7 +102,7 @@ class BaseExchange(ABC):
         }
         """
         self.config = config
-        self.symbol = config.get('symbol', 'BTCUSDT')
+        self.symbol = str(config.get('symbol', 'BTCUSDT') or 'BTCUSDT')
         self.leverage = config.get('leverage', 3)
         self.amount_usd = config.get('amount_usd', 100)
         self.timeframe = config.get('timeframe', '4h')
@@ -133,7 +136,7 @@ class BaseExchange(ABC):
         """현재 가격"""
     
     @abstractmethod
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """
         시장가 주문
         side: 'Long' or 'Short'
@@ -250,8 +253,8 @@ class BaseExchange(ABC):
                 tr.append(max(tr1, tr2, tr3))
             
             if len(tr) >= period:
-                return np.mean(tr[-period:])
-            return np.mean(tr) if tr else 0
+                return float(np.mean(tr[-period:]))
+            return float(np.mean(tr)) if tr else 0.0
     
     def calculate_position_size(self, price: float) -> float:
         """포지션 크기 계산"""
@@ -279,7 +282,7 @@ class BaseExchange(ABC):
     def get_realized_pnl(self, limit: int = 100) -> float:
         """누적 실현 손익 조회"""
         trades = self.get_trade_history(limit=limit)
-        return sum(t.get('pnl', 0) for t in trades)
+        return float(sum(t.get('pnl', 0) for t in trades))
     
     def get_compounded_capital(self, initial_capital: float) -> float:
         """복리 자본 조회 (초기 자본 + 누적 수익)"""
@@ -290,7 +293,7 @@ class BaseExchange(ABC):
         min_capital = initial_capital * 0.1
         return max(compounded, min_capital)
     
-    def save_trade_history_to_log(self, trades: list = None):
+    def save_trade_history_to_log(self, trades: Optional[list] = None):
         """매매 내역을 로컬 로그 파일에 보관 (공통)"""
         import os, json
         

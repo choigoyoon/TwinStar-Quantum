@@ -27,13 +27,13 @@ class PositionCard(QFrame):
     close_clicked = pyqtSignal(str)  # symbol
     
     def __init__(self, symbol: str, side: str, entry_price: float,
-                 current_price: float, stop_loss: float, size: float):
+                 current_price: float, stop_loss: float, pos_size: float):
         super().__init__()
         self.symbol = symbol
         self.side = side
         self.entry_price = entry_price
         self.stop_loss = stop_loss
-        self.size = size
+        self.pos_size = pos_size
         self._init_ui(current_price)
     
     def _init_ui(self, current_price: float):
@@ -98,7 +98,7 @@ class PositionCard(QFrame):
             (t("dashboard.entry_price", "진입가"), f"${self.entry_price:,.2f}"),
             (t("dashboard.current_price", "현재가"), f"${current_price:,.2f}"),
             (t("dashboard.stop_loss_price", "손절가"), f"${self.stop_loss:,.2f}"),
-            (t("dashboard.quantity", "수량"), f"{self.size:.4f}"),
+            (t("dashboard.quantity", "수량"), f"{self.pos_size:.4f}"),
         ]
         
         for i, (label, value) in enumerate(labels):
@@ -163,8 +163,20 @@ class PositionStatusWidget(QFrame):
     
     def __init__(self):
         super().__init__()
-        self.positions = {}  # symbol -> PositionCard
+        self.positions: dict[str, PositionCard] = {}  # symbol -> PositionCard
         self._init_ui()
+    
+    @property
+    def cards(self) -> dict[str, PositionCard]:
+        """positions 속성의 별칭 (하위 호환성)"""
+        return self.positions
+    
+    def clear_all(self) -> None:
+        """모든 포지션 카드 제거"""
+        for symbol in list(self.positions.keys()):
+            self.remove_position(symbol)
+        self.empty_label.show()
+        self._update_status()
     
     def _init_ui(self):
         self.setStyleSheet("""
@@ -304,10 +316,10 @@ class PositionStatusWidget(QFrame):
                 if not closed:
                     QMessageBox.warning(self, t("common.error", "청산 실패"), f"{symbol} " + t("dashboard.close_fail_no_exchange", "청산에 실패했습니다 (연결된 거래소 없음)"))
                     
-            except Exception as e:
-                QMessageBox.critical(self, t("common.error", "오류"), t("dashboard.close_error", "청산 오류") + f": {e}")
             except ImportError:
                 logger.info(f"[Close] {symbol} 청산 요청 (exchange_manager 미사용)")
+            except Exception as e:
+                QMessageBox.critical(self, t("common.error", "오류"), t("dashboard.close_error", "청산 오류") + f": {e}")
             
             self.remove_position(symbol)
     

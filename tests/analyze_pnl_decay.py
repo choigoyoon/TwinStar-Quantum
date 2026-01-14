@@ -6,6 +6,7 @@ os.chdir('C:\\매매전략')
 
 def main():
     import pandas as pd
+    from typing import Any, cast
     
     # 데이터 로드
     df = pd.read_parquet('data/cache/bybit_btcusdt_15m.parquet')
@@ -47,10 +48,10 @@ def main():
     
     print(f"총 거래 수: {total_trades}")
     print(f"평균 수익률(Net): {avg_pnl:.4f}% per trade")
-    print(f"누적 복리 수익률: {((tdf['pnl']/100 + 1).prod() - 1)*100:,.0f}%")
+    print(f"누적 복리 수익률: {((cast(Any, tdf['pnl'])/100 + 1).prod() - 1)*100:,.0f}%")
     
     # 익절 폭 분석
-    wins = tdf[tdf['pnl'] > 0]
+    wins = tdf[cast(Any, tdf['pnl']) > 0]
     print(f"\n[수수료 영향 분석]")
     print(f"  회당 수수료(왕복): 0.23%")
     print(f"  평균 순수익(Net): {avg_pnl:.4f}%")
@@ -58,8 +59,8 @@ def main():
     print(f"  수수료 비중: {0.23 / (avg_pnl + 0.23) * 100:.1f}% (수익의 이만큼이 수수료로 나감)")
     
     print(f"\n[수익 분포]")
-    print(f"  최대 수익: {tdf['pnl'].max():.2f}%")
-    print(f"  중앙값 수익: {tdf['pnl'].median():.4f}%")
+    print(f"  최대 수익: {cast(Any, tdf['pnl']).max():.2f}%")
+    print(f"  중앙값 수익: {cast(Any, tdf['pnl']).median():.4f}%")
 
 if __name__ == '__main__':
     main()

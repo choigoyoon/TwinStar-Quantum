@@ -33,7 +33,7 @@ try:
     from config.parameters import (
         SLIPPAGE, FEE, TOTAL_COST,
         DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
-        to_api_direction, from_api_direction
+        to_api_direction, from_api_direction # type: ignore
     )
 except ImportError:
     # Fallback
@@ -50,7 +50,7 @@ except ImportError:
 # [Phase 3] Single Source of Truth: config/parameters.py에서 import
 try:
     from config.parameters import (
-        load_params_from_json
+        load_params_from_json, DEFAULT_PARAMS, get_param
     )
 except ImportError:
     # Fallback for EXE or path issues
@@ -62,7 +62,9 @@ except ImportError:
     )
 
 
-def get_params() -> dict:
+from typing import Dict, Any
+
+def get_params() -> Dict[str, Any]:
     """현재 활성 파라미터 반환 (JSON 우선, 없으면 기본값)"""
     return load_params_from_json()
 

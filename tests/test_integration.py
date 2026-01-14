@@ -5,7 +5,7 @@
 모듈 간 통합 테스트 및 import 검증
 """
 
-import pytest
+import pytest  # type: ignore
 
 
 class TestModuleImports:

@@ -10,8 +10,9 @@ BingX 거래소 어댑터
 import time
 import logging
 import pandas as pd
+from typing import Any, cast
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any, Dict, Union
 
 from .base_exchange import BaseExchange, Position
 
@@ -33,7 +34,7 @@ class BingXExchange(BaseExchange):
         self.api_key = config.get('api_key', '')
         self.api_secret = config.get('api_secret', '')
         self.testnet = config.get('testnet', False)
-        self.exchange = None
+        self.exchange: Optional[Any] = None  # ccxt.Exchange type
         self.time_offset = 0
         self.hedge_mode = False
         
@@ -78,6 +79,9 @@ class BingXExchange(BaseExchange):
     
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return None
         try:
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1h', '240': '4h'}
             timeframe = tf_map.get(interval, interval)
@@ -85,7 +89,7 @@ class BingXExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             
             return df
@@ -96,16 +100,22 @@ class BingXExchange(BaseExchange):
     
     def get_current_price(self) -> float:
         """현재 가격"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return 0.0
         try:
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker['last'])
+            return float(ticker.get('last', 0) or 0)
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
-            return 0
+            return 0.0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
         """시장가 주문"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return False
         max_retries = 3
         
         for attempt in range(max_retries):
@@ -113,7 +123,7 @@ class BingXExchange(BaseExchange):
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
-                params = {'recvWindow': 60000}
+                params: Dict[str, Any] = {'recvWindow': 60000}
                 
                 # [NEW] Hedge Mode Check (BingX usually One-Way, but if Hedge enabled:)
                 # BingX Standard Params for Hedge: positionSide=LONG/SHORT
@@ -135,7 +145,7 @@ class BingXExchange(BaseExchange):
                     if stop_loss > 0:
                         try:
                             sl_side = 'sell' if side == 'Long' else 'buy'
-                            sl_params = {
+                            sl_params: Dict[str, Any] = {
                                 'stopPrice': stop_loss,
                                 'reduceOnly': True
                             }
@@ -154,7 +164,7 @@ class BingXExchange(BaseExchange):
                             # 🔴 CRITICAL: SL 실패 시 즉시 청산
                             logging.error(f"[BingX] ❌ SL Setting FAILED! Closing position immediately: {sl_err}")
                             try:
-                                close_params = {'reduceOnly': True}
+                                close_params: Dict[str, Any] = {'reduceOnly': True}
                                 if self.hedge_mode:
                                     close_params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
                                 self.exchange.create_order(
@@ -194,24 +204,30 @@ class BingXExchange(BaseExchange):
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return False
         try:
             symbol = self._convert_symbol(self.symbol)
             
             # 기존 스탑 주문 취소
             try:
-                orders = self.exchange.fetch_open_orders(symbol)
-                for order in orders:
-                    if order.get('type') in ['stop_market', 'stop']:
-                        oid = order.get('id') if isinstance(order, dict) else None
-                    if oid:
-                        self.exchange.cancel_order(oid, symbol)
+                if self.exchange:
+                    orders = self.exchange.fetch_open_orders(symbol)
+                    for order in orders:
+                        if isinstance(order, dict) and order.get('type') in ['stop_market', 'stop']:
+                            oid = order.get('id')
+                            if oid:
+                                self.exchange.cancel_order(oid, symbol)
             except Exception as e:
                 logging.debug(f'무시된 예외: {e}')
             
             # 새 스탑 주문
             if self.position:
+                if self.exchange is None:
+                    return False
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
-                params = {
+                params: Dict[str, Any] = {
                     'stopPrice': new_sl,
                     'reduceOnly': True
                 }
@@ -238,6 +254,9 @@ class BingXExchange(BaseExchange):
     
     def close_position(self) -> bool:
         """포지션 청산"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return False
         try:
             if not self.position:
                 return True
@@ -245,7 +264,7 @@ class BingXExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
             
-            params = {'reduceOnly': True}
+            params: Dict[str, Any] = {'reduceOnly': True}
             # [FIX] Hedge Mode Support (BingX using positionSide)
             if self.hedge_mode:
                 params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
@@ -280,6 +299,9 @@ class BingXExchange(BaseExchange):
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return False
         try:
             if not self.position or side != self.position.side:
                 return False
@@ -330,6 +352,9 @@ class BingXExchange(BaseExchange):
             return False
         try:
             server_time = self.exchange.fetch_time()
+            if server_time is None:
+                logging.error("[BingX] Failed to fetch server time")
+                return False
             local_time = int(time.time() * 1000)
             self.time_offset = server_time - local_time
             logging.info(f"[BingX] Time synced. Offset: {self.time_offset}ms")
@@ -343,6 +368,8 @@ class BingXExchange(BaseExchange):
         if self.exchange is None:
             return []
         try:
+            if self.exchange is None:
+                return []
             positions_data = self.exchange.fetch_positions()
             
             positions = []
@@ -367,6 +394,9 @@ class BingXExchange(BaseExchange):
     
     def set_leverage(self, leverage: int) -> bool:
         """레버리지 설정"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return False
         try:
             symbol = self._convert_symbol(self.symbol)
             self.exchange.set_leverage(leverage, symbol)
@@ -402,14 +432,13 @@ class BingXExchange(BaseExchange):
             self.ws_handler.on_connect = on_connect
             
             import asyncio
-            asyncio.create_task(self.ws_handler.connect())
+            if self.ws_handler:
+                asyncio.create_task(self.ws_handler.connect())
             
-            import logging
-            logging.info(f"[Bingx] WebSocket connected: {{self.symbol}}")
+            logging.info(f"[BingX] WebSocket connected: {self.symbol}")
             return True
         except Exception as e:
-            import logging
-            logging.error(f"[Bingx] WebSocket failed: {{e}}")
+            logging.error(f"[BingX] WebSocket failed: {e}")
             return False
     
     def stop_websocket(self):
@@ -426,47 +455,34 @@ class BingXExchange(BaseExchange):
     
     def _auto_sync_time(self):
         """API 호출 전 자동 시간 동기화 (5분마다)"""
-        import time
         if not hasattr(self, '_last_sync'):
             self._last_sync = 0
-        
+
         if time.time() - self._last_sync > 300:
             self.sync_time()
             self._last_sync = time.time()
-    
-    def sync_time(self):
-        """서버 시간 동기화"""
-        import time
-        import logging
-        try:
-            # ccxt 기반 거래소의 경우
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                server_time = self.exchange.fetch_time()
-                local_time = int(time.time() * 1000)
-                self.time_offset = local_time - server_time
-                logging.debug(f"[Bingx] Time synced: offset={{self.time_offset}}ms")
-                return True
-        except Exception as e:
-            logging.debug(f"[Bingx] Time sync failed: {{e}}")
-        self.time_offset = 0
-        return False
-    
-    def fetchTime(self):
+
+    def fetchTime(self) -> int:
         """서버 시간 조회"""
-        import time
         try:
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                return self.exchange.fetch_time()
-        except Exception as e:
-            logging.debug(f"WS close ignored: {e}")
+            if self.exchange and hasattr(self.exchange, 'fetch_time'):
+                if self.exchange is None: return int(time.time() * 1000)
+                result = self.exchange.fetch_time()
+                if result is not None:
+                    return int(result)
+        except Exception:
+            pass
         return int(time.time() * 1000)
 
     # ========== [NEW] 매매 히스토리 API ==========
     
     def get_trade_history(self, limit: int = 50) -> list:
         """API로 청산된 거래 히스토리 조회 (CCXT)"""
+        if self.exchange is None:
+            logging.error("Exchange not connected")
+            return []
         try:
-            if not self.exchange:
+            if self.exchange is None:
                 return super().get_trade_history(limit)
             
             symbol = self._convert_symbol(self.symbol)
@@ -474,15 +490,16 @@ class BingXExchange(BaseExchange):
             
             trades = []
             for t in raw_trades:
+                trade_dict: Dict[str, Any] = t if isinstance(t, dict) else {}
                 trades.append({
                     'symbol': self.symbol,
-                    'side': t.get('side', '').upper(),
-                    'qty': float(t.get('amount', 0)),
-                    'entry_price': float(t.get('price', 0)),
-                    'exit_price': float(t.get('price', 0)),
-                    'pnl': float(t.get('info', {}).get('realizedPnl', 0)),
-                    'created_time': str(t.get('timestamp', '')),
-                    'updated_time': str(t.get('timestamp', ''))
+                    'side': str(trade_dict.get('side', '')).upper(),
+                    'qty': float(trade_dict.get('amount', 0)),
+                    'entry_price': float(trade_dict.get('price', 0)),
+                    'exit_price': float(trade_dict.get('price', 0)),
+                    'pnl': float(trade_dict.get('info', {}).get('realizedPnl', 0) if isinstance(trade_dict.get('info'), dict) else 0),
+                    'created_time': str(trade_dict.get('timestamp', '')),
+                    'updated_time': str(trade_dict.get('timestamp', ''))
                 })
             
             logging.info(f"[BingX] Trade history loaded: {len(trades)} trades")
@@ -496,7 +513,7 @@ class BingXExchange(BaseExchange):
         """API로 실현 손익 조회"""
         try:
             trades = self.get_trade_history(limit=limit)
-            total_pnl = sum(t.get('pnl', 0) for t in trades)
+            total_pnl = float(sum(t.get('pnl', 0) for t in trades))
             logging.info(f"[BingX] Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
             return total_pnl
         except Exception as e:

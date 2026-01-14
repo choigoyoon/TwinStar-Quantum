@@ -8,6 +8,8 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from typing import Any
 
 # Path setup
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -23,12 +25,14 @@ class TestGUIRobustness(unittest.TestCase):
     def setUp(self):
         self.widget = AutoPipelineWidget()
 
-    @patch('PyQt5.QtWidgets.QMessageBox.warning')
+    @patch('PyQt6.QtWidgets.QMessageBox.warning')
     def test_step1_no_selection_warning(self, mock_warn):
         """[Error Case] Going next without symbol selection warning"""
         # Ensure no selection
         for i in range(self.widget.symbol_list.count()):
-            self.widget.symbol_list.item(i).setCheckState(0) 
+            item = self.widget.symbol_list.item(i)
+            if item:
+                item.setCheckState(Qt.CheckState.Unchecked) 
         self.widget._update_selection_count()
         
         # Try triggering optimization without going next (simulating button behavior restriction)
@@ -38,16 +42,17 @@ class TestGUIRobustness(unittest.TestCase):
         mock_warn.assert_called_with(self.widget, "Warning", "No symbols selected in Step 1")
         print("✅ Error Case: Step 1 Empty Selection Warning Verified")
 
-    @patch('PyQt5.QtWidgets.QMessageBox.warning')
+    @patch('PyQt6.QtWidgets.QMessageBox.warning')
     def test_step3_no_verification_target(self, mock_warn):
         """[Error Case] Running verification with empty list"""
         self.widget.selected_symbols = []
-        self.widget._run_verification()
+        if hasattr(self.widget, '_run_verification'):
+            getattr(self.widget, '_run_verification')()
         
         mock_warn.assert_called_with(self.widget, "Warning", "No symbols to verify")
         print("✅ Error Case: Step 3 Empty Target Warning Verified")
         
-    @patch('PyQt5.QtWidgets.QMessageBox.critical')
+    @patch('PyQt6.QtWidgets.QMessageBox.critical')
     def test_step4_missing_scanner_module(self, mock_crit):
         """[Error Case] Handling missing AutoScanner module gracefully"""
         # Force import error for AutoScanner inside the method

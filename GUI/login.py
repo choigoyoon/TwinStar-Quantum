@@ -9,13 +9,14 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QStackedWidget, QFrame, QApplication)
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from trc20_payment import TRC20PaymentChecker, DEPOSIT_WALLET
+    from trc20_payment import TRC20PaymentChecker, DEPOSIT_WALLET # type: ignore
 except ImportError:
     TRC20PaymentChecker = None
     DEPOSIT_WALLET = "TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3"
@@ -68,7 +69,7 @@ class AuthDialog(QDialog):
         
         # Title
         title = QLabel("🌟 TwinStar Quantum")
-        title.setFont(QFont("Arial", 22, QFont.Bold))
+        title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: #2962FF; margin-bottom: 10px;")
         layout.addWidget(title)
@@ -145,7 +146,9 @@ class AuthDialog(QDialog):
         back_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         layout.addWidget(back_btn)
         
-        layout.addWidget(QLabel("Create Account", styleSheet="font-size: 18px; font-weight: bold; color: white;"))
+        title_lbl = QLabel("Create Account")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        layout.addWidget(title_lbl)
         
         # Email
         layout.addWidget(QLabel("Email"))
@@ -188,7 +191,9 @@ class AuthDialog(QDialog):
         back_btn.clicked.connect(self._cancel_payment)
         layout.addWidget(back_btn)
         
-        layout.addWidget(QLabel("💳 Payment", styleSheet="font-size: 18px; font-weight: bold; color: white;"))
+        pay_title = QLabel("💳 Payment")
+        pay_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        layout.addWidget(pay_title)
         
         # Instructions
         info = QLabel("Send USDT (TRC-20) to the address below:")
@@ -331,7 +336,8 @@ class AuthDialog(QDialog):
         status = self.payment_checker.check_user_status(self.current_email)
         
         if status['paid']:
-            self.payment_timer.stop()
+            if hasattr(self, 'payment_timer') and self.payment_timer:
+                cast(Any, self.payment_timer).stop()
             self.payment_status.setText(f"✅ Payment confirmed! Tier: {status['tier'].upper()}")
             self.payment_status.setStyleSheet("color: #26a69a; font-size: 14px; font-weight: bold;")
             
@@ -357,7 +363,8 @@ class AuthDialog(QDialog):
     def _copy_address(self):
         """주소 복사"""
         clipboard = QApplication.clipboard()
-        clipboard.setText(DEPOSIT_WALLET)
+        if clipboard:
+            cast(Any, clipboard).setText(DEPOSIT_WALLET)
         QMessageBox.information(self, "Copied", "Address copied to clipboard!")
     
     def _cancel_payment(self):

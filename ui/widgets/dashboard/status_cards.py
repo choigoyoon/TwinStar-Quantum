@@ -9,27 +9,7 @@ from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt6.QtCore import Qt
 
 # 디자인 시스템
-try:
-    from ui.design_system import Colors, Typography, Spacing, Radius
-except ImportError:
-    class Colors:
-        bg_surface = "#161b22"
-        border_default = "#30363d"
-        text_secondary = "#8b949e"
-        text_primary = "#f0f6fc"
-        accent_primary = "#00d4aa"
-        success = "#3fb950"
-        danger = "#f85149"
-    class Typography:
-        text_sm = "12px"
-        text_2xl = "24px"
-        font_bold = 700
-        font_medium = 500
-    class Spacing:
-        space_3 = "12px"
-        space_4 = "16px"
-    class Radius:
-        radius_lg = "12px"
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius
 
 
 class StatusCard(QFrame):
@@ -44,11 +24,11 @@ class StatusCard(QFrame):
     """
     
     def __init__(
-        self, 
-        title: str, 
-        value: str = "0", 
+        self,
+        title: str,
+        value: str = "0",
         icon: str = "",
-        accent_color: str = None,
+        accent_color: str | None = None,
         parent=None
     ):
         super().__init__(parent)

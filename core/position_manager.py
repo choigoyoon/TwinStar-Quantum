@@ -11,7 +11,11 @@ core/position_manager.py
 
 import logging
 import pandas as pd
-from typing import Optional, Dict, Callable
+from typing import Any, Optional, Dict, Callable, cast
+
+# Core 및 Utils (Phase 2)
+from core.strategy_core import AlphaX7Core
+from utils.indicators import calculate_rsi
 
 # Logging
 from utils.logger import get_module_logger
@@ -30,12 +34,12 @@ class PositionManager:
     """
     
     def __init__(
-        self, 
-        exchange,
-        strategy_params: dict = None,
-        strategy_core = None,
+        self,
+        exchange: Any,
+        strategy_params: Optional[Dict[str, Any]] = None,
+        strategy_core: Optional[AlphaX7Core] = None,
         dry_run: bool = False,
-        state_manager = None
+        state_manager: Any = None
     ):
         """
         Args:
@@ -51,21 +55,20 @@ class PositionManager:
         self.state_manager = state_manager
         
         # 콜백 함수
-        self.on_sl_hit: Callable = None
-        self.on_trailing_update: Callable = None
-        self.on_add_triggered: Callable = None
+        self.on_sl_hit: Optional[Callable[..., Any]] = None
+        self.on_trailing_update: Optional[Callable[..., Any]] = None
+        self.on_add_triggered: Optional[Callable[..., Any]] = None
     
     @property
     def strategy(self):
-        """AlphaX7Core 지연 로드"""
+        """AlphaX7Core 반환 (Phase 2 정적 임포트)"""
         if self._strategy_core is None:
-            from .strategy_core import AlphaX7Core
             self._strategy_core = AlphaX7Core(use_mtf=True)
         return self._strategy_core
     
     # ========== RSI 계산 ==========
     
-    def _calculate_rsi(self, df_entry: pd.DataFrame, period: int = None) -> float:
+    def _calculate_rsi(self, df_entry: Optional[pd.DataFrame], period: Optional[int] = None) -> float:
         """
         RSI 계산 (utils/indicators 위임)
         
@@ -77,27 +80,51 @@ class PositionManager:
             RSI 값 (기본 50)
         """
         if period is None:
-            period = self.strategy_params.get('rsi_period', 14)
-        
+            period = int(self.strategy_params.get('rsi_period', 14) or 14)
+
         if df_entry is None or len(df_entry) < period + 10:
             return 50.0
         
         try:
-            from utils.indicators import calculate_rsi
-            return calculate_rsi(df_entry['close'].values, period=period)
+            close_data = df_entry['close']
+            # DataFrame['close']는 Series를 반환하므로 타입 체크
+            if isinstance(close_data, pd.DataFrame):
+                close_series = cast(Any, close_data).iloc[:, 0]
+            else:
+                close_series = pd.Series(close_data)
+
+            rsi_result = calculate_rsi(close_series, period=period, return_series=False)
+            # Series인 경우 마지막 값, 아니면 그대로 float 반환
+            if isinstance(rsi_result, pd.Series):
+                return float(rsi_result.iloc[-1])
+            return rsi_result  # 이미 float
         except Exception:
             # 폴백: 인라인 계산
             try:
-                closes = df_entry['close'].tail(period + 10)
+                close_data = df_entry['close'].tail(period + 10)
+                closes = pd.Series(close_data) if not isinstance(close_data, pd.Series) else close_data
                 delta = closes.diff()
-                gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-                rs = gain / loss.replace(0, 1e-10)
+                gain_calc = delta.where(delta > 0, 0)
+                loss_calc = -delta.where(delta < 0, 0)
+                gain = gain_calc.rolling(window=period).mean()
+                loss = loss_calc.rolling(window=period).mean()
+                loss_safe = loss.replace(0, 1e-10)
+                rs = gain / loss_safe
                 rsi_series = 100 - (100 / (1 + rs))
-                return float(rsi_series.iloc[-1]) if not rsi_series.empty else 50.0
+                if isinstance(rsi_series, pd.Series) and not rsi_series.empty:
+                    return float(rsi_series.iloc[-1])
+                return 50.0
             except Exception:
                 return 50.0
     
+    # ========== 유틸리티 ==========
+    
+    def _get_val(self, obj: Any, key: str, default: Any = None) -> Any:
+        """객체 속성 또는 딕셔너리 키 값 반환"""
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
     # ========== SL 히트 체크 ==========
     
     def check_sl_hit(self, position, high: float, low: float) -> bool:
@@ -115,8 +142,8 @@ class PositionManager:
         if position is None:
             return False
         
-        sl = getattr(position, 'stop_loss', 0)
-        side = getattr(position, 'side', '')
+        sl = self._get_val(position, 'stop_loss', 0)
+        side = self._get_val(position, 'side', '')
         
         if side == 'Long' and low <= sl:
             return True
@@ -174,7 +201,7 @@ class PositionManager:
             return False
         
         max_adds = params.get('max_adds', 1)
-        current_adds = getattr(position, 'add_count', 0)
+        current_adds = self._get_val(position, 'add_count', 0)
         
         if current_adds >= max_adds:
             return False
@@ -182,7 +209,7 @@ class PositionManager:
         pullback_long = params.get('pullback_rsi_long', 45)
         pullback_short = params.get('pullback_rsi_short', 55)
         
-        side = getattr(position, 'side', '')
+        side = self._get_val(position, 'side', '')
         
         if side == 'Long' and current_rsi < pullback_long:
             return True
@@ -197,7 +224,7 @@ class PositionManager:
         self,
         bt_state: dict,
         candle: dict,
-        df_entry: pd.DataFrame = None
+        df_entry: Optional[pd.DataFrame] = None
     ) -> Optional[Dict]:
         """
         실시간 포지션 관리 (트레일링, SL 히트, 추가 진입)
@@ -305,8 +332,8 @@ class PositionManager:
             should_add = self.strategy.should_add_position_realtime(
                 direction=direction,
                 current_rsi=current_rsi,
-                pullback_rsi_long=params.get('pullback_rsi_long', 40),
-                pullback_rsi_short=params.get('pullback_rsi_short', 60)
+                add_count=current_adds,
+                max_adds=max_adds
             )
             if should_add:
                 if self.on_add_triggered:
@@ -322,7 +349,7 @@ class PositionManager:
         bt_state: dict,
         candle: dict,
         trading_conditions: dict,
-        df_entry: pd.DataFrame = None
+        df_entry: Optional[pd.DataFrame] = None
     ) -> Optional[Dict]:
         """
         신규 진입 체크

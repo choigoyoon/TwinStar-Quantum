@@ -1,7 +1,10 @@
 import sys
 import os
 import inspect
-sys.path.insert(0, rstr(Path(__file__).parent))
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 print('=' * 60)
 print('=== GUI 리팩토링 영향 분석 ===')
@@ -25,7 +28,7 @@ missing_files = []
 missing_classes = []
 
 for filepath, classes in components.items():
-    full_path = os.path.join(rstr(Path(__file__).parent), filepath)
+    full_path = str(PROJECT_ROOT / filepath)
     if os.path.exists(full_path):
         print(f'✅ {filepath}')
         # Check if classes exist
@@ -57,7 +60,7 @@ main_gui_files = [
 import_issues = []
 
 for filepath, expected_imports in main_gui_files:
-    full_path = os.path.join(rstr(Path(__file__).parent), filepath)
+    full_path = str(PROJECT_ROOT / filepath)
     if os.path.exists(full_path):
         with open(full_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -94,7 +97,7 @@ size_check = [
 ]
 
 for filepath, target_max in size_check:
-    full_path = os.path.join(rstr(Path(__file__).parent), filepath)
+    full_path = str(PROJECT_ROOT / filepath)
     if os.path.exists(full_path):
         with open(full_path, 'r', encoding='utf-8') as f:
             lines = len(f.readlines())

@@ -3,6 +3,7 @@
 import logging
 logger = logging.getLogger(__name__)
 # i18n.py - 다국어 지원 시스템
+from typing import Optional
 
 
 class I18n:
@@ -207,10 +208,11 @@ class I18n:
         return cls._current_lang
     
     @classmethod
-    def t(cls, key: str, default: str = None) -> str:
+    def t(cls, key: str, default: Optional[str] = None) -> str:
         """번역 문자열 가져오기"""
         lang_dict = cls.TRANSLATIONS.get(cls._current_lang, cls.TRANSLATIONS['en'])
-        return lang_dict.get(key, default or key)
+        res = lang_dict.get(key, default or key)
+        return str(res) if res is not None else key
     
     @classmethod
     def available_languages(cls) -> list:
@@ -219,7 +221,7 @@ class I18n:
 
 
 # 편의 함수
-def t(key: str, default: str = None) -> str:
+def t(key: str, default: Optional[str] = None) -> str:
     """번역 단축 함수"""
     return I18n.t(key, default)
 

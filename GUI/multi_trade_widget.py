@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, QTimer
 from locales.lang_manager import t
+from typing import Optional, List, Dict, Any
 
 
 class MultiTradeWidget(QWidget):
@@ -224,7 +225,7 @@ class MultiTradeWidget(QWidget):
         """현황 표시 업데이트 (외부에서 호출 가능)"""
         # 이 메서드는 TradingDashboard에서 MultiTrader 상태를 받아 호출
     
-    def update_status(self, watching: int = 0, pending: list = None, position: dict = None):
+    def update_status(self, watching: int = 0, pending: Optional[List[Dict[str, Any]]] = None, position: Optional[Dict[str, Any]] = None) -> None:
         """외부에서 상태 업데이트"""
         # 감시 중
         self.watching_label.setText(f"├─ 감시 중: {watching}개")

@@ -4,6 +4,7 @@ import time
 import unittest
 import argparse
 from pathlib import Path
+from typing import Any, cast
 from PyQt6.QtWidgets import QApplication, QTabWidget, QPushButton, QLineEdit, QComboBox, QCheckBox, QTableWidget, QWidget
 
 from PyQt6.QtTest import QTest
@@ -15,12 +16,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 # Mock Login or handle it
 # If we want to test StarUWindow directly, we can just instantiate it.
-try:
-    from GUI.staru_main import StarUWindow
-except ImportError:
-    # If paths are tricky
-    sys.path.append(os.path.join(str(BASE_DIR), 'GUI'))
-    from staru_main import StarUWindow
+from GUI.staru_main import StarUWindow
 
 class GUIAutomationTester(unittest.TestCase):
     @classmethod
@@ -43,9 +39,9 @@ class GUIAutomationTester(unittest.TestCase):
         self.window = StarUWindow(user_tier='admin')
         self.window.show()
         self.window.resize(1200, 800)
-        QTest.qWaitForWindowExposed(self.window)
+        cast(Any, QTest).qWaitForWindowExposed(self.window)
         # Wait for widget initialization (it log "위젯 초기화 완료")
-        QTest.qWait(1000)
+        cast(Any, QTest).qWait(1000)
 
     def tearDown(self):
         self.window.close()
@@ -73,7 +69,7 @@ class GUIAutomationTester(unittest.TestCase):
         idx = self.find_tab_index("최적화")
         print(f"  - Switching to Optimization tab (index: {idx})")
         self.window.tabs.setCurrentIndex(idx)
-        QTest.qWait(500)
+        cast(Any, QTest).qWait(500)
         self.capture("sc1_opt_tab")
         
         # 2. Get Optimization Widget
@@ -82,8 +78,8 @@ class GUIAutomationTester(unittest.TestCase):
         # 3. Simulate Run (Quick mode if available)
         if hasattr(page, 'run_btn'):
             print("  - Clicking 'Start Optimization'...")
-            QTest.mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
-            QTest.qWait(2000)
+            cast(Any, QTest).mouseClick(cast(Any, page).run_btn, Qt.MouseButton.LeftButton)
+            cast(Any, QTest).qWait(2000)
             self.capture("sc1_opt_running")
             
             # Wait for finish signal if possible, or just check progress
@@ -99,21 +95,21 @@ class GUIAutomationTester(unittest.TestCase):
         # 1. Click Backtest Tab
         idx = self.find_tab_index("백테스트")
         self.window.tabs.setCurrentIndex(idx)
-        QTest.qWait(500)
+        cast(Any, QTest).qWait(500)
         self.capture("sc2_bt_tab")
         
         page = self.window.backtest_widget
         
         # 2. Configure Symbol
         if hasattr(page, 'symbol_combo'):
-            page.symbol_combo.setCurrentIndex(0) # BTCUSDT
-            QTest.qWait(200)
+            cast(Any, page).symbol_combo.setCurrentIndex(0) # BTCUSDT
+            cast(Any, QTest).qWait(200)
         
         # 3. Click Run
         if hasattr(page, 'run_btn'):
             print("  - Clicking 'Start Backtest'...")
-            QTest.mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
-            QTest.qWait(2000)
+            cast(Any, QTest).mouseClick(cast(Any, page).run_btn, Qt.MouseButton.LeftButton)
+            cast(Any, QTest).qWait(2000)
             self.capture("sc2_bt_running")
         else:
             print("  - ERROR: run_btn not found in backtest_widget")
@@ -148,8 +144,8 @@ class GUIAutomationTester(unittest.TestCase):
                 for step in range(1, 4): # Test first few steps
                     print(f"    * Progressing to Step {step+1}...")
                     if hasattr(pipeline, '_go_next'):
-                        pipeline._go_next()
-                        QTest.qWait(500)
+                        cast(Any, pipeline)._go_next()
+                        cast(Any, QTest).qWait(500)
                         self.capture(f"sc3_pipeline_step_{step+1}")
         else:
             print("  - ERROR: AutoPipelineWidget not found")
@@ -159,7 +155,7 @@ class GUIAutomationTester(unittest.TestCase):
         print("\n▶ Running Scenario 4: Settings")
         idx = self.find_tab_index("설정")
         self.window.tabs.setCurrentIndex(idx)
-        QTest.qWait(500)
+        cast(Any, QTest).qWait(500)
         self.capture("sc4_settings")
         
         page = self.window.settings_widget

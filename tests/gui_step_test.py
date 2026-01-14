@@ -3,6 +3,7 @@ import os
 import time
 import argparse
 from pathlib import Path
+from typing import Any, cast
 from PyQt6.QtWidgets import QApplication, QTabWidget, QPushButton, QLineEdit, QComboBox, QCheckBox, QTableWidget, QWidget
 from PyQt6.QtTest import QTest
 from PyQt6.QtCore import Qt, QTimer, QPoint, QObject
@@ -37,14 +38,17 @@ class GUIStepTester:
         self.window = StarUWindow(user_tier='admin')
         self.window.show()
         self.window.resize(1200, 800)
-        QTest.qWaitForWindowExposed(self.window)
-        QTest.qWait(1000) # 위젯 초기화 대기
+        cast(Any, QTest).qWaitForWindowExposed(self.window)
+        cast(Any, QTest).qWait(1000) # 위젯 초기화 대기
 
     def capture(self, filename):
         path = str(self.report_dir / f"{filename}.png")
         QApplication.processEvents()
-        self.window.grab().save(path)
-        print(f"  [SCREENSHOT] {filename}.png 저장됨")
+        if self.window:
+            self.window.grab().save(path)
+            print(f"  [SCREENSHOT] {filename}.png 저장됨")
+        else:
+            print(f"  [SCREENSHOT] Fail (No Window)")
         return path
 
     def log_result(self, name, status, duration, error=""):
@@ -66,7 +70,7 @@ class GUIStepTester:
         start = time.time()
         try:
             self.setup_window()
-            QTest.qWait(int(self.delay * 1000))
+            cast(Any, QTest).qWait(int(self.delay * 1000))
 
             self.capture("step1_launch")
             self.log_result("1.1 GUI 실행 확인", "PASS", time.time() - start)
@@ -77,7 +81,7 @@ class GUIStepTester:
         """[2단계] 탭 전환 테스트"""
         print("\n▶ [2단계] 탭 전환 테스트 시작")
         start_total = time.time()
-        tabs = self.window.tabs
+        tabs = cast(Any, self.window).tabs
         count = tabs.count()
         
         for i in range(count):
@@ -85,7 +89,7 @@ class GUIStepTester:
             tab_name = tabs.tabText(i)
             print(f"  - {tab_name} 탭 클릭...")
             tabs.setCurrentIndex(i)
-            QTest.qWait(int(self.delay * 1000))
+            cast(Any, QTest).qWait(int(self.delay * 1000))
 
             self.capture(f"step2_tab_{i}")
             self.log_result(f"2.{i+1} {tab_name} 탭 전환", "PASS", time.time() - start)
@@ -96,13 +100,13 @@ class GUIStepTester:
         start = time.time()
         try:
             # Switch to Optimization Tab (idx 4 usually, but find by text)
-            for i in range(self.window.tabs.count()):
-                if "최적화" in self.window.tabs.tabText(i):
-                    self.window.tabs.setCurrentIndex(i)
+            for i in range(cast(Any, self.window).tabs.count()):
+                if "최적화" in cast(Any, self.window).tabs.tabText(i):
+                    cast(Any, self.window).tabs.setCurrentIndex(i)
                     break
-            QTest.qWait(1000)
+            cast(Any, QTest).qWait(1000)
             
-            page = self.window.optimization_widget
+            page = cast(Any, self.window).optimization_widget
             # OptimizationWidget is a tab container, controls are in single_widget
             if hasattr(page, 'single_widget'):
                 page = page.single_widget
@@ -115,7 +119,7 @@ class GUIStepTester:
             if hasattr(page, '_load_data_sources'):
                 print("    - Calling _load_data_sources()...")
                 page._load_data_sources()
-                QTest.qWait(int(2000))  # 데이터 로딩 대기
+                cast(Any, QTest).qWait(int(2000))  # 데이터 로딩 대기
             
             # search_edit에 입력하여 필터링 시도
             if hasattr(page, 'search_edit'):
@@ -123,7 +127,7 @@ class GUIStepTester:
                 page.search_edit.clear()
                 page.search_edit.setText("BTCUSDT")
                 print(f"    - Set search text to: 'BTCUSDT'")
-                QTest.qWait(int(1000))
+                cast(Any, QTest).qWait(int(1000))
             
             # data_combo에서 존재하는 항목 선택
             if hasattr(page, 'data_combo'):
@@ -143,7 +147,7 @@ class GUIStepTester:
                     print(f"    WARNING: BTCUSDT not found in list, selecting first: {page.data_combo.itemText(0)}")
                     page.data_combo.setCurrentIndex(0)
             
-            QTest.qWait(int(1000))
+            cast(Any, QTest).qWait(int(1000))
             
             # [3.2] 모드 선택 (Quick)
             print("  - [3.2] Quick 모드 선택...")
@@ -152,14 +156,14 @@ class GUIStepTester:
                 # Quick mode is usually ID 0
                 btn = page.mode_group.button(0)
                 if btn:
-                    QTest.mouseClick(btn, Qt.MouseButton.LeftButton)
-                QTest.qWait(int(2000))
+                    cast(Any, QTest).mouseClick(btn, Qt.MouseButton.LeftButton)
+                cast(Any, QTest).qWait(int(2000))
 
             
             # [3.3] 시작 버튼
             print("  - [3.3] 최적화 시작 버튼 클릭...")
             if hasattr(page, 'run_btn'):
-                QTest.mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
+                cast(Any, QTest).mouseClick(page.run_btn, Qt.MouseButton.LeftButton)
                 self.capture("step3_opt_start")
                 # Wait for finish signal or progress
                 print("  - 진행 대기 중 (Max 30s)...")
@@ -170,12 +174,12 @@ class GUIStepTester:
                 # First wait for it to appear (if it's not already)
                 wait_start = time.time()
                 while prog and not prog.isVisible() and time.time() - wait_start < 5:
-                    QTest.qWait(100)
+                    cast(Any, QTest).qWait(100)
                 
                 # Then wait for it to finish (disappear or reach 100%)
                 wait_start = time.time()
                 while prog and prog.isVisible() and time.time() - wait_start < 45:
-                    QTest.qWait(1000)
+                    cast(Any, QTest).qWait(1000)
 
                 
                 self.capture("step3_opt_finished")
@@ -191,13 +195,13 @@ class GUIStepTester:
         print("\n▶ [4단계] 백테스트 탭 테스트 시작")
         start = time.time()
         try:
-            for i in range(self.window.tabs.count()):
-                if "백테스트" in self.window.tabs.tabText(i):
-                    self.window.tabs.setCurrentIndex(i)
+            for i in range(cast(Any, self.window).tabs.count()):
+                if "백테스트" in cast(Any, self.window).tabs.tabText(i):
+                    cast(Any, self.window).tabs.setCurrentIndex(i)
                     break
-            QTest.qWait(1000)
+            cast(Any, QTest).qWait(1000)
             
-            page = self.window.backtest_widget
+            page = cast(Any, self.window).backtest_widget
             if hasattr(page, 'single_widget'):
                 page = page.single_widget
             
@@ -205,7 +209,7 @@ class GUIStepTester:
             print("  - [4.1] 프리셋 첫 번째 항목 선택...")
             if hasattr(page, 'preset_combo') and page.preset_combo.count() > 0:
                 page.preset_combo.setCurrentIndex(0)
-                QTest.qWait(int(2000))
+                cast(Any, QTest).qWait(int(2000))
             
             # [4.2] 실행
             print("  - [4.2] 백테스트 실행...")
@@ -262,7 +266,7 @@ class GUIStepTester:
 
             if btn:
                 print(f"  - Clicking button: {btn} ('{getattr(btn, 'text', lambda: '??')()}')")
-                QTest.mouseClick(btn, Qt.MouseButton.LeftButton)
+                cast(Any, QTest).mouseClick(btn, Qt.MouseButton.LeftButton)
                 self.capture("step4_backtest_start")
                 
                 # Wait for progress bar (_progress in SingleBacktestWidget)
@@ -271,11 +275,11 @@ class GUIStepTester:
                 print("  - 진행 대기 중 (Max 20s)...")
                 wait_start = time.time()
                 while prog and not prog.isVisible() and time.time() - wait_start < 5:
-                    QTest.qWait(100)
+                    cast(Any, QTest).qWait(100)
                     
                 wait_start = time.time()
                 while prog and prog.isVisible() and time.time() - wait_start < 20:
-                    QTest.qWait(1000)
+                    cast(Any, QTest).qWait(1000)
                 
                 self.capture("step4_backtest_finished")
                 self.log_result("4.2 백테스트 실행 완료", "PASS", time.time() - start)
@@ -290,29 +294,29 @@ class GUIStepTester:
         print("\n▶ [5단계] 자동매매 파이프라인 테스트 시작")
         start = time.time()
         try:
-            for i in range(self.window.tabs.count()):
-                if "매매" in self.window.tabs.tabText(i):
-                    self.window.tabs.setCurrentIndex(i)
+            for i in range(cast(Any, self.window).tabs.count()):
+                if "매매" in cast(Any, self.window).tabs.tabText(i):
+                    cast(Any, self.window).tabs.setCurrentIndex(i)
                     break
-            QTest.qWait(1000)
+            cast(Any, QTest).qWait(1000)
             
             # Find pipeline
             pipeline = None
             if hasattr(self.window, 'auto_pipeline_widget'):
-                pipeline = self.window.auto_pipeline_widget
+                pipeline = cast(Any, self.window).auto_pipeline_widget
             
             if pipeline:
                 # Step 1 -> 2
                 print("  - Step 1 (심볼 선택) -> Step 2 이동...")
                 if hasattr(pipeline, '_go_next'):
                     pipeline._go_next()
-                    QTest.qWait(2000)
+                    cast(Any, QTest).qWait(2000)
                     self.capture("step5_pipeline_step2")
                     
                     # Step 2 -> 3
                     print("  - Step 2 (최적화) -> Step 3 이동...")
                     pipeline._go_next()
-                    QTest.qWait(2000)
+                    cast(Any, QTest).qWait(2000)
                     self.capture("step5_pipeline_step3")
                     
                     self.log_result("5.1 파이프라인 단계 이동", "PASS", time.time() - start)

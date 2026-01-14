@@ -7,7 +7,7 @@
 
 import pandas as pd
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from ..core.constants import DEFAULT_SLIPPAGE, DEFAULT_FEE
 from ..core.indicators import prepare_data
@@ -32,7 +32,7 @@ class BaseStrategy(ABC):
     name: str = "Base"
     description: str = ""
     
-    def __init__(self, params: Dict = None):
+    def __init__(self, params: Optional[Dict] = None):
         """
         Args:
             params: 파라미터 딕셔너리 (None이면 기본값)

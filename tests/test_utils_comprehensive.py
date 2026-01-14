@@ -171,6 +171,7 @@ class TestUtilsComprehensive(unittest.TestCase):
             # Load new instance
             sm2 = StateManager(state_dir=temp_dir, bot_id='test_bot')
             loaded = sm2.load()
+            assert loaded is not None
             
             self.log_result("utils/state_manager", "save_load_equality", data['last_price'], loaded.get('last_price'))
             

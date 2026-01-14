@@ -18,9 +18,18 @@ import threading
 import requests
 from datetime import datetime
 import logging.handlers
-from typing import Optional
+from typing import Optional, Any, Dict, List, Union, TYPE_CHECKING
 from pathlib import Path
 from collections import deque
+
+if TYPE_CHECKING:
+    from core.order_executor import OrderExecutor
+    from core.position_manager import PositionManager
+    from core.bot_state import BotStateManager
+    from core.data_manager import BotDataManager
+    from core.signal_processor import SignalProcessor
+    from core.strategy_core import AlphaX7Core
+    from exchanges.base_exchange import BaseExchange, Position
 
 # Logging
 from utils.logger import get_module_logger
@@ -38,14 +47,8 @@ if str(BASE_DIR) not in sys.path:
 
 # [LOGGING] Paths
 def _get_log_path(filename: str) -> str:
-    try:
-        from paths import Paths
-        return os.path.join(Paths.LOGS, filename)
-    except Exception:
-
-        log_dir = os.path.join(_BASE_DIR, 'logs')
-        os.makedirs(log_dir, exist_ok=True)
-        return os.path.join(log_dir, filename)
+    from config.constants.paths import LOG_DIR
+    return os.path.join(LOG_DIR, filename)
 
 def setup_logging(symbol: str = 'BOT'):
     """로그 설정 (RotatingFileHandler)"""
@@ -127,16 +130,13 @@ except Exception:
     CCXTExchange = None; SUPPORTED_EXCHANGES = {}
 
 # [MODULAR] 6 Core Modules (including CapitalManager)
-try:
-    from core.bot_state import BotStateManager
-    from core.data_manager import BotDataManager
-    from core.signal_processor import SignalProcessor
-    from core.order_executor import OrderExecutor
-    from core.position_manager import PositionManager
-    from core.capital_manager import CapitalManager
-    HAS_MODULAR_COMPONENTS = True
-except ImportError:
-    HAS_MODULAR_COMPONENTS = False
+from core.bot_state import BotStateManager
+from core.data_manager import BotDataManager
+from core.signal_processor import SignalProcessor
+from core.order_executor import OrderExecutor
+from core.position_manager import PositionManager
+from core.capital_manager import CapitalManager
+HAS_MODULAR_COMPONENTS = True
 
 
 
@@ -153,9 +153,9 @@ class UnifiedBot:
         self.is_running = True
         self.simulation_mode = simulation_mode
         self.exchange = exchange
-        self.symbol = exchange.symbol
+        self.symbol = exchange.symbol if exchange else "UNKNOWN"
         self.use_binance_signal = use_binance_signal
-        self.direction = getattr(exchange, 'direction', 'Both')
+        self.direction = getattr(exchange, 'direction', 'Both') if exchange else 'Both'
         self._data_lock = threading.RLock()
         
         # [HEALTH] 헬스체크 데몬 시작
@@ -170,14 +170,13 @@ class UnifiedBot:
 
         
         # 1. 라이선스 및 프리셋 로드
-        try:
-            from .license_guard import get_license_guard
-            self.license_guard = get_license_guard() if not simulation_mode else None
-            from utils.preset_manager import get_backtest_params
-            self.strategy_params = get_backtest_params(getattr(exchange, 'preset_name', None))
-        except Exception:
-            self.license_guard = None
-            self.strategy_params = {}
+        from core.license_guard import get_license_guard
+        self.license_guard = get_license_guard() if not simulation_mode else None
+        
+        from utils.preset_manager import get_backtest_params
+        # getattr의 리턴값이 None일 수 있으므로 안전하게 처리
+        preset_name = str(getattr(exchange, 'preset_name', 'Default'))
+        self.strategy_params = get_backtest_params(preset_name)
 
         # 2. 필수 멤버 변수 (레거시/UI 호환)
         self.position = None
@@ -189,10 +188,16 @@ class UnifiedBot:
         self._ws_started = False
         
         # 3. Capital Management (Centralized)
-        self.capital_manager = CapitalManager(initial_capital=getattr(exchange, 'amount_usd', 100), fixed_amount=getattr(exchange, 'fixed_amount', 100))
-        use_compounding = getattr(exchange, 'config', {}).get('use_compounding', True)
+        initial_capital = getattr(exchange, 'amount_usd', 100) if exchange else 100
+        fixed_amount = getattr(exchange, 'fixed_amount', 100) if exchange else 100
+        self.capital_manager = CapitalManager(initial_capital=initial_capital, fixed_amount=fixed_amount)
+        
+        use_compounding = True
+        if exchange and hasattr(exchange, 'config'):
+            use_compounding = exchange.config.get('use_compounding', True)
+            
         self.capital_manager.switch_mode("compound" if use_compounding else "fixed")
-        self.initial_capital = getattr(exchange, 'amount_usd', 100)
+        self.initial_capital = initial_capital
         
         # 4. 신규 모듈 초기화 (핵심!)
         self._init_modular_components()
@@ -227,9 +232,10 @@ class UnifiedBot:
                 state_manager=self.mod_state
             )
             self.mod_position = PositionManager(
-                self.exchange, 
-                self.strategy_params, 
-                self.simulation_mode, 
+                exchange=self.exchange, 
+                strategy_params=self.strategy_params, 
+                strategy_core=None, # 주입 가능 시점에 업데이트
+                dry_run=self.simulation_mode, 
                 state_manager=self.mod_state
             )
             logging.info(f"[INIT] \u2705 {self.symbol} Modular components ready")
@@ -275,19 +281,22 @@ class UnifiedBot:
             return
         
         try:
+            if not self.mod_state or not self.mod_state.trade_storage:
+                return
             stats = self.mod_state.trade_storage.get_stats()
-            total_pnl = stats.get('total_pnl_usd', 0)
+            total_pnl = stats.get('total_pnl_usd', 0) if stats else 0
             
             # CapitalManager에 PnL 업데이트
             self.capital_manager.update_after_trade(total_pnl - self.capital_manager.total_pnl)
             
             # Exchange 객체의 capital 동기화 (레거시 코드 호환용)
             new_capital = self.capital_manager.get_trade_size()
-            if abs(new_capital - self.exchange.capital) > 0.01:
-                self.exchange.capital = new_capital
-                logging.info(f"💰 Capital Synchronized: ${new_capital:.2f} (Mode: {self.capital_manager.mode.upper()})")
+            if self.exchange and hasattr(self.exchange, 'capital'):
+                if abs(new_capital - self.exchange.capital) > 0.01:
+                    self.exchange.capital = new_capital
+                    logging.info(f"💰 Capital Synchronized: ${new_capital:.2f} (Mode: {self.capital_manager.mode.upper()})")
         except Exception as e:
-            logging.error(f"[CAPITAL] \u274c Synchronization failed: {e}")
+            logging.error(f"[CAPITAL] ❌ Synchronization failed: {e}")
 
     def _get_compound_seed(self) -> float:
         """Centralized CapitalManager에서 시드 조회"""
@@ -323,10 +332,13 @@ class UnifiedBot:
     def detect_signal(self) -> Optional[Signal]:
         if not hasattr(self, 'mod_signal'): return None
         candle = self.exchange.get_current_candle()
-        cond = self.mod_signal.get_trading_conditions(self.df_pattern_full, self.df_entry_resampled)
+        import pandas as pd
+        df_pattern = self.df_pattern_full if self.df_pattern_full is not None else pd.DataFrame()
+        df_entry = self.df_entry_resampled if self.df_entry_resampled is not None else pd.DataFrame()
+        cond = self.mod_signal.get_trading_conditions(df_pattern, df_entry)
         action = self.mod_position.check_entry_live(self.bt_state, candle, cond, self.df_entry_resampled)
         if action and action.get('action') == 'ENTRY':
-            return Signal(type=action['direction'], pattern=action['pattern'], entry_price=action['price'], stop_loss=action.get('sl', 0))
+            return Signal(type=action['direction'], pattern=action['pattern'], stop_loss=action.get('sl', 0), atr=action.get('atr', 0.0))
         return None
 
     def execute_entry(self, signal: Signal) -> bool:
@@ -343,7 +355,8 @@ class UnifiedBot:
         candle = self.exchange.get_current_candle()
         res = self.mod_position.manage_live(self.bt_state, candle, self.df_entry_resampled)
         if res and res.get('action') == 'CLOSE':
-            if self.mod_order.execute_close(self.position, self.bt_state):
+            exit_price = res.get('price', candle.get('close', 0.0))
+            if self.mod_order.execute_close(self.position, exit_price, reason=res.get('reason', 'UNKNOWN'), bt_state=self.bt_state):
                 self.position = None
                 if self.exchange: self.exchange.position = None
                 self.save_state()
@@ -369,7 +382,9 @@ class UnifiedBot:
     def _on_candle_close(self, candle: dict):
         self.mod_data.append_candle(candle)
         self._process_historical_data()
-        self.mod_signal.add_patterns_from_df(self.df_pattern_full)
+        import pandas as pd
+        df_pattern = self.df_pattern_full if self.df_pattern_full is not None else pd.DataFrame()
+        self.mod_signal.add_patterns_from_df(df_pattern)
 
     def _on_price_update(self, price: float):
         self.last_ws_price = price
@@ -377,7 +392,7 @@ class UnifiedBot:
             candle = {'high': price, 'low': price, 'close': price, 'timestamp': datetime.utcnow()}
             res = self.mod_position.manage_live(self.bt_state, candle, self.df_entry_resampled)
             if res and res.get('action') == 'CLOSE':
-                if self.mod_order.execute_close(self.position, self.bt_state):
+                if self.mod_order.execute_close(self.position, price, reason=res.get('reason', 'WS_UPDATE'), bt_state=self.bt_state):
                     self.position = None; self.save_state()
 
     def _start_data_monitor(self):
@@ -463,9 +478,13 @@ def create_bot(exchange_name: str, config: dict, use_binance_signal: bool = Fals
     elif CCXTExchange and exchange_name.lower() in SUPPORTED_EXCHANGES: exchange = CCXTExchange(exchange_name.lower(), config)
     else: exchange = BybitExchange(config) # Default
     
-    exchange.preset_params = config.get('preset_params', {})
+    # For Pyright: preset_params is dynamic attribute
+    setattr(exchange, 'preset_params', config.get('preset_params', {}))
+    
     exchange.direction = config.get('direction', 'Both')
-    if config.get('preset_name'): exchange.preset_name = config['preset_name']
+    
+    if config.get('preset_name'):
+        setattr(exchange, 'preset_name', config['preset_name'])
     
     logger.info("[DEBUG] Create Bot Finished")
     return UnifiedBot(exchange, use_binance_signal=use_binance_signal)

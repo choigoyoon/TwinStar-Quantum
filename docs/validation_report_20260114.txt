@@ -1,0 +1,2353 @@
+======================================================================
+TwinStar-Quantum 프로젝트 검증 보고서
+======================================================================
+
+프로젝트 루트: f:\TwinStar-Quantum
+Python 버전: 3.12.0
+검증 시간: 2026-01-14 10:12:09
+
+총 파일 수: 240
+오류 (ERROR): 166개
+경고 (WARNING): 235개
+정보 (INFO): 67개
+
+[WARNING] IMPORT
+  파일: GUI\constants.py:0
+  메시지: 'config.parameters'에서 'SLIPPAGE'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\constants.py:0
+  메시지: 'config.parameters'에서 'FEE'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\constants.py:0
+  메시지: 'config.parameters'에서 'TOTAL_COST'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\constants.py:0
+  메시지: 'config.parameters'에서 'DIRECTION_LONG'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\constants.py:0
+  메시지: 'config.parameters'에서 'DIRECTION_SHORT'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\constants.py:0
+  메시지: 'config.parameters'에서 'DIRECTION_BOTH'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\dashboard_widgets.py:0
+  메시지: 외부 패키지 'matplotlib.pyplot'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib.pyplot
+
+[WARNING] IMPORT
+  파일: GUI\dashboard_widgets.py:0
+  메시지: 외부 패키지 'matplotlib.pyplot'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib.pyplot
+
+[WARNING] IMPORT
+  파일: GUI\dashboard_widgets.py:0
+  메시지: 외부 패키지 'matplotlib.dates'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib.dates
+
+[ERROR] IMPORT
+  파일: GUI\data_cache.py:0
+  메시지: 모듈 'pyupbit'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\data_cache.py:0
+  메시지: 모듈 'symbol_cache'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\data_cache.py:0
+  메시지: 'GUI.constants'에서 'COMMON_KRW_SYMBOLS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\data_cache.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\data_cache.py:0
+  메시지: 'GUI.constants'에서 'COMMON_KRW_SYMBOLS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\data_cache.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\data_collector_widget.py:0
+  메시지: 모듈 'symbol_cache'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\data_loader.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\enhanced_chart_widget.py:0
+  메시지: 모듈 'candle_aggregator'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\enhanced_chart_widget.py:0
+  메시지: 모듈 'websocket_manager'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\enhanced_chart_widget.py:0
+  메시지: 모듈 'styles'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\experimental_main_window.py:0
+  메시지: 'GUI.styles.theme'에서 'COLORS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\experimental_main_window.py:0
+  메시지: 'GUI.styles.theme'에서 'STYLESHEET'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\help_dialog.py:0
+  메시지: 모듈 'referral_links'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\history_widget.py:0
+  메시지: 외부 패키지 'matplotlib'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib
+
+[ERROR] IMPORT
+  파일: GUI\login.py:0
+  메시지: 모듈 'trc20_payment'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\notification_manager.py:0
+  메시지: 모듈 'winsound'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\nowcast_widget.py:0
+  메시지: 모듈 'styles'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization_widget.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization_widget.py:0
+  메시지: 'GUI.constants'에서 'TF_MAPPING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization_widget.py:0
+  메시지: 'GUI.constants'에서 'DEFAULT_PARAMS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization_widget.py:0
+  메시지: 'GUI.constants'에서 'EXCHANGE_INFO'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization_widget.py:0
+  메시지: 'GUI.constants'에서 'TF_RESAMPLE_MAP'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\position_widget.py:0
+  메시지: 'exchanges.okx_exchange'에서 'OkxExchange'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\settings_widget.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\settings_widget.py:0
+  메시지: 모듈 'crypto_manager'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\settings_widget.py:0
+  메시지: 'GUI.constants'에서 'EXCHANGE_INFO'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\settings_widget.py:0
+  메시지: 'GUI.constants'에서 'SPOT_EXCHANGES'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\settings_widget.py:0
+  메시지: 'GUI.constants'에서 'KRW_EXCHANGES'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\settings_widget.py:0
+  메시지: 모듈 'payment_dialog'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\staru_main.py:0
+  메시지: 'GUI.legacy_styles'에서 'MAIN_STYLE'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\trade_chart_dialog.py:0
+  메시지: 외부 패키지 'matplotlib.pyplot'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib.pyplot
+
+[WARNING] IMPORT
+  파일: GUI\trade_chart_dialog.py:0
+  메시지: 외부 패키지 'matplotlib.dates'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib.dates
+
+[WARNING] IMPORT
+  파일: GUI\trade_chart_dialog.py:0
+  메시지: 외부 패키지 'matplotlib'가 설치되지 않았을 수 있음
+  제안: pip install matplotlib
+
+[ERROR] IMPORT
+  파일: GUI\trading_dashboard.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\trading_dashboard.py:0
+  메시지: 'exchanges.okx_exchange'에서 'OkxExchange'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\components\bot_control_card.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\components\bot_control_card.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\components\__init__.py:0
+  메시지: 모듈 'position_table'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\dashboard\multi_explorer.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\dashboard\__init__.py:0
+  메시지: 모듈 'multi_explorer'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\common.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization\common.py:0
+  메시지: 'GUI.constants'에서 'TF_MAPPING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization\common.py:0
+  메시지: 'GUI.constants'에서 'DEFAULT_PARAMS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization\common.py:0
+  메시지: 'GUI.constants'에서 'EXCHANGE_INFO'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\optimization\common.py:0
+  메시지: 'GUI.constants'에서 'TF_RESAMPLE_MAP'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\main.py:0
+  메시지: 모듈 'common'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\params.py:0
+  메시지: 모듈 'common'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\single_optimizer.py:0
+  메시지: 모듈 'importlib.util'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\worker.py:0
+  메시지: 모듈 'common'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\__init__.py:0
+  메시지: 모듈 'worker'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\__init__.py:0
+  메시지: 모듈 'params'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\optimization\__init__.py:0
+  메시지: 모듈 'main'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step1_backtest.py:0
+  메시지: 'GUI.styles.theme'에서 'COLORS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step1_backtest.py:0
+  메시지: 'GUI.styles.theme'에서 'SPACING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step1_backtest.py:0
+  메시지: 'GUI.styles.theme'에서 'FONTS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step2_optimize.py:0
+  메시지: 'GUI.styles.theme'에서 'COLORS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step2_optimize.py:0
+  메시지: 'GUI.styles.theme'에서 'SPACING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step2_optimize.py:0
+  메시지: 'GUI.styles.theme'에서 'FONTS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step2_optimize.py:0
+  메시지: 'core.optimizer'에서 'OptimizationEngine'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step3_trade.py:0
+  메시지: 'GUI.styles.theme'에서 'COLORS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step3_trade.py:0
+  메시지: 'GUI.styles.theme'에서 'SPACING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step3_trade.py:0
+  메시지: 'GUI.styles.theme'에서 'FONTS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step4_monitor.py:0
+  메시지: 'GUI.styles.theme'에서 'COLORS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step4_monitor.py:0
+  메시지: 'GUI.styles.theme'에서 'SPACING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step4_monitor.py:0
+  메시지: 'GUI.styles.theme'에서 'FONTS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step5_results.py:0
+  메시지: 'GUI.styles.theme'에서 'COLORS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step5_results.py:0
+  메시지: 'GUI.styles.theme'에서 'SPACING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: GUI\pages\step5_results.py:0
+  메시지: 'GUI.styles.theme'에서 'FONTS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\styles\__init__.py:0
+  메시지: 모듈 'theme'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\styles\__init__.py:0
+  메시지: 모듈 'premium_theme'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\styles\__init__.py:0
+  메시지: 모듈 'elegant_theme'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\styles\__init__.py:0
+  메시지: 모듈 'vivid_theme'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: GUI\styles\__init__.py:0
+  메시지: 모듈 'fonts'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\__init__.py:0
+  메시지: 모듈 'design_system'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\__init__.py:0
+  메시지: 모듈 'widgets.backtest'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\__init__.py:0
+  메시지: 모듈 'widgets.optimization'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\__init__.py:0
+  메시지: 모듈 'widgets.results'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\__init__.py:0
+  메시지: 모듈 'workers.tasks'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\theme.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: ui\design_system\theme.py:0
+  메시지: 'ui.design_system.tokens'에서 'Colors'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: ui\design_system\theme.py:0
+  메시지: 'ui.design_system.tokens'에서 'Typography'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: ui\design_system\theme.py:0
+  메시지: 'ui.design_system.tokens'에서 'Spacing'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: ui\design_system\theme.py:0
+  메시지: 'ui.design_system.tokens'에서 'Radius'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: ui\design_system\theme.py:0
+  메시지: 'ui.design_system.tokens'에서 'Shadow'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\__init__.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\__init__.py:0
+  메시지: 모듈 'theme'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\dialogs\message.py:0
+  메시지: 모듈 'base'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\dialogs\__init__.py:0
+  메시지: 모듈 'base'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\dialogs\__init__.py:0
+  메시지: 모듈 'message'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\backtest.py:0
+  메시지: 모듈 'styles'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\backtest.py:0
+  메시지: 모듈 'workers.tasks'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\backtest.py:0
+  메시지: 모듈 'results'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization.py:0
+  메시지: 모듈 'styles'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization.py:0
+  메시지: 모듈 'workers.tasks'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization.py:0
+  메시지: 모듈 'results'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\results.py:0
+  메시지: 모듈 'styles'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\__init__.py:0
+  메시지: 모듈 'backtest'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\__init__.py:0
+  메시지: 모듈 'optimization'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\__init__.py:0
+  메시지: 모듈 'results'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\workers\__init__.py:0
+  메시지: 모듈 'tasks'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\buttons.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\cards.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\dialogs.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\inputs.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\tables.py:0
+  메시지: 모듈 'tokens'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\__init__.py:0
+  메시지: 모듈 'buttons'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\__init__.py:0
+  메시지: 모듈 'inputs'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\__init__.py:0
+  메시지: 모듈 'cards'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\__init__.py:0
+  메시지: 모듈 'tables'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\design_system\styles\__init__.py:0
+  메시지: 모듈 'dialogs'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\backtest\main.py:0
+  메시지: 모듈 'single'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\backtest\__init__.py:0
+  메시지: 모듈 'main'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\backtest\__init__.py:0
+  메시지: 모듈 'worker'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\dashboard\header.py:0
+  메시지: 모듈 'status_cards'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\dashboard\main.py:0
+  메시지: 모듈 'header'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\dashboard\main.py:0
+  메시지: 모듈 'status_cards'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\dashboard\__init__.py:0
+  메시지: 모듈 'main'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\dashboard\__init__.py:0
+  메시지: 모듈 'status_cards'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\dashboard\__init__.py:0
+  메시지: 모듈 'header'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization\main.py:0
+  메시지: 모듈 'single'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization\main.py:0
+  메시지: 모듈 'batch'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization\__init__.py:0
+  메시지: 모듈 'main'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization\__init__.py:0
+  메시지: 모듈 'params'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: ui\widgets\optimization\__init__.py:0
+  메시지: 모듈 'worker'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: core\auto_optimizer.py:0
+  메시지: 모듈 'strategies.x7_plus_strategy'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: core\batch_optimizer.py:0
+  메시지: 'core.optimizer'에서 'optimize_strategy'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: core\crypto_payment.py:0
+  메시지: 모듈 'qrcode'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: core\license_guard.py:0
+  메시지: 모듈 'Crypto.Cipher'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: core\license_guard.py:0
+  메시지: 모듈 'Crypto.Util.Padding'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: core\multi_optimizer.py:0
+  메시지: 모듈 'gc'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: core\multi_sniper.py:0
+  메시지: 'core.trade_common'에서 'WS_LIMITS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: core\multi_sniper.py:0
+  메시지: 모듈 'pybit.unified_trading'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: core\optimization_logic.py:0
+  메시지: 'config.parameters'에서 'PARAM_RANGES'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: core\optimization_logic.py:0
+  메시지: 'config.parameters'에서 'DEFAULT_PARAMS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: core\optimization_logic.py:0
+  메시지: 'config.parameters'에서 'DEFAULT_PARAMS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: core\optimizer.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: core\optimizer.py:0
+  메시지: 'GUI.constants'에서 'TF_MAPPING'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: core\position_manager.py:0
+  메시지: 모듈 'strategy_core'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: core\signal_processor.py:0
+  메시지: 모듈 'strategy_core'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: core\strategy_core.py:0
+  메시지: 'config.parameters'에서 'DEFAULT_PARAMS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: core\unified_bot.py:0
+  메시지: 'exchanges.ccxt_exchange'에서 'SUPPORTED_EXCHANGES'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: core\unified_bot.py:0
+  메시지: 모듈 'license_guard'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\binance_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\binance_exchange.py:0
+  메시지: 모듈 'binance.client'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\binance_exchange.py:0
+  메시지: 모듈 'binance.enums'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bingx_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bitget_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bithumb_exchange.py:0
+  메시지: 모듈 'pybithumb'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bithumb_exchange.py:0
+  메시지: 모듈 'pyupbit'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bithumb_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bybit_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bybit_exchange.py:0
+  메시지: 모듈 'pybit.unified_trading'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\bybit_exchange.py:0
+  메시지: 모듈 'ws_handler'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\ccxt_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\ccxt_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\ccxt_exchange.py:0
+  메시지: 모듈 'ws_handler'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\exchange_manager.py:0
+  메시지: 모듈 'pyupbit'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\exchange_manager.py:0
+  메시지: 모듈 'pybithumb'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: exchanges\exchange_manager.py:0
+  메시지: 'GUI.constants'에서 'EXCHANGE_INFO'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: exchanges\exchange_manager.py:0
+  메시지: 'GUI.constants'에서 'SPOT_EXCHANGES'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\exchange_manager.py:0
+  메시지: 모듈 'crypto_manager'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\exchange_manager.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\lighter_exchange.py:0
+  메시지: 모듈 'lighter'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\lighter_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\okx_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\upbit_exchange.py:0
+  메시지: 모듈 'pyupbit'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\upbit_exchange.py:0
+  메시지: 모듈 'pyupbit'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\upbit_exchange.py:0
+  메시지: 모듈 'pyupbit'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\upbit_exchange.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'base_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'bybit_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'binance_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'lighter_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'bitget_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'okx_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'bingx_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'upbit_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'bithumb_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: exchanges\__init__.py:0
+  메시지: 모듈 'ccxt_exchange'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: utils\bot_data_utils.py:0
+  메시지: 'GUI.constants'에서 'TF_RESAMPLE_MAP'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[WARNING] IMPORT
+  파일: utils\data_utils.py:0
+  메시지: 'GUI.constants'에서 'TF_RESAMPLE_MAP'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: utils\health_check.py:0
+  메시지: 모듈 'psutil'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] IMPORT
+  파일: utils\preset_manager.py:0
+  메시지: 'config.parameters'에서 'DEFAULT_PARAMS'를 찾을 수 없음 (re-export 가능)
+  제안: 해당 모듈의 __init__.py를 확인하세요
+
+[ERROR] IMPORT
+  파일: utils\formatters\__init__.py:0
+  메시지: 모듈 'numbers'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: config\constants\__init__.py:0
+  메시지: 모듈 'timeframes'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: config\constants\__init__.py:0
+  메시지: 모듈 'grades'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\api.py:0
+  메시지: 모듈 'core.presets'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\api.py:0
+  메시지: 모듈 'core.constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\__init__.py:0
+  메시지: 모듈 'api'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\__init__.py:0
+  메시지: 모듈 'backtest'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\engine.py:0
+  메시지: 모듈 'core.constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\engine.py:0
+  메시지: 모듈 'core.indicators'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\engine.py:0
+  메시지: 모듈 'core.execution'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\optimizer.py:0
+  메시지: 모듈 'core.indicators'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\optimizer.py:0
+  메시지: 모듈 'core.constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\optimizer.py:0
+  메시지: 모듈 'engine'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\__init__.py:0
+  메시지: 모듈 'metrics'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\__init__.py:0
+  메시지: 모듈 'engine'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\backtest\__init__.py:0
+  메시지: 모듈 'optimizer'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\core\execution.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\core\presets.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\core\__init__.py:0
+  메시지: 모듈 'constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\core\__init__.py:0
+  메시지: 모듈 'presets'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\core\__init__.py:0
+  메시지: 모듈 'signals'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\core\__init__.py:0
+  메시지: 모듈 'indicators'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\adxdi.py:0
+  메시지: 모듈 'base'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\base.py:0
+  메시지: 모듈 'core.constants'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\base.py:0
+  메시지: 모듈 'core.indicators'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\base.py:0
+  메시지: 모듈 'core.presets'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\base.py:0
+  메시지: 모듈 'backtest.engine'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\base.py:0
+  메시지: 모듈 'backtest.optimizer'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\macd.py:0
+  메시지: 모듈 'base'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\__init__.py:0
+  메시지: 모듈 'base'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\__init__.py:0
+  메시지: 모듈 'macd'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: trading\strategies\__init__.py:0
+  메시지: 모듈 'adxdi'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: strategies\example_strategy.py:0
+  메시지: 모듈 'common.strategy_interface'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: strategies\strategy_loader.py:0
+  메시지: 모듈 'importlib'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: strategies\strategy_loader.py:0
+  메시지: 모듈 'importlib.util'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: strategies\strategy_loader.py:0
+  메시지: 모듈 'common.strategy_interface'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: strategies\wm_pattern_strategy.py:0
+  메시지: 모듈 'common.strategy_interface'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[ERROR] IMPORT
+  파일: strategies\wm_pattern_strategy.py:0
+  메시지: 모듈 'strategy_breakeven'를 찾을 수 없음
+  제안: 모듈 경로나 이름을 확인하세요
+
+[WARNING] SYNTAX
+  파일: GUI\auto_pipeline_widget.py:795
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\bot_status_widget.py:208
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\cache_manager_widget.py:180
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\capital_management_widget.py:208
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\chart_items.py:230
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\dashboard_widgets.py:237
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\data_cache.py:537
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\data_cache.py:844
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\data_cache.py:845
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\data_collector_widget.py:1003
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\data_collector_widget.py:1117
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\data_download_widget.py:207
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\data_download_widget.py:209
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\data_download_widget.py:280
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\data_loader.py:122
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\data_loader.py:123
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\developer_mode_widget.py:533
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\enhanced_chart_widget.py:408
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\exchange_selector_widget.py:259
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\experimental_main_window.py:322
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\glossary_popup.py:216
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\help_dialog.py:230
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\help_popup.py:206
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\help_widget.py:284
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\history_widget.py:98
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\history_widget.py:786
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\history_widget.py:1000
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\login.py:391
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\login_dialog.py:256
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\login_dialog.py:469
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\multi_session_popup.py:268
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\multi_system_widget.py:321
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\notification_widget.py:347
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\nowcast_widget.py:321
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\onboarding_dialog.py:237
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\onboarding_dialog.py:252
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\optimization_widget.py:1479
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\optimization_widget.py:1496
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\optimization_widget.py:1553
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\optimization_widget.py:2126
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\pc_license_dialog.py:379
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\pc_license_dialog.py:394
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\pc_license_dialog.py:401
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\pc_license_dialog.py:846
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\position_widget.py:345
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\settings_widget.py:655
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\settings_widget.py:1031
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\settings_widget.py:1128
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\settings_widget.py:1165
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\settings_widget.py:1179
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\sniper_session_popup.py:268
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:776
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:811
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:827
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:836
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:845
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:981
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:1007
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\staru_main.py:1046
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\strategy_selector_widget.py:356
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\symbol_cache.py:189
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\telegram_popup.py:237
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\telegram_popup.py:309
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\telegram_settings_widget.py:234
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\tier_popup.py:156
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\trade_chart_dialog.py:88
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\trade_chart_dialog.py:260
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\trade_chart_dialog.py:330
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: GUI\trade_detail_popup.py:183
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\trade_detail_popup.py:184
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: GUI\trade_detail_popup.py:397
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] SYNTAX
+  파일: GUI\trade_detail_popup.py:428
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\trade_detail_popup.py:467
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\trading_dashboard.py:914
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\trading_dashboard.py:1572
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\trading_dashboard.py:1875
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\trading_dashboard_v3.py:140
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: GUI\update_popup.py:262
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: ui\dialogs\message.py:90
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: ui\dialogs\message.py:198
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: ui\widgets\backtest\main.py:155
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: ui\widgets\dashboard\main.py:283
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[WARNING] SYNTAX
+  파일: ui\widgets\optimization\main.py:167
+  메시지: exec() 동적 실행 감지 - 보안 주의
+  제안: 가능하면 정적 코드로 대체
+
+[INFO] SYNTAX
+  파일: core\multi_sniper.py:215
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: core\multi_sniper.py:216
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: core\multi_sniper.py:611
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: core\multi_symbol_backtest.py:547
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\logger.py:32
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\optimization_impact_report.py:224
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\optimization_impact_report.py:372
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_manager.py:116
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_manager.py:124
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_manager.py:126
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_manager.py:162
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_storage.py:57
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_storage.py:93
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_storage.py:94
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_storage.py:183
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_storage.py:186
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\preset_storage.py:263
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\time_utils.py:168
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\formatters\datetime.py:10
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\formatters\datetime.py:43
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: utils\formatters\datetime.py:181
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: trading\core\presets.py:178
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: trading\core\presets.py:184
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\state_storage.py:109
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\trade_history.py:105
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\trade_history.py:139
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\trade_history.py:226
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\trade_history.py:227
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\trade_storage.py:136
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[INFO] SYNTAX
+  파일: storage\trade_storage.py:195
+  메시지: 구식 문자열 포맷팅 사용
+  제안: f-string 사용 권장
+
+[WARNING] DUPLICATE
+  파일: GUI\candle_aggregator.py:0
+  메시지: 클래스 'Candle'가 여러 파일에 정의됨: GUI\candle_aggregator.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\capital_config.py:0
+  메시지: 클래스 'CapitalConfig'가 여러 파일에 정의됨: GUI\capital_config.py, GUI\capital_manager.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\capital_manager.py:0
+  메시지: 클래스 'CapitalManager'가 여러 파일에 정의됨: GUI\capital_manager.py, core\capital_manager.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\dashboard_widgets.py:0
+  메시지: 클래스 'PositionTable'가 여러 파일에 정의됨: GUI\dashboard_widgets.py, GUI\components\position_table.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\data_download_widget.py:0
+  메시지: 클래스 'DownloadWorker'가 여러 파일에 정의됨: GUI\data_download_widget.py, GUI\update_popup.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\indicator_generator.py:0
+  메시지: 클래스 'IndicatorGenerator'가 여러 파일에 정의됨: GUI\indicator_generator.py, utils\indicators.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\login_dialog.py:0
+  메시지: 클래스 'PaymentDialog'가 여러 파일에 정의됨: GUI\login_dialog.py, GUI\payment_dialog.py, GUI\pc_license_dialog.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'OptimizationWorker'가 여러 파일에 정의됨: GUI\optimization_widget.py, GUI\optimization\worker.py, ui\workers\tasks.py, ui\widgets\optimization\worker.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'ParamRangeWidget'가 여러 파일에 정의됨: GUI\optimization_widget.py, GUI\optimization\params.py, ui\widgets\optimization\params.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'ParamChoiceWidget'가 여러 파일에 정의됨: GUI\optimization_widget.py, GUI\optimization\params.py, ui\widgets\optimization\params.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'SingleOptimizerWidget'가 여러 파일에 정의됨: GUI\optimization_widget.py, ui\widgets\optimization\single.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'BatchOptimizerWidget'가 여러 파일에 정의됨: GUI\optimization_widget.py, ui\widgets\optimization\batch.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'OptimizationWidget'가 여러 파일에 정의됨: GUI\optimization_widget.py, GUI\optimization\main.py, ui\widgets\optimization.py, ui\widgets\optimization\main.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:0
+  메시지: 클래스 'Paths'가 여러 파일에 정의됨: GUI\optimization_widget.py, GUI\trading_dashboard.py, GUI\components\bot_control_card.py, GUI\optimization\common.py, core\multi_sniper.py, utils\new_coin_detector.py, storage\state_storage.py, storage\trade_storage.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\pc_license_dialog.py:0
+  메시지: 클래스 'PCLicenseDialog'가 여러 파일에 정의됨: GUI\pc_license_dialog.py, GUI\pc_license_dialog.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\pc_license_dialog.py:0
+  메시지: 클래스 'RegisterDialog'가 여러 파일에 정의됨: GUI\pc_license_dialog.py, GUI\register_dialog.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\strategy_interface.py:0
+  메시지: 클래스 'SignalType'가 여러 파일에 정의됨: GUI\strategy_interface.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\strategy_interface.py:0
+  메시지: 클래스 'TradeStatus'가 여러 파일에 정의됨: GUI\strategy_interface.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\strategy_interface.py:0
+  메시지: 클래스 'TradeSignal'가 여러 파일에 정의됨: GUI\strategy_interface.py, core\strategy_core.py, trading\core\signals.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\strategy_interface.py:0
+  메시지: 클래스 'StrategyConfig'가 여러 파일에 정의됨: GUI\strategy_interface.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\strategy_interface.py:0
+  메시지: 클래스 'BacktestResult'가 여러 파일에 정의됨: GUI\strategy_interface.py, strategies\base_strategy.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\strategy_interface.py:0
+  메시지: 클래스 'BaseStrategy'가 여러 파일에 정의됨: GUI\strategy_interface.py, trading\strategies\base.py, strategies\base_strategy.py, strategies\common\strategy_interface.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\trade_executor.py:0
+  메시지: 클래스 'Position'가 여러 파일에 정의됨: GUI\trade_executor.py, exchanges\base_exchange.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\trade_history_widget.py:0
+  메시지: 클래스 'TradeHistoryWidget'가 여러 파일에 정의됨: GUI\trade_history_widget.py, GUI\trading_dashboard.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\trading_dashboard.py:0
+  메시지: 클래스 'TradingDashboard'가 여러 파일에 정의됨: GUI\trading_dashboard.py, ui\widgets\dashboard\main.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\trading_dashboard.py:0
+  메시지: 클래스 'OrderExecutor'가 여러 파일에 정의됨: GUI\trading_dashboard.py, core\order_executor.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\components\status_card.py:0
+  메시지: 클래스 'StatusCard'가 여러 파일에 정의됨: GUI\components\status_card.py, ui\widgets\dashboard\status_cards.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\pages\step1_backtest.py:0
+  메시지: 클래스 'BacktestWorker'가 여러 파일에 정의됨: GUI\pages\step1_backtest.py, ui\workers\tasks.py, ui\widgets\backtest\worker.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: ui\dialogs\base.py:0
+  메시지: 클래스 'Colors'가 여러 파일에 정의됨: ui\dialogs\base.py, ui\dialogs\message.py, ui\widgets\backtest\main.py, ui\widgets\dashboard\header.py, ui\widgets\dashboard\main.py, ui\widgets\dashboard\status_cards.py, ui\widgets\optimization\main.py, ui\widgets\optimization\params.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: ui\dialogs\base.py:0
+  메시지: 클래스 'Typography'가 여러 파일에 정의됨: ui\dialogs\base.py, ui\widgets\backtest\main.py, ui\widgets\dashboard\main.py, ui\widgets\dashboard\status_cards.py, ui\widgets\optimization\main.py, ui\widgets\optimization\params.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: ui\dialogs\base.py:0
+  메시지: 클래스 'Spacing'가 여러 파일에 정의됨: ui\dialogs\base.py, ui\widgets\dashboard\status_cards.py, ui\widgets\optimization\main.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: ui\dialogs\base.py:0
+  메시지: 클래스 'Radius'가 여러 파일에 정의됨: ui\dialogs\base.py, ui\widgets\backtest\main.py, ui\widgets\dashboard\main.py, ui\widgets\dashboard\status_cards.py, ui\widgets\optimization\main.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: ui\widgets\backtest.py:0
+  메시지: 클래스 'BacktestWidget'가 여러 파일에 정의됨: ui\widgets\backtest.py, ui\widgets\backtest\main.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: core\multi_symbol_backtest.py:0
+  메시지: 클래스 'Signal'가 여러 파일에 정의됨: core\multi_symbol_backtest.py, exchanges\base_exchange.py, strategies\base_strategy.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: core\optimization_logic.py:0
+  메시지: 클래스 'OptimizationResult'가 여러 파일에 정의됨: core\optimization_logic.py, core\optimizer.py, strategies\parameter_optimizer.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[WARNING] DUPLICATE
+  파일: core\order_executor.py:0
+  메시지: 클래스 'MockExchange'가 여러 파일에 정의됨: core\order_executor.py, core\position_manager.py
+  제안: 의도적 중복이 아니라면 통합 고려
+
+[INFO] DUPLICATE
+  파일: GUI\experimental_main_window.py:0
+  메시지: 함수 'main'가 GUI/ 내 여러 파일에 정의: 3개
+  제안: 유틸리티로 통합 고려
+
+[INFO] DUPLICATE
+  파일: core\optimization_logic.py:0
+  메시지: 함수 'calculate_grade'가 core/ 내 여러 파일에 정의: 2개
+  제안: 유틸리티로 통합 고려
+
+[INFO] DUPLICATE
+  파일: utils\api_utils.py:0
+  메시지: 함수 'retry_api_call'가 utils/ 내 여러 파일에 정의: 2개
+  제안: 유틸리티로 통합 고려
+
+[INFO] DUPLICATE
+  파일: utils\bot_data_utils.py:0
+  메시지: 함수 'resample_ohlcv'가 utils/ 내 여러 파일에 정의: 2개
+  제안: 유틸리티로 통합 고려
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:4
+  메시지: 상수 'SPOT_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\settings_widget.py:39
+  메시지: 상수 'SPOT_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: exchanges\exchange_manager.py:33
+  메시지: 상수 'SPOT_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: utils\symbol_converter.py:32
+  메시지: 상수 'SPOT_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:5
+  메시지: 상수 'KRW_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\settings_widget.py:40
+  메시지: 상수 'KRW_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: utils\symbol_converter.py:33
+  메시지: 상수 'KRW_EXCHANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:9
+  메시지: 상수 'TF_MAPPING'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:47
+  메시지: 상수 'TF_MAPPING'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization\common.py:38
+  메시지: 상수 'TF_MAPPING'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\optimizer.py:31
+  메시지: 상수 'TF_MAPPING'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\optimizer.py:541
+  메시지: 상수 'TF_MAPPING'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:38
+  메시지: 상수 'TF_MAPPING'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:17
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:50
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization\common.py:41
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\optimizer.py:32
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: utils\bot_data_utils.py:6
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: utils\data_utils.py:18
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:46
+  메시지: 상수 'TF_RESAMPLE_MAP'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:40
+  메시지: 상수 'SLIPPAGE'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:26
+  메시지: 상수 'SLIPPAGE'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:41
+  메시지: 상수 'FEE'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:27
+  메시지: 상수 'FEE'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:42
+  메시지: 상수 'TOTAL_COST'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:28
+  메시지: 상수 'TOTAL_COST'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:43
+  메시지: 상수 'DIRECTION_LONG'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:64
+  메시지: 상수 'DIRECTION_LONG'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:44
+  메시지: 상수 'DIRECTION_SHORT'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:65
+  메시지: 상수 'DIRECTION_SHORT'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:45
+  메시지: 상수 'DIRECTION_BOTH'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: trading\core\constants.py:66
+  메시지: 상수 'DIRECTION_BOTH'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:74
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:76
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\auto_optimizer.py:15
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_backtest.py:21
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_backtest.py:24
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_optimizer.py:32
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_optimizer.py:36
+  메시지: 상수 'CACHE_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:77
+  메시지: 상수 'PRESET_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\auto_optimizer.py:14
+  메시지: 상수 'PRESET_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_trader.py:15
+  메시지: 상수 'PRESET_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\constants.py:140
+  메시지: 상수 'COMMON_KRW_SYMBOLS'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\crypto_manager.py:44
+  메시지: 상수 'CONFIG_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\auto_scanner.py:34
+  메시지: 상수 'CONFIG_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: utils\preset_manager.py:30
+  메시지: 상수 'CONFIG_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\crypto_manager.py:45
+  메시지: 상수 'API_KEYS_FILE'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\data_cache.py:30
+  메시지: 상수 'TIMEFRAMES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\data_collector_widget.py:137
+  메시지: 상수 'TIMEFRAMES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\notification_manager.py:34
+  메시지: 상수 'SETTINGS_FILE'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization_widget.py:48
+  메시지: 상수 'DEFAULT_PARAMS'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: GUI\optimization\common.py:39
+  메시지: 상수 'DEFAULT_PARAMS'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\auto_optimizer.py:35
+  메시지: 상수 'DEFAULT_PARAMS'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\optimization_logic.py:11
+  메시지: 상수 'DEFAULT_PARAMS'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\optimizer.py:36
+  메시지: 상수 'DEFAULT_PARAMS'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\auto_scanner.py:35
+  메시지: 상수 'LOG_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_optimizer.py:31
+  메시지: 상수 'DATA_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\multi_optimizer.py:35
+  메시지: 상수 'DATA_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: storage\secure_storage.py:32
+  메시지: 상수 'DATA_DIR'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: core\optimization_logic.py:10
+  메시지: 상수 'PARAM_RANGES'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] DUPLICATE
+  파일: exchanges\binance_exchange.py:22
+  메시지: 상수 'ORDER_TYPE_MARKET'가 config/ 외부에서 재정의됨
+  제안: config/에서 import하여 사용하세요 (SSOT 원칙)
+
+[WARNING] BOTTLENECK
+  파일: GUI\data_cache.py:0
+  메시지: 과도한 의존성: 18개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\optimization_widget.py:0
+  메시지: 과도한 의존성: 20개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\settings_widget.py:0
+  메시지: 과도한 의존성: 18개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\staru_main.py:0
+  메시지: 과도한 의존성: 18개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\trading_dashboard.py:0
+  메시지: 과도한 의존성: 20개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: core\optimizer.py:0
+  메시지: 과도한 의존성: 16개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: core\unified_bot.py:0
+  메시지: 과도한 의존성: 18개 모듈 import
+  제안: 모듈 분리 또는 인터페이스 추상화 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\data_collector_widget.py:124
+  메시지: God 클래스 'DataCollectorWidget': 34개 메서드
+  제안: 책임 분리하여 클래스 분할 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\optimization_widget.py:216
+  메시지: God 클래스 'SingleOptimizerWidget': 32개 메서드
+  제안: 책임 분리하여 클래스 분할 고려
+
+[WARNING] BOTTLENECK
+  파일: GUI\trading_dashboard.py:122
+  메시지: God 클래스 'TradingDashboard': 53개 메서드
+  제안: 책임 분리하여 클래스 분할 고려
+
+[WARNING] BOTTLENECK
+  파일: core\multi_sniper.py:28
+  메시지: God 클래스 'MultiCoinSniper': 56개 메서드
+  제안: 책임 분리하여 클래스 분할 고려
+
+[WARNING] BOTTLENECK
+  파일: exchanges\bithumb_exchange.py:41
+  메시지: God 클래스 'BithumbExchange': 34개 메서드
+  제안: 책임 분리하여 클래스 분할 고려
+
+[INFO] CONNECTION
+  파일: core\async_scanner.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\batch_verifier.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\bot_state.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\chart_matcher.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\data_manager.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\multi_symbol_backtest.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\pnl_tracker.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\position_manager.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\preset_health.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\signal_processor.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+
+[INFO] CONNECTION
+  파일: core\trade_common.py:0
+  메시지: GUI에서 직접 사용되지 않는 Core 모듈
+  제안: 다른 core 모듈을 통해 간접 사용될 수 있음
+

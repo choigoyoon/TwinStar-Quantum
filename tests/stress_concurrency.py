@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 
 # Add project root
-sys.path.insert(0, str(Path(rstr(Path(__file__).parent))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.optimization_logic import OptimizationEngine
 

@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QFormLayout
 )
 from PyQt6.QtCore import Qt
+from typing import Any, cast, Optional
 
 # License Guard
 try:
@@ -679,19 +680,20 @@ class PaymentDialog(QDialog):
             if 'USDT' in data:
                 addr = data['USDT']['address']
                 net = data['USDT']['network']
-                self.wallet_addr.setText(f"{addr} ({net})")
+                cast(Any, self.wallet_addr).setText(f"{addr} ({net})")
                 self.real_addr = addr
             else:
-                self.wallet_addr.setText("지갑 주소 로드 실패")
+                cast(Any, self.wallet_addr).setText("지갑 주소 로드 실패")
         except (requests.RequestException, ValueError, KeyError):
-            self.wallet_addr.setText("서버 연결 실패 (지갑)")
+            cast(Any, self.wallet_addr).setText("서버 연결 실패 (지갑)")
 
     def _copy_wallet(self):
         """클립보드 복사"""
         if hasattr(self, 'real_addr'):
             cb = QApplication.clipboard()
-            cb.setText(self.real_addr)
-            QMessageBox.information(self, "복사 완료", "지갑 주소가 복사되었습니다.")
+            if cb:
+                cast(Any, cb).setText(getattr(self, 'real_addr', ""))
+                QMessageBox.information(self, "복사 완료", "지갑 주소가 복사되었습니다.")
 
     def _submit(self):
         tx = self.tx_input.text().strip()
@@ -718,129 +720,16 @@ class PaymentDialog(QDialog):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QFormLayout, QFrame, QMessageBox
-    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QApplication
     import sys
-    import os
-    import requests
     
-    # Dummy API_URL and hardware_id/mac for testing
-    API_URL = "http://localhost:5000/api" # Replace with a real API endpoint for testing
-    def get_hardware_id(): return "TEST_HW_ID"
-    def get_mac_address(): return "TEST_MAC_ADDR"
-
-    class PCLicenseDialog(QDialog):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self.hw_id = get_hardware_id() # Initialize hw_id for PaymentDialog
-            self.setWindowTitle("PC 라이선스 관리")
-            self.setFixedSize(400, 450)
-            self.setStyleSheet(self._get_styles())
-
-            self.registered_email = "" # For RegisterDialog interaction
-
-            self.init_ui()
-            self.load_saved_email()
-
-        def init_ui(self):
-            main_layout = QVBoxLayout(self)
-            main_layout.setSpacing(20)
-            main_layout.setContentsMargins(30, 30, 30, 30)
-
-            title = QLabel("✨ PC 라이선스 관리")
-            title.setStyleSheet("font-size: 24px; font-weight: bold; color: #58a6ff;")
-            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            main_layout.addWidget(title)
-
-            # Email input
-            self.email_input = QLineEdit()
-            self.email_input.setPlaceholderText("이메일 주소")
-            self.email_input.setStyleSheet(self._input_style())
-            main_layout.addWidget(self.email_input)
-
-            # Password input (for login, though not explicitly used in snippet)
-            self.password_input = QLineEdit()
-            self.password_input.setPlaceholderText("비밀번호 (선택)")
-            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.password_input.setStyleSheet(self._input_style())
-            main_layout.addWidget(self.password_input)
-
-            # Action buttons
-            btn_layout = QVBoxLayout()
-            btn_layout.setSpacing(10)
-
-            login_btn = QPushButton("로그인")
-            login_btn.setStyleSheet(self._button_style("#238636"))
-            login_btn.clicked.connect(self.on_login_click)
-            btn_layout.addWidget(login_btn)
-
-            register_btn = QPushButton("신규 가입")
-            register_btn.setStyleSheet(self._button_style("#58a6ff"))
-            register_btn.clicked.connect(self.on_register_click)
-            btn_layout.addWidget(register_btn)
-
-            trial_btn = QPushButton("7일 무료 체험")
-            trial_btn.setStyleSheet(self._button_style("#ff9800"))
-            trial_btn.clicked.connect(self.on_trial_click)
-            btn_layout.addWidget(trial_btn)
-
-            # Add payment button here
-            payment_btn = QPushButton("💳 라이선스 결제")
-            payment_btn.setStyleSheet(self._button_style("#2962FF"))
-            payment_btn.clicked.connect(self.on_payment_click)
-            btn_layout.addWidget(payment_btn)
-
-            main_layout.addLayout(btn_layout)
-            main_layout.addStretch()
-
-            # Status label
-            self.status_label = QLabel("준비 완료")
-            self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.status_label.setStyleSheet("font-size: 13px; color: #888;")
-            main_layout.addWidget(self.status_label)
-
-        def _input_style(self):
-            return """
-                QLineEdit {
-                    padding: 10px;
-                    font-size: 14px;
-                    border: 2px solid #333;
-                    border-radius: 6px;
-                    background: #161b22;
-                    color: white;
-                }
-                QLineEdit:focus { border-color: #2962FF; }
-            """
-
-        def _button_style(self, color):
-            return f"""
-                QPushButton {{
-                    padding: 12px;
-                    font-size: 15px;
-                    font-weight: bold;
-                    background: {color};
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                }}
-                QPushButton:hover {{ background: {color}cc; }}
-            """
-        
-        # Dummy methods for testing
-        def on_login_click(self):
-            email = self.email_input.text().strip()
-            password = self.password_input.text().strip()
-            if not email:
-                self.show_status("❌ 이메일을 입력해주세요", "error")
-                return
-            self.show_status(f"로그인 시도: {email}", "info")
-            # Simulate login success/failure
-            if email == "test@example.com":
-                self.show_status("✅ 로그인 성공!", "success")
-            else:
-                self.show_status("❌ 로그인 실패", "error")
-
     app = QApplication(sys.argv)
+    app.setStyle('Fusion')
+    
     dialog = PCLicenseDialog()
-    dialog.show()
-    sys.exit(app.exec())
+    if dialog.exec() == QDialog.DialogCode.Accepted:
+        print("Licensing successful")
+    else:
+        print("Licensing cancelled or failed")
+        
+    sys.exit(0)

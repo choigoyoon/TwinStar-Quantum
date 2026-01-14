@@ -154,7 +154,7 @@ class HelpDialog(QDialog):
         scroll_layout = QVBoxLayout(scroll_content)
         
         try:
-            from referral_links import REFERRAL_LINKS
+            from referral_links import REFERRAL_LINKS # type: ignore
             
             for exchange, info in REFERRAL_LINKS.items():
                 group = QGroupBox(f"{info.get('guide', exchange).split(chr(10))[0]}")

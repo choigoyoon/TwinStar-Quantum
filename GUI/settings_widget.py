@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
+from typing import Any, cast, Dict, Optional
 
 # Path setup
 if not getattr(sys, 'frozen', False):
@@ -45,30 +46,32 @@ except ImportError:
     try:
         from GUI.crypto_manager import load_api_keys, save_api_keys
     except ImportError:
-        def load_api_keys():
+        def load_api_keys() -> Dict[str, Any]:
             return {}
-        def save_api_keys(config):
-            pass
+        def save_api_keys(config: Dict[str, Any]) -> bool:
+            return False
 
 try:
-    from locales import t, set_language, get_lang_manager
-    from locales.lang_manager import t, set_language
+    from i18n import t, set_lang as set_language
+    from i18n import I18n as LangManager
 except ImportError:
-    def t(key, default=None):
+    def t(key: str, default: Optional[str] = None) -> str:
         return default if default else key.split('.')[-1]
-    def set_language(l): pass
+    def set_language(lang: str) -> bool: return False
+    LangManager = None
+
+def get_lang_manager() -> Optional[Any]: 
+    return LangManager.get_instance() if LangManager else None
 
 try:
     from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection
 except ImportError:
-    def connect_exchange(*args, **kwargs):
+    def connect_exchange(exchange_name: str, api_key: str, api_secret: str, testnet: bool = False, passphrase: str = "") -> tuple:
         return (False, "exchange_manager module load failed")
-    def get_exchange(name):
+    def get_exchange(exchange_name: str):
         return None
-    def test_connection(*args, **kwargs):
+    def test_connection(exchange_name: str, api_key: Optional[str] = None, api_secret: Optional[str] = None, testnet: bool = False) -> bool:
         return False
-    def set_language(lang): pass
-    def get_lang_manager(): return None
 
 # License Guard
 try:
@@ -179,7 +182,7 @@ class TelegramCard(QFrame):
         
         # Header
         header = QLabel("텔레그램 알림")
-        header.setFont(QFont("Arial", 12, QFont.Bold))
+        header.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -311,7 +314,7 @@ class ExchangeCard(QFrame):
         taker = info.get("taker_fee", 0)
         
         title = QLabel(f"{icon} {self.exchange_name.upper()} ({ex_type} {market})")
-        title.setFont(QFont("Arial", 12, QFont.Bold))
+        title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         title.setStyleSheet("color: white;")
         header_layout.addWidget(title)
         
@@ -663,6 +666,7 @@ class SettingsWidget(QWidget):
         self.config = load_api_keys()
         self.exchange_cards = {}
         self.current_tier = 'FREE'  # 기본 등급
+        self.lang_combo: Optional[QComboBox] = None
         self._load_license_info()
         self._init_ui()
     
@@ -683,7 +687,7 @@ class SettingsWidget(QWidget):
         
         # Header
         header = QLabel("API Settings")
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -794,8 +798,8 @@ class SettingsWidget(QWidget):
         # Remove existing widgets
         while self.cards_layout.count():
             item = self.cards_layout.takeAt(0)
-            if item.widget():
-                item.widget().setParent(None)
+            if item and item.widget():
+                cast(Any, item.widget()).setParent(None)
         
         # Add visible cards
         visible = []
@@ -831,9 +835,9 @@ class SettingsWidget(QWidget):
     def _on_language_changed(self, index):
         """언어 변경 핸들러"""
         # [FIX] lang_combo 미정의 시 안전 체크
-        if not hasattr(self, 'lang_combo'):
+        if not hasattr(self, 'lang_combo') or self.lang_combo is None:
             return
-        lang_code = self.lang_combo.currentData()
+        lang_code = cast(Any, self.lang_combo).currentData()
         if lang_code:
             set_language(lang_code)
             
@@ -1019,7 +1023,7 @@ class SettingsWidget(QWidget):
             if HAS_LICENSE_GUARD and get_license_guard:
                 guard = get_license_guard()
                 if guard and hasattr(guard, 'verify_admin_code'):
-                    return guard.verify_admin_code(code, tier)
+                    return cast(Any, guard).verify_admin_code(code, tier)
             
             # 시뮬레이션 응답 (실제 서버 연동 전)
             # 테스트용: 'ADMIN' 또는 'TEST'로 시작하는 코드는 성공
@@ -1140,15 +1144,18 @@ class SettingsWidget(QWidget):
                 
                 if result.get('success'):
                     url = result.get('url')
-                    webbrowser.open(url)
-                    
-                    QMessageBox.information(
-                        self,
-                        "업그레이드",
-                        "웹 브라우저에서 결제를 완료한 후\n"
-                        "프로그램을 재시작해주세요.\n\n"
-                        f"URL: {url[:50]}..."
-                    )
+                    if url:
+                        webbrowser.open(cast(str, url))
+                        
+                        QMessageBox.information(
+                            self,
+                            "업그레이드",
+                            "웹 브라우저에서 결제를 완료한 후\n"
+                            "프로그램을 재시작해주세요.\n\n"
+                            f"URL: {url[:50]}..."
+                        )
+                    else:
+                        QMessageBox.warning(self, "오류", "결제 페이지 URL을 받지 못했습니다.")
                 else:
                     error = result.get('error', '세션 생성 실패')
                     QMessageBox.warning(self, "오류", f"업그레이드 실패: {error}")

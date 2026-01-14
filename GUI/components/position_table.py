@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QWidget, QHBoxLayout
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QWidget, QHBoxLayout, QAbstractItemView
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QColor
 import logging
@@ -32,13 +32,14 @@ class PositionTable(QTableWidget):
         self.setHorizontalHeaderLabels(columns)
         
         # 헤더 설정
-        header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if (header := self.horizontalHeader()) is not None:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         
         # 선택 모드
-        self.setSelectionBehavior(QTableWidget.SelectRows)
-        self.setSelectionMode(QTableWidget.SingleSelection)
-        self.setEditTriggers(QTableWidget.NoEditTriggers)
+        # 선택 모드
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         
         # 스타일
         self.setStyleSheet("""
@@ -113,6 +114,7 @@ class PositionTable(QTableWidget):
             item = self.item(row, 0)
             if item and item.text() == symbol:
                 return row
+        return -1
     def clear_all(self):
         """모든 포지션 제거"""
         self.setRowCount(0)

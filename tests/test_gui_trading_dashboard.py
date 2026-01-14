@@ -7,6 +7,7 @@ import sys
 import os
 from pathlib import Path
 import logging
+from typing import Any, cast
 
 # 프로젝트 루트 추가
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -122,12 +123,12 @@ def run_trading_dashboard_tests():
     # ===========================================
     print("\n[6. 코인 행 추가]")
     
-    initial_count = len(dashboard.coin_rows)
+    initial_count = len(cast(Any, dashboard).coin_rows)
     try:
         # rows_layout 또는 다른 레이아웃 사용
         if hasattr(dashboard, 'rows_layout') or hasattr(dashboard, 'single_layout'):
-            dashboard._add_coin_row()
-            new_count = len(dashboard.coin_rows)
+            cast(Any, dashboard)._add_coin_row()
+            new_count = len(cast(Any, dashboard).coin_rows)
             result.ok("코인 행 추가", new_count > initial_count, f"전:{initial_count} → 후:{new_count}")
         else:
             # 레이아웃 없으면 메서드 존재만 확인
@@ -140,7 +141,7 @@ def run_trading_dashboard_tests():
     # ===========================================
     print("\n[7. 봇 상태]")
     
-    result.ok("running_bots 초기 상태", len(dashboard.running_bots) == 0, f"개수: {len(dashboard.running_bots)}")
+    result.ok("running_bots 초기 상태", len(cast(Any, dashboard).running_bots) == 0, f"개수: {len(cast(Any, dashboard).running_bots)}")
     result.ok("_is_single_running 존재", hasattr(dashboard, '_is_single_running'))
     result.ok("_is_multi_running 존재", hasattr(dashboard, '_is_multi_running'))
     

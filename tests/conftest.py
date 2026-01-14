@@ -4,7 +4,7 @@ Handles QApplication singleton and headless environment detection
 """
 import sys
 import os
-import pytest
+import pytest  # type: ignore
 
 # Add project root to path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

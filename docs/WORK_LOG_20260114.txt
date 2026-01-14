@@ -1,0 +1,161 @@
+================================================================================
+TwinStar Quantum - 작업 로그
+일자: 2026-01-14
+브랜치: genspark_ai_developer
+================================================================================
+
+## 작업 요약
+
+오늘 총 6개의 커밋을 생성하여 프로젝트의 구조적 정리 및 PyQt6 마이그레이션을 완료했습니다.
+
+--------------------------------------------------------------------------------
+## 커밋 내역
+--------------------------------------------------------------------------------
+
+1. b0a3a41 - refactor: PyQt5 → PyQt6 마이그레이션
+   - 342개 파일 변경
+   - PyQt5 → PyQt6 import 변경
+   - Qt Enum 문법 변경 (예: Qt.AlignCenter → Qt.AlignmentFlag.AlignCenter)
+   - 영향 폴더: GUI/, ui/, tests/, tools/, core/
+
+2. 7076cbe - refactor: import 구조 정리 및 모듈 이름 변경
+   - 42개 파일 변경
+   - GUI/data_manager.py → GUI/data_cache.py 이름 변경 (core와 충돌 해결)
+   - from indicator_generator → from utils.indicators 통일
+   - GUI 내부 import 절대경로로 통일
+   - utils/indicators.py에 IndicatorGenerator 클래스 추가 (레거시 호환)
+
+3. dd0f67f - fix: 잘못된 자동 수정 코드 정리
+   - 9개 파일 변경
+   - except 블록 내 잘못된 들여쓰기 import 문 제거
+   - 구문 오류 유발 코드 수정
+
+4. 2b44581 - docs: 문서 업데이트 (v1.8.4)
+   - 3개 파일 변경
+   - PROJECT_STRUCTURE.md - PyQt6 반영, 최근 변경사항 섹션 추가
+   - INTEGRATION_GUIDE.md - PyQt6 예제 코드 업데이트
+   - FEATURE_TREE.md - 버전 업데이트
+
+5. 62e25d1 - chore: .gitignore에 임시 디렉토리 패턴 추가
+   - tmpclaude-*/ 패턴 추가
+   - venv*/ 패턴 추가
+
+6. f0eb7d6 - fix: 누락된 PyQt6 Enum 변환 수정
+   - 8개 파일 변경
+   - Qt.MatchContains → Qt.MatchFlag.MatchContains
+   - Qt.CaseInsensitive → Qt.CaseSensitivity.CaseInsensitive
+   - Qt.UserRole → Qt.ItemDataRole.UserRole
+   - Qt.TextSelectableByMouse → Qt.TextInteractionFlag.TextSelectableByMouse
+   - Qt.QueuedConnection → Qt.ConnectionType.QueuedConnection
+
+--------------------------------------------------------------------------------
+## 주요 변경사항 상세
+--------------------------------------------------------------------------------
+
+### 1. PyQt5 → PyQt6 마이그레이션
+
+[변경된 Import]
+- from PyQt5.QtWidgets → from PyQt6.QtWidgets
+- from PyQt5.QtCore → from PyQt6.QtCore
+- from PyQt5.QtGui → from PyQt6.QtGui
+
+[변경된 Enum 패턴]
+| 기존 (PyQt5)              | 변경 (PyQt6)                           |
+|---------------------------|----------------------------------------|
+| Qt.AlignCenter            | Qt.AlignmentFlag.AlignCenter           |
+| Qt.AlignLeft              | Qt.AlignmentFlag.AlignLeft             |
+| Qt.AlignRight             | Qt.AlignmentFlag.AlignRight            |
+| Qt.Horizontal             | Qt.Orientation.Horizontal              |
+| Qt.Vertical               | Qt.Orientation.Vertical                |
+| Qt.Checked                | Qt.CheckState.Checked                  |
+| Qt.Unchecked              | Qt.CheckState.Unchecked                |
+| Qt.ItemIsUserCheckable    | Qt.ItemFlag.ItemIsUserCheckable        |
+| Qt.MatchContains          | Qt.MatchFlag.MatchContains             |
+| Qt.CaseInsensitive        | Qt.CaseSensitivity.CaseInsensitive     |
+| Qt.UserRole               | Qt.ItemDataRole.UserRole               |
+| Qt.TextSelectableByMouse  | Qt.TextInteractionFlag.TextSelectableByMouse |
+| Qt.QueuedConnection       | Qt.ConnectionType.QueuedConnection     |
+| Qt.DashLine               | Qt.PenStyle.DashLine                   |
+| Qt.PointingHandCursor     | Qt.CursorShape.PointingHandCursor      |
+| Qt.RichText               | Qt.TextFormat.RichText                 |
+
+### 2. Import 구조 정리
+
+[모듈 이름 변경]
+- GUI/data_manager.py → GUI/data_cache.py
+  (core/data_manager.py와의 이름 충돌 해결)
+
+[Import 경로 통일]
+| 기존                           | 변경                              |
+|--------------------------------|-----------------------------------|
+| from data_manager import       | from GUI.data_cache import        |
+| from indicator_generator import| from utils.indicators import      |
+| from exchange_selector_widget  | from GUI.exchange_selector_widget |
+| from capital_config import     | from GUI.capital_config import    |
+| from history_widget import     | from GUI.history_widget import    |
+| from notification_manager      | from GUI.notification_manager     |
+
+### 3. 문서 업데이트
+
+[PROJECT_STRUCTURE.md]
+- 버전: v1.8.3 → v1.8.4
+- GUI 설명: PyQt5 → PyQt6
+- "최근 변경사항" 섹션 추가
+
+[INTEGRATION_GUIDE.md]
+- 예제 코드 PyQt6로 업데이트
+- from PyQt5.QtWidgets → from PyQt6.QtWidgets
+
+[FEATURE_TREE.md]
+- 버전 및 날짜 업데이트
+
+--------------------------------------------------------------------------------
+## 정리된 파일
+--------------------------------------------------------------------------------
+
+[삭제된 임시 디렉토리]
+- tmpclaude-*-cwd (133개 디렉토리)
+
+[삭제된 임시 파일]
+- bulk_fix_paths.py
+- bulk_improve_code.py
+- migrate_pyqt6.py
+- fix_indent_errors.py
+- core_report_raw.txt
+- pyright_output.txt
+- pyrightconfig.json
+- PYRIGHT_FIX_PLAN.md
+- exchanges_quality_report.json
+- gui_quality_report.json
+
+--------------------------------------------------------------------------------
+## 남은 미추적 파일
+--------------------------------------------------------------------------------
+
+- CLAUDE.md (프로젝트 규칙 - 유지)
+- requirements.txt (PyQt6 의존성 포함 - 검토 필요)
+- venv312/ (가상환경 - .gitignore에 추가됨)
+
+--------------------------------------------------------------------------------
+## 알려진 이슈
+--------------------------------------------------------------------------------
+
+1. pyright 타입 에러 다수 발생 가능
+   - 원인: PyQt6 타입 스텁 미설치
+   - 해결: pip install PyQt6-stubs
+
+2. requirements.txt 아직 커밋 안됨
+   - 검토 후 커밋 필요
+
+--------------------------------------------------------------------------------
+## 다음 작업 권장
+--------------------------------------------------------------------------------
+
+1. pyright 실행하여 남은 타입 에러 확인
+2. GUI 실행 테스트하여 정상 동작 확인
+3. requirements.txt 검토 및 커밋
+4. 전체 테스트 실행
+
+================================================================================
+작성: Claude Opus 4.5
+================================================================================

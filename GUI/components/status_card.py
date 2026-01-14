@@ -2,6 +2,7 @@
 
 from typing import Optional
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
+from ui.design_system.tokens import Colors
 
 class StatusCard(QFrame):
     """상태 표시 카드"""
@@ -36,13 +37,13 @@ class StatusCard(QFrame):
     
     def set_positive(self, value: str):
         """녹색(이익) 상태로 값 설정"""
-        self.set_value(value, "#26a69a")
-    
+        self.set_value(value, Colors.accent_primary)
+
     def set_negative(self, value: str):
         """빨강(손실) 상태로 값 설정"""
-        self.set_value(value, "#ef5350")
-    
+        self.set_value(value, Colors.danger)
+
     def set_neutral(self, value: str):
         """회색(중립) 상태로 값 설정"""
-        self.set_value(value, "#888888")
+        self.set_value(value, Colors.text_secondary)
 

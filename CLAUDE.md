@@ -73,11 +73,38 @@ project_root/
 │   ├── backtest/           # 백테스트 엔진
 │   └── strategies/         # 전략 구현
 │
-├── GUI/                    # PyQt6 GUI (레거시)
-├── ui/                     # PyQt6 GUI (신규 - 디자인 시스템)
-│   ├── design_system/      # 토큰 기반 테마
+├── GUI/                    # PyQt6 GUI (레거시 - 102개 파일)
+│   ├── staru_main.py       # 메인 윈도우
+│   ├── styles/             # 레거시 테마 (DEPRECATED)
+│   ├── components/         # 재사용 컴포넌트 (9개)
+│   ├── dashboard/          # 대시보드
+│   ├── trading/            # 트레이딩 위젯
+│   ├── backtest/           # 백테스트 위젯
+│   ├── optimization/       # 최적화 위젯
+│   ├── data/               # 데이터 관리
+│   ├── settings/           # 설정
+│   └── dialogs/            # 다이얼로그
+│
+├── ui/                     # ⭐ PyQt6 GUI (신규 - 모던 디자인 시스템)
+│   ├── design_system/      # 토큰 기반 테마 (PyQt6 무의존)
+│   │   ├── tokens.py       # 디자인 토큰 (SSOT)
+│   │   ├── theme.py        # ThemeGenerator
+│   │   └── styles/         # 컴포넌트 스타일
 │   ├── widgets/            # 재사용 위젯
-│   └── workers/            # QThread 워커
+│   │   ├── backtest/       # 백테스트 (메인, 싱글, 멀티, 워커)
+│   │   ├── optimization/   # 최적화 (메인, 싱글, 배치, 워커)
+│   │   ├── dashboard/      # 대시보드 (헤더, 카드)
+│   │   └── results.py      # 결과 표시
+│   ├── workers/            # QThread 워커
+│   └── dialogs/            # 다이얼로그
+│
+├── web/                    # 웹 인터페이스
+│   ├── backend/            # FastAPI 백엔드
+│   │   └── main.py         # REST API
+│   ├── frontend/           # Vue.js 프론트엔드
+│   │   ├── index.html      # 웹 대시보드
+│   │   └── guide_data.js   # 가이드 데이터
+│   └── run_server.py       # 서버 실행
 │
 ├── utils/                  # 유틸리티
 │   ├── indicators.py       # 지표 계산 (RSI, ATR, MACD)
@@ -88,7 +115,412 @@ project_root/
 ├── locales/                # 다국어 지원
 ├── tests/                  # 테스트 (130+)
 └── data/                   # 데이터 저장소
+    ├── cache/              # 캐시 데이터 (Parquet 파일)
+    ├── bot_status.json     # 봇 상태 정보
+    ├── capital_config.json # 자본 설정
+    └── ...                 # 기타 설정 파일
 ```
+
+---
+
+## 💾 데이터 저장소 구조 (Data Storage)
+
+### Parquet 파일 저장 위치
+
+모든 OHLCV(캔들) 데이터는 **Parquet 형식**으로 저장되며, 다음 경로를 따릅니다:
+
+```text
+data/cache/
+├── {exchange}_{symbol}_15m.parquet    # 15분봉 원본 데이터 (Single Source)
+└── {exchange}_{symbol}_1h.parquet     # 1시간봉 데이터 (DEPRECATED)
+```
+
+#### 파일명 규칙
+- **형식**: `{거래소명}_{심볼}_타임프레임.parquet`
+- **거래소명**: 소문자 (예: `bybit`, `binance`, `okx`)
+- **심볼**: 특수문자 제거 (예: `BTC/USDT` → `btcusdt`)
+- **타임프레임**: `15m`, `1h`, `4h`, `1d` 등
+
+#### 예시
+```text
+data/cache/bybit_btcusdt_15m.parquet    # Bybit BTC/USDT 15분봉
+data/cache/binance_ethusdt_15m.parquet  # Binance ETH/USDT 15분봉
+data/cache/okx_btcusdt_1h.parquet       # OKX BTC/USDT 1시간봉 (레거시)
+```
+
+### 단일 소스 원칙 (Single Source Principle)
+
+> **중요**: 모든 OHLCV 데이터는 **15분봉 단일 파일**에서 관리합니다.
+
+```python
+# ✅ 올바른 방법 - 15m 데이터를 리샘플링
+from core.data_manager import BotDataManager
+
+manager = BotDataManager('bybit', 'BTCUSDT')
+
+# 15m 원본 데이터 로드
+df_15m = manager.load_entry_data()
+
+# 필요한 타임프레임으로 리샘플링
+df_1h = manager.resample_data(df_15m, '1h')
+df_4h = manager.resample_data(df_15m, '4h')
+
+# ❌ 잘못된 방법 - 별도 1h 파일 저장/로드 (레거시)
+df_1h = manager.load_pattern_data()  # DEPRECATED
+```
+
+### 경로 관리
+
+캐시 디렉토리 경로는 `config/constants/paths.py`에서 중앙 관리합니다:
+
+```python
+# config/constants/paths.py
+CACHE_DIR = 'data/cache'
+OHLCV_CACHE_DIR = f'{CACHE_DIR}/ohlcv'
+INDICATOR_CACHE_DIR = f'{CACHE_DIR}/indicators'
+BACKTEST_CACHE_DIR = f'{CACHE_DIR}/backtest'
+```
+
+### 데이터 저장/로드 API
+
+#### 데이터 저장
+```python
+from core.data_manager import BotDataManager
+import pandas as pd
+
+manager = BotDataManager('bybit', 'BTCUSDT')
+
+# 15m 데이터 저장 (단일 소스)
+df = pd.DataFrame(...)  # OHLCV 데이터
+manager.save_entry_data(df)
+```
+
+#### 데이터 로드
+```python
+# 15m 원본 데이터 로드
+df_15m = manager.load_entry_data()
+
+# 리샘플링 (메모리 내 변환)
+df_1h = manager.resample_data(df_15m, '1h')
+df_4h = manager.resample_data(df_15m, '4h')
+```
+
+#### 파일 경로 확인
+```python
+# Parquet 파일 경로 가져오기
+entry_path = manager.get_entry_file_path()
+# → Path('data/cache/bybit_btcusdt_15m.parquet')
+
+# 레거시 경로 (사용 지양)
+pattern_path = manager.get_pattern_file_path()
+# → Path('data/cache/bybit_btcusdt_1h.parquet')
+```
+
+### 데이터 저장 모범 사례
+
+1. **15분봉 단일 파일 유지**
+   - 모든 타임프레임은 15m 데이터에서 리샘플링
+   - 별도 1h, 4h 파일 생성 지양
+
+2. **Parquet 형식 사용**
+   - CSV 대비 빠른 읽기/쓰기 성능
+   - 타입 정보 보존
+   - 압축 지원
+
+3. **경로 하드코딩 금지**
+   - 항상 `BotDataManager` API 사용
+   - `config.constants.paths` 모듈 활용
+
+4. **캐시 정리**
+   - `utils/cache_cleaner.py` 사용
+   - 오래된 캐시 자동 삭제
+
+### 기타 데이터 파일
+
+`data/` 디렉토리의 기타 JSON 파일:
+
+| 파일명 | 용도 | 관리 모듈 |
+|--------|------|-----------|
+| `bot_status.json` | 봇 실행 상태 | `core/unified_bot.py` |
+| `capital_config.json` | 자본 설정 | `storage/` |
+| `exchange_keys.json` | 거래소 키 메타데이터 | `storage/key_manager.py` |
+| `encrypted_keys.dat` | 암호화된 API 키 | `storage/key_manager.py` |
+| `system_config.json` | 시스템 설정 | `config/` |
+| `daily_pnl.json` | 일일 수익률 기록 | `core/` |
+
+---
+
+## 🎨 UI/웹 모듈 구조 (UI & Web Architecture)
+
+### UI 시스템 개요
+
+프로젝트는 **2개의 UI 시스템**을 가지고 있습니다:
+
+1. **신규 UI (`ui/`)** - 모던 디자인 시스템 (토큰 기반)
+2. **레거시 UI (`GUI/`)** - 기존 PyQt6 위젯 (점진적 마이그레이션 대상)
+
+### 1. 신규 UI 시스템 (`ui/`) - 권장
+
+#### 디자인 시스템 (PyQt6 무의존)
+
+```python
+# ✅ 디자인 토큰 사용 (SSOT)
+from ui.design_system.tokens import Colors, Typography, Spacing
+
+# 색상
+bg_color = Colors.bg_base           # "#1a1b1e"
+accent = Colors.accent_primary       # "#00d4ff"
+text = Colors.text_primary           # "#e4e6eb"
+
+# 타이포그래피
+font_size = Typography.text_lg       # 18px
+font_weight = Typography.font_bold   # 700
+
+# 간격
+padding = Spacing.space_4            # 16px
+```
+
+#### 테마 생성
+
+```python
+# ✅ 전체 스타일시트 생성
+from ui.design_system.theme import ThemeGenerator
+
+app = QApplication(sys.argv)
+app.setStyleSheet(ThemeGenerator.generate())
+```
+
+#### 위젯 사용
+
+```python
+# ✅ 백테스트 위젯
+from ui.widgets.backtest import BacktestWidget
+
+backtest = BacktestWidget()
+backtest.backtest_finished.connect(on_result)
+
+# ✅ 최적화 위젯
+from ui.widgets.optimization import OptimizationWidget
+
+optimizer = OptimizationWidget()
+optimizer.settings_applied.connect(on_settings)
+
+# ✅ 대시보드
+from ui.widgets.dashboard import TradingDashboard
+
+dashboard = TradingDashboard()
+```
+
+#### 디렉토리 구조
+
+```text
+ui/
+├── design_system/              # ⭐ PyQt6 무의존 토큰 시스템
+│   ├── tokens.py               # 디자인 토큰 (SSOT)
+│   │   ├── ColorTokens         # 25개 색상 (배경, 텍스트, 브랜드, 의미, 등급)
+│   │   ├── TypographyTokens    # 타이포그래피 (크기 8단계, 가중치 5단계)
+│   │   ├── SpacingTokens       # 간격 (4px 기반 11단계)
+│   │   ├── RadiusTokens        # 반경 (6단계)
+│   │   ├── ShadowTokens        # 그림자 (5단계 + 3 glow)
+│   │   └── AnimationTokens     # 애니메이션 (속도 3단계, easing 4개)
+│   │
+│   ├── theme.py                # 테마 생성기
+│   │   ├── ThemeGenerator      # Qt 스타일시트 생성 (16개 위젯)
+│   │   └── ComponentStyles     # 개별 컴포넌트 스타일
+│   │
+│   └── styles/                 # 컴포넌트별 스타일
+│       ├── buttons.py          # ButtonStyles
+│       ├── inputs.py           # InputStyles
+│       ├── cards.py            # CardStyles
+│       ├── tables.py           # TableStyles
+│       └── dialogs.py          # DialogStyles
+│
+├── widgets/                    # PyQt6 위젯
+│   ├── backtest/               # 백테스트 위젯
+│   │   ├── main.py             # BacktestWidget (QWidget)
+│   │   ├── single.py           # SingleBacktestTab
+│   │   ├── multi.py            # MultiBacktestTab
+│   │   └── worker.py           # BacktestWorker (QThread)
+│   │
+│   ├── optimization/           # 최적화 위젯
+│   │   ├── main.py             # OptimizationWidget (QWidget)
+│   │   ├── single.py           # SingleOptimizationTab
+│   │   ├── batch.py            # BatchOptimizationTab
+│   │   ├── params.py           # 파라미터 입력 위젯
+│   │   └── worker.py           # OptimizationWorker (QThread)
+│   │
+│   ├── dashboard/              # 트레이딩 대시보드
+│   │   ├── main.py             # TradingDashboard
+│   │   ├── header.py           # DashboardHeader
+│   │   └── status_cards.py     # StatusCard, PnLCard, RiskCard
+│   │
+│   └── results.py              # 결과 표시 (GradeLabel, ResultsWidget)
+│
+├── workers/                    # QThread 백그라운드 작업
+│   └── tasks.py                # BacktestWorker, OptimizationWorker
+│
+└── dialogs/                    # 다이얼로그
+    ├── base.py                 # BaseDialog
+    └── message.py              # MessageDialog, ConfirmDialog
+```
+
+#### 의존성 흐름
+
+```text
+디자인 시스템 (PyQt6 무의존)
+tokens.py → theme.py → styles/*.py
+    ↓
+    └─→ widgets/ (PyQt6 사용)
+            ├─→ backtest/
+            ├─→ optimization/
+            ├─→ dashboard/
+            └─→ dialogs/
+```
+
+### 2. 레거시 UI 시스템 (`GUI/`) - 유지보수 모드
+
+```text
+GUI/ (102개 파일)
+├── staru_main.py               # 메인 윈도우
+├── styles/                     # 레거시 테마 (DEPRECATED)
+│   ├── theme.py                # → ui.design_system 사용 권장
+│   ├── premium_theme.py
+│   ├── elegant_theme.py
+│   └── vivid_theme.py
+│
+├── components/                 # 재사용 컴포넌트 (9개)
+│   ├── status_card.py
+│   ├── bot_control_card.py
+│   ├── position_table.py
+│   ├── interactive_chart.py
+│   └── ...
+│
+├── trading/                    # 트레이딩 위젯
+│   ├── trading_dashboard.py (v1, v2, v3)
+│   ├── live_trading_manager.py
+│   └── ...
+│
+├── backtest/                   # 백테스트 위젯
+├── optimization/               # 최적화 위젯
+├── data/                       # 데이터 관리
+├── settings/                   # 설정
+└── dialogs/                    # 다이얼로그
+```
+
+### 3. 웹 인터페이스 (`web/`)
+
+#### FastAPI 백엔드
+
+```python
+# web/backend/main.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="TwinStar Quantum Web")
+
+# REST API 엔드포인트
+@app.get("/api/dashboard/status")
+async def get_dashboard_status():
+    """대시보드 상태 조회"""
+    ...
+
+@app.post("/api/trade")
+async def execute_trade(request: TradeRequest):
+    """거래 실행"""
+    ...
+
+# 실행: python web/run_server.py
+```
+
+#### Vue.js 프론트엔드
+
+```text
+web/frontend/
+├── index.html                  # SPA 웹 대시보드 (Vue.js 3 + Tailwind)
+│   ├── 매매 탭 (실시간 거래)
+│   ├── 백테스트 탭
+│   ├── 최적화 탭
+│   ├── 설정 탭
+│   ├── 거래내역 탭
+│   ├── 데이터 탭
+│   └── 자동매매 탭
+│
+└── guide_data.js               # 가이드 콘텐츠
+```
+
+#### 웹 아키텍처
+
+```text
+브라우저 (http://localhost:8000)
+    ↓
+index.html (Vue.js + Tailwind)
+    ↓ HTTP/REST
+FastAPI 백엔드 (/api/*)
+    ↓
+거래 로직 (core/)
+```
+
+### 4. HTML 문서 시스템 (`docs/`)
+
+```text
+docs/
+├── index.html                  # 다국어 선택 페이지
+├── ko/                         # 한국어 문서
+│   ├── index.html              # 메뉴
+│   ├── api_guide.html          # API 가이드
+│   ├── user_guide.html         # 사용자 가이드
+│   ├── strategy.html           # 전략 설명
+│   └── troubleshooting.html    # 문제해결
+│
+└── en/                         # 영문 문서
+    └── (동일 구조)
+```
+
+### UI/웹 모듈 마이그레이션 가이드
+
+#### 레거시 → 신규 UI
+
+```python
+# ❌ Before (레거시)
+from GUI.styles import Theme
+from GUI.components import StatusCard
+
+app.setStyleSheet(Theme.get_stylesheet())
+status = StatusCard()
+
+# ✅ After (신규)
+from ui.design_system import ThemeGenerator
+from ui.widgets.dashboard import StatusCard
+
+app.setStyleSheet(ThemeGenerator.generate())
+status = StatusCard()
+```
+
+#### 권장 마이그레이션 순서
+
+1. **디자인 시스템 우선 사용**
+   - `GUI.styles` → `ui.design_system.tokens` 변경
+   - 토큰 기반으로 색상/간격 통일
+
+2. **위젯 단계적 교체**
+   - 백테스트 위젯 → `ui.widgets.backtest`
+   - 최적화 위젯 → `ui.widgets.optimization`
+   - 대시보드 → `ui.widgets.dashboard`
+
+3. **레거시 정리 (선택)**
+   - 사용하지 않는 GUI/ 파일 아카이브로 이동
+
+### UI 개발 체크리스트
+
+신규 UI 컴포넌트 추가 시:
+
+1. [ ] `ui.design_system.tokens`에서 색상/간격 가져오기
+2. [ ] `ThemeGenerator`로 스타일 적용
+3. [ ] 타입 힌트 추가 (PyQt6 타입 포함)
+4. [ ] 신호/슬롯 명확히 정의
+5. [ ] QThread 워커로 장시간 작업 분리
+6. [ ] 다국어 지원 (`locales/` 활용)
+7. [ ] VS Code Problems 탭 확인
 
 ---
 
@@ -484,13 +916,16 @@ TwinStar Quantum - 작업 로그
 
 ## 📌 버전 정보
 
-- **문서 버전**: v7.0 (타입 안전성 강화)
-- **마지막 업데이트**: 2026-01-14
+- **문서 버전**: v7.3 (GUI Phase 3 완료)
+- **마지막 업데이트**: 2026-01-15
 - **Python 버전**: 3.12
 - **PyQt 버전**: 6.6.0+
 - **타입 체커**: Pyright (VS Code Pylance)
 
 **변경 이력**:
+- v7.3 (2026-01-15): GUI 디자인 개편 Phase 3 완료 (7개 컴포넌트 토큰 기반 마이그레이션)
+- v7.2 (2026-01-14): UI/웹 모듈 구조 트리 및 아키텍처 섹션 추가
+- v7.1 (2026-01-14): 데이터 저장소 구조 및 Parquet 파일 저장 위치 섹션 추가
 - v7.0 (2026-01-14): 타입 안전성 및 환경 무결성 섹션 추가
 - v6.0: Anti-Graffiti 원칙 도입
 - v5.0 이하: 초기 버전

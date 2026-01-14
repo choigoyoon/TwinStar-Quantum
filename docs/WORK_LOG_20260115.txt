@@ -1,0 +1,297 @@
+================================================================================
+TwinStar Quantum - 작업 로그
+일자: 2026-01-15
+브랜치: genspark_ai_developer
+================================================================================
+
+## 작업 요약
+GUI 디자인 개편 Phase 3 완료 - 7개 레거시 컴포넌트를 신규 토큰 기반 디자인 시스템으로 마이그레이션하고, 레거시 테마 파일 제거로 코드베이스 정리
+
+--------------------------------------------------------------------------------
+## 커밋 내역
+--------------------------------------------------------------------------------
+
+1. bb7ccff - refactor: StatusCard 토큰 기반 색상 적용 (Phase 3-1)
+   - 1개 파일 변경
+   - 3개 하드코딩 색상을 토큰으로 교체
+   - Colors.accent_primary, Colors.danger, Colors.text_secondary 적용
+
+2. 369b138 - refactor: CollapsibleSection 토큰 기반 색상 적용 (Phase 3-2)
+   - 1개 파일 변경
+   - 5개 스타일 속성을 토큰으로 교체
+   - 배경, 호버, 간격, 반경 토큰 적용
+
+3. 6f8d1d2 - refactor: PositionTable 토큰 기반 색상 적용 (Phase 3-3)
+   - 1개 파일 변경
+   - 10개 색상을 토큰으로 교체
+   - 테이블 배경, 헤더, PnL 색상, 버튼 토큰 적용
+
+4. 7490351 - refactor: RiskHeaderWidget 반응형 레이아웃 + 토큰 (Phase 3-4)
+   - 1개 파일 변경
+   - fixedHeight 제거, 반응형 레이아웃 적용
+   - 8개 색상을 토큰으로 교체
+   - 동적 색상 (마진 상태별)
+
+5. 109b723 - refactor: TradePanel 토큰 기반 색상 적용 (Phase 3-5)
+   - 1개 파일 변경
+   - 6개 색상을 토큰으로 교체
+   - 타이틀, 상태 레이블 색상 토큰 적용
+
+6. 75d8ccb - refactor: InteractiveChart 차트 색상 토큰 적용 (Phase 3-6)
+   - 1개 파일 변경
+   - 7개 색상을 토큰으로 교체
+   - PyQtGraph/Matplotlib 배경, 마커 색상 토큰 적용
+   - 에쿼티 커브 색상 토큰 적용
+
+7. 4b9a815 - refactor: BotControlCard 토큰 기반 대규모 개편 (Phase 3-7)
+   - 1개 파일 변경
+   - 20+ 하드코딩 색상을 토큰으로 교체
+   - 동적 상태 색상 (running/locked/mode/PnL)
+   - 레이블, 버튼, 콤보박스 색상 토큰 적용
+
+8. 7ca9561 - chore: 레거시 테마 파일 제거 (Phase 3-8)
+   - 3개 파일 변경 (1 수정, 2 삭제)
+   - elegant_theme.py 삭제 (320줄)
+   - vivid_theme.py 삭제 (200줄)
+   - __init__.py import 정리
+
+--------------------------------------------------------------------------------
+## 주요 변경사항 상세
+--------------------------------------------------------------------------------
+
+### 1. 컴포넌트 마이그레이션 (7개)
+
+| 컴포넌트 | 변경사항 | 주요 토큰 |
+|---------|---------|----------|
+| StatusCard | 3개 색상 토큰 | accent_primary, danger, text_secondary |
+| CollapsibleSection | 5개 스타일 토큰 | bg_elevated, bg_surface, bg_overlay, spacing, radius |
+| PositionTable | 10개 색상 토큰 | bg_surface, text_primary, border_default, success, danger |
+| RiskHeaderWidget | 8개 색상 + 반응형 | success, danger, warning, text_primary (동적) |
+| TradePanel | 6개 색상 토큰 | accent_primary, text_secondary, success, danger |
+| InteractiveChart | 7개 차트 색상 | bg_base, success, danger (PyQtGraph/Matplotlib) |
+| BotControlCard | 20+ 색상 대규모 전환 | 모든 상태별 색상 토큰화 |
+
+### 2. 색상 매핑 통일
+
+**하드코딩 색상 → 토큰 변환**:
+```
+#4CAF50  → Colors.success       (수익/성공/매수)
+#FF5252  → Colors.danger         (손실/위험/매도)
+#FF9800  → Colors.warning        (경고)
+#26a69a  → Colors.accent_primary (메인 브랜드)
+#8b949e  → Colors.text_secondary (보조 텍스트)
+#1e1e1e  → Colors.bg_surface     (카드 배경)
+#2d2d2d  → Colors.bg_elevated    (입력 필드)
+#1a1a2e  → Colors.bg_base        (차트 배경)
+```
+
+### 3. 반응형 레이아웃 개선
+
+**RiskHeaderWidget**:
+```python
+# Before
+self.setFixedHeight(50)
+
+# After
+self.setMinimumHeight(40)
+self.setMaximumHeight(60)
+self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+```
+
+### 4. 동적 색상 로직
+
+**상태별 색상 변경**:
+- **마진 사용률**: 0-50% (녹색) → 50-80% (주황) → 80%+ (빨강)
+- **PnL**: 양수 (녹색) → 0 (흰색) → 음수 (빨강)
+- **모드**: 복리 (녹색) → 고정 (주황)
+
+### 5. 레거시 정리
+
+**삭제된 파일**:
+- `GUI/styles/elegant_theme.py` (320줄)
+- `GUI/styles/vivid_theme.py` (200줄)
+
+**정리된 Import**:
+```python
+# GUI/styles/__init__.py
+# Before
+from .elegant_theme import ElegantTheme
+from .vivid_theme import VividTheme
+
+# After (제거됨)
+# 신규 코드는 ui.design_system 사용 권장
+```
+
+### 6. 통계
+
+**전체 변경**:
+- 변경된 파일: 10개
+- 추가된 코드: 126줄
+- 삭제된 코드: 636줄
+- **순 감소**: -510줄
+
+**컴포넌트별 변경**:
+```
+GUI/components/bot_control_card.py  |  37 +++--
+GUI/components/collapsible.py       |  31 ++--
+GUI/components/interactive_chart.py |  33 ++--
+GUI/components/market_status.py     |  66 ++++----
+GUI/components/position_table.py    |  43 ++---
+GUI/components/status_card.py       |  11 +-
+GUI/components/trade_panel.py       |  15 +-
+GUI/styles/__init__.py              |   6 +-
+GUI/styles/elegant_theme.py         | 320 ------------------------------------
+GUI/styles/vivid_theme.py           | 200 ----------------------
+```
+
+--------------------------------------------------------------------------------
+## 알려진 이슈
+--------------------------------------------------------------------------------
+
+### 1. 호버 색상 하드코딩 잔존
+
+**위치**: PositionTable, BotControlCard 버튼 호버
+- `#388e3c` (success hover)
+- `#c62828` (danger hover)
+
+**이유**: 토큰에 hover 변형이 없음
+
+**해결 방안**:
+`ui/design_system/tokens.py`에 추가:
+```python
+success_hover: str = "#388e3c"
+danger_hover: str = "#c62828"
+```
+
+### 2. VS Code Pyright 상태
+
+**현재**: ✅ 에러 0개
+- 모든 import 정상
+- 타입 안전성 유지
+- f-string 템플릿 정상 동작
+
+--------------------------------------------------------------------------------
+## 다음 작업 권장
+--------------------------------------------------------------------------------
+
+### 1. 즉시 작업 (High Priority)
+
+**GUI 실행 테스트**:
+```bash
+python GUI/staru_main.py
+```
+- 7개 컴포넌트 시각적 검증
+- 동적 색상 변화 확인 (PnL, 마진)
+- 반응형 레이아웃 확인
+
+### 2. 단기 작업 (Medium Priority)
+
+**토큰 시스템 확장**:
+- `success_hover`, `danger_hover` 토큰 추가
+- 나머지 호버 하드코딩 제거
+- 애니메이션 토큰 활용 검토
+
+**남은 컴포넌트 마이그레이션**:
+- `GUI/components/` 아래 2개 컴포넌트 확인
+- 필요시 Phase 4 계획
+
+### 3. 장기 작업 (Low Priority)
+
+**문서화**:
+- Phase 3 완료 스크린샷 추가
+- 디자인 시스템 가이드 업데이트
+- 컴포넌트별 사용 예제 작성
+
+**최적화**:
+- 불필요한 f-string 반복 제거
+- 스타일시트 캐싱 검토
+- 컴포넌트 렌더링 성능 측정
+
+--------------------------------------------------------------------------------
+## 체크리스트
+--------------------------------------------------------------------------------
+
+### Phase 3 완료 항목
+
+- [x] StatusCard 토큰 적용 (3개소)
+- [x] CollapsibleSection 토큰 적용 (5개소)
+- [x] PositionTable 토큰 적용 (10개소)
+- [x] RiskHeaderWidget 반응형 + 토큰 (8개소)
+- [x] TradePanel 토큰 적용 (6개소)
+- [x] InteractiveChart 차트 색상 토큰 (7개소)
+- [x] BotControlCard 대규모 토큰 전환 (20+ 개소)
+- [x] 레거시 테마 파일 제거 (vivid, elegant)
+- [x] Git 커밋 (8개 개별 커밋)
+- [x] VS Code Problems 탭 확인 (에러 0개)
+
+### Phase 3 미완료 항목
+
+- [ ] GUI 실행 테스트 (수동 검증 필요)
+- [ ] 호버 색상 토큰화
+- [ ] 스크린샷 문서화
+
+--------------------------------------------------------------------------------
+## 기술 노트
+--------------------------------------------------------------------------------
+
+### 토큰 사용 패턴
+
+**올바른 사용법**:
+```python
+# Import
+from ui.design_system.tokens import Colors, Spacing, Radius
+
+# 스타일시트 (f-string 필수)
+self.setStyleSheet(f"color: {Colors.success};")
+
+# QColor 생성
+from PyQt6.QtGui import QColor
+color = QColor(Colors.danger)
+
+# 간격 변환 (정수 필요 시)
+spacing = int(Spacing.space_3.replace('px', ''))
+```
+
+**잘못된 사용법**:
+```python
+# ❌ f-string 없이 사용
+self.setStyleSheet("color: Colors.success;")  # 문자열 그대로
+
+# ❌ 타입 불일치
+color: QColor = Colors.success  # TypeError
+```
+
+### 동적 색상 패턴
+
+**조건부 색상 선택**:
+```python
+# PnL 기반
+pnl_color = Colors.success if pnl > 0 else Colors.danger
+
+# 마진 3단계
+if margin_pct >= 80:
+    color = Colors.danger
+elif margin_pct >= 50:
+    color = Colors.warning
+else:
+    color = Colors.success
+```
+
+### Import 최적화
+
+**필요한 토큰만 import**:
+```python
+# ✅ 최소한의 import
+from ui.design_system.tokens import Colors
+
+# ✅ 여러 토큰 필요 시
+from ui.design_system.tokens import Colors, Spacing, Radius
+
+# ❌ 불필요한 전체 import
+from ui.design_system.tokens import *
+```
+
+================================================================================
+작성: Claude Sonnet 4.5
+검증: VS Code Pyright (에러 0개)
+================================================================================

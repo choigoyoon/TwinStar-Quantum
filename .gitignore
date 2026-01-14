@@ -41,3 +41,7 @@ api_keys*.json
 *.pem
 *.secret
 
+
+# Claude temp
+tmpclaude-*/
+venv*/

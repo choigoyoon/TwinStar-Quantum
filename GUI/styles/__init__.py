@@ -22,8 +22,6 @@ import warnings
 # 레거시 import 유지 (호환성)
 from .theme import Theme
 from .premium_theme import PremiumTheme
-from .elegant_theme import ElegantTheme
-from .vivid_theme import VividTheme
 from .fonts import FontSystem
 
 
@@ -48,9 +46,7 @@ class DeprecatedTheme(Theme):
 
 __all__ = [
     'Theme',
-    'PremiumTheme', 
-    'ElegantTheme',
-    'VividTheme',
+    'PremiumTheme',
     'FontSystem',
     'DeprecatedTheme',
 ]

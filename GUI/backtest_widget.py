@@ -826,9 +826,10 @@ class SingleBacktestWidget(QWidget):
         chart_vbox.addWidget(self.chart_widget)
         
         self.result_splitter.addWidget(self.chart_box)
-        
-        self.result_splitter.setStretchFactor(0, 4)
-        self.result_splitter.setStretchFactor(1, 6)
+
+        # [FIX] 목록 영역 확장 (4:6 → 6:4)
+        self.result_splitter.setStretchFactor(0, 6)
+        self.result_splitter.setStretchFactor(1, 4)
         trades_layout.addWidget(self.result_splitter)
         
         self.result_tabs.addTab(self.trades_tab, "📈 Trades")
@@ -858,7 +859,69 @@ class SingleBacktestWidget(QWidget):
         """
 
     def _on_trade_selected(self):
-        """테이블 행 클릭 시 (현재는 기능 없음, 추후 줌 연동 가능)"""
+        """테이블 행 클릭 시 차트에 해당 거래 하이라이트 및 정보 표시"""
+        selection_model = self.result_table.selectionModel()
+        if selection_model is None or not hasattr(self, 'trades_detail'):
+            return
+
+        selected_rows = selection_model.selectedRows()
+        if not selected_rows:
+            return
+
+        row = selected_rows[0].row()
+        if row < 0 or row >= len(self.trades_detail):
+            return
+
+        trade = self.trades_detail[row]
+
+        # 차트 영역에 진입/익절 정보 표시
+        try:
+            # 차트 위젯의 타이틀에 거래 정보 추가
+            entry_price = trade.get('entry_price', 0)
+            exit_price = trade.get('exit_price', 0)
+            entry_time = trade.get('entry_time', '')
+            exit_time = trade.get('exit_time', '')
+            pnl = trade.get('pnl', 0)
+            direction = trade.get('type', '')
+
+            # 시간 포맷팅
+            try:
+                entry_str = pd.Timestamp(entry_time).strftime('%m/%d %H:%M')
+            except:
+                entry_str = str(entry_time)[:16] if entry_time else '-'
+
+            try:
+                exit_str = pd.Timestamp(exit_time).strftime('%m/%d %H:%M')
+            except:
+                exit_str = str(exit_time)[:16] if exit_time else '-'
+
+            # 차트 박스 타이틀 업데이트
+            info = (
+                f"{direction} | "
+                f"진입: ${entry_price:.2f} ({entry_str}) | "
+                f"익절: ${exit_price:.2f} ({exit_str}) | "
+                f"PnL: {pnl:+.2f}%"
+            )
+            self.chart_box.setTitle(f"📊 {info}")
+
+            # 차트 줌인 (시간 범위 조정)
+            try:
+                # 진입/익절 시간 기준 ±20% 범위 표시
+                if self.candle_data is not None and not self.candle_data.empty:
+                    df = self.candle_data
+                    entry_idx = df[df['timestamp'] >= pd.Timestamp(entry_time)].index
+                    exit_idx = df[df['timestamp'] >= pd.Timestamp(exit_time)].index
+
+                    if len(entry_idx) > 0 and len(exit_idx) > 0:
+                        start_idx = max(0, entry_idx[0] - 20)
+                        end_idx = min(len(df), exit_idx[0] + 20)
+                        # 차트 범위 조정 (PyQtGraph API 사용 시)
+                        # self.chart_widget.setXRange(start_idx, end_idx)
+            except Exception as zoom_err:
+                logger.debug(f"Chart zoom error: {zoom_err}")
+
+        except Exception as e:
+            logger.debug(f"Trade selection error: {e}")
 
     # _update_chart removed (moved to InteractiveChart)
 

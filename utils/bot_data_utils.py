@@ -1,11 +1,6 @@
-# utils/data_utils.py
+# utils/bot_data_utils.py
 import pandas as pd
-try:
-    from GUI.constants import TF_RESAMPLE_MAP
-except ImportError:
-    TF_RESAMPLE_MAP = {
-        '15m': '15min', '30m': '30min', '1h': '1h', '2h': '2h', '4h': '4h', '1d': '1D'
-    }
+from config.constants import TF_RESAMPLE_MAP  # SSOT
 
 def resample_ohlcv(df: pd.DataFrame, target_tf: str) -> pd.DataFrame:
     """

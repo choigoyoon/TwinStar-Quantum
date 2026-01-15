@@ -13,19 +13,8 @@ from utils.metrics import calculate_profit_factor, calculate_sharpe_ratio
 import logging
 logger = logging.getLogger(__name__)
 
-# TF_RESAMPLE_MAP: constants.py에서 import (Single Source)
-try:
-    from GUI.constants import TF_RESAMPLE_MAP
-except ImportError:
-    # Fallback for EXE or path issues
-    TF_RESAMPLE_MAP = {
-        '15min': '15min', '15m': '15min',
-        '30min': '30min', '30m': '30min',
-        '1h': '1h', '1H': '1h',
-        '4h': '4h', '4H': '4h',
-        '1d': '1D', '1D': '1D',
-        '1w': '1W', '1W': '1W',
-    }
+# TF_RESAMPLE_MAP: SSOT (config/constants/timeframes.py)
+from config.constants import TF_RESAMPLE_MAP
 
 
 def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True) -> pd.DataFrame:

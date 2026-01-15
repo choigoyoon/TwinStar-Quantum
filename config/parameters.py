@@ -62,23 +62,15 @@ DEFAULT_PARAMS = {
 }
 
 # ============ 비용 상수 (프로젝트 공용) ============
-SLIPPAGE = 0.0006       # 슬리피지 (0.06%)
-FEE = 0.00055           # 수수료 (0.055%)
-TOTAL_COST = SLIPPAGE + FEE  # 총 비용 (0.115%)
+# ============ SSOT: config.constants에서 임포트 ============
+from config.constants import (
+    SLIPPAGE, FEE, TOTAL_COST,
+    DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
+    to_api_direction, from_api_direction
+)
 
-# ============ 방향 상수 (프로젝트 공용) ============
-DIRECTION_LONG = 'Long'
-DIRECTION_SHORT = 'Short'
-DIRECTION_BOTH = 'Both'
-
-# 방향 변환 (내부 ↔ API)
-def to_api_direction(direction: str) -> str:
-    """내부 방향 → API 방향 변환 (Long → Buy, Short → Sell)"""
-    return 'Buy' if direction == DIRECTION_LONG else 'Sell'
-
-def from_api_direction(api_dir: str) -> str:
-    """API 방향 → 내부 방향 변환 (Buy → Long, Sell → Short)"""
-    return DIRECTION_LONG if api_dir.lower() in ('buy', 'long') else DIRECTION_SHORT
+# NOTE: 위 상수들은 config/constants/trading.py에서 관리됩니다 (SSOT)
+# to_api_direction, from_api_direction 함수도 config/constants/trading.py에서 제공됩니다.
 
 
 # ============ 최적화 범위 ============

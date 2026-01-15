@@ -13,14 +13,11 @@ from datetime import datetime, timedelta
 import json
 import os
 
-# 상수 정의
-SLIPPAGE = 0.0006       # 0.06%
-FEE = 0.00055           # 0.055%
-TOTAL_COST = SLIPPAGE + FEE  # 0.115%
-
-# 방향 상수
-DIRECTION_LONG = 'Long'
-DIRECTION_SHORT = 'Short'
+# 상수 정의 (SSOT)
+from config.constants import (
+    SLIPPAGE, FEE, TOTAL_COST,
+    DIRECTION_LONG, DIRECTION_SHORT
+)
 
 
 # ============================================================================

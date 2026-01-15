@@ -7,17 +7,18 @@ from typing import List
 # ============ 지원 타임프레임 ============
 TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w']
 
-# ============ Trend TF → Entry TF 매핑 ============
+# ============ Trend TF → Entry TF 매핑 (SSOT) ============
+# 사용자 확인 (2026-01-15): 15분/30분 진입 → 1시간~1주 필터
 TF_MAPPING = {
-    '15m': '5m',
-    '30m': '15m',
-    '1h': '15m',
-    '2h': '30m',
-    '4h': '1h',
-    '6h': '2h',
-    '12h': '4h',
-    '1d': '4h',
-    '1w': '1d'
+    '15m': '15m',   # Entry timeframe (진입용, 사용자 확인)
+    '30m': '30m',   # Entry timeframe (진입용, 사용자 확인)
+    '1h': '15m',    # Pattern: 1시간봉 → Entry: 15분봉
+    '2h': '30m',    # Pattern: 2시간봉 → Entry: 30분봉
+    '4h': '1h',     # Filter: 4시간봉 → Pattern: 1시간봉
+    '6h': '2h',     # Filter: 6시간봉 → Pattern: 2시간봉
+    '12h': '4h',    # Filter: 12시간봉 → Pattern: 4시간봉
+    '1d': '4h',     # Filter: 1일봉 → Pattern: 4시간봉
+    '1w': '1d'      # Filter: 1주봉 → Pattern: 1일봉
 }
 
 # ============ Pandas 리샘플링 매핑 ============

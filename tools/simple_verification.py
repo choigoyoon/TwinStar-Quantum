@@ -2,10 +2,8 @@
 간단 검증 스크립트 - 수수료 및 기본 기능 테스트
 """
 
-# 수수료 검증
-SLIPPAGE = 0.0006  # 0.06%
-FEE = 0.00055      # 0.055%
-TOTAL_COST = SLIPPAGE + FEE  # 0.115%
+# 수수료 검증 (SSOT)
+from config.constants import SLIPPAGE, FEE, TOTAL_COST
 
 round_trip = TOTAL_COST * 2 * 100  # 왕복 %
 print("=" * 80)

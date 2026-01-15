@@ -4,35 +4,14 @@
 SPOT_EXCHANGES = {'upbit', 'bithumb'}
 KRW_EXCHANGES = {'upbit', 'bithumb'}
 
-# ============ 타임프레임 매핑 ============
-# Trend TF → Entry TF 매핑 (전략 전용)
-TF_MAPPING = {
-    '1h': '15min',
-    '4h': '1h', 
-    '1d': '4h',
-    '1w': '1d'
-}
+# ============ 타임프레임 매핑 (SSOT: config/constants/timeframes.py) ============
+from config.constants import TF_MAPPING, TF_RESAMPLE_MAP
 
-# 리샘플링 TF 매핑 (전체 프로젝트 공용 - Pandas 호환)
-TF_RESAMPLE_MAP = {
-    '15min': '15min', '15m': '15min',
-    '30min': '30min', '30m': '30min',
-    '45min': '45min', '45m': '45min',
-    '1h': '1h', '1H': '1h',
-    '2h': '2h', '2H': '2h',
-    '3h': '3h', '3H': '3h',
-    '4h': '4h', '4H': '4h',
-    '6h': '6h', '6H': '6h',
-    '12h': '12h', '12H': '12h',
-    '1d': '1D', '1D': '1D',
-    '1w': 'W-MON', '1W': 'W-MON'
-}
-
-# ============ 방향 상수 (config/parameters.py에서 import - SSOT) ============
-from config.parameters import (
+# ============ 방향 상수 (SSOT: config/constants/trading.py) ============
+from config.constants import (
     SLIPPAGE, FEE, TOTAL_COST,
     DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
-    to_api_direction, from_api_direction # type: ignore
+    to_api_direction, from_api_direction
 )
 
 # ============ 기본 파라미터 (전체 프로젝트 공용) ============

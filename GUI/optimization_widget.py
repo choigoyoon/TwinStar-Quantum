@@ -817,7 +817,7 @@ class SingleOptimizerWidget(QWidget):
             
             # [FIX] 현물 거래소 제약 반영: Long만, 레버리지 1배
             try:
-                from utils.symbol_converter import is_spot_exchange
+                from config.constants.exchanges import is_spot_exchange
                 exch = self.exchange_combo.currentText().lower()
                 if is_spot_exchange(exch):
                     grid['direction'] = ['Long']
@@ -925,7 +925,7 @@ class SingleOptimizerWidget(QWidget):
     def _apply_spot_constraints(self):
         """현물 거래소(Upbit, Bithumb)는 롱 전용, 레버리지 1배 강제"""
         try:
-            from utils.symbol_converter import is_spot_exchange
+            from config.constants.exchanges import is_spot_exchange
             exch = self.exchange_combo.currentText().lower()
             
             is_spot = is_spot_exchange(exch)
@@ -1016,7 +1016,7 @@ class SingleOptimizerWidget(QWidget):
         
         # 3. [NEW] 현물 거래소 최종 강제 필터링 (그리드 수준에서 숏/레버리지 제거)
         try:
-            from utils.symbol_converter import is_spot_exchange
+            from config.constants.exchanges import is_spot_exchange
             exch = self.exchange_combo.currentText().lower()
             if is_spot_exchange(exch):
                 base_grid['leverage'] = [1]

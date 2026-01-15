@@ -49,56 +49,11 @@ except ImportError:
     CACHE_DIR = 'data/cache'
 PRESET_DIR = 'config/presets'
 
-# ============ 등급별 제한 ============
-# ============ 등급 정책 (UI용) ============
-
-GRADE_LIMITS = {
-    'TRIAL': {
-        'exchanges': 1,
-        'coins': ['BTC'],
-        'positions': 1,
-        'days': 7
-    },
-    'BASIC': {
-        'exchanges': 2,
-        'coins': ['BTC'],
-        'positions': 1
-    },
-    'STANDARD': {
-        'exchanges': 3,
-        'coins': ['BTC', 'ETH'],
-        'positions': 2
-    },
-    'PREMIUM': {
-        'exchanges': 6,
-        'coins': ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'MATIC', 'LINK'],
-        'positions': 10
-    },
-    'EXPIRED': {
-        'exchanges': 1,
-        'coins': ['BTC'],
-        'positions': 1
-    }
-}
-
-GRADE_COLORS = {
-    'TRIAL': '#787b86',
-    'BASIC': '#2196f3',
-    'STANDARD': '#ff9800',
-    'PREMIUM': '#00e676',
-    'EXPIRED': '#ef5350'
-}
-
-
-def is_coin_allowed(tier: str, symbol: str) -> bool:
-    """등급별 코인 허용 여부"""
-    limits = GRADE_LIMITS.get(tier.upper(), GRADE_LIMITS['TRIAL'])
-    allowed = limits.get('coins', ['BTC'])
-    clean = symbol.replace('USDT', '').replace('KRW-', '').replace('-USDT', '').upper()
-    return clean in allowed
-
-
-def get_tier_color(tier: str) -> str:
-    """등급별 색상"""
-    return GRADE_COLORS.get(tier.upper(), '#787b86')
+# ============ 등급별 제한 (SSOT: config.constants.grades) ============
+from config.constants.grades import (
+    GRADE_LIMITS,
+    GRADE_COLORS,
+    is_coin_allowed,
+    get_tier_color
+)
 

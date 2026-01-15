@@ -644,13 +644,9 @@ class BotDataManager:
                 fetch_size = limit + warmup_window
                 df_full = self.df_entry_full.tail(fetch_size).copy()
 
+                # ✅ Task 3.2: Fallback Imports 제거
                 # 지표 계산 (전체 범위 사용)
-                try:
-                    from utils.indicators import add_all_indicators
-                except ImportError:
-                    from utils.indicators import IndicatorGenerator
-                    add_all_indicators = IndicatorGenerator.add_all_indicators
-
+                from utils.indicators import add_all_indicators  # 직접 import
                 df_full = add_all_indicators(df_full)
 
                 # 최근 limit개만 반환 (워밍업된 지표 포함)

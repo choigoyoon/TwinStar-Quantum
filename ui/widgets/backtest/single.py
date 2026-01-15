@@ -50,7 +50,7 @@ except ImportError:
 logger = get_module_logger(__name__)
 
 
-class SingleBacktestTab(QWidget):
+class SingleBacktestWidget(QWidget):
     """
     싱글 심볼 백테스트 탭
 
@@ -60,7 +60,7 @@ class SingleBacktestTab(QWidget):
         backtest_finished(list, object, object): 백테스트 완료 (trades, df, params)
 
     Example:
-        tab = SingleBacktestTab()
+        tab = SingleBacktestWidget()
         tab.backtest_finished.connect(on_result)
     """
 
@@ -330,10 +330,11 @@ class SingleBacktestTab(QWidget):
             'Entry Time', 'Exit Time', 'Side', 'Entry Price', 'Exit Price',
             'Size', 'PnL (%)', 'Duration', 'Reason', 'Grade'
         ])
-        header = self.result_table.horizontalHeader()
-        if header:
-            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        tabs.addTab(self.result_table, "Results")
+        if self.result_table:
+            header = self.result_table.horizontalHeader()
+            if header:
+                header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            tabs.addTab(self.result_table, "Results")
 
         # 감사 테이블 탭
         self.audit_table = QTableWidget()
@@ -342,10 +343,11 @@ class SingleBacktestTab(QWidget):
         self.audit_table.setHorizontalHeaderLabels([
             'Time', 'Event', 'Reason', 'Price', 'Details'
         ])
-        audit_header = self.audit_table.horizontalHeader()
-        if audit_header:
-            audit_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        tabs.addTab(self.audit_table, "Audit Log")
+        if self.audit_table:
+            audit_header = self.audit_table.horizontalHeader()
+            if audit_header:
+                audit_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            tabs.addTab(self.audit_table, "Audit Log")
 
         return tabs
 
@@ -718,7 +720,7 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    w = SingleBacktestTab()
+    w = SingleBacktestWidget()
     w.resize(1400, 900)
     w.show()
 

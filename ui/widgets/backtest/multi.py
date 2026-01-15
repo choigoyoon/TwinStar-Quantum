@@ -32,7 +32,7 @@ except ImportError:
 logger = get_module_logger(__name__)
 
 
-class MultiBacktestTab(QWidget):
+class MultiBacktestWidget(QWidget):
     """
     멀티 심볼 백테스트 탭
 
@@ -42,7 +42,7 @@ class MultiBacktestTab(QWidget):
         status_updated(str, float): 상태 업데이트 (메시지, 진행률)
 
     Example:
-        tab = MultiBacktestTab()
+        tab = MultiBacktestWidget()
         tab.status_updated.connect(on_status)
     """
 
@@ -418,7 +418,7 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    w = MultiBacktestTab()
+    w = MultiBacktestWidget()
     w.resize(1200, 700)
     w.show()
 

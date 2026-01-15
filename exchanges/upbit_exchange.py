@@ -72,6 +72,9 @@ class UpbitExchange(BaseExchange):
         - 마스터 데이터 소스
         - 상장 이후 전체 데이터 수집 가능
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         try:
             import pyupbit
             
@@ -130,6 +133,9 @@ class UpbitExchange(BaseExchange):
         Raises:
             RuntimeError: API 호출 실패 또는 가격 조회 불가
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         if pyupbit is None:
             raise RuntimeError("pyupbit not available")
 
@@ -174,6 +180,9 @@ class UpbitExchange(BaseExchange):
                 logging.error(f"[Upbit] Price fetch failed: {e}")
                 return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
 
+            # ✅ P1-3: Rate limiter 토큰 획득 (실제 API 호출 직전)
+            self._acquire_rate_limit()
+
             if side == 'Long':
                 # 매수: size는 KRW 금액
                 order_amount = size * price  # 코인 수량 * 가격 = KRW
@@ -211,65 +220,94 @@ class UpbitExchange(BaseExchange):
             logging.error(f"[Upbit] Order error: {e}")
             return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
     
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정 (로컬 관리 - 업비트는 SL 미지원)"""
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정 (로컬 관리 - 업비트는 SL 미지원)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, filled_price, timestamp)
+        """
         if self.position:
             self.position.stop_loss = new_sl
             logging.info(f"[Upbit] SL updated (local): {new_sl:,.0f}원")
-            return True
-        return False
+            return OrderResult(
+                success=True,
+                filled_price=new_sl,
+                timestamp=datetime.now()
+            )
+        return OrderResult.from_bool(False, error="No position to update SL")
     
-    def close_position(self) -> bool:
-        """포지션 청산 (현물: 전량 매도)"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산 (현물: 전량 매도)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
         try:
             if not self.position:
-                return True
-            
+                return OrderResult.from_bool(True)  # No position to close
+
             if self.upbit is None:
                 logging.error("Upbit not authenticated")
-                return False
-            
+                return OrderResult.from_bool(False, error="Upbit not authenticated")
+
             # 현재 보유 수량 확인
             coin = self.symbol.split('-')[1]
             balance_raw = self.upbit.get_balance(coin)
-            
+
             # pyupbit can return (balance, locked) or just balance
             if isinstance(balance_raw, tuple):
                 balance = balance_raw[0]
             else:
                 balance = balance_raw
-                
+
             if balance is not None and float(balance) > 0:
                 result = self.upbit.sell_market_order(self.symbol, float(balance))
 
                 if isinstance(result, dict) and result.get('uuid'):
+                    order_id = str(result.get('uuid'))
+
                     try:
                         price = self.get_current_price()
                     except RuntimeError as e:
                         logging.error(f"[Upbit] Price fetch failed: {e}")
                         # 청산은 성공했지만 가격 조회 실패 - 포지션은 정리
                         self.position = None
-                        return True
+                        return OrderResult(
+                            success=True,
+                            order_id=order_id,
+                            filled_price=None,
+                            timestamp=datetime.now()
+                        )
 
                     if self.position.side == 'Long':
                         pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                     else:
                         pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                    
+
                     logging.info(f"[Upbit] Position closed: PnL {pnl:.2f}%")
-                    
+
                     # [NEW] 로컬 거래 DB 기록 (FIFO PnL 계산)
                     self._record_trade_close(exit_price=price, exit_amount=float(balance), exit_side=self.position.side)
-                    
+
                     self.position = None
-                    return True
-            
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        filled_price=price,
+                        timestamp=datetime.now()
+                    )
+                else:
+                    logging.error(f"[Upbit] Close failed: {result}")
+                    return OrderResult.from_bool(False, error=f"Close failed: {result}")
+
             self.position = None
-            return True
-            
+            return OrderResult.from_bool(True)  # No position to close
+
         except Exception as e:
             logging.error(f"[Upbit] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (현물: 추가 매수)"""

@@ -107,6 +107,8 @@ class BinanceExchange(BaseExchange):
         if not self.client:
             return None
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             # Binance interval 변환
             interval_map = {
                 '1': '1m', '3': '3m', '5': '5m', '15': '15m',
@@ -150,6 +152,8 @@ class BinanceExchange(BaseExchange):
             raise RuntimeError("Client not initialized")
 
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             ticker = self.client.futures_symbol_ticker(symbol=self.symbol)
             price = float(ticker['price'])
 
@@ -185,6 +189,9 @@ class BinanceExchange(BaseExchange):
                 return OrderResult(success=False, order_id=None, price=None, qty=None, error=f"Price unavailable: {e}")
 
             logging.info(f"[Binance] Placing {order_side} {qty} {self.symbol} @ {current_price} (SL: {stop_loss}, TP: {take_profit})")
+
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
 
             # 1. 메인 주문 실행
             params: dict[str, Any] = {
@@ -276,10 +283,10 @@ class BinanceExchange(BaseExchange):
             traceback.print_exc()
             return OrderResult(success=False, order_id=None, price=None, qty=None, error=str(e))
     
-    def update_stop_loss(self, new_sl: float) -> bool:
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
         """손절가 수정"""
         if self.client is None or self.position is None:
-            return False
+            return OrderResult(success=False, error="Client or position is None")
         try:
             # 기존 스탑 주문 취소
             self.client.futures_cancel_all_open_orders(symbol=self.symbol)
@@ -299,25 +306,31 @@ class BinanceExchange(BaseExchange):
                 params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
 
             sl_order = self.client.futures_create_order(**params)
-            
+
             if sl_order:
                 self.position.stop_loss = new_sl
                 logging.info(f"SL updated: {new_sl}")
-                return True
-            
-            return False
-            
+                order_id = sl_order.get('orderId', None)
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=new_sl,
+                    filled_qty=self.position.size
+                )
+
+            return OrderResult(success=False, error="SL order creation failed")
+
         except Exception as e:
             logging.error(f"SL update error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
     
-    def close_position(self) -> bool:
+    def close_position(self) -> OrderResult:
         """포지션 청산"""
         if self.client is None:
-            return False
+            return OrderResult(success=False, error="Client is None")
         try:
             if self.position is None:
-                return True
+                return OrderResult(success=True, error="No position to close")
 
             side = 'SELL' if self.position.side == 'Long' else 'BUY'
 
@@ -359,14 +372,22 @@ class BinanceExchange(BaseExchange):
                 else:
                     logging.warning("Position closed but PnL calculation skipped (price=0)")
 
+                order_id = order.get('orderId', None)
+                qty = self.position.size
                 self.position = None
-                return True
-            
-            return False
-            
+
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=price if price > 0 else None,
+                    filled_qty=qty
+                )
+
+            return OrderResult(success=False, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"Close error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
     
     def get_balance(self) -> float:
         """잔고 조회"""

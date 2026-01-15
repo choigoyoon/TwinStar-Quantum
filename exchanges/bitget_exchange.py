@@ -121,6 +121,8 @@ class BitgetExchange(BaseExchange):
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1h', '240': '4h'}
             timeframe = tf_map.get(interval, interval)
             
@@ -155,6 +157,8 @@ class BitgetExchange(BaseExchange):
             raise RuntimeError("Exchange not initialized")
 
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
             price = float(ticker.get('last', 0) or 0)
@@ -188,7 +192,10 @@ class BitgetExchange(BaseExchange):
             try:
                 symbol = self._convert_symbol_direct(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
-                
+
+                # ✅ P1-3: Rate limiter 토큰 획득
+                self._acquire_rate_limit()
+
                 params = {
                     'symbol': symbol,
                     'productType': 'USDT-FUTURES',
@@ -395,19 +402,26 @@ class BitgetExchange(BaseExchange):
 
         return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
     
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정"""
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, error)
+        """
         if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
             return self._update_sl_direct(new_sl)
         else:
             return self._update_sl_ccxt(new_sl)
 
-    def _update_sl_direct(self, new_sl: float) -> bool:
+    def _update_sl_direct(self, new_sl: float) -> OrderResult:
         """SDK 직접 SL 수정"""
         try:
-            if not self.position: return False
+            if not self.position:
+                return OrderResult.from_bool(False, error="No position to update SL")
+
             symbol = self._convert_symbol_direct(self.symbol)
-            
+
             # 기존 TPSL 주문 일괄 취소
             cancel_params = {
                 'symbol': symbol,
@@ -415,7 +429,7 @@ class BitgetExchange(BaseExchange):
                 'planType': 'loss_plan'
             }
             cast(Any, self.trade_api).cancel_plan_order(cancel_params)
-            
+
             # 새 SL 주문 (Trigger Price 방식)
             sl_params = {
                 'symbol': symbol,
@@ -427,21 +441,31 @@ class BitgetExchange(BaseExchange):
                 'size': str(self.position.size)
             }
             res = cast(Any, self.trade_api).place_tpsl_order(sl_params)
-            
+
             if res.get('code') == '00000':
                 self.position.stop_loss = new_sl
-                logging.info(f"[Bitget-Direct] SL updated: {new_sl}")
-                return True
-            return False
+                order_data = res.get('data', {})
+                order_id = order_data.get('orderId', '')
+                logging.info(f"[Bitget-Direct] SL updated: {new_sl} (ID: {order_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
+            else:
+                error_msg = res.get('msg', 'Unknown error')
+                logging.error(f"[Bitget] SL update failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"Bitget API error: {error_msg}")
         except Exception as e:
             logging.error(f"[Bitget-Direct] SL update error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
 
-    def _update_sl_ccxt(self, new_sl: float) -> bool:
+    def _update_sl_ccxt(self, new_sl: float) -> OrderResult:
         """기존 CCXT SL 수정 로직"""
         try:
             symbol = self._convert_symbol(self.symbol)
-            
+
             # 기존 스탑 주문 취소
             try:
                 if self.exchange:
@@ -452,7 +476,7 @@ class BitgetExchange(BaseExchange):
                                 self.exchange.cancel_order(order['id'], symbol)
             except Exception as e:
                 logging.debug(f"Order cancel ignored: {e}")
-            
+
             # 새 스탑 주문
             if self.position:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
@@ -465,7 +489,7 @@ class BitgetExchange(BaseExchange):
                     params['posSide'] = 'long' if self.position.side == 'Long' else 'short'
 
                 if self.exchange is not None:
-                    self.exchange.create_order(
+                    order = self.exchange.create_order(
                         symbol=symbol,
                         type='stop_market',
                         side=sl_side,
@@ -473,28 +497,41 @@ class BitgetExchange(BaseExchange):
                         params=params
                     )
                     self.position.stop_loss = new_sl
-                    logging.info(f"[Bitget] SL updated: {new_sl}")
-                    return True
-            
-            return False
-            
+                    order_id = str(order.get('id', ''))
+                    logging.info(f"[Bitget] SL updated: {new_sl} (ID: {order_id})")
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        filled_price=new_sl,
+                        timestamp=datetime.now()
+                    )
+
+            return OrderResult.from_bool(False, error="No position to update SL")
+
         except Exception as e:
             logging.error(f"[Bitget] SL update error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
-    def close_position(self) -> bool:
-        """포지션 청산"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
         if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
             return self._close_position_direct()
         else:
             return self._close_position_ccxt()
 
-    def _close_position_direct(self) -> bool:
+    def _close_position_direct(self) -> OrderResult:
         """SDK 직접 청산"""
         try:
-            if not self.position: return True
+            if not self.position:
+                return OrderResult.from_bool(True)  # No position to close
+
             symbol = self._convert_symbol_direct(self.symbol)
-            
+
             # v2 API: close_position 대신 place_order로 반대 매매 (market, reduceOnly)
             params = {
                 'symbol': symbol,
@@ -506,8 +543,11 @@ class BitgetExchange(BaseExchange):
                 'reduceOnly': 'true'
             }
             res = cast(Any, self.trade_api).place_order(params)
-            
+
             if res.get('code') == '00000':
+                order_data = res.get('data', {})
+                order_id = order_data.get('orderId', '')
+
                 # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
                 try:
                     price = self.get_current_price()
@@ -524,34 +564,42 @@ class BitgetExchange(BaseExchange):
                     profit_usd = self.capital * self.leverage * (pnl / 100)
                     self.capital += profit_usd
 
-                    logging.info(f"[Bitget-Direct] Position closed: PnL {pnl:.2f}%")
+                    logging.info(f"[Bitget-Direct] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
                 else:
                     logging.warning("[Bitget-Direct] Position closed but PnL calculation skipped (price=0)")
 
                 self.position = None
-                return True
-            return False
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+            else:
+                error_msg = res.get('msg', 'Unknown error')
+                logging.error(f"[Bitget] Close failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"Bitget API error: {error_msg}")
         except Exception as e:
             logging.error(f"[Bitget-Direct] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
 
-    def _close_position_ccxt(self) -> bool:
+    def _close_position_ccxt(self) -> OrderResult:
         """기존 CCXT 청산 로직"""
         try:
             if not self.position:
-                return True
-            
+                return OrderResult.from_bool(True)  # No position to close
+
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
-            
+
             params: Dict[str, Any] = {'reduceOnly': True}
             # [FIX] Hedge Mode Support (Bitget using posSide)
             if self.hedge_mode:
                 params['posSide'] = 'long' if self.position.side == 'Long' else 'short'
 
             if self.exchange is None:
-                return False
-                
+                return OrderResult.from_bool(False, error="Exchange not initialized")
+
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -559,8 +607,10 @@ class BitgetExchange(BaseExchange):
                 amount=self.position.size,
                 params=params
             )
-            
+
             if order:
+                order_id = str(order.get('id', ''))
+
                 # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
                 try:
                     price = self.get_current_price()
@@ -577,18 +627,23 @@ class BitgetExchange(BaseExchange):
                     profit_usd = self.capital * self.leverage * (pnl / 100)
                     self.capital += profit_usd
 
-                    logging.info(f"[Bitget] Position closed: PnL {pnl:.2f}%")
+                    logging.info(f"[Bitget] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
                 else:
                     logging.warning("[Bitget] Position closed but PnL calculation skipped (price=0)")
 
                 self.position = None
-                return True
-            
-            return False
-            
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"[Bitget] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입"""
@@ -614,7 +669,12 @@ class BitgetExchange(BaseExchange):
             res = cast(Any, self.trade_api).place_order(params)
             
             if res.get('code') == '00000':
-                price = self.get_current_price()
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[Bitget] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
@@ -648,7 +708,12 @@ class BitgetExchange(BaseExchange):
             )
             
             if order:
-                price = self.get_current_price()
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[Bitget-CCXT] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 

@@ -135,6 +135,9 @@ class BithumbExchange(BaseExchange):
         - 업비트 데이터를 마스터로 사용
         - 빗썸 API는 실시간 보조용 (최대 3000개)
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         try:
             # 1) 먼저 업비트에서 가져오기 시도
             upbit_symbol = self._convert_to_upbit_symbol(symbol)
@@ -302,6 +305,9 @@ class BithumbExchange(BaseExchange):
         Raises:
             RuntimeError: API 호출 실패 또는 가격 조회 불가
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         if self.bithumb is None:
             raise RuntimeError("Bithumb client not initialized")
 
@@ -356,6 +362,9 @@ class BithumbExchange(BaseExchange):
         if self.bithumb is None:
             return OrderResult(success=False, order_id=None, price=None, qty=size, error="Bithumb client not initialized")
 
+        # ✅ P1-3: Rate limiter 토큰 획득 (실제 API 호출 직전)
+        self._acquire_rate_limit()
+
         if side == 'Long':
             result = self.bithumb.buy_market_order(self.coin, size)
         else:
@@ -393,6 +402,9 @@ class BithumbExchange(BaseExchange):
         if self.bithumb is None:
             return OrderResult(success=False, order_id=None, price=None, qty=size, error="Bithumb client not initialized")
 
+        # ✅ P1-3: Rate limiter 토큰 획득 (실제 API 호출 직전)
+        self._acquire_rate_limit()
+
         order = self.bithumb.create_order(
             symbol=symbol,
             type='market',
@@ -423,55 +435,86 @@ class BithumbExchange(BaseExchange):
 
         return OrderResult(success=False, order_id=None, price=price, qty=size, error="Order creation failed")
     
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정 (로컬 관리 - 빗썸은 SL 미지원)"""
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정 (로컬 관리 - 빗썸은 SL 미지원)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, filled_price, error)
+        """
         if self.position:
             self.position.stop_loss = new_sl
             logging.info(f"[Bithumb] SL updated (local): {new_sl:,.0f}원")
-            return True
-        return False
+            return OrderResult(
+                success=True,
+                filled_price=new_sl,
+                timestamp=datetime.now()
+            )
+        return OrderResult.from_bool(False, error="No position to update SL")
     
-    def close_position(self) -> bool:
-        """포지션 청산"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
         try:
             if not self.position:
-                return True
-            
+                return OrderResult.from_bool(True)  # No position to close
+
             if self.bithumb is None:
-                return False
-            
+                return OrderResult.from_bool(False, error="Bithumb client not initialized")
+
             balance = self.get_coin_balance()
-            
+
             if balance > 0:
+                order_id = ""
+
                 if self.use_ccxt:
                     symbol = f"{self.coin}/KRW"
                     if self.bithumb:
-                        self.bithumb.create_order(symbol, 'market', 'sell', balance)
+                        result = self.bithumb.create_order(symbol, 'market', 'sell', balance)
+                        order_id = str(result.get('id', '')) if result else ""
                 else:
                     if self.bithumb:
-                        self.bithumb.sell_market_order(self.coin, balance)
+                        result = self.bithumb.sell_market_order(self.coin, balance)
+                        order_id = str(result[2]) if result and len(result) > 2 else ""
 
                 try:
                     price = self.get_current_price()
                 except RuntimeError as e:
-                    logging.error(f"[Bithumb] Price fetch failed: {e}")
+                    logging.warning(f"[Bithumb] Price fetch failed after close, PnL=0: {e}")
                     # 청산은 성공했지만 가격 조회 실패 - 포지션은 정리
                     self.position = None
-                    return True
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        filled_price=None,
+                        timestamp=datetime.now()
+                    )
 
                 pnl = (price - self.position.entry_price) / self.position.entry_price * 100
-                
-                logging.info(f"[Bithumb] Position closed: PnL {pnl:.2f}%")
-                
+
+                logging.info(f"[Bithumb] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
+
                 # [NEW] 로컬 거래 DB 기록 (FIFO PnL 계산)
                 self._record_trade_close(exit_price=price, exit_amount=float(balance), exit_side=self.position.side)
-            
+
+                self.position = None
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price,
+                    timestamp=datetime.now()
+                )
+
             self.position = None
-            return True
-            
+            return OrderResult.from_bool(True)  # No balance to close
+
         except Exception as e:
             logging.error(f"[Bithumb] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입"""

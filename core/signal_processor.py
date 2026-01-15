@@ -10,7 +10,7 @@ core/signal_processor.py
 import logging
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import deque
 from typing import Any, Callable, Optional, Dict
 
@@ -108,7 +108,7 @@ class SignalProcessor:
                 if isinstance(sig_time_raw, str):
                     sig_time = pd.to_datetime(sig_time_raw.replace('Z', '')).to_pydatetime()
                 elif isinstance(sig_time_raw, (int, float)):
-                    sig_time = datetime.fromtimestamp(sig_time_raw / 1000)
+                    sig_time = datetime.fromtimestamp(sig_time_raw / 1000, tz=timezone.utc)
                 elif isinstance(sig_time_raw, pd.Timestamp):
                     sig_time = sig_time_raw.to_pydatetime()
                 else:

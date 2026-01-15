@@ -271,10 +271,10 @@ class MultiSymbolResultModel(QAbstractTableModel):
         'Max DD', 'Sharpe', 'Grade'
     ]
 
-    def __init__(self, results: List[Dict[str, Any]], parent: Optional[Any] = None):
+    def __init__(self, results: List[Any], parent: Optional[Any] = None):
         """
         Args:
-            results: 멀티 심볼 백테스트 결과
+            results: 멀티 심볼 백테스트 결과 (Dict 또는 OptimizationResult 리스트)
                 [
                     {
                         'symbol': str,
@@ -319,33 +319,33 @@ class MultiSymbolResultModel(QAbstractTableModel):
         # 디스플레이 텍스트
         if role == Qt.ItemDataRole.DisplayRole:
             if col == 0:  # Symbol
-                return str(result.get('symbol', ''))
+                return str(getattr(result, 'symbol', result.get('symbol', '')))
             elif col == 1:  # TF
-                return str(result.get('timeframe', ''))
+                return str(getattr(result, 'timeframe', result.get('timeframe', '')))
             elif col == 2:  # Trades
-                return str(result.get('total_trades', 0))
+                return str(getattr(result, 'trades', result.get('total_trades', 0)))
             elif col == 3:  # Win Rate
-                win_rate = result.get('win_rate', 0)
-                return f"{win_rate:.2f}%"
+                val = getattr(result, 'win_rate', result.get('win_rate', 0))
+                return f"{val:.2f}%"
             elif col == 4:  # Total Return
-                total_return = result.get('total_return', 0)
-                return f"{total_return:.2f}%"
+                val = getattr(result, 'compound_return', result.get('total_return', 0))
+                return f"{val:.2f}%"
             elif col == 5:  # Max DD
-                mdd = result.get('mdd', 0)
-                return f"{mdd:.2f}%"
+                val = getattr(result, 'max_drawdown', result.get('mdd', 0))
+                return f"{val:.2f}%"
             elif col == 6:  # Sharpe
-                sharpe = result.get('sharpe_ratio', 0)
-                return f"{sharpe:.2f}"
+                val = getattr(result, 'sharpe_ratio', result.get('sharpe_ratio', 0))
+                return f"{val:.2f}"
             elif col == 7:  # Grade
-                return str(result.get('grade', ''))
+                return str(getattr(result, 'grade', result.get('grade', '')))
 
         # Total Return 색상 (수익: 초록, 손실: 빨강)
         elif role == Qt.ItemDataRole.ForegroundRole:
             if col == 4:  # Total Return
-                total_return = result.get('total_return', 0)
-                if total_return > 0:
+                val = getattr(result, 'compound_return', result.get('total_return', 0))
+                if val > 0:
                     return QColor(Qt.GlobalColor.green)
-                elif total_return < 0:
+                elif val < 0:
                     return QColor(Qt.GlobalColor.red)
 
         # 텍스트 정렬
@@ -372,7 +372,7 @@ class MultiSymbolResultModel(QAbstractTableModel):
 
         return QVariant()
 
-    def update_data(self, results: List[Dict[str, Any]]):
+    def update_data(self, results: List[Any]):
         """데이터 업데이트"""
         self.beginResetModel()
         self._results = results

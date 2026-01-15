@@ -156,6 +156,8 @@ class BingXExchange(BaseExchange):
         """캔들 데이터 조회 (CCXT)"""
         if self.exchange is None: return None
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1h', '240': '4h'}
             timeframe = tf_map.get(interval, interval)
             
@@ -181,6 +183,8 @@ class BingXExchange(BaseExchange):
             raise RuntimeError("Exchange not initialized")
 
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
             ticker = self.exchange.fetch_ticker(symbol)
             price = float(ticker.get('last', 0) or 0)
@@ -214,7 +218,10 @@ class BingXExchange(BaseExchange):
             try:
                 symbol = self._convert_symbol_direct(self.symbol)
                 order_side = 'BUY' if side == 'Long' else 'SELL'
-                
+
+                # ✅ P1-3: Rate limiter 토큰 획득
+                self._acquire_rate_limit()
+
                 params = {
                     'symbol': symbol,
                     'side': order_side,
@@ -362,23 +369,33 @@ class BingXExchange(BaseExchange):
 
         return OrderResult(success=False, order_id=None, price=None, qty=size, error="Order creation failed")
 
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정"""
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, error)
+        """
         if USE_DIRECT_API:
             return self._update_sl_direct(new_sl)
         else:
             return self._update_sl_ccxt(new_sl)
 
-    def _update_sl_direct(self, new_sl: float) -> bool:
-        """직접 API SL 수정 (기존 취소 후 재설정)"""
+    def _update_sl_direct(self, new_sl: float) -> OrderResult:
+        """직접 API SL 수정 (기존 취소 후 재설정)
+
+        Phase B Track 1: API 반환값 통일
+        """
         try:
-            if not self.position: return False
+            if not self.position:
+                return OrderResult.from_bool(False, error="No position to update SL")
+
             symbol = self._convert_symbol_direct(self.symbol)
-            
+
             # 1. 모든 열린 알고 주문 취소 (BingX v2 필터 기능 활용 또는 전체 취소)
             # 안전하게 전체 취소 후 재설정
             self._request('POST', '/openApi/swap/v2/trade/allOpenOrders', {'symbol': symbol})
-            
+
             # 2. 새 SL 주문
             sl_side = 'SELL' if self.position.side == 'Long' else 'BUY'
             params = {
@@ -391,49 +408,85 @@ class BingXExchange(BaseExchange):
             }
             if self.hedge_mode:
                 params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
-                
+
             res = self._request('POST', '/openApi/swap/v2/trade/order', params)
             if res.get('code') == 0:
+                order_data = res.get('data', {})
+                order_id = str(order_data.get('orderId', ''))
                 self.position.stop_loss = new_sl
-                logging.info(f"[BingX-Direct] SL Updated: {new_sl}")
-                return True
-            return False
+                logging.info(f"[BingX-Direct] SL Updated: {new_sl} (ID: {order_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
+            else:
+                error_msg = res.get('msg', 'Unknown error')
+                logging.error(f"[BingX-Direct] SL Update Failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"BingX API error: {error_msg}")
         except Exception as e:
             logging.error(f"[BingX-Direct] SL Update Error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
 
-    def _update_sl_ccxt(self, new_sl: float) -> bool:
-        """CCXT 폴백 SL 수정"""
-        if self.exchange is None: return False
+    def _update_sl_ccxt(self, new_sl: float) -> OrderResult:
+        """CCXT 폴백 SL 수정
+
+        Phase B Track 1: API 반환값 통일
+        """
+        if self.exchange is None:
+            return OrderResult.from_bool(False, error="Exchange not initialized")
+
         try:
             symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
             try:
                 self.exchange.cancel_all_orders(symbol)
             except: pass
-            
+
             if self.position:
                 params = {'stopPrice': new_sl, 'reduceOnly': True}
-                if self.hedge_mode: params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
-                self.exchange.create_order(symbol, 'stop_market', 'sell' if self.position.side == 'Long' else 'buy', self.position.size, params=params)
+                if self.hedge_mode:
+                    params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+                order = self.exchange.create_order(symbol, 'stop_market', 'sell' if self.position.side == 'Long' else 'buy', self.position.size, params=params)
                 self.position.stop_loss = new_sl
-                return True
+                order_id = str(order.get('id', '')) if order else ''
+                logging.info(f"[BingX-CCXT] SL Updated: {new_sl} (ID: {order_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="No position to update SL")
+
         except Exception as e:
             logging.error(f"[BingX-CCXT] SL Update Error: {e}")
-        return False
+            return OrderResult.from_bool(False, error=str(e))
 
-    def close_position(self) -> bool:
-        """포지션 청산"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
         if USE_DIRECT_API:
             return self._close_position_direct()
         else:
             return self._close_position_ccxt()
 
-    def _close_position_direct(self) -> bool:
-        """직접 API 청산"""
+    def _close_position_direct(self) -> OrderResult:
+        """직접 API 청산
+
+        Phase B Track 1: API 반환값 통일
+        """
         try:
-            if not self.position: return True
+            if not self.position:
+                return OrderResult.from_bool(True)  # No position to close
+
             symbol = self._convert_symbol_direct(self.symbol)
-            
+
             params = {
                 'symbol': symbol,
                 'side': 'SELL' if self.position.side == 'Long' else 'BUY',
@@ -443,32 +496,101 @@ class BingXExchange(BaseExchange):
             }
             if self.hedge_mode:
                 params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
-                
+
             res = self._request('POST', '/openApi/swap/v2/trade/order', params)
             if res.get('code') == 0:
-                logging.info(f"[BingX-Direct] Position Closed SUCCESS")
+                order_data = res.get('data', {})
+                order_id = str(order_data.get('orderId', ''))
+
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[BingX-Direct] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[BingX-Direct] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
+                else:
+                    logging.warning("[BingX-Direct] Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
-                return True
-            return False
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+            else:
+                error_msg = res.get('msg', 'Unknown error')
+                logging.error(f"[BingX-Direct] Close Failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"BingX API error: {error_msg}")
         except Exception as e:
             logging.error(f"[BingX-Direct] Close Error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
 
-    def _close_position_ccxt(self) -> bool:
-        """CCXT 폴백 청산"""
-        if self.exchange is None: return False
+    def _close_position_ccxt(self) -> OrderResult:
+        """CCXT 폴백 청산
+
+        Phase B Track 1: API 반환값 통일
+        """
+        if self.exchange is None:
+            return OrderResult.from_bool(False, error="Exchange not initialized")
+
         try:
-            if not self.position: return True
+            if not self.position:
+                return OrderResult.from_bool(True)  # No position to close
+
             symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
             params = {'reduceOnly': True}
-            if self.hedge_mode: cast(Dict[str, Any], params)['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+            if self.hedge_mode:
+                cast(Dict[str, Any], params)['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
             order = self.exchange.create_order(symbol, 'market', 'sell' if self.position.side == 'Long' else 'buy', self.position.size, params=params)
+
             if order:
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[BingX-CCXT] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                order_id = str(order.get('id', ''))
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[BingX-CCXT] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
+                else:
+                    logging.warning("[BingX-CCXT] Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
-                return True
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"[BingX-CCXT] Close Error: {e}")
-        return False
+            return OrderResult.from_bool(False, error=str(e))
 
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입"""
@@ -495,7 +617,12 @@ class BingXExchange(BaseExchange):
                 
             res = self._request('POST', '/openApi/swap/v2/trade/order', params)
             if res.get('code') == 0:
-                price = self.get_current_price()
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[BingX] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
@@ -517,7 +644,12 @@ class BingXExchange(BaseExchange):
             symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
             order = self.exchange.create_order(symbol, 'market', 'buy' if side == 'Long' else 'sell', size)
             if order:
-                price = self.get_current_price()
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[BingX-CCXT] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 self.position.size = total_size

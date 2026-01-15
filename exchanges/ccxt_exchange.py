@@ -385,11 +385,11 @@ class CCXTExchange(BaseExchange):
             logging.error(f"Order error: {e}")
             return OrderResult(success=False, order_id=None, price=None, qty=None, error=str(e))
     
-    def update_stop_loss(self, new_sl: float) -> bool:
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
         """손절가 수정"""
         try:
             symbol = self._convert_symbol(self.symbol)
-            
+
             # 기존 스탑 주문 취소
             try:
                 if self.ccxt_exchange:
@@ -400,11 +400,11 @@ class CCXTExchange(BaseExchange):
                                 self.ccxt_exchange.cancel_order(order['id'], symbol)
             except Exception as e:
                 logging.debug(f"Order cancel ignored: {e}")
-            
+
             # 새 스탑 주문 생성
             if self.position and self.ccxt_exchange:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
-                self.ccxt_exchange.create_order(
+                order = self.ccxt_exchange.create_order(
                     symbol=symbol,
                     type='stop_market',
                     side=sl_side,
@@ -416,26 +416,33 @@ class CCXTExchange(BaseExchange):
                 )
                 self.position.stop_loss = new_sl
                 logging.info(f"SL updated: {new_sl}")
-                return True
-            
-            return False
-            
+
+                order_id = order.get('id', None) if isinstance(order, dict) else None
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=new_sl,
+                    filled_qty=self.position.size
+                )
+
+            return OrderResult(success=False, error="Position or exchange is None")
+
         except Exception as e:
             logging.error(f"SL update error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
     
-    def close_position(self) -> bool:
+    def close_position(self) -> OrderResult:
         """포지션 청산"""
         try:
             if not self.position:
-                return True
-            
+                return OrderResult(success=True, error="No position to close")
+
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
-            
+
             if self.ccxt_exchange is None:
-                return False
-                
+                return OrderResult(success=False, error="Exchange is None")
+
             order = self.ccxt_exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -443,26 +450,35 @@ class CCXTExchange(BaseExchange):
                 amount=self.position.size,
                 params={'reduceOnly': True}
             )
-            
+
             if order:
                 price = self.get_current_price()
                 if self.position.side == 'Long':
                     pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                 else:
                     pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
+
                 profit_usd = self.capital * self.leverage * (pnl / 100)
                 self.capital += profit_usd
-                
+
                 logging.info(f"Position closed: PnL {pnl:.2f}% (${profit_usd:.2f})")
+
+                order_id = order.get('id', None) if isinstance(order, dict) else None
+                qty = self.position.size
                 self.position = None
-                return True
-            
-            return False
-            
+
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=price,
+                    filled_qty=qty
+                )
+
+            return OrderResult(success=False, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"Close error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
 
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (불타기)"""

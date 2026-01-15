@@ -10,6 +10,16 @@ from typing import Dict, Any, Optional, List
 from utils.logger import get_module_logger
 
 # SSOT imports
+from core.optimizer import OptimizationResult
+from utils.metrics import (
+    calculate_mdd,
+    calculate_win_rate,
+    calculate_sharpe_ratio,
+    calculate_profit_factor,
+    calculate_stability,
+    calculate_cagr,
+    assign_grade_by_preset
+)
 try:
     from config.constants import TF_RESAMPLE_MAP
 except ImportError:
@@ -97,7 +107,7 @@ class BacktestWorker(QThread):
         self.trades_detail: List[Dict[str, Any]] = []
         self.audit_logs: List[Dict[str, Any]] = []
         self.df_15m: Optional[pd.DataFrame] = None
-        self.result_stats: Optional[Dict[str, Any]] = None
+        self.result_stats: Optional[OptimizationResult] = None
 
     def run(self):
         """백테스트 실행 (QThread.run() override)"""
@@ -132,9 +142,20 @@ class BacktestWorker(QThread):
 
             # Step 7: 백테스트 실행
             self._run_backtest_core(df_pattern, df_entry, params)
-            self.progress.emit(90)
+            self.progress.emit(80)
 
-            # Step 8: 결과 통계 계산
+            # [Phase 1] 방향(Direction) 추가 필터링 (일치성 강화)
+            direction = self.direction
+            if direction != 'Both':
+                self.trades_detail = [t for t in self.trades_detail if t['type'] == direction]
+            
+            self.progress.emit(85)
+
+            # [Phase 1] 최소 거래 횟수 검증 (최적화 엔진과 동일 기준)
+            if len(self.trades_detail) < 3:
+                raise ValueError(f"거래 횟수 부족으로 통계 산출 불가 (최소 3회, 현재: {len(self.trades_detail)}회)")
+
+            # Step 8: 결과 통계 계산 (SSOT 통합)
             self._calculate_stats()
 
             logger.info(f"=== 백테스트 완료: {len(self.trades_detail)} trades ===")
@@ -317,70 +338,127 @@ class BacktestWorker(QThread):
         logger.info(f"백테스트 실행 완료: {len(self.trades_detail)} trades")
 
     def _calculate_stats(self):
-        """결과 통계 계산"""
+        """결과 통계 계산 (utils.metrics SSOT 통합)"""
         if not self.trades_detail:
-            self.result_stats = {
-                'count': 0,
-                'simple_return': 0,
-                'compound_return': 0,
-                'total_return': 0,
-                'win_rate': 0,
-                'mdd': 0,
-                'leverage': self.leverage,
-            }
+            # 빈 결과 처리
+            self.result_stats = OptimizationResult(
+                params=self.strategy_params,
+                trades=0,
+                win_rate=0,
+                total_return=0,
+                simple_return=0,
+                compound_return=0,
+                max_drawdown=0,
+                sharpe_ratio=0,
+                profit_factor=0,
+                avg_trades_per_day=0,
+                stability="⚠️",
+                grade="F",
+                passes_filter=False
+            )
             return
 
-        result = self.trades_detail
+        trades = self.trades_detail
         leverage = self.leverage
 
-        # PnL 리스트 (레버리지 적용)
-        pnls = [t.get('pnl', 0) * leverage for t in result]
+        # 1. PnL 리스트 및 레버리지 적용 (메트릭 계산 전 수행)
+        # 최적화 엔진과 동일하게 레버리지가 적용된 개별 PnL을 기반으로 계산함
+        # [FIX] 단일 거래 PnL 클램핑 (±50%) - 최적화 엔진과 동일한 로직
+        MAX_SINGLE_PNL = 50.0  # 단일 거래 최대 수익률 상한
+        MIN_SINGLE_PNL = -50.0  # 단일 거래 최대 손실률 하한
 
+        leveraged_trades = []
+        for t in trades:
+            raw_pnl = t.get('pnl', 0) * leverage
+            # PnL 클램핑 적용 (오버플로우 방지)
+            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, raw_pnl))
+            leveraged_trades.append({**t, 'pnl': clamped_pnl})
+
+        pnls = [t['pnl'] for t in leveraged_trades]
+        
         # Simple Return
         simple_return = sum(pnls)
 
-        # Compound Return (파산 안전 처리)
+        # 2. SSOT 메트릭 계산 호출
+        win_rate = calculate_win_rate(leveraged_trades)      # Expects List[Dict]
+        mdd = calculate_mdd(leveraged_trades)               # Expects List[Dict]
+        sharpe = calculate_sharpe_ratio(pnls)               # Expects List[float]
+        pf = calculate_profit_factor(leveraged_trades)      # Expects List[Dict]
+        stability = calculate_stability(pnls)               # Expects List[float]
+        
+        # Compound Return (최적화 엔진과 동일한 로직)
         equity = 1.0
-        cumulative = [1.0]
+        cumulative_equity = [1.0]
         for p in pnls:
             equity *= (1 + p / 100)
-            if equity <= 0:  # 파산
+            if equity <= 0:
                 equity = 0
-                cumulative.append(0)
+            cumulative_equity.append(equity)
+            if equity == 0:
                 break
-            cumulative.append(equity)
-
         compound_return = (equity - 1) * 100
-        compound_return = max(-100.0, min(compound_return, 999999))  # 범위 제한
+        compound_return = max(-100.0, min(compound_return, 1e10))  # 범위 제한: -100% ~ 1e10%
 
-        # MDD 계산 (파산 안전 처리)
-        peak = 1.0
-        mdd = 0
-        for c in cumulative:
-            if c <= 0:  # 파산 시 MDD = 100%
-                mdd = 100.0
-                break
-            if c > peak:
-                peak = c
-            drawdown = (peak - c) / peak * 100
-            if drawdown > mdd:
-                mdd = drawdown
+        # CAGR (연간 환산 수익률)
+        # 데이터 기간 계산
+        if self.df_15m is not None and len(self.df_15m) > 1:
+            start_time = self.df_15m['timestamp'].iloc[0]
+            end_time = self.df_15m['timestamp'].iloc[-1]
+            if isinstance(start_time, (int, float)):
+                duration_days = (end_time - start_time) / (1000 * 60 * 60 * 24)
+            else:
+                duration_days = (end_time - start_time).total_seconds() / (60 * 60 * 24)
+            
+            cagr = calculate_cagr(leveraged_trades, 100 + compound_return)
+            avg_trades_per_day = len(trades) / duration_days if duration_days > 0 else 0
+        else:
+            cagr = 0
+            avg_trades_per_day = 0
 
-        # 승률 (raw_pnl 기준 - 수수료 무관)
-        win_count = len([t for t in result if t.get('raw_pnl', t.get('pnl', 0)) > 0])
-        win_rate = (win_count / len(result)) * 100 if result else 0
+        # 3. 등급 할당 (균형 프리셋 기준)
+        grade = assign_grade_by_preset(
+            preset_type='balanced',
+            metrics={
+                'win_rate': win_rate,
+                'profit_factor': pf,
+                'mdd': mdd,
+                'sharpe_ratio': sharpe,
+                'compound_return': compound_return
+            }
+        )
 
-        self.result_stats = {
-            'count': len(result),
-            'simple_return': simple_return,
-            'compound_return': compound_return,
-            'total_return': compound_return,
-            'win_rate': win_rate,
-            'mdd': mdd,
-            'leverage': leverage,
-        }
+        # 4. 필터 통과 여부 검증 (최적화 엔진 기준)
+        # MDD <= 20%, 승률 >= 75%, 최소 거래 >= 10
+        passes = (mdd <= 20.0 and win_rate >= 75.0 and len(trades) >= 10)
 
-        logger.info(f"통계: {self.result_stats['count']}건, "
-                   f"수익률: {self.result_stats['compound_return']:.2f}%, "
-                   f"승률: {self.result_stats['win_rate']:.1f}%, "
-                   f"MDD: {self.result_stats['mdd']:.1f}%")
+        # 5. OptimizationResult 객체 생성
+        initial_cap = getattr(self.strategy, 'initial_capital', 100.0)
+        final_cap = initial_cap * (equity) if equity > 0 else 0.0
+
+        self.result_stats = OptimizationResult(
+            params=self.strategy_params,
+            trades=len(trades),
+            win_rate=win_rate,
+            total_return=compound_return,
+            simple_return=simple_return,
+            compound_return=compound_return,
+            max_drawdown=mdd,
+            sharpe_ratio=sharpe,
+            profit_factor=pf,
+            avg_trades_per_day=avg_trades_per_day,
+            stability=stability,
+            grade=grade,
+            avg_pnl=simple_return / len(trades) if trades else 0,
+            cagr=cagr,
+            passes_filter=passes,
+            symbol=getattr(self.strategy, 'symbol', ''),
+            timeframe=getattr(self.strategy, 'timeframe', ''),
+            final_capital=final_cap
+        )
+
+        logger.info(f"📊 [Phase 1 SSOT] 통계: {self.result_stats.trades}건, "
+                   f"수수률: {self.result_stats.compound_return:.2f}%, "
+                   f"승률: {self.result_stats.win_rate:.1f}%, "
+                   f"MDD: {self.result_stats.max_drawdown:.1f}%, "
+                   f"PF: {self.result_stats.profit_factor:.2f}, "
+                   f"Pass: {self.result_stats.passes_filter}")

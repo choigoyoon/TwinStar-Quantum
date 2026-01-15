@@ -118,6 +118,8 @@ class InteractiveChart(QWidget):
     def add_trades(self, trades: list):
         """거래 마커 추가"""
         self.trades = trades
+        # 차트를 다시 렌더링 (캔들스틱 + 마커)
+        self._render_candlestick()
         self._render_trade_markers()
     
     def _render_trade_markers(self):
@@ -188,11 +190,101 @@ class InteractiveChart(QWidget):
             self.ax.legend()
             self.canvas.draw()
     
+    def highlight_trade(self, trade: dict, margin: int = 20):
+        """특정 거래를 하이라이트하고 차트 범위 조정
+
+        Args:
+            trade: 거래 정보 딕셔너리
+            margin: 진입/익절 시점 전후 표시할 캔들 개수
+        """
+        if self.df is None or self.df.empty:
+            return
+
+        entry_idx = trade.get('entry_idx')
+        exit_idx = trade.get('exit_idx')
+
+        if entry_idx is None or exit_idx is None:
+            return
+
+        # 차트를 다시 렌더링 (기존 하이라이트 제거)
+        self._render_candlestick()
+        self._render_trade_markers()
+
+        # 차트 범위 조정
+        start_idx = max(0, entry_idx - margin)
+        end_idx = min(len(self.df), exit_idx + margin)
+
+        if HAS_PYQTGRAPH:
+            # 범위 설정
+            self.plot_widget.setXRange(start_idx, end_idx, padding=0.05)
+
+            # 진입/익절 수평선 표시
+            entry_price = trade.get('entry_price', 0)
+            exit_price = trade.get('exit_price', 0)
+
+            # 진입 가격 수평선 (녹색/빨간색)
+            side = trade.get('type', 'Long')
+            entry_color = Colors.success if side == 'Long' else Colors.danger
+            entry_line = pg.InfiniteLine(
+                pos=entry_price,
+                angle=0,
+                pen=pg.mkPen(entry_color, width=2, style=pg.QtCore.Qt.PenStyle.DashLine)
+            )
+            self.plot_widget.addItem(entry_line)
+
+            # 익절 가격 수평선 (수익/손실에 따라 색상)
+            pnl = trade.get('pnl', 0)
+            exit_color = Colors.success if pnl > 0 else Colors.danger
+            exit_line = pg.InfiniteLine(
+                pos=exit_price,
+                angle=0,
+                pen=pg.mkPen(exit_color, width=2, style=pg.QtCore.Qt.PenStyle.DotLine)
+            )
+            self.plot_widget.addItem(exit_line)
+
+            # 진입/익절 시점 수직선
+            entry_vline = pg.InfiniteLine(
+                pos=entry_idx,
+                angle=90,
+                pen=pg.mkPen(entry_color, width=1, style=pg.QtCore.Qt.PenStyle.DashLine)
+            )
+            self.plot_widget.addItem(entry_vline)
+
+            exit_vline = pg.InfiniteLine(
+                pos=exit_idx,
+                angle=90,
+                pen=pg.mkPen(exit_color, width=1, style=pg.QtCore.Qt.PenStyle.DotLine)
+            )
+            self.plot_widget.addItem(exit_vline)
+
+        elif HAS_MATPLOTLIB and hasattr(self, 'ax'):
+            # 범위 설정
+            self.ax.set_xlim(start_idx, end_idx)
+
+            # 진입/익절 마커
+            entry_price = trade.get('entry_price', 0)
+            exit_price = trade.get('exit_price', 0)
+            side = trade.get('type', 'Long')
+            pnl = trade.get('pnl', 0)
+
+            entry_color = 'g' if side == 'Long' else 'r'
+            exit_color = 'g' if pnl > 0 else 'r'
+
+            # 수평선
+            self.ax.axhline(y=entry_price, color=entry_color, linestyle='--', linewidth=2, alpha=0.7)
+            self.ax.axhline(y=exit_price, color=exit_color, linestyle=':', linewidth=2, alpha=0.7)
+
+            # 수직선
+            self.ax.axvline(x=entry_idx, color=entry_color, linestyle='--', linewidth=1, alpha=0.5)
+            self.ax.axvline(x=exit_idx, color=exit_color, linestyle=':', linewidth=1, alpha=0.5)
+
+            self.canvas.draw()
+
     def clear(self):
         """차트 클리어"""
         self.df = None
         self.trades = []
-        
+
         if HAS_PYQTGRAPH:
             self.plot_widget.clear()
         elif HAS_MATPLOTLIB:

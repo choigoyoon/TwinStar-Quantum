@@ -160,6 +160,8 @@ class OKXExchange(BaseExchange):
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회 (CCXT)"""
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1H', '240': '4H'}
             timeframe = tf_map.get(interval, interval)
             
@@ -188,6 +190,8 @@ class OKXExchange(BaseExchange):
             raise RuntimeError("Exchange not initialized")
 
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
             price = float(ticker.get('last', 0) or 0)
@@ -224,7 +228,10 @@ class OKXExchange(BaseExchange):
                 inst_id = self._convert_symbol_okx(self.symbol)  # BTC-USDT-SWAP
                 order_side = 'buy' if side == 'Long' else 'sell'
                 pos_side = 'long' if side == 'Long' else 'short'
-                
+
+                # ✅ P1-3: Rate limiter 토큰 획득
+                self._acquire_rate_limit()
+
                 # 1. 메인 주문 실행
                 order_params = {
                     'instId': inst_id,
@@ -444,31 +451,36 @@ class OKXExchange(BaseExchange):
 
         return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
     
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정 (OKX SDK 직접 호출)"""
-        
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정 (OKX SDK 직접 호출)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, error)
+        """
+
         if USE_DIRECT_API and self.trade_api is not None:
             return self._update_sl_direct(new_sl)
         else:
             return self._update_sl_ccxt(new_sl)
     
-    def _update_sl_direct(self, new_sl: float) -> bool:
+    def _update_sl_direct(self, new_sl: float) -> OrderResult:
         """OKX SDK 직접 SL 수정"""
         try:
             if not self.position:
-                return False
-            
+                return OrderResult.from_bool(False, error="No position to update SL")
+
             inst_id = self._convert_symbol_okx(self.symbol)
             sl_side = 'sell' if self.position.side == 'Long' else 'buy'
             pos_side = 'long' if self.position.side == 'Long' else 'short'
-            
+
             # 기존 알고 주문 취소
             try:
                 algo_orders = cast(Any, self.algo_trade_api).get_orders_algo_pending(
                     instType='SWAP',
                     ordType='conditional'
                 )
-                
+
                 for order in algo_orders.get('data', []):
                     algo_id = order.get('algoId')
                     if algo_id and order.get('instId') == inst_id:
@@ -478,7 +490,7 @@ class OKXExchange(BaseExchange):
                         }])
             except Exception as e:
                 logging.debug(f"[OKX] Algo order cancel ignored: {e}")
-            
+
             # 새 SL 주문
             result = cast(Any, self.algo_trade_api).set_order_algo(
                 instId=inst_id,
@@ -491,26 +503,34 @@ class OKXExchange(BaseExchange):
                 slOrdPx='-1',
                 reduceOnly='true'
             )
-            
+
             if result.get('code') == '0':
                 self.position.stop_loss = new_sl
-                logging.info(f"[OKX-Direct] SL updated: {new_sl}")
-                return True
+                algo_id = result.get('data', [{}])[0].get('algoId')
+                logging.info(f"[OKX-Direct] SL updated: {new_sl} (algo_id: {algo_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=algo_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
             else:
-                logging.error(f"[OKX] SL update failed: {result}")
-                return False
-            
+                error_msg = result.get('msg', 'Unknown error')
+                logging.error(f"[OKX] SL update failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"OKX API error: {error_msg}")
+
         except Exception as e:
             logging.error(f"[OKX] SL update error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
-    def _update_sl_ccxt(self, new_sl: float) -> bool:
+    def _update_sl_ccxt(self, new_sl: float) -> OrderResult:
         """CCXT 폴백 SL 수정"""
         if self.exchange is None:
-            return False
+            return OrderResult.from_bool(False, error="Exchange not initialized")
+
         try:
             symbol = self._convert_symbol(self.symbol)
-            
+
             try:
                 orders = self.exchange.fetch_open_orders(symbol)
                 for order in orders:
@@ -519,12 +539,12 @@ class OKXExchange(BaseExchange):
                             self.exchange.cancel_order(order['id'], symbol)
             except Exception as e:
                 logging.debug(f"Order cancel ignored: {e}")
-            
+
             if self.position:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
                 pos_side = 'long' if self.position.side == 'Long' else 'short'
-                
-                self.exchange.create_order(
+
+                order = self.exchange.create_order(
                     symbol=symbol,
                     type='stop_market',
                     side=sl_side,
@@ -536,33 +556,44 @@ class OKXExchange(BaseExchange):
                     }
                 )
                 self.position.stop_loss = new_sl
-                logging.info(f"[OKX-CCXT] SL updated: {new_sl}")
-                return True
-            
-            return False
-            
+                order_id = str(order.get('id', ''))
+                logging.info(f"[OKX-CCXT] SL updated: {new_sl} (ID: {order_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="No position to update SL")
+
         except Exception as e:
             logging.error(f"[OKX-CCXT] SL update error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
-    def close_position(self) -> bool:
-        """포지션 청산 (OKX SDK 직접 호출)"""
-        
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산 (OKX SDK 직접 호출)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
+
         if USE_DIRECT_API and self.trade_api is not None:
             return self._close_position_direct()
         else:
             return self._close_position_ccxt()
     
-    def _close_position_direct(self) -> bool:
+    def _close_position_direct(self) -> OrderResult:
         """OKX SDK 직접 청산"""
         try:
             if not self.position:
-                return True
-            
+                return OrderResult.from_bool(True)  # No position to close
+
             inst_id = self._convert_symbol_okx(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
             pos_side = 'long' if self.position.side == 'Long' else 'short'
-            
+
             result = cast(Any, self.trade_api).set_order(
                 instId=inst_id,
                 tdMode='cross',
@@ -572,7 +603,7 @@ class OKXExchange(BaseExchange):
                 sz=str(self.position.size),
                 reduceOnly='true'
             )
-            
+
             if result.get('code') == '0':
                 # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
                 try:
@@ -580,6 +611,8 @@ class OKXExchange(BaseExchange):
                 except RuntimeError as e:
                     logging.warning(f"[OKX] Price fetch failed after close, PnL=0: {e}")
                     price = 0.0
+
+                order_id = result.get('data', [{}])[0].get('ordId')
 
                 if price > 0:
                     if self.position.side == 'Long':
@@ -590,32 +623,39 @@ class OKXExchange(BaseExchange):
                     profit_usd = self.capital * self.leverage * (pnl / 100)
                     self.capital += profit_usd
 
-                    logging.info(f"[OKX-Direct] Position closed: PnL {pnl:.2f}%")
+                    logging.info(f"[OKX-Direct] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
                 else:
                     logging.warning("[OKX-Direct] Position closed but PnL calculation skipped (price=0)")
 
                 self.position = None
-                return True
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
             else:
-                logging.error(f"[OKX] Close failed: {result}")
-                return False
-            
+                error_msg = result.get('msg', 'Unknown error')
+                logging.error(f"[OKX] Close failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"OKX API error: {error_msg}")
+
         except Exception as e:
             logging.error(f"[OKX] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
-    def _close_position_ccxt(self) -> bool:
+    def _close_position_ccxt(self) -> OrderResult:
         """CCXT 폴백 청산"""
         if self.exchange is None:
-            return False
+            return OrderResult.from_bool(False, error="Exchange not initialized")
+
         try:
             if not self.position:
-                return True
-            
+                return OrderResult.from_bool(True)  # No position to close
+
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
             pos_side = 'long' if self.position.side == 'Long' else 'short'
-            
+
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -626,7 +666,7 @@ class OKXExchange(BaseExchange):
                     'reduceOnly': True
                 }
             )
-            
+
             if order:
                 # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
                 try:
@@ -634,6 +674,8 @@ class OKXExchange(BaseExchange):
                 except RuntimeError as e:
                     logging.warning(f"[OKX-CCXT] Price fetch failed after close, PnL=0: {e}")
                     price = 0.0
+
+                order_id = str(order.get('id', ''))
 
                 if price > 0:
                     if self.position.side == 'Long':
@@ -644,18 +686,23 @@ class OKXExchange(BaseExchange):
                     profit_usd = self.capital * self.leverage * (pnl / 100)
                     self.capital += profit_usd
 
-                    logging.info(f"[OKX-CCXT] Position closed: PnL {pnl:.2f}%")
+                    logging.info(f"[OKX-CCXT] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
                 else:
                     logging.warning("[OKX-CCXT] Position closed but PnL calculation skipped (price=0)")
 
                 self.position = None
-                return True
-            
-            return False
-            
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"[OKX-CCXT] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (OKX SDK 직접 호출)"""
@@ -685,7 +732,12 @@ class OKXExchange(BaseExchange):
             )
             
             if result.get('code') == '0':
-                price = self.get_current_price()
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[OKX] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
@@ -726,7 +778,12 @@ class OKXExchange(BaseExchange):
             )
             
             if order:
-                price = self.get_current_price()
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[OKX-CCXT] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 

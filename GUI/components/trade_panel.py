@@ -69,14 +69,30 @@ class TradePanel(QWidget):
         self.exchange_combo.addItems(["Bybit", "Binance", "OKX", "Bitget"])
         self.exchange_combo.currentTextChanged.connect(self._load_presets)
         settings.addLayout(create_row("🌐", "EXCHANGE", self.exchange_combo))
-        
-        # 2. 심볼
-        self.symbol_combo = QComboBox()
-        self.symbol_combo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"])
-        self.symbol_combo.setEditable(True)
-        self.symbol_combo.currentTextChanged.connect(self._load_presets)
-        settings.addLayout(create_row("💎", "SYMBOL", self.symbol_combo))
-        
+
+        # 2. 심볼 (싱글 모드만)
+        if self.mode == "single":
+            self.symbol_combo = QComboBox()
+            self.symbol_combo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"])
+            self.symbol_combo.setEditable(True)
+            self.symbol_combo.currentTextChanged.connect(self._load_presets)
+            settings.addLayout(create_row("💎", "SYMBOL", self.symbol_combo))
+        else:
+            # 멀티 모드: 자동 선택 안내
+            info_layout = QVBoxLayout()
+            info_layout.setSpacing(4)
+            info_label_header = QLabel("💎 TARGET")
+            info_label_header.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_muted}; font-weight: 600;")
+            info_label_desc = QLabel("📊 Top N by 24h Volume")
+            info_label_desc.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary}; padding: 8px; background: {Colors.bg_base}; border-radius: {Radius.radius_sm};")
+            info_label_desc.setMinimumHeight(32)
+            info_layout.addWidget(info_label_header)
+            info_layout.addWidget(info_label_desc)
+            settings.addLayout(info_layout)
+
+            # 멀티 모드에서는 symbol_combo를 None으로 설정 (후속 코드 호환성)
+            self.symbol_combo = None
+
         # 3. 레버리지 & 시드 (HBoxLayout in a row)
         lev_seed_row = QHBoxLayout()
         
@@ -187,7 +203,7 @@ class TradePanel(QWidget):
     def _load_presets(self):
         """config/presets 폴더에서 JSON 로드"""
         self.preset_combo.clear()
-        
+
         preset_dir = Path("config/presets")
         if not preset_dir.exists():
             # [FALLBACK] 빌드 환경 고려
@@ -195,14 +211,20 @@ class TradePanel(QWidget):
             if getattr(sys, 'frozen', False):
                  base_path = getattr(sys, '_MEIPASS', '.')
                  preset_dir = Path(base_path) / "config/presets"
-        
+
         if not preset_dir.exists():
             self.preset_combo.addItem("기본값 (Default)", None)
             return
 
         exchange = self.exchange_combo.currentText()
-        symbol = self.symbol_combo.currentText()
-        symbol_clean = symbol.lower().replace('/', '').replace('-', '')
+
+        # 멀티 모드에서는 symbol_combo가 None이므로 체크
+        if self.symbol_combo is not None:
+            symbol = self.symbol_combo.currentText()
+            symbol_clean = symbol.lower().replace('/', '').replace('-', '')
+        else:
+            # 멀티 모드: 심볼 무관 프리셋만 로드
+            symbol_clean = ""
         
         presets = []
         try:
@@ -229,14 +251,14 @@ class TradePanel(QWidget):
     def _on_start(self):
         config = {
             'exchange': self.exchange_combo.currentText().lower(),
-            'symbol': self.symbol_combo.currentText(),
+            'symbol': self.symbol_combo.currentText() if self.symbol_combo is not None else '',
             'leverage': self.leverage_spin.value(),
             'seed': self.seed_spin.value(),
             'capital_mode': 'compound' if self.capital_combo.currentIndex() == 0 else 'fixed',
             'preset_file': self.preset_combo.currentData(),
             'strategy': 'custom_preset' # 식별자
         }
-        
+
         if self.mode == "multi":
             config['watch_count'] = self.watch_spin.value()
             config['max_positions'] = self.concurrent_spin.value()

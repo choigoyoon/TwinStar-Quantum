@@ -100,6 +100,9 @@ class LighterExchange(BaseExchange):
     
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         try:
             # Lighter interval 변환
             interval_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1h', '240': '4h'}
@@ -160,6 +163,9 @@ class LighterExchange(BaseExchange):
         Raises:
             RuntimeError: API 호출 실패 또는 가격 조회 불가
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         try:
             df = self.get_klines('1', 1)
 
@@ -195,6 +201,9 @@ class LighterExchange(BaseExchange):
             # Lighter는 정수 단위
             base_amount = int(size * 10000)  # 4 decimals
             avg_price_int = int(avg_price * 100)  # 2 decimals
+
+            # ✅ P1-3: Rate limiter 토큰 획득 (실제 API 호출 직전)
+            self._acquire_rate_limit()
 
             async def create_order():
                 if self.client is None:
@@ -234,13 +243,23 @@ class LighterExchange(BaseExchange):
             logging.error(f"Lighter order error: {e}")
             return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
     
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정 (Lighter는 수동 관리)"""
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정 (Lighter는 수동 관리)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, filled_price, timestamp)
+        """
         if self.position:
             self.position.stop_loss = new_sl
             logging.info(f"Lighter SL updated (local): {new_sl}")
-            return True
-        return False
+            return OrderResult(
+                success=True,
+                order_id=None,
+                filled_price=new_sl,
+                timestamp=datetime.now()
+            )
+        return OrderResult.from_bool(False, error="No position to update SL")
     
     def get_positions(self) -> list:
         """Lighter는 잔고 기반으로 포지션 재구성 (Upbit 방식)"""
@@ -280,26 +299,31 @@ class LighterExchange(BaseExchange):
             logging.error(f"Lighter get_positions failed: {e}")
             return []
     
-    def close_position(self) -> bool:
-        """포지션 청산"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
         try:
             if not self.position:
-                return True
+                return OrderResult.from_bool(True)  # No position to close
 
             try:
                 price = self.get_current_price()
             except RuntimeError as e:
                 logging.error(f"[Lighter] Price fetch failed: {e}")
-                return False
+                return OrderResult.from_bool(False, error=f"Price unavailable: {e}")
 
             slippage = 0.01
-            
+
             is_ask = self.position.side == 'Long'  # 반대 방향
             avg_price = price * (1 - slippage) if is_ask else price * (1 + slippage)
-            
+
             base_amount = int(self.position.size * 10000)
             avg_price_int = int(avg_price * 100)
-            
+
             async def close_order():
                 if self.client is None:
                     return None, None, "Client not initialized"
@@ -310,28 +334,37 @@ class LighterExchange(BaseExchange):
                     avg_execution_price=avg_price_int,
                     is_ask=is_ask
                 )
-            
+
             tx, tx_hash, err = self._run_async(close_order())
-            
+
             if err:
                 logging.error(f"Lighter close error: {err}")
-                return False
-            
+                return OrderResult.from_bool(False, error=f"Close order failed: {err}")
+
+            order_id = str(tx_hash) if tx_hash else ""
+
             if self.position.side == 'Long':
                 pnl = (price - self.position.entry_price) / self.position.entry_price * 100
             else:
                 pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-            
+
             profit_usd = self.capital * self.leverage * (pnl / 100)
             self.capital += profit_usd
-            
+
             logging.info(f"Lighter position closed: PnL {pnl:.2f}% (${profit_usd:.2f})")
             self.position = None
-            return True
-            
+
+            return OrderResult(
+                success=True,
+                order_id=order_id,
+                filled_price=price,
+                filled_qty=base_amount / 10000,
+                timestamp=datetime.now()
+            )
+
         except Exception as e:
             logging.error(f"Lighter close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
     def get_balance(self) -> float:
         """DEX 계정의 USDC 잔고 조회"""

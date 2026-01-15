@@ -358,7 +358,12 @@ class AutoScanner(QObject):
                 lev = self.config.get('leverage', 1)
                 
                 # Get Price
-                price = exchange.get_current_price(symbol)
+                try:
+                    price = exchange.get_current_price(symbol)
+                except RuntimeError as e:
+                    self.log(f"❌ Price fetch failed for {symbol}: {e}", "error")
+                    return
+
                 if price <= 0:
                      self.log(f"Invalid price for {symbol}: {price}", "warning")
                      return

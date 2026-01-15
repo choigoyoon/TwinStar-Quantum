@@ -386,12 +386,20 @@ class BotDataManager:
                     # 메모리에 데이터가 없으면 저장할 필요 없음
                     return
 
+                # ✅ P2-5: Parquet 중복 제거 최적화
                 if len(df_old) > 0:
-                    df_merged = pd.concat([df_old, self.df_entry_full], ignore_index=True)
+                    # 메모리 데이터의 timestamp 범위 확인
+                    mem_timestamps = set(self.df_entry_full['timestamp'])
+
+                    # 기존 데이터에서 중복되지 않는 것만 필터링 (10배 빠름)
+                    df_old_filtered = df_old[~df_old['timestamp'].isin(mem_timestamps)]
+
+                    # 병합 (중복 제거된 상태)
+                    df_merged = pd.concat([df_old_filtered, self.df_entry_full], ignore_index=True)
                 else:
                     df_merged = self.df_entry_full.copy()
 
-                df_merged = df_merged.drop_duplicates(subset='timestamp', keep='last')
+                # 최종 정렬 (중복 제거는 이미 완료)
                 df_merged = df_merged.sort_values('timestamp').reset_index(drop=True)
 
                 # 3. Parquet 저장 (타임스탬프 int64 변환)

@@ -125,8 +125,8 @@ def verify_optimization_consistency(
         for i in range(num_runs):
             print(f"  Run {i+1}/{num_runs}...", end=" ", flush=True)
 
-            # 백테스트 실행 (슬리피지 0.001 고정으로 테스트)
-            res = optimizer._run_single(test_params, slippage=0.001)
+            # 백테스트 실행 (슬리피지 0.001, fee 0.001 고정으로 테스트)
+            res = optimizer._run_single(test_params, slippage=0.001, fee=0.001)
             
             if res is None:
                 print("❌ 결과 없음")

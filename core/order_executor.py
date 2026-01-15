@@ -194,19 +194,35 @@ class OrderExecutor:
                     client_order_id=client_order_id
                 )
                 if order:
-                    # [FIX] 만약 거래소가 단순 bool을 리턴했다면 기본 딕셔너리로 변환
-                    if isinstance(order, bool):
-                        order = {'order_id': client_order_id or 'UNKNOWN', 'side': side, 'size': size}
-                    
+                    # Phase B Track 1: Hotfix 제거 완료 - 모든 거래소가 OrderResult 반환
                     logging.info(f"[ORDER] ✅ Order placed: {order}")
                     return order
                 else:
                     logging.warning(f"[ORDER] Order returned None (Attempt {attempt+1}/{max_retries})")
             except Exception as e:
                 logging.warning(f"[ORDER] Attempt {attempt+1}/{max_retries} failed: {e}")
-            
+
+            # ✅ P0-6: 에러 분류 기반 재시도 전략
             if attempt < max_retries - 1:
-                time.sleep(self.retry_delay)
+                # OrderResult 에러 메시지 확인
+                error_msg = ''
+                if order and hasattr(order, 'error'):
+                    error_msg = str(order.error).lower()
+
+                # 에러 분류
+                if 'rate limit' in error_msg or 'too many requests' in error_msg:
+                    delay = 5.0 * (attempt + 1)  # Rate Limit: 백오프 증가
+                    logging.warning(f"[ORDER] Rate limit detected, waiting {delay:.1f}s")
+                elif 'insufficient' in error_msg or 'balance' in error_msg:
+                    logging.error(f"[ORDER] Insufficient balance, aborting retry")
+                    return None  # 잔고 부족: 재시도 불필요
+                elif 'invalid' in error_msg or 'rejected' in error_msg:
+                    logging.error(f"[ORDER] Order rejected, aborting retry")
+                    return None  # 주문 거부: 재시도 불필요
+                else:
+                    delay = self.retry_delay  # 기타 에러: 기본 대기
+
+                time.sleep(delay)
         
         logging.error(f"[ORDER] ❌ All {max_retries} attempts failed")
         return None
@@ -306,7 +322,11 @@ class OrderExecutor:
             # 1. 초기화 및 가격 정보
             if current_price is None:
                 if hasattr(self.exchange, 'get_current_price'):
-                    current_price = self.exchange.get_current_price()
+                    try:
+                        current_price = self.exchange.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[ENTRY] ❌ Price fetch failed: {e}")
+                        return None
                 else:
                     current_price = 0
             
@@ -405,17 +425,29 @@ class OrderExecutor:
             
             if not order:
                 return None
-            
+
+            # ✅ P0-7: 부분 체결 검증 (실제 체결량 확인)
+            filled_qty = size  # 기본값: 요청 수량
+
+            # OrderResult 객체 또는 dict에서 filled_qty 추출
+            if hasattr(order, 'filled_qty') and order.filled_qty is not None:  # type: ignore
+                filled_qty = order.filled_qty  # type: ignore
+            elif isinstance(order, dict) and 'filled_qty' in order:
+                filled_qty = order.get('filled_qty', size)
+
+            if filled_qty < size * 0.9:  # 90% 미만 체결
+                logging.warning(f"[ENTRY] ⚠️ Partial fill: {filled_qty:.4f}/{size:.4f} ({filled_qty/size*100:.1f}%)")
+
             # [Phase 8.1.2] 성공 시 봇 상태에 포지션 등록
             if not self.dry_run and bt_state and hasattr(bt_state, 'add_managed_position'):
                 # Real run registration (if not unified via state_manager inside place_order)
-                pass 
+                pass
 
             # 추가 로직 필요시 구현
             # position registration logic integration
-                    
-            logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f}")
-            
+
+            logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f} (Filled: {filled_qty:.4f})")
+
             # order_id 추출 (dict 이거나 bool 일 수 있음)
             extracted_order_id = 'UNKNOWN'
             if isinstance(order, dict):
@@ -424,9 +456,10 @@ class OrderExecutor:
                 extracted_order_id = client_order_id or 'UNKNOWN'
 
             return {
-                'action': 'ENTRY', 
-                'price': current_price, 
+                'action': 'ENTRY',
+                'price': current_price,
                 'side': direction,
+                'size': filled_qty,  # ✅ 실제 체결량 반환
                 'order_id': extracted_order_id
             }
             

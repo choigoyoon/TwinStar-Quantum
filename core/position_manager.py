@@ -154,33 +154,49 @@ class PositionManager:
     
     # ========== 트레일링 SL 업데이트 ==========
     
-    def update_trailing_sl(self, new_sl: float) -> bool:
+    def update_trailing_sl(self, new_sl: float, max_retries: int = 3) -> bool:
         """
         트레일링 SL 업데이트 (거래소 API 호출)
-        
+
         Args:
             new_sl: 새 손절가
-            
+            max_retries: 최대 재시도 횟수 (기본: 3)
+
         Returns:
             성공 여부
         """
         if self.dry_run:
             logging.info(f"[POSITION] (DRY) SL would be updated to {new_sl:.2f}")
             return True
-        
-        try:
-            result = self.exchange.update_stop_loss(new_sl)
-            if result:
-                logging.info(f"[POSITION] ✅ Trailing SL updated: {new_sl:.2f}")
-                if self.on_trailing_update:
-                    self.on_trailing_update(new_sl)
-                return True
-            else:
-                logging.warning("[POSITION] ⚠️ SL update API returned False")
-                return False
-        except Exception as e:
-            logging.error(f"[POSITION] SL update error: {e}")
-            return False
+
+        # ✅ P0-8: SL 업데이트 재시도 로직 (최대 3회)
+        import time
+        for attempt in range(max_retries):
+            try:
+                result = self.exchange.update_stop_loss(new_sl)
+                if result:
+                    logging.info(f"[POSITION] ✅ Trailing SL updated: {new_sl:.2f}")
+                    if self.on_trailing_update:
+                        self.on_trailing_update(new_sl)
+                    return True
+                else:
+                    logging.warning(f"[POSITION] ⚠️ SL update failed (Attempt {attempt+1}/{max_retries})")
+
+                    # 재시도 전 대기 (백오프)
+                    if attempt < max_retries - 1:
+                        delay = 1.0 * (attempt + 1)
+                        time.sleep(delay)
+
+            except Exception as e:
+                logging.error(f"[POSITION] SL update error (Attempt {attempt+1}/{max_retries}): {e}")
+
+                # 재시도 전 대기 (백오프)
+                if attempt < max_retries - 1:
+                    delay = 1.0 * (attempt + 1)
+                    time.sleep(delay)
+
+        logging.error(f"[POSITION] ❌ All {max_retries} SL update attempts failed")
+        return False
     
     # ========== 추가 진입 조건 체크 ==========
     

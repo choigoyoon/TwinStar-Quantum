@@ -1,8 +1,12 @@
 {
   "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
   "useLibraryCodeForTypes": true,
   "venvPath": ".",
   "venv": "venv",
+  "include": [
+    "."
+  ],
   "exclude": [
     "**/__pycache__",
     "**/node_modules",
@@ -11,5 +15,8 @@
     "refactor_backup/**",
     "tools/archive_diagnostic/**",
     "tools/archive_scripts/**"
+  ],
+  "extraPaths": [
+    "."
   ]
 }

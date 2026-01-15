@@ -101,6 +101,9 @@ class BybitExchange(BaseExchange):
     def get_klines(self, symbol: Optional[str] = None, interval: str = '15m', limit: int = 200) -> Optional[pd.DataFrame]:
         """캔들 데이터 조회"""
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
+
             target_symbol = symbol.upper() if symbol else self.symbol.upper()
 
             # Bybit interval 변환 (다양한 포맷 지원)
@@ -111,10 +114,10 @@ class BybitExchange(BaseExchange):
             }
             bybit_interval = interval_map.get(interval, interval)
 
-            
+
             if self.session is None:
                 return None
-                
+
             from typing import cast
             result = cast(Dict[str, Any], self.session.get_kline(
                 category="linear",
@@ -190,6 +193,9 @@ class BybitExchange(BaseExchange):
         Raises:
             RuntimeError: API 호출 실패 또는 가격 조회 불가
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         if self.session is None:
             raise RuntimeError("Session not initialized")
 
@@ -272,7 +278,10 @@ class BybitExchange(BaseExchange):
 
                 if self.session is None:
                     return OrderResult(success=False, order_id=None, price=None, qty=None, error="No session")
-                    
+
+                # ✅ P1-3: Rate limiter 토큰 획득
+                self._acquire_rate_limit()
+
                 from typing import cast
                 result = cast(Dict[str, Any], self.session.place_order(**order_params))
                 
@@ -331,20 +340,20 @@ class BybitExchange(BaseExchange):
             error="Max retries exceeded"
         )
     
-    def update_stop_loss(self, new_sl: float) -> bool:
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
         """손절가 수정"""
         try:
             tick_size = self._get_tick_size()
             sl_price = round(new_sl, tick_size['price_decimals'])
-            
+
             # [FIX] Hedge Mode 및 방향에 따른 positionIdx 선택
             idx = 0
             if self.hedge_mode and self.position:
                 idx = 1 if self.position.side == 'Long' else 2
-            
+
             if self.session is None:
-                return False
-                
+                return OrderResult(success=False, error="Session is None")
+
             from typing import cast
             result = cast(Dict[str, Any], self.session.set_trading_stop(
                 category="linear",
@@ -352,29 +361,34 @@ class BybitExchange(BaseExchange):
                 stopLoss=str(sl_price),
                 positionIdx=idx
             ))
-            
+
             if result.get('retCode') == 0:
                 if self.position:
                     self.position.stop_loss = new_sl
                 logging.info(f"SL updated: {sl_price}")
-                return True
+                return OrderResult(
+                    success=True,
+                    filled_price=sl_price,
+                    filled_qty=self.position.size if self.position else None
+                )
             else:
-                logging.error(f"SL update error: {result.get('retMsg')}")
-                return False
-                
+                error_msg = result.get('retMsg', 'Unknown error')
+                logging.error(f"SL update error: {error_msg}")
+                return OrderResult(success=False, error=error_msg)
+
         except Exception as e:
             logging.error(f"SL update error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
     
-    def close_position(self) -> bool:
+    def close_position(self) -> OrderResult:
         """포지션 청산"""
         try:
             if not self.position:
-                return True
-            
+                return OrderResult(success=True, error="No position to close")
+
             if self.session is None:
-                return False
-                
+                return OrderResult(success=False, error="Session is None")
+
             from typing import cast
             # Bybit Linear Perpetual에서는 reduceOnly 파라미터 미지원
             # 대신 반대 방향 주문으로 자동 청산
@@ -386,7 +400,7 @@ class BybitExchange(BaseExchange):
                 qty=str(self.position.size)
                 # reduceOnly 제거 (Linear Perpetual은 자동 인식)
             ))
-            
+
             if result.get('retCode') == 0:
                 # ✅ 가격 조회 (예외 처리)
                 try:
@@ -402,17 +416,28 @@ class BybitExchange(BaseExchange):
 
                 profit_usd = self.capital * self.leverage * (pnl / 100)
                 self.capital += profit_usd
-                
+
                 logging.info(f"Position closed: PnL {pnl:.2f}% (${profit_usd:.2f})")
+
+                # OrderResult 생성
+                order_id = result.get('result', {}).get('orderId', None)
+                qty = self.position.size
                 self.position = None
-                return True
+
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=price if price > 0 else None,
+                    filled_qty=qty
+                )
             else:
-                logging.error(f"Close error: {result.get('retMsg')}")
-                return False
-                
+                error_msg = result.get('retMsg', 'Unknown error')
+                logging.error(f"Close error: {error_msg}")
+                return OrderResult(success=False, error=error_msg)
+
         except Exception as e:
             logging.error(f"Close error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
 
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (불타기)"""

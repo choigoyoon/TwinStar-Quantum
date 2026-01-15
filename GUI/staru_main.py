@@ -178,7 +178,17 @@ except ImportError as e:
 HistoryWidget_Pkg = load_widget('history_widget', 'HistoryWidget')
 SettingsWidget_Pkg = load_widget('settings_widget', 'SettingsWidget')
 DataCollectorWidget_Pkg = load_widget('data_collector_widget', 'DataCollectorWidget')
-OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget')
+
+# Optimization Widget: ui.widgets.optimization 우선, 실패 시 레거시 폴백
+try:
+    from ui.widgets.optimization import OptimizationWidget as OptimizationWidget_New
+    OptimizationWidget_Pkg = OptimizationWidget_New
+    _USE_NEW_OPTIMIZATION = True
+    logger.info("✅ 신규 최적화 위젯 로드 성공 (ui/widgets/optimization/)")
+except ImportError as e:
+    logger.warning(f"⚠️ 신규 최적화 위젯 로드 실패, 레거시로 폴백: {e}")
+    OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget')
+    _USE_NEW_OPTIMIZATION = False
 # TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget') # REMOVED: Merged into History/Results
 AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget')
 IndicatorComparisonWidget_Pkg = load_widget('GUI.optimization.indicator_comparison', 'IndicatorComparisonWidget')
@@ -231,18 +241,21 @@ class StarUWindow(QMainWindow):
             self.setStyleSheet(PremiumTheme.get_stylesheet())
             logger.info("🎨 레거시 테마 (PremiumTheme) 적용됨")
         
-        # 화면 해상도 처리
+        # 화면 해상도 처리 (85% - 작업표시줄 고려)
         primary_screen = QApplication.primaryScreen()
         if primary_screen:
             screen_geo = primary_screen.geometry()
-            width = min(1920, int(screen_geo.width() * 0.9))
-            height = min(1080, int(screen_geo.height() * 0.9))
+            width = min(1920, int(screen_geo.width() * 0.85))
+            height = min(1080, int(screen_geo.height() * 0.85))
             self.resize(width, height)
-            
+
             # 창 중앙 배치
             self.move((screen_geo.width() - width) // 2, (screen_geo.height() - height) // 2)
         else:
             self.resize(1200, 800)
+
+        # 최소 크기 제한 (너무 작아지지 않도록)
+        self.setMinimumSize(1200, 700)
         
         # 위젯 초기화 (Lazy Loading 제거 - 모두 미리 생성)
         logger.info("=" * 60)
@@ -355,19 +368,27 @@ class StarUWindow(QMainWindow):
             logger.info(f"  ❌ DataCollector 생성 실패: {e}")
             self.data_collector_widget = self._create_error_widget("DataCollector", e)
             
-        # 6. Optimization Widget
-        cls, err = OptimizationWidget_Pkg
-        try:
-            if cls:
-                self.optimization_widget = cls()
-                logger.info("  ✅ Optimization 생성 완료")
-            else:
-                raise ImportError(f"OptimizationWidget not available.\n{err}")
-        except Exception as e:
-            logger.info(f"  ❌ Optimization 생성 실패: {e}")
-            self.optimization_widget = self._create_error_widget("Optimization", e)
-
-            self.trade_history_widget = self._create_error_widget("TradeHistory", e)
+        # 6. Optimization Widget (신규/레거시 분기)
+        if _USE_NEW_OPTIMIZATION:
+            # 신규 최적화 위젯 (클래스 직접 사용)
+            try:
+                self.optimization_widget = cast(Any, OptimizationWidget_Pkg)()
+                logger.info("  ✅ 신규 Optimization 위젯 생성 완료 (Zone A)")
+            except Exception as e:
+                logger.info(f"  ❌ 신규 Optimization 생성 실패: {e}")
+                self.optimization_widget = self._create_error_widget("Optimization", e)
+        else:
+            # 레거시 최적화 위젯
+            cls, err = cast(Any, OptimizationWidget_Pkg)
+            try:
+                if cls:
+                    self.optimization_widget = cls()
+                    logger.info("  ✅ 레거시 Optimization 생성 완료")
+                else:
+                    raise ImportError(f"OptimizationWidget not available.\n{err}")
+            except Exception as e:
+                logger.info(f"  ❌ 레거시 Optimization 생성 실패: {e}")
+                self.optimization_widget = self._create_error_widget("Optimization", e)
 
         # 7. Indicator Comparison Widget (Session 8)
         cls, err = IndicatorComparisonWidget_Pkg
@@ -951,7 +972,15 @@ def main():
     from PyQt6.QtCore import Qt
     # QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # Removed in PyQt6
     # QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)    # Removed in PyQt6
-    
+
+    # GPU 설정 초기화 (QApplication 생성 전)
+    try:
+        from config.init_gpu import init_gpu_settings
+        init_gpu_settings()
+        logger.info("🎮 GPU 설정 초기화 완료")
+    except Exception as e:
+        logger.warning(f"⚠️ GPU 설정 초기화 실패 (계속 진행): {e}")
+
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     

@@ -20,15 +20,97 @@ except ImportError:
     get_local_db = None
     Execution = None
 
+# ✅ P1-3: API Rate Limiter 통합
+try:
+    from core.api_rate_limiter import APIRateLimiter
+except ImportError:
+    APIRateLimiter = None
+
 
 @dataclass
 class OrderResult:
-    """주문 실행 결과 (통일된 반환 타입)"""
-    success: bool
-    order_id: str | None
-    price: float | None
-    qty: float | None
-    error: str | None
+    """
+    주문 실행 결과 (통일된 반환 타입)
+
+    Phase B Track 1: API 반환값 통일
+    - 모든 거래소 어댑터는 OrderResult를 반환해야 함
+    - bool 타입으로 평가 가능 (Truthy 체크 지원)
+
+    Examples:
+        >>> result = OrderResult(success=True, order_id="12345")
+        >>> if result:  # Truthy 체크
+        ...     print(f"Order placed: {result.order_id}")
+
+        >>> result = OrderResult.from_bool(False, error="Insufficient balance")
+        >>> if not result:  # Falsy 체크
+        ...     print(f"Order failed: {result.error}")
+    """
+    success: bool                           # 주문 성공 여부
+    order_id: str | None = None             # 주문 ID
+    filled_price: float | None = None       # 체결 가격 (평균 체결가)
+    filled_qty: float | None = None         # 체결 수량
+    error: str | None = None                # 에러 메시지
+    timestamp: datetime | None = None       # 체결 시간 (UTC)
+
+    # Legacy compatibility fields (기존 코드 호환성)
+    price: float | None = None              # filled_price 별칭
+    qty: float | None = None                # filled_qty 별칭
+
+    def __post_init__(self):
+        """Legacy 필드 자동 동기화"""
+        if self.filled_price is not None and self.price is None:
+            self.price = self.filled_price
+        if self.filled_qty is not None and self.qty is None:
+            self.qty = self.filled_qty
+
+    @classmethod
+    def from_bool(cls, success: bool, error: str | None = None) -> 'OrderResult':
+        """
+        bool → OrderResult 변환 (하위 호환성)
+
+        Args:
+            success: 주문 성공 여부
+            error: 에러 메시지 (실패 시)
+
+        Returns:
+            OrderResult 인스턴스
+
+        Examples:
+            >>> result = OrderResult.from_bool(True)
+            >>> result = OrderResult.from_bool(False, error="Rate limit exceeded")
+        """
+        return cls(success=success, error=error)
+
+    @classmethod
+    def from_order_id(cls, order_id: str) -> 'OrderResult':
+        """
+        order_id → OrderResult 변환 (하위 호환성)
+
+        Args:
+            order_id: 주문 ID
+
+        Returns:
+            성공 OrderResult (success=True, order_id 포함)
+
+        Examples:
+            >>> result = OrderResult.from_order_id("12345")
+            >>> assert result.success
+        """
+        return cls(success=True, order_id=order_id)
+
+    def __bool__(self) -> bool:
+        """
+        Truthy 체크 지원
+
+        Returns:
+            success 필드 값
+
+        Examples:
+            >>> result = OrderResult(success=True)
+            >>> if result:  # True
+            ...     print("Success!")
+        """
+        return self.success
 
 
 @dataclass
@@ -126,10 +208,21 @@ class BaseExchange(ABC):
         self.direction = config.get('direction', 'Both')  # [NEW] 방향 설정
         self.position: Optional[Position] = None
         self.capital = self.amount_usd
-        
+
         # [NEW] 통화 통합 시스템 - 서브클래스에서 override
         self.quote_currency = 'USDT'  # 기준 통화 (USDT / KRW)
         self.market_type = 'futures'   # 시장 유형 (futures / spot)
+
+        # ✅ P1-3: API Rate Limiter 초기화
+        self.rate_limiter: Any = None  # APIRateLimiter 인스턴스 (Optional)
+        if APIRateLimiter:
+            try:
+                # 거래소 이름은 서브클래스의 name 속성에서 가져옴
+                exchange_name = getattr(self, 'name', 'unknown')
+                self.rate_limiter = APIRateLimiter(exchange=exchange_name)
+                logging.debug(f"[{exchange_name}] Rate limiter initialized")
+            except Exception as e:
+                logging.warning(f"Rate limiter init failed: {e}")
     
     @property
     @abstractmethod
@@ -163,12 +256,22 @@ class BaseExchange(ABC):
         """
     
     @abstractmethod
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정"""
-    
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
+
     @abstractmethod
-    def close_position(self) -> bool:
-        """포지션 청산"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
 
     @abstractmethod
     def add_position(self, side: str, size: float) -> bool:
@@ -213,7 +316,27 @@ class BaseExchange(ABC):
     def is_spot_exchange(self) -> bool:
         """현물 거래소 여부"""
         return self.market_type == 'spot'
-    
+
+    def _acquire_rate_limit(self, tokens: int = 1) -> bool:
+        """
+        ✅ P1-3: API Rate Limiter 토큰 획득
+
+        API 요청 전 호출하여 레이트 리미트 준수
+
+        Args:
+            tokens: 필요한 토큰 수 (기본 1)
+
+        Returns:
+            True (항상 성공, 블로킹 모드)
+
+        Example:
+            >>> self._acquire_rate_limit()  # 토큰 획득 (대기 가능)
+            >>> response = self.exchange.get_klines(...)
+        """
+        if self.rate_limiter:
+            return self.rate_limiter.acquire(tokens=tokens, blocking=True)
+        return True  # Rate limiter 없으면 즉시 통과
+
     def is_krw_exchange(self) -> bool:
         """KRW 거래소 여부"""
         return self.quote_currency == 'KRW'

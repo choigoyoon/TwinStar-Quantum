@@ -300,25 +300,42 @@ class PositionManager:
             pullback_rsi_short=params.get('pullback_rsi_short', 60)
         )
         
-        # 1. SL Hit 처리
+        # 1. SL Hit 처리 (P1-009: 청산 실패 시 상태 일관성 유지)
         if result.get('sl_hit'):
             sl_price = result.get('sl_price', current_sl)
             logging.info(f"[POSITION] 🔴 SL HIT: {direction} @ {sl_price:.2f}")
-            
+
+            close_success = True  # 청산 성공 여부
             if not self.dry_run:
                 try:
-                    self.exchange.close_position()
+                    close_result = self.exchange.close_position()
+                    # OrderResult 또는 bool 체크
+                    if hasattr(close_result, 'success'):
+                        close_success = close_result.success
+                    else:
+                        close_success = bool(close_result)
+
+                    if not close_success:
+                        logging.error(f"[POSITION] ❌ SL Close Failed: Position may still exist on exchange")
+                        # 청산 실패 시 재시도 로직 추가 (선택 사항)
+                        # return None  # 상태 변경하지 않고 다음 틱에서 재시도
                 except Exception as e:
-                    logging.error(f"[POSITION] ❌ SL Close Error: {e}")
-            
-            # 상태 클리어
-            bt_state['position'] = None
-            bt_state['positions'] = []
-            
-            if self.on_sl_hit:
-                self.on_sl_hit(direction, sl_price)
-            
-            return {'action': 'CLOSE', 'direction': direction, 'price': sl_price, 'reason': 'SL_HIT'}
+                    logging.error(f"[POSITION] ❌ SL Close Exception: {e}")
+                    close_success = False
+
+            # P1-009: 청산 성공한 경우에만 상태 클리어
+            if close_success or self.dry_run:
+                bt_state['position'] = None
+                bt_state['positions'] = []
+
+                if self.on_sl_hit:
+                    self.on_sl_hit(direction, sl_price)
+
+                return {'action': 'CLOSE', 'direction': direction, 'price': sl_price, 'reason': 'SL_HIT'}
+            else:
+                # 청산 실패: 상태 유지하고 경고
+                logging.warning(f"[POSITION] ⚠️ SL Close failed, keeping position state for retry")
+                return None
         
         # 2. Extreme price 업데이트
         new_extreme = result.get('new_extreme')

@@ -327,6 +327,11 @@ class UnifiedBot:
         """
         if not hasattr(self, 'mod_signal'): return None
         candle = self.exchange.get_current_candle()
+
+        # P1-004: 캔들 데이터 None 체크
+        if candle is None:
+            logging.warning("[SIGNAL] ⚠️ Current candle is None, skipping signal detection")
+            return None
         import pandas as pd
 
         # Phase A-2: 워밍업 윈도우 적용 (지표 계산 정확도 보장)
@@ -364,6 +369,11 @@ class UnifiedBot:
         with self._position_lock:
             if not self.position: return
             candle = self.exchange.get_current_candle()
+
+            # P1-005: 캔들 데이터 None 체크
+            if candle is None:
+                logging.warning("[POSITION] ⚠️ Current candle is None, skipping position management")
+                return
 
             # Phase A-2: 워밍업 윈도우 적용 (지표 계산 정확도 보장)
             df_entry = self.mod_data.get_recent_data(limit=100, warmup_window=100)
@@ -584,7 +594,38 @@ class UnifiedBot:
 
     # ========== Bridge \u0026 Helpers ==========
     def _get_signal_exchange(self): return self.exchange
-    def _can_trade(self): return self.license_guard.can_trade().get('can_trade', True) if self.license_guard else True
+    def _can_trade(self) -> bool:
+        """
+        거래 가능 여부 확인 (P1-002: 잔고 체크 포함)
+
+        Returns:
+            bool: 거래 가능 여부
+        """
+        # 1. 라이선스 체크
+        if self.license_guard:
+            if not self.license_guard.can_trade().get('can_trade', True):
+                return False
+
+        # 2. 잔고 체크 (P1-002: 선물/현물 지갑 구분)
+        try:
+            balance = self.exchange.get_balance()
+
+            # 잔고 조회 실패
+            if balance is None or balance <= 0:
+                logging.warning(f"[TRADE] ⚠️ Balance check failed or insufficient: {balance}")
+                return False
+
+            # 최소 잔고 체크 (거래소별 최소 주문 금액 고려)
+            min_balance = 10.0  # USDT/KRW 최소 잔고 (조정 가능)
+            if balance < min_balance:
+                logging.warning(f"[TRADE] ⚠️ Insufficient balance: ${balance:.2f} < ${min_balance:.2f}")
+                return False
+
+            return True
+
+        except Exception as e:
+            logging.error(f"[TRADE] ❌ Balance check failed: {e}")
+            return False
     def _sync_with_exchange_position(self): self.sync_position()
     
     def run(self):

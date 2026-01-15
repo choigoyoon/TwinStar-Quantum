@@ -16,7 +16,7 @@ except ImportError as e:
     logging.warning(f"[ExchangeManager] crypto_manager 없음: {e}")
 
 # constants import (SSOT)
-from config.constants import EXCHANGE_INFO, SPOT_EXCHANGES
+from config.constants.exchanges import EXCHANGE_INFO, SPOT_EXCHANGES
 
 
 # 지원 거래소 목록

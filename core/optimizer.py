@@ -56,7 +56,7 @@ logger = get_module_logger(__name__)
 
 # TF_MAPPING, TF_RESAMPLE_MAP import
 # 상수 및 유틸리티 임포트 (Phase 3 SSOT)
-from config.constants import TF_MAPPING, TF_RESAMPLE_MAP
+from config.constants.timeframes import TF_MAPPING, TF_RESAMPLE_MAP
 from config.parameters import DEFAULT_PARAMS
 from utils.data_utils import resample_data as shared_resample
 

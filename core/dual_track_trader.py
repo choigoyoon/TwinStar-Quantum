@@ -80,8 +80,9 @@ class DualTrackTrader:
             # [NEW] 데이터 존재 확인 및 자동 수집
             if DataManager:
                 dm = DataManager()
-                # 15m 데이터가 있는지 확인 (Parquet 우선)
-                file_15m = dm.cache_dir / f"{self.exchange.name.lower()}_{symbol.lower()}_15m.parquet"
+                # ✅ Task 3.1: Parquet 파일명 통합
+                from config.constants.parquet import get_parquet_filename
+                file_15m = dm.cache_dir / get_parquet_filename(self.exchange.name, symbol, '15m')
                 if not file_15m.exists():
                     logging.info(f"[DUAL-TRACK] Data missing for {symbol}. Fetching baseline data...")
                     dm.download(

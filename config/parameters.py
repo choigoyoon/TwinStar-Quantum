@@ -63,7 +63,7 @@ DEFAULT_PARAMS = {
 
 # ============ 비용 상수 (프로젝트 공용) ============
 # ============ SSOT: config.constants에서 임포트 ============
-from config.constants import (
+from config.constants.trading import (
     SLIPPAGE, FEE, TOTAL_COST,
     DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
     to_api_direction, from_api_direction

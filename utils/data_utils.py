@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # TF_RESAMPLE_MAP: SSOT (config/constants/timeframes.py)
-from config.constants import TF_RESAMPLE_MAP
+from config.constants.timeframes import TF_RESAMPLE_MAP
 
 
 def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True) -> pd.DataFrame:

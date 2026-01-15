@@ -187,9 +187,10 @@ class MultiSymbolBacktest:
         
         try:
             from paths import Paths
-            symbol_clean = symbol.lower().replace('/', '')
-            cache_path = Path(Paths.CACHE) / f"{self.exchange}_{symbol_clean}_{timeframe}.parquet"
-            
+            # ✅ Task 3.1: Parquet 파일명 통합
+            from config.constants.parquet import get_parquet_filename
+            cache_path = Path(Paths.CACHE) / get_parquet_filename(self.exchange, symbol, timeframe)
+
             if cache_path.exists():
                 df = pd.read_parquet(cache_path)
                 if len(df) >= 500:

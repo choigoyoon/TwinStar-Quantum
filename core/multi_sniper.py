@@ -249,15 +249,17 @@ class MultiCoinSniper:
         try:
             import pandas as pd
             from core.strategy_core import AlphaX7Core
-            
+            # ✅ Task 3.1: Parquet 파일명 통합
+            from config.constants.parquet import get_parquet_filename
+
             # 캐시된 데이터 로드 (15분 기본)
             cache_path_15m = os.path.join(
                 Paths.CACHE,
-                f"{exchange}_{symbol.lower()}_15m.parquet"
+                get_parquet_filename(exchange, symbol, '15m')
             )
             cache_path_1h = os.path.join(
                 Paths.CACHE,
-                f"{exchange}_{symbol.lower()}_1h.parquet"
+                get_parquet_filename(exchange, symbol, '1h')
             )
             
             # 15분 데이터 우선, 없으면 1시간
@@ -348,12 +350,13 @@ class MultiCoinSniper:
         """WS 수신 캔들 → Parquet 저장"""
         try:
             import pandas as pd
-            
+            # ✅ Task 3.1: Parquet 파일명 통합
+            from config.constants.parquet import get_parquet_filename
+
             cache_dir = Paths.CACHE
             os.makedirs(cache_dir, exist_ok=True)
-            
-            symbol_clean = symbol.lower().replace('/', '').replace('-', '')
-            filename = f"{self.exchange}_{symbol_clean}_15m.parquet"
+
+            filename = get_parquet_filename(self.exchange, symbol, '15m')
             filepath = os.path.join(cache_dir, filename)
             
             # 새 캔들 DataFrame

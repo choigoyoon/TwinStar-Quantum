@@ -101,10 +101,11 @@ class AutoOptimizer:
 
         try:
             import pandas as pd
+            # ✅ Task 3.1: Parquet 파일명 통합
+            from config.constants.parquet import get_parquet_filename
 
             # 데이터 로드
-            symbol_clean = self.symbol.replace("/", "_")
-            entry_file = CACHE_DIR / f"{self.exchange}_{symbol_clean}_15m.parquet"
+            entry_file = CACHE_DIR / get_parquet_filename(self.exchange, self.symbol, '15m')
 
             if not entry_file.exists():
                 logger.warning("[AutoOpt] 데이터 없음 → 기본값 사용")

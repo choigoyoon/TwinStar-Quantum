@@ -10,7 +10,7 @@ Bithumb: BTC_KRW
 """
 
 # Import from SSOT
-from config.constants import (
+from config.constants.exchanges import (
     EXCHANGE_PAIR_FORMAT,
     is_krw_exchange
 )

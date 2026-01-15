@@ -43,19 +43,19 @@ class BotDataManager:
     @staticmethod
     def _normalize_exchange(exchange: str) -> str:
         """거래소 이름 정규화 (SSOT: config.constants.parquet)"""
-        from config.constants import normalize_exchange
+        from config.constants.parquet import normalize_exchange
         return normalize_exchange(exchange)
 
     @staticmethod
     def _normalize_symbol(symbol: str) -> str:
         """심볼 정규화 (SSOT: config.constants.parquet)"""
-        from config.constants import normalize_symbol
+        from config.constants.parquet import normalize_symbol
         return normalize_symbol(symbol)
 
     @staticmethod
     def _normalize_timeframe(timeframe: str) -> str:
         """타임프레임 정규화 (SSOT: config.constants.parquet)"""
-        from config.constants import normalize_timeframe
+        from config.constants.parquet import normalize_timeframe
         return normalize_timeframe(timeframe)
 
     def __init__(
@@ -76,15 +76,13 @@ class BotDataManager:
         self.symbol_clean = self._normalize_symbol(symbol)
         self.strategy_params = strategy_params or {}
         
+        # ✅ Task 3.2: Fallback Imports 제거 (config.constants 우선)
         # 캐시 경로 설정
         if cache_dir:
             self.cache_dir = Path(cache_dir)
         else:
-            try:
-                from paths import Paths
-                self.cache_dir = Path(Paths.CACHE)
-            except ImportError:
-                self.cache_dir = Path(__file__).parent.parent / 'cache'
+            from paths import Paths  # 직접 import (fallback 제거)
+            self.cache_dir = Path(Paths.CACHE)
         
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
@@ -120,8 +118,8 @@ class BotDataManager:
             모든 요소가 소문자로 정규화됨
             예: bybit_btcusdt_15m.parquet
         """
-        tf = self._normalize_timeframe('15m')
-        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_{tf}.parquet"
+        from config.constants.parquet import get_parquet_filename
+        return self.cache_dir / get_parquet_filename(self.exchange_name, self.symbol_clean, '15m')
 
     def get_pattern_file_path(self) -> Path:
         """
@@ -136,8 +134,8 @@ class BotDataManager:
             모든 요소가 소문자로 정규화됨
             예: bybit_btcusdt_1h.parquet
         """
-        tf = self._normalize_timeframe('1h')
-        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_{tf}.parquet"
+        from config.constants.parquet import get_parquet_filename
+        return self.cache_dir / get_parquet_filename(self.exchange_name, self.symbol_clean, '1h')
 
     def get_parquet_path(self, timeframe: str) -> Path:
         """
@@ -157,8 +155,8 @@ class BotDataManager:
         Note:
             모든 요소가 소문자로 정규화됨
         """
-        tf = self._normalize_timeframe(timeframe)
-        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_{tf}.parquet"
+        from config.constants.parquet import get_parquet_filename
+        return self.cache_dir / get_parquet_filename(self.exchange_name, self.symbol_clean, timeframe)
     
     # ========== 데이터 로드 ==========
     
@@ -324,7 +322,8 @@ class BotDataManager:
                     # Bithumb -> Upbit 복제 (하이브리드 모드)
                     if self.exchange_name == 'bithumb':
                         try:
-                            upbit_file = self.cache_dir / f"upbit_{self.symbol_clean}_15m.parquet"
+                            from config.constants.parquet import get_parquet_filename
+                            upbit_file = self.cache_dir / get_parquet_filename('upbit', self.symbol_clean, '15m')
                             import shutil
                             shutil.copy(entry_file, upbit_file)
                         except Exception:
@@ -421,7 +420,8 @@ class BotDataManager:
                     try:
                         import time
                         time.sleep(0.1)  # ✅ P1-10: 파일 시스템 동기화 대기
-                        upbit_file = self.cache_dir / f"upbit_{self.symbol_clean}_15m.parquet"
+                        from config.constants.parquet import get_parquet_filename
+                        upbit_file = self.cache_dir / get_parquet_filename('upbit', self.symbol_clean, '15m')
                         import shutil
                         shutil.copy(entry_file, upbit_file)
                         logging.debug(f"[DATA] Replicated to Upbit: {upbit_file.name}")
@@ -586,14 +586,10 @@ class BotDataManager:
                     else:
                         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
+                # ✅ Task 3.2: Fallback Imports 제거
                 # 지표 추가 (옵션)
                 if with_indicators:
-                    try:
-                        from utils.indicators import add_all_indicators
-                    except ImportError:
-                        from utils.indicators import IndicatorGenerator
-                        add_all_indicators = IndicatorGenerator.add_all_indicators
-
+                    from utils.indicators import add_all_indicators  # 직접 import
                     df = add_all_indicators(df)
 
                 logging.info(f"[DATA] Full history loaded: {len(df)} candles")
@@ -668,13 +664,9 @@ class BotDataManager:
                 # 지표 없거나 워밍업 불필요
                 df = self.df_entry_full.tail(limit).copy()
 
+                # ✅ Task 3.2: Fallback Imports 제거
                 if with_indicators:
-                    try:
-                        from utils.indicators import add_all_indicators
-                    except ImportError:
-                        from utils.indicators import IndicatorGenerator
-                        add_all_indicators = IndicatorGenerator.add_all_indicators
-
+                    from utils.indicators import add_all_indicators  # 직접 import
                     df = add_all_indicators(df)
 
                 logging.debug(f"[DATA] Recent data: {len(df)} candles (limit={limit})")

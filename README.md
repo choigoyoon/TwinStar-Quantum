@@ -136,7 +136,11 @@ TwinStar-Quantum/
 │   │   ├── theme.py        # ThemeGenerator
 │   │   └── styles/         # 컴포넌트 스타일
 │   ├── widgets/            # PyQt6 위젯
-│   │   ├── backtest/       # 백테스트 위젯
+│   │   ├── backtest/       # 백테스트 위젯 (Phase 2 완료 ✅)
+│   │   │   ├── main.py     # BacktestWidget (148줄)
+│   │   │   ├── single.py   # SingleBacktestTab (727줄)
+│   │   │   ├── multi.py    # MultiBacktestTab (425줄)
+│   │   │   └── worker.py   # BacktestWorker (386줄)
 │   │   ├── optimization/   # 최적화 위젯
 │   │   └── dashboard/      # 대시보드
 │   ├── workers/            # QThread 워커
@@ -387,6 +391,10 @@ app.exec()
 - PyQt6 무의존 디자인 토큰
 - 모듈화된 위젯 구조
 - **Phase 3 완료** (2026-01-15): 7개 레거시 컴포넌트 마이그레이션 완료
+- **Phase 2 완료** (2026-01-15): 백테스트 위젯 모듈 분리
+  - 1,686줄 코드 (목표 대비 +53%)
+  - Pyright 에러 0개
+  - SSOT 준수, Phase 1 컴포넌트 100% 재사용
 
 #### 레거시 UI (`GUI/`) - 마이그레이션 진행 중
 
@@ -592,11 +600,12 @@ dist/TwinStar Quantum.exe
 
 ### 프로젝트 문서
 
-- [CLAUDE.md](CLAUDE.md) - 개발 가이드 (v7.2)
+- [CLAUDE.md](CLAUDE.md) - 개발 가이드 (v7.6 - Phase 2 완료)
 - [README.md](README.md) - 이 문서
 - [docs/PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md) - 실전 운영 가이드
 - [docs/VERIFICATION_REPORT.md](docs/VERIFICATION_REPORT.md) - 검증 리포트
 - [docs/CODE_REFACTORING_PLAN.md](docs/CODE_REFACTORING_PLAN.md) - 리팩토링 계획서 (v1.0)
+- [docs/WORK_LOG_20260115.txt](docs/WORK_LOG_20260115.txt) - 최신 작업 로그
 
 ### HTML 문서
 

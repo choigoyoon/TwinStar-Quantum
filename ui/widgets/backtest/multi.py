@@ -18,17 +18,19 @@ from utils.logger import get_module_logger
 from utils.table_models import MultiSymbolResultModel
 from .styles import BacktestStyles
 
-# 색상 토큰
+# 디자인 토큰
 try:
-    from ui.design_system.tokens import ColorTokens
-    _tokens = ColorTokens()
+    from ui.design_system.tokens import Colors, Spacing
 except ImportError:
-    class _TokensFallback:
+    class _ColorsFallback:
         success = "#3fb950"
         danger = "#f85149"
         text_primary = "#f0f6fc"
         text_secondary = "#8b949e"
-    _tokens = _TokensFallback()  # type: ignore
+    class _SpacingFallback:
+        i_space_3 = 12
+    Colors = _ColorsFallback()  # type: ignore
+    Spacing = _SpacingFallback()  # type: ignore
 
 logger = get_module_logger(__name__)
 
@@ -84,8 +86,13 @@ class MultiBacktestWidget(QWidget):
     def _init_ui(self):
         """UI 초기화"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(Spacing.i_space_3)  # 12px
+        layout.setContentsMargins(
+            Spacing.i_space_3,  # 12px
+            Spacing.i_space_3,
+            Spacing.i_space_3,
+            Spacing.i_space_3
+        )
 
         # 설정 그룹
         layout.addWidget(self._create_settings_group())
@@ -102,7 +109,7 @@ class MultiBacktestWidget(QWidget):
     def _create_settings_group(self) -> QGroupBox:
         """설정 그룹 생성"""
         group = QGroupBox("Multi-Symbol Backtest Settings")
-        group.setStyleSheet(BacktestStyles.group_box(_tokens.success))
+        group.setStyleSheet(BacktestStyles.group_box(Colors.success))
         layout = QHBoxLayout(group)
 
         # 거래소

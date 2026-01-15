@@ -21,7 +21,7 @@ from .header import DashboardHeader
 from .status_cards import StatusCard
 
 # 디자인 시스템
-from ui.design_system.tokens import Colors, Typography, Radius
+from ui.design_system.tokens import Colors, Typography, Radius, Spacing
 from ui.design_system import ThemeGenerator
 
 logger = logging.getLogger(__name__)
@@ -53,8 +53,13 @@ class TradingDashboard(QWidget):
     
     def _init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
+        layout.setContentsMargins(
+            Spacing.i_space_3,  # 12px
+            Spacing.i_space_3,
+            Spacing.i_space_3,
+            Spacing.i_space_3
+        )
+        layout.setSpacing(Spacing.i_space_3)  # 12px
         
         # === 1. HUD Header ===
         self.header = DashboardHeader()
@@ -160,7 +165,12 @@ class TradingDashboard(QWidget):
         log_group = QGroupBox("System Logs")
         log_group.setStyleSheet(monitor_group.styleSheet())
         log_layout = QVBoxLayout(log_group)
-        log_layout.setContentsMargins(8, 20, 8, 8)
+        log_layout.setContentsMargins(
+            Spacing.i_space_2,  # 8px left
+            Spacing.i_space_5,  # 20px top
+            Spacing.i_space_2,  # 8px right
+            Spacing.i_space_2   # 8px bottom
+        )
         
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)

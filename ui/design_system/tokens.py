@@ -224,15 +224,52 @@ class ShadowTokens:
 @dataclass(frozen=True)
 class AnimationTokens:
     """애니메이션 토큰"""
-    
+
     duration_fast: str = "100ms"
     duration_normal: str = "200ms"
     duration_slow: str = "300ms"
-    
+
     easing_default: str = "ease"
     easing_in: str = "ease-in"
     easing_out: str = "ease-out"
     easing_in_out: str = "ease-in-out"
+
+
+# ============================================================
+# SIZE TOKENS
+# ============================================================
+
+@dataclass(frozen=True)
+class SizeTokens:
+    """
+    크기 상수 토큰
+
+    위젯의 고정 크기를 정의합니다.
+    하드코딩된 크기 값을 방지하고 일관성을 보장합니다.
+    """
+
+    # === Button Heights ===
+    button_sm: int = 32      # 작은 버튼
+    button_md: int = 36      # 중간 버튼 (기본)
+    button_lg: int = 40      # 큰 버튼
+
+    # === Input Field Heights ===
+    input_sm: int = 28       # 작은 입력 필드
+    input_md: int = 32       # 중간 입력 필드
+    input_lg: int = 36       # 큰 입력 필드
+
+    # === Card Heights ===
+    card_compact: int = 60   # 압축 카드
+    card_normal: int = 80    # 일반 카드 (대시보드 상태 카드)
+    card_large: int = 100    # 큰 카드
+
+    # === Minimum Widths ===
+    control_min_width: int = 120   # 콤보박스, 작은 입력
+    input_min_width: int = 200     # 일반 입력 필드
+    button_min_width: int = 80     # 버튼 최소 너비
+
+    # === Component Specific ===
+    refresh_button_size: int = 36  # 새로고침 버튼 (정사각형)
 
 
 # ============================================================
@@ -246,6 +283,7 @@ Spacing = SpacingTokens()
 Radius = RadiusTokens()
 Shadow = ShadowTokens()
 Animation = AnimationTokens()
+Size = SizeTokens()
 
 
 # ============================================================
@@ -319,10 +357,10 @@ def get_pnl_color(value: float) -> str:
 def get_grade_color(grade: str) -> str:
     """
     등급에 따른 색상 반환
-    
+
     Args:
         grade: 등급 문자열 (TRIAL, BASIC, STANDARD, PREMIUM, EXPIRED)
-    
+
     Returns:
         등급별 색상
     """
@@ -334,3 +372,32 @@ def get_grade_color(grade: str) -> str:
         'EXPIRED': Colors.grade_expired,
     }
     return grade_colors.get(grade.upper(), Colors.grade_trial)
+
+
+# ============================================================
+# EXPORTS
+# ============================================================
+
+__all__ = [
+    # Token Classes
+    'ColorTokens',
+    'TypographyTokens',
+    'SpacingTokens',
+    'RadiusTokens',
+    'ShadowTokens',
+    'AnimationTokens',
+    'SizeTokens',
+    # Singleton Instances
+    'Colors',
+    'Typography',
+    'Spacing',
+    'Radius',
+    'Shadow',
+    'Animation',
+    'Size',
+    # Utility Functions
+    'get_gradient',
+    'get_rgba',
+    'get_pnl_color',
+    'get_grade_color',
+]

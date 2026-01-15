@@ -606,6 +606,226 @@ status = StatusCard()
 5. [ ] QThread 워커로 장시간 작업 분리
 6. [ ] 다국어 지원 (`locales/` 활용)
 7. [ ] VS Code Problems 탭 확인
+8. [ ] **레이아웃 표준 준수** (아래 가이드 참조)
+
+---
+
+### UI 레이아웃 표준 (v7.12 - 2026-01-16)
+
+#### Spacing 가이드
+
+**컴포넌트 내부 패딩** (`setContentsMargins`):
+```python
+from ui.design_system.tokens import Spacing
+
+# 작은 컴포넌트 (버튼, 입력 필드, 작은 카드)
+layout.setContentsMargins(
+    Spacing.i_space_2,  # 8px left
+    Spacing.i_space_1,  # 4px top
+    Spacing.i_space_2,  # 8px right
+    Spacing.i_space_1   # 4px bottom
+)
+
+# 중간 컴포넌트 (카드, 패널)
+layout.setContentsMargins(
+    Spacing.i_space_4,  # 16px left
+    Spacing.i_space_3,  # 12px top
+    Spacing.i_space_4,  # 16px right
+    Spacing.i_space_3   # 12px bottom
+)
+
+# 큰 컴포넌트 (메인 패널, 모달)
+layout.setContentsMargins(
+    Spacing.i_space_4,  # 16px
+    Spacing.i_space_4,
+    Spacing.i_space_4,
+    Spacing.i_space_4
+)
+```
+
+**요소 간 간격** (`setSpacing`):
+```python
+# 밀집 배치 (라벨-값 쌍, 아이콘-텍스트)
+layout.setSpacing(Spacing.i_space_1)  # 4px
+
+# 표준 배치 (폼 필드, 버튼 그룹)
+layout.setSpacing(Spacing.i_space_2)  # 8px
+
+# 여유 배치 (섹션 간, 카드 간)
+layout.setSpacing(Spacing.i_space_3)  # 12px
+
+# 큰 간격 (메인 영역 구분)
+layout.setSpacing(Spacing.i_space_4)  # 16px
+```
+
+#### Typography 가이드
+
+```python
+from ui.design_system.tokens import Typography
+
+# 아주 작은 텍스트 (보조 정보, 힌트)
+font-size: {Typography.text_xs};  # 11px
+
+# 작은 텍스트 (라벨, 버튼)
+font-size: {Typography.text_sm};  # 12px
+
+# 기본 텍스트 (본문, 입력 필드)
+font-size: {Typography.text_base};  # 14px
+
+# 큰 텍스트 (제목, 강조)
+font-size: {Typography.text_lg};  # 16px
+
+# 메인 숫자 (대시보드 값)
+font-size: {Typography.text_2xl};  # 24px
+
+# 폰트 가중치
+font-weight: {Typography.font_normal};    # 400
+font-weight: {Typography.font_medium};    # 500
+font-weight: {Typography.font_bold};      # 700
+```
+
+#### 크기 제약
+
+```python
+from ui.design_system.tokens import Size
+
+# 버튼 높이
+widget.setFixedHeight(Size.button_sm)      # 32px
+widget.setFixedHeight(Size.button_md)      # 36px (기본)
+widget.setFixedHeight(Size.button_lg)      # 40px
+
+# 카드 높이
+card.setFixedHeight(Size.card_compact)     # 60px
+card.setFixedHeight(Size.card_normal)      # 80px (대시보드 상태 카드)
+card.setFixedHeight(Size.card_large)       # 100px
+
+# 최소 너비
+combo.setMinimumWidth(Size.control_min_width)  # 120px
+input.setMinimumWidth(Size.input_min_width)    # 200px
+button.setMinimumWidth(Size.button_min_width)  # 80px
+
+# 정사각형 버튼 (새로고침, 아이콘 버튼)
+button.setFixedSize(Size.button_md, Size.button_md)  # 36x36px
+```
+
+#### 반응형 레이아웃
+
+```python
+from PyQt6.QtWidgets import QSizePolicy
+
+# 너비 자동 조절 (stretch 사용 권장)
+widget.setSizePolicy(
+    QSizePolicy.Policy.Expanding,  # 가로 확장
+    QSizePolicy.Policy.Fixed        # 세로 고정
+)
+
+# 최소/최대 크기 제약
+widget.setMinimumWidth(Size.control_min_width)
+widget.setMaximumHeight(Size.card_normal)
+```
+
+#### 금지 사항
+
+**절대 금지** (하드코딩):
+```python
+# ❌ 절대 금지
+layout.setSpacing(8)                   # 하드코딩된 숫자
+layout.setContentsMargins(10, 10, 10, 10)
+widget.setFixedHeight(80)
+font-size: 14px;                       # CSS 하드코딩
+padding: 10px 25px;
+```
+
+**올바른 방법** (토큰 사용):
+```python
+# ✅ 올바른 방법
+from ui.design_system.tokens import Spacing, Typography, Size
+
+layout.setSpacing(Spacing.i_space_2)  # 8px
+layout.setContentsMargins(
+    Spacing.i_space_3,  # 12px
+    Spacing.i_space_3,
+    Spacing.i_space_3,
+    Spacing.i_space_3
+)
+widget.setFixedHeight(Size.card_normal)  # 80px
+
+# QSS 스타일시트에서
+f"font-size: {Typography.text_base};"
+f"padding: {Spacing.space_3} {Spacing.space_6};"
+```
+
+#### 예제: 완전한 위젯
+
+```python
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from ui.design_system.tokens import Colors, Typography, Spacing, Size, Radius
+
+class MyWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_ui()
+
+    def _init_ui(self):
+        # 메인 레이아웃 (중간 컴포넌트)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(Spacing.i_space_2)  # 8px
+        layout.setContentsMargins(
+            Spacing.i_space_4,  # 16px
+            Spacing.i_space_3,  # 12px
+            Spacing.i_space_4,
+            Spacing.i_space_3
+        )
+
+        # 제목 라벨
+        title = QLabel("Title")
+        title.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.text_primary};
+                font-size: {Typography.text_xl};
+                font-weight: {Typography.font_bold};
+            }}
+        """)
+        layout.addWidget(title)
+
+        # 값 표시 행 (표준 간격)
+        row = QHBoxLayout()
+        row.setSpacing(Spacing.i_space_2)  # 8px
+
+        label = QLabel("Value:")
+        label.setStyleSheet(f"font-size: {Typography.text_sm};")
+        row.addWidget(label)
+
+        value = QLabel("42")
+        value.setStyleSheet(f"""
+            font-size: {Typography.text_base};
+            font-weight: {Typography.font_bold};
+            color: {Colors.success};
+        """)
+        row.addWidget(value)
+
+        layout.addLayout(row)
+
+        # 프레임 스타일
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {Colors.bg_surface};
+                border: 1px solid {Colors.border_default};
+                border-radius: {Radius.radius_md};
+            }}
+        """)
+```
+
+#### 코드 검증 체크리스트
+
+위젯 작성 후 반드시 확인:
+1. [ ] 모든 spacing 값이 `Spacing.i_space_*` 토큰 사용
+2. [ ] 모든 font-size가 `Typography.text_*` 토큰 사용
+3. [ ] 모든 고정 크기가 `Size.*` 토큰 사용
+4. [ ] 모든 색상이 `Colors.*` 토큰 사용
+5. [ ] 모든 border-radius가 `Radius.radius_*` 토큰 사용
+6. [ ] 하드코딩된 숫자 없음 (grep 검색으로 확인)
+7. [ ] VS Code Problems 탭 에러 0개
 
 ---
 

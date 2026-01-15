@@ -35,19 +35,25 @@ try:
 except ImportError:
     DEFAULT_PARAMS = {}
 
-# 색상 토큰
+# 디자인 토큰
 try:
-    from ui.design_system.tokens import ColorTokens
-    _tokens = ColorTokens()
+    from ui.design_system.tokens import Colors, Spacing, Size
 except ImportError:
-    # Fallback
-    class _TokensFallback:
+    # Fallback (should not happen in production)
+    class _ColorsFallback:
         success = "#3fb950"
         danger = "#f85149"
         warning = "#d29922"
         text_primary = "#f0f6fc"
         text_secondary = "#8b949e"
-    _tokens = _TokensFallback()  # type: ignore
+    class _SpacingFallback:
+        i_space_2 = 8
+        i_space_3 = 12
+    class _SizeFallback:
+        control_min_width = 120
+    Colors = _ColorsFallback()  # type: ignore
+    Spacing = _SpacingFallback()  # type: ignore
+    Size = _SizeFallback()  # type: ignore
 
 logger = get_module_logger(__name__)
 
@@ -163,8 +169,13 @@ class SingleBacktestWidget(QWidget):
     def _init_ui(self):
         """UI 초기화"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(Spacing.i_space_2)  # 8px
+        layout.setContentsMargins(
+            Spacing.i_space_3,  # 12px
+            Spacing.i_space_3,
+            Spacing.i_space_3,
+            Spacing.i_space_3
+        )
 
         # Row 1: 데이터 소스 선택
         layout.addLayout(self._create_data_source_row())
@@ -190,7 +201,7 @@ class SingleBacktestWidget(QWidget):
     def _create_data_source_row(self) -> QHBoxLayout:
         """데이터 소스 선택 행"""
         row = QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(Spacing.i_space_2)  # 8px
 
         # 거래소
         row.addWidget(QLabel("Exchange:"))
@@ -205,7 +216,7 @@ class SingleBacktestWidget(QWidget):
         row.addWidget(QLabel("Symbol:"))
         self.symbol_combo = QComboBox()
         self.symbol_combo.setStyleSheet(BacktestStyles.combo_box())
-        self.symbol_combo.setMinimumWidth(100)
+        self.symbol_combo.setMinimumWidth(Size.control_min_width)  # 120px
         row.addWidget(self.symbol_combo)
 
         # 타임프레임
@@ -235,7 +246,7 @@ class SingleBacktestWidget(QWidget):
     def _create_parameter_row(self) -> QHBoxLayout:
         """파라미터 입력 행"""
         row = QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(Spacing.i_space_2)  # 8px
 
         # Leverage
         self.lev_spin = QSpinBox()
@@ -290,7 +301,7 @@ class SingleBacktestWidget(QWidget):
     def _create_stats_row(self) -> QHBoxLayout:
         """통계 표시 행"""
         row = QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(Spacing.i_space_2)  # 8px
 
         self.stat_trades = StatLabel("Trades", "-")
         self.stat_winrate = StatLabel("Win Rate", "-")
@@ -615,18 +626,18 @@ class SingleBacktestWidget(QWidget):
 
         if self.stat_winrate:
             winrate = stats.win_rate
-            color = _tokens.success if winrate >= 50 else _tokens.danger
+            color = Colors.success if winrate >= 50 else Colors.danger
             self.stat_winrate.set_value(f"{winrate:.1f}%", color)
 
         if self.stat_return:
             # simple_return 대신 compound_return 사용 (SSOT 정책)
             ret = stats.compound_return
-            color = _tokens.success if ret > 0 else _tokens.danger
+            color = Colors.success if ret > 0 else Colors.danger
             self.stat_return.set_value(f"{ret:.2f}%", color)
 
         if self.stat_mdd:
             mdd = stats.max_drawdown
-            color = _tokens.warning if mdd > 20 else _tokens.text_primary # 20% 초과 시 경고
+            color = Colors.warning if mdd > 20 else Colors.text_primary # 20% 초과 시 경고
             self.stat_mdd.set_value(f"{mdd:.1f}%", color)
             
         # [Phase 1 추가] 필터 통과 여부에 따른 시각적 피드백 (옵션)

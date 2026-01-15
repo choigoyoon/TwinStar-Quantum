@@ -48,12 +48,17 @@ class StatusCard(QFrame):
         """)
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(
+            Spacing.i_space_4,  # 16px
+            Spacing.i_space_3,  # 12px
+            Spacing.i_space_4,  # 16px
+            Spacing.i_space_3   # 12px
+        )
+        layout.setSpacing(Spacing.i_space_1)  # 4px
         
         # 상단: 아이콘 + 제목
         header = QHBoxLayout()
-        header.setSpacing(8)
+        header.setSpacing(Spacing.i_space_2)  # 8px
         
         if icon:
             icon_label = QLabel(icon)

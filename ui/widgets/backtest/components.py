@@ -8,10 +8,7 @@ from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 from PyQt6.QtCore import Qt
 from typing import Optional
 
-from ui.design_system.tokens import ColorTokens
-
-# 토큰 인스턴스
-_tokens = ColorTokens()
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius
 
 
 class StatLabel(QFrame):
@@ -44,19 +41,24 @@ class StatLabel(QFrame):
     def _init_ui(self, label: str, value: str):
         """UI 초기화"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(3)
+        layout.setContentsMargins(
+            Spacing.i_space_2,  # 8px
+            Spacing.i_space_1,  # 4px
+            Spacing.i_space_2,  # 8px
+            Spacing.i_space_1   # 4px
+        )
+        layout.setSpacing(Spacing.i_space_1)  # 4px
 
         # 상단 라벨
         lbl = QLabel(label)
-        lbl.setStyleSheet(f"color: {_tokens.text_secondary}; font-size: 11px;")
+        lbl.setStyleSheet(f"color: {Colors.text_secondary}; font-size: {Typography.text_xs};")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(lbl)
 
         # 값 라벨
         self.value_label = QLabel(value)
         self.value_label.setStyleSheet(
-            f"color: {_tokens.text_primary}; font-size: 14px; font-weight: bold;"
+            f"color: {Colors.text_primary}; font-size: {Typography.text_base}; font-weight: {Typography.font_bold};"
         )
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label)
@@ -65,9 +67,9 @@ class StatLabel(QFrame):
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet(f"""
             QFrame {{
-                background: {_tokens.bg_surface};
-                border: 1px solid {_tokens.border_default};
-                border-radius: 4px;
+                background: {Colors.bg_surface};
+                border: 1px solid {Colors.border_default};
+                border-radius: {Radius.radius_sm};
             }}
         """)
 
@@ -81,11 +83,11 @@ class StatLabel(QFrame):
         self.value_label.setText(value)
         if color:
             self.value_label.setStyleSheet(
-                f"color: {color}; font-size: 14px; font-weight: bold;"
+                f"color: {color}; font-size: {Typography.text_base}; font-weight: {Typography.font_bold};"
             )
         else:
             self.value_label.setStyleSheet(
-                f"color: {_tokens.text_primary}; font-size: 14px; font-weight: bold;"
+                f"color: {Colors.text_primary}; font-size: {Typography.text_base}; font-weight: {Typography.font_bold};"
             )
 
 
@@ -119,12 +121,17 @@ class ParameterFrame(QFrame):
     def _init_ui(self, label: str):
         """UI 초기화"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(3)
+        layout.setContentsMargins(
+            Spacing.i_space_2,  # 8px
+            Spacing.i_space_1,  # 4px
+            Spacing.i_space_2,  # 8px
+            Spacing.i_space_1   # 4px
+        )
+        layout.setSpacing(Spacing.i_space_1)  # 4px
 
         # 상단 라벨
         lbl = QLabel(label)
-        lbl.setStyleSheet(f"color: {_tokens.text_secondary}; font-size: 11px;")
+        lbl.setStyleSheet(f"color: {Colors.text_secondary}; font-size: {Typography.text_xs};")
         layout.addWidget(lbl)
 
         # 입력 위젯
@@ -134,9 +141,9 @@ class ParameterFrame(QFrame):
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet(f"""
             QFrame {{
-                background: {_tokens.bg_surface};
-                border: 1px solid {_tokens.border_muted};
-                border-radius: 4px;
+                background: {Colors.bg_surface};
+                border: 1px solid {Colors.border_muted};
+                border-radius: {Radius.radius_sm};
             }}
         """)
 
@@ -156,7 +163,7 @@ class ParameterFrame(QFrame):
 
         self.value_label = QLabel(initial_value)
         self.value_label.setStyleSheet(
-            f"color: {_tokens.text_primary}; font-size: 12px; font-weight: bold;"
+            f"color: {Colors.text_primary}; font-size: {Typography.text_sm}; font-weight: {Typography.font_bold};"
         )
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 

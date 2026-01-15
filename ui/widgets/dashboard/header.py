@@ -13,7 +13,7 @@ from PyQt6.QtCore import pyqtSignal
 from .status_cards import BalanceCard, PnLCard, ActiveBotsCard, RiskCard
 
 # 디자인 시스템
-from ui.design_system.tokens import Colors
+from ui.design_system.tokens import Colors, Size, Spacing
 
 
 class DashboardHeader(QWidget):
@@ -35,26 +35,26 @@ class DashboardHeader(QWidget):
     def _init_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        
+        layout.setSpacing(Spacing.i_space_3)  # 12px
+
         # 상태 카드들
         self.balance_card = BalanceCard("Wallet Balance")
         self.pnl_card = PnLCard("Daily PnL")
         self.active_card = ActiveBotsCard("Active Bots")
         self.risk_card = RiskCard("Risk Level")
-        
-        # 높이 고정
+
+        # 높이 고정 (디자인 토큰 사용)
         for card in [self.balance_card, self.pnl_card, self.active_card, self.risk_card]:
-            card.setFixedHeight(80)
-        
+            card.setFixedHeight(Size.card_normal)  # 80px
+
         layout.addWidget(self.balance_card)
         layout.addWidget(self.pnl_card)
         layout.addWidget(self.active_card)
         layout.addWidget(self.risk_card)
-        
-        # 새로고침 버튼
+
+        # 새로고침 버튼 (정사각형, 디자인 토큰 사용)
         self.refresh_btn = QPushButton("🔄")
-        self.refresh_btn.setFixedSize(36, 36)
+        self.refresh_btn.setFixedSize(Size.button_md, Size.button_md)  # 36x36px
         self.refresh_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {Colors.bg_surface};

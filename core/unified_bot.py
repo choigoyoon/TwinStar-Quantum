@@ -158,6 +158,12 @@ class UnifiedBot:
         self._ws_started = False
         self.ws_handler: Optional[WebSocketHandler] = None  # WebSocket 핸들러
 
+        # ✅ Phase Track 3: 리샘플링된 데이터 저장소 초기화
+        self.df_entry_resampled: Optional[pd.DataFrame] = None
+        self.df_pattern_resampled: Optional[pd.DataFrame] = None
+        self.df_pattern_full: Optional[pd.DataFrame] = None
+        self.df_entry_full: Optional[pd.DataFrame] = None
+
         # 3. Capital Management (Centralized)
         initial_capital = getattr(exchange, 'amount_usd', 100) if exchange else 100
         fixed_amount = getattr(exchange, 'fixed_amount', 100) if exchange else 100
@@ -174,9 +180,10 @@ class UnifiedBot:
         from core.time_sync import TimeSyncManager
         from core.candle_close_detector import CandleCloseDetector
 
-        self.time_manager = TimeSyncManager(exchange.name)
+        exchange_name = exchange.name if exchange else "unknown"
+        self.time_manager = TimeSyncManager(exchange_name)
         self.close_detector = CandleCloseDetector(
-            exchange_name=exchange.name,
+            exchange_name=exchange_name,
             interval='15m',
             time_manager=self.time_manager
         )
@@ -198,17 +205,19 @@ class UnifiedBot:
         try:
             from storage.trade_storage import get_trade_storage
             from storage.state_storage import get_state_storage
-            t_store = get_trade_storage(self.exchange.name, self.symbol)
-            s_store = get_state_storage(self.exchange.name, self.symbol)
-            
+
+            exchange_name = self.exchange.name if self.exchange else "unknown"
+            t_store = get_trade_storage(exchange_name, self.symbol)
+            s_store = get_state_storage(exchange_name, self.symbol)
+
             self.mod_state = BotStateManager(
-                self.exchange.name, 
-                self.symbol, 
-                use_new_storage=True, 
-                state_storage=s_store, 
+                exchange_name,
+                self.symbol,
+                use_new_storage=True,
+                state_storage=s_store,
                 trade_storage=t_store
             )
-            self.mod_data = BotDataManager(self.exchange.name, self.symbol, self.strategy_params)
+            self.mod_data = BotDataManager(exchange_name, self.symbol, self.strategy_params)
             self.mod_signal = SignalProcessor(self.strategy_params, self.direction)
             self.mod_order = OrderExecutor(
                 exchange=self.exchange, 

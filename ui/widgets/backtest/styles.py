@@ -5,10 +5,7 @@ ui.design_system.tokens 기반 스타일 생성기
 모든 백테스트 위젯에서 일관된 스타일 사용
 """
 
-from ui.design_system.tokens import ColorTokens
-
-# 토큰 인스턴스
-_tokens = ColorTokens()
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius
 
 
 class BacktestStyles:
@@ -19,19 +16,19 @@ class BacktestStyles:
         """기본 버튼 스타일 (SUCCESS 색상)"""
         return f"""
             QPushButton {{
-                background: {_tokens.success};
-                color: {_tokens.text_primary};
-                padding: 10px 25px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 13px;
+                background: {Colors.success};
+                color: {Colors.text_primary};
+                padding: {Spacing.space_3} {Spacing.space_6};
+                border-radius: {Radius.radius_sm};
+                font-weight: {Typography.font_bold};
+                font-size: {Typography.text_sm};
             }}
             QPushButton:hover {{
-                background: {_tokens.success}cc;
+                background: {Colors.success}cc;
             }}
             QPushButton:disabled {{
-                background: {_tokens.bg_overlay};
-                color: {_tokens.text_muted};
+                background: {Colors.bg_overlay};
+                color: {Colors.text_muted};
             }}
         """
 
@@ -40,19 +37,19 @@ class BacktestStyles:
         """위험 버튼 스타일 (DANGER 색상)"""
         return f"""
             QPushButton {{
-                background: {_tokens.danger};
-                color: {_tokens.text_primary};
-                padding: 10px 25px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 13px;
+                background: {Colors.danger};
+                color: {Colors.text_primary};
+                padding: {Spacing.space_3} {Spacing.space_6};
+                border-radius: {Radius.radius_sm};
+                font-weight: {Typography.font_bold};
+                font-size: {Typography.text_sm};
             }}
             QPushButton:hover {{
-                background: {_tokens.danger}cc;
+                background: {Colors.danger}cc;
             }}
             QPushButton:disabled {{
-                background: {_tokens.bg_overlay};
-                color: {_tokens.text_muted};
+                background: {Colors.bg_overlay};
+                color: {Colors.text_muted};
             }}
         """
 
@@ -61,19 +58,19 @@ class BacktestStyles:
         """정보 버튼 스타일 (INFO 색상)"""
         return f"""
             QPushButton {{
-                background: {_tokens.info};
-                color: {_tokens.text_primary};
-                padding: 10px 25px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 13px;
+                background: {Colors.info};
+                color: {Colors.text_primary};
+                padding: {Spacing.space_3} {Spacing.space_6};
+                border-radius: {Radius.radius_sm};
+                font-weight: {Typography.font_bold};
+                font-size: {Typography.text_sm};
             }}
             QPushButton:hover {{
-                background: {_tokens.info}cc;
+                background: {Colors.info}cc;
             }}
             QPushButton:disabled {{
-                background: {_tokens.bg_overlay};
-                color: {_tokens.text_muted};
+                background: {Colors.bg_overlay};
+                color: {Colors.text_muted};
             }}
         """
 
@@ -82,19 +79,19 @@ class BacktestStyles:
         """강조 버튼 스타일 (ACCENT_PRIMARY 색상)"""
         return f"""
             QPushButton {{
-                background: {_tokens.accent_primary};
-                color: {_tokens.text_inverse};
-                padding: 10px 25px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 13px;
+                background: {Colors.accent_primary};
+                color: {Colors.text_inverse};
+                padding: {Spacing.space_3} {Spacing.space_6};
+                border-radius: {Radius.radius_sm};
+                font-weight: {Typography.font_bold};
+                font-size: {Typography.text_sm};
             }}
             QPushButton:hover {{
-                background: {_tokens.accent_hover};
+                background: {Colors.accent_hover};
             }}
             QPushButton:disabled {{
-                background: {_tokens.bg_overlay};
-                color: {_tokens.text_muted};
+                background: {Colors.bg_overlay};
+                color: {Colors.text_muted};
             }}
         """
 
@@ -103,22 +100,22 @@ class BacktestStyles:
         """콤보박스 스타일"""
         return f"""
             QComboBox {{
-                background: {_tokens.bg_elevated};
-                color: {_tokens.text_primary};
-                padding: 5px;
-                border: 1px solid {_tokens.border_default};
+                background: {Colors.bg_elevated};
+                color: {Colors.text_primary};
+                padding: {Spacing.space_1};
+                border: 1px solid {Colors.border_default};
                 border-radius: 3px;
             }}
             QComboBox:hover {{
-                border: 1px solid {_tokens.border_accent};
+                border: 1px solid {Colors.border_accent};
             }}
             QComboBox::drop-down {{
                 border: none;
             }}
             QComboBox QAbstractItemView {{
-                background: {_tokens.bg_elevated};
-                color: {_tokens.text_primary};
-                selection-background-color: {_tokens.accent_primary};
+                background: {Colors.bg_elevated};
+                color: {Colors.text_primary};
+                selection-background-color: {Colors.accent_primary};
             }}
         """
 
@@ -127,23 +124,23 @@ class BacktestStyles:
         """테이블 스타일"""
         return f"""
             QTableWidget {{
-                background: {_tokens.bg_surface};
-                color: {_tokens.text_primary};
+                background: {Colors.bg_surface};
+                color: {Colors.text_primary};
                 border: none;
-                gridline-color: {_tokens.border_default};
+                gridline-color: {Colors.border_default};
             }}
             QHeaderView::section {{
-                background: {_tokens.bg_base};
-                color: {_tokens.text_secondary};
-                padding: 6px;
-                border: 1px solid {_tokens.border_default};
-                font-weight: bold;
+                background: {Colors.bg_base};
+                color: {Colors.text_secondary};
+                padding: {Spacing.space_2};
+                border: 1px solid {Colors.border_default};
+                font-weight: {Typography.font_bold};
             }}
             QTableWidget::item {{
-                padding: 4px;
+                padding: {Spacing.space_1};
             }}
             QTableWidget::item:selected {{
-                background: {_tokens.accent_primary}40;
+                background: {Colors.accent_primary}40;
             }}
         """
 
@@ -152,17 +149,17 @@ class BacktestStyles:
         """진행 바 스타일"""
         return f"""
             QProgressBar {{
-                border: 1px solid {_tokens.border_default};
+                border: 1px solid {Colors.border_default};
                 border-radius: 5px;
                 text-align: center;
-                background: {_tokens.bg_base};
-                color: {_tokens.text_primary};
+                background: {Colors.bg_base};
+                color: {Colors.text_primary};
                 height: 25px;
-                font-weight: bold;
+                font-weight: {Typography.font_bold};
             }}
             QProgressBar::chunk {{
-                background: {_tokens.accent_primary};
-                border-radius: 4px;
+                background: {Colors.accent_primary};
+                border-radius: {Radius.radius_sm};
             }}
         """
 
@@ -173,20 +170,20 @@ class BacktestStyles:
         Args:
             border_color: 테두리 색상 (기본값: border_default)
         """
-        color = border_color or _tokens.border_default
+        color = border_color or Colors.border_default
         return f"""
             QGroupBox {{
                 border: 1px solid {color};
                 border-radius: 5px;
-                margin-top: 10px;
-                font-weight: bold;
+                margin-top: {Spacing.space_3};
+                font-weight: {Typography.font_bold};
                 color: {color};
-                padding-top: 10px;
+                padding-top: {Spacing.space_3};
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 5px;
+                padding: {Spacing.space_0} {Spacing.space_1};
             }}
         """
 
@@ -195,25 +192,25 @@ class BacktestStyles:
         """탭 위젯 스타일"""
         return f"""
             QTabWidget::pane {{
-                border: 1px solid {_tokens.border_default};
-                border-radius: 4px;
+                border: 1px solid {Colors.border_default};
+                border-radius: {Radius.radius_sm};
             }}
             QTabBar::tab {{
-                background: {_tokens.bg_elevated};
-                color: {_tokens.text_secondary};
-                padding: 10px 25px;
-                margin-right: 2px;
-                font-weight: bold;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
+                background: {Colors.bg_elevated};
+                color: {Colors.text_secondary};
+                padding: {Spacing.space_3} {Spacing.space_6};
+                margin-right: {Spacing.space_0};
+                font-weight: {Typography.font_bold};
+                border-top-left-radius: {Radius.radius_sm};
+                border-top-right-radius: {Radius.radius_sm};
             }}
             QTabBar::tab:selected {{
-                background: {_tokens.bg_overlay};
-                color: {_tokens.text_primary};
-                border-bottom: 2px solid {_tokens.success};
+                background: {Colors.bg_overlay};
+                color: {Colors.text_primary};
+                border-bottom: 2px solid {Colors.success};
             }}
             QTabBar::tab:hover {{
-                background: {_tokens.bg_overlay};
+                background: {Colors.bg_overlay};
             }}
         """
 
@@ -222,18 +219,18 @@ class BacktestStyles:
         """스핀박스 스타일"""
         return f"""
             QSpinBox, QDoubleSpinBox {{
-                background: {_tokens.bg_elevated};
-                color: {_tokens.text_primary};
-                padding: 5px;
-                border: 1px solid {_tokens.border_default};
+                background: {Colors.bg_elevated};
+                color: {Colors.text_primary};
+                padding: {Spacing.space_1};
+                border: 1px solid {Colors.border_default};
                 border-radius: 3px;
             }}
             QSpinBox:hover, QDoubleSpinBox:hover {{
-                border: 1px solid {_tokens.border_accent};
+                border: 1px solid {Colors.border_accent};
             }}
             QSpinBox::up-button, QDoubleSpinBox::up-button,
             QSpinBox::down-button, QDoubleSpinBox::down-button {{
-                background: {_tokens.bg_overlay};
+                background: {Colors.bg_overlay};
                 border: none;
             }}
         """
@@ -241,12 +238,12 @@ class BacktestStyles:
     @staticmethod
     def label_secondary() -> str:
         """보조 라벨 스타일"""
-        return f"color: {_tokens.text_secondary}; font-size: 11px;"
+        return f"color: {Colors.text_secondary}; font-size: {Typography.text_xs};"
 
     @staticmethod
     def label_primary() -> str:
         """주요 라벨 스타일"""
-        return f"color: {_tokens.text_primary}; font-size: 14px; font-weight: bold;"
+        return f"color: {Colors.text_primary}; font-size: {Typography.text_base}; font-weight: {Typography.font_bold};"
 
     @staticmethod
     def label_value(color: str | None = None) -> str:
@@ -255,5 +252,5 @@ class BacktestStyles:
         Args:
             color: 텍스트 색상 (기본값: text_primary)
         """
-        text_color = color or _tokens.text_primary
-        return f"color: {text_color}; font-size: 14px; font-weight: bold;"
+        text_color = color or Colors.text_primary
+        return f"color: {text_color}; font-size: {Typography.text_base}; font-weight: {Typography.font_bold};"

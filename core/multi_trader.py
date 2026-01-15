@@ -25,7 +25,7 @@ logger = logging.getLogger("MultiTrader")
 
 
 class MultiTrader:
-    """멀티 매매 시스템"""
+    """멀티 매매 시스템 (v2.2 - Phase 4.2 상태 콜백 추가)"""
 
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
@@ -35,23 +35,45 @@ class MultiTrader:
         self.seed = self.config.get('seed', 100.0)
         self.leverage = self.config.get('leverage', 10)
         self.capital_mode = self.config.get('capital_mode', 'compound')
-        
+
         self.running = False
         self.monitoring_thread = None
         self._lock = threading.Lock()
-        
+
         self.watching_symbols = []
         self.pending_signals = []
         self.active_position = None
-        
+
         self.em = ExchangeManager()
         self.cm = CapitalManager(initial_capital=self.seed, fixed_amount=self.seed)
         self.core = AlphaX7Core()
 
         self.adapter: Optional[Any] = None  # BaseExchange 또는 ccxt 객체
         self.executor: Optional[OrderExecutor] = None
-        
+
         self.stats = {'watching': 0, 'pending': [], 'active': None}
+
+        # Phase 4.2: 상태 업데이트 콜백 (UI 연동)
+        self.status_callback: Optional[Any] = None  # callable(stats: dict)
+
+    # === Phase 4.2: 상태 업데이트 메서드 ===
+
+    def set_status_callback(self, callback):
+        """상태 업데이트 콜백 설정
+
+        Args:
+            callback: callable(stats: dict) - 상태 변경 시 호출될 함수
+        """
+        self.status_callback = callback
+        logger.info("[MultiTrader] 상태 콜백 설정됨")
+
+    def _notify_status_update(self):
+        """상태 업데이트 콜백 호출 (내부용)"""
+        if self.status_callback:
+            try:
+                self.status_callback(self.stats.copy())
+            except Exception as e:
+                logger.error(f"[MultiTrader] 상태 콜백 에러: {e}")
 
     # === 프리셋 관리 ===
     
@@ -204,11 +226,11 @@ class MultiTrader:
     def _scan_signals(self):
         """시그널 스캔"""
         signals = []
-        
+
         for symbol in self.watching_symbols:
             if not self.running:
                 break
-            
+
             try:
                 if not self.adapter:
                     continue
@@ -227,10 +249,13 @@ class MultiTrader:
                     })
             except Exception:
                 continue
-        
+
         self.pending_signals = signals
         self.stats['watching'] = len(self.watching_symbols)
         self.stats['pending'] = signals
+
+        # Phase 4.2: 상태 업데이트 콜백 호출
+        self._notify_status_update()
     
     def _try_enter_best(self):
         """최고 시그널 진입"""
@@ -295,6 +320,10 @@ class MultiTrader:
                 'pnl': 0.0
             }
             self.stats['active'] = self.active_position
+
+            # Phase 4.2: 상태 업데이트 콜백 호출 (포지션 진입 시)
+            self._notify_status_update()
+
             logger.info(f"✅ [MultiTrader] 진입 성공: {symbol}")
     
     def _check_position(self):
@@ -322,11 +351,14 @@ class MultiTrader:
             
             self.active_position['pnl'] = pnl_pct
             self.stats['active'] = self.active_position
-            
+
+            # Phase 4.2: 상태 업데이트 콜백 호출 (PnL 변경 시)
+            self._notify_status_update()
+
             # 청산 조건: TP 1.5%, SL -1.0%
             if pnl_pct >= 1.5 or pnl_pct <= -1.0:
                 self._close_position(pnl_pct)
-                
+
         except Exception as e:
             logger.error(f"[MultiTrader] 포지션 체크 에러: {e}")
     
@@ -344,10 +376,13 @@ class MultiTrader:
             
             self.cm.update_after_trade(pnl_usd)
             self.seed = self.cm.current_capital
-            
+
             self.active_position = None
             self.stats['active'] = None
-            
+
+            # Phase 4.2: 상태 업데이트 콜백 호출 (포지션 청산 시)
+            self._notify_status_update()
+
             logger.info(f"🔄 [MultiTrader] 청산 완료 → 시드: ${self.seed:.2f}")
     
     def get_stats(self) -> dict:

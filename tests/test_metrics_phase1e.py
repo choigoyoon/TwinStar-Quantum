@@ -91,9 +91,9 @@ class TestPhase1ESSOT(unittest.TestCase):
         pnls = [t['pnl'] for t in self.normal_trades]
         stability = calculate_stability(pnls)
 
-        # 검증: stability는 "✅" 또는 "⚠️" 조합
+        # 검증: stability는 "✅" 또는 "⚠" 조합 (Variation Selector 없음)
         self.assertIsInstance(stability, str)
-        self.assertTrue(all(c in ['✅', '⚠️'] for c in stability))
+        self.assertTrue(all(c in ['✅', '⚠'] for c in stability))
         self.assertEqual(len(stability), 3)  # 3구간
 
     def test_clamping_policy(self):
@@ -219,12 +219,12 @@ class TestPhase1ESSOT(unittest.TestCase):
         # 3구간 모두 손실
         all_negative = [-10, -10, -10, -10, -10, -10]
         stability_all_neg = calculate_stability(all_negative)
-        self.assertEqual(stability_all_neg, "⚠️⚠️⚠️")
+        self.assertEqual(stability_all_neg, "⚠⚠⚠")
 
         # 2구간 수익, 1구간 손실
         mixed = [10, 10, 10, 10, -10, -10]
         stability_mixed = calculate_stability(mixed)
-        self.assertIn(stability_mixed, ["✅✅⚠️", "✅⚠️✅", "⚠️✅✅"])
+        self.assertIn(stability_mixed, ["✅✅⚠", "✅⚠✅", "⚠✅✅"])
 
 
 if __name__ == '__main__':

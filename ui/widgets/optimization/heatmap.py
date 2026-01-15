@@ -208,9 +208,9 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
         if data is None or data.size == 0:
             return
 
-        self._data = data
-        self._x_labels = x_labels or []
-        self._y_labels = y_labels or []
+        self._data = data.copy()  # NumPy 배열 복사 (참조가 아닌 복사본 저장)
+        self._x_labels = x_labels.copy() if x_labels else []
+        self._y_labels = y_labels.copy() if y_labels else []
 
         # 컬러맵 변경
         if colormap and colormap != self._current_colormap:
@@ -323,11 +323,16 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
 
     def clear(self):
         """히트맵 초기화"""
+        # 데이터 초기화
         self._data = None
         self._x_labels = []
         self._y_labels = []
-        self.image_item.clear()
 
+        # ImageItem 초기화
+        if self.image_item is not None:
+            self.image_item.clear()
+
+        # 툴팁 제거
         if self._tooltip_label:
             self.plot_item.removeItem(self._tooltip_label)
             self._tooltip_label = None

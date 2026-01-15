@@ -22,23 +22,8 @@ if not getattr(sys, 'frozen', False):
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Module imports
-try:
-    from constants import EXCHANGE_INFO, SPOT_EXCHANGES, KRW_EXCHANGES
-except ImportError:
-    try:
-        from GUI.constants import EXCHANGE_INFO, SPOT_EXCHANGES, KRW_EXCHANGES
-    except ImportError:
-        EXCHANGE_INFO = {
-            'bybit': {'type': 'CEX', 'icon': '🟡', 'testnet': True, 'maker_fee': 0.02, 'taker_fee': 0.055},
-            'binance': {'type': 'CEX', 'icon': '🟠', 'testnet': True, 'maker_fee': 0.02, 'taker_fee': 0.04},
-            'okx': {'type': 'CEX', 'icon': '⚪', 'passphrase': True, 'maker_fee': 0.02, 'taker_fee': 0.05},
-            'bitget': {'type': 'CEX', 'icon': '🔵', 'passphrase': True, 'maker_fee': 0.02, 'taker_fee': 0.06},
-            'upbit': {'type': 'CEX', 'icon': '🟣', 'ip_required': True, 'market': 'KRW'},
-            'bithumb': {'type': 'CEX', 'icon': '🟤', 'ip_required': True, 'market': 'KRW'},
-        }
-        SPOT_EXCHANGES = ['upbit', 'bithumb']
-        KRW_EXCHANGES = ['upbit', 'bithumb']
+# Module imports (SSOT)
+from config.constants import EXCHANGE_INFO, SPOT_EXCHANGES, KRW_EXCHANGES
 
 try:
     from crypto_manager import load_api_keys, save_api_keys
@@ -717,6 +702,42 @@ class SettingsWidget(QWidget):
         lang_note.setStyleSheet("color: #666; font-size: 11px; padding: 5px;")
         layout.addWidget(lang_note)
 
+        # GPU Settings Section
+        gpu_group = QGroupBox("🎮 GPU 설정 (GPU Settings)")
+        gpu_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                padding: 15px;
+                margin-top: 10px;
+                font-weight: bold;
+            }
+        """)
+        gpu_layout = QVBoxLayout(gpu_group)
+
+        gpu_desc = QLabel("앱 재시작 후 적용됩니다 / Changes apply after app restart")
+        gpu_desc.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        gpu_layout.addWidget(gpu_desc)
+
+        gpu_btn = QPushButton("⚙️ GPU 설정 열기 (Open GPU Settings)")
+        gpu_btn.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover { background: #2980b9; }
+        """)
+        gpu_btn.clicked.connect(self._open_gpu_settings)
+        gpu_layout.addWidget(gpu_btn)
+
+        layout.addWidget(gpu_group)
+
         # Exchange selection
         exchange_select = QGroupBox(t("settings.exchanges", "Exchange Selection"))
         exchange_select.setStyleSheet("QGroupBox { color: white; border: 1px solid #2a2e3b; border-radius: 5px; padding: 10px; }")
@@ -832,8 +853,11 @@ class SettingsWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, t("common.error", t("common.error")), f"Save failed: {e}")
     
-    def _on_language_changed(self, index):
+    def _on_language_changed(self, index: int):
         """언어 변경 핸들러"""
+        # index는 시그널에서 전달되지만 직접 사용하지 않음
+        _ = index
+
         # [FIX] lang_combo 미정의 시 안전 체크
         if not hasattr(self, 'lang_combo') or self.lang_combo is None:
             return
@@ -1173,6 +1197,47 @@ class SettingsWidget(QWidget):
                 
         except Exception as e:
             QMessageBox.critical(self, "오류", f"결제 다이얼로그 오류: {e}")
+
+    def _open_gpu_settings(self):
+        """GPU 설정 다이얼로그 열기"""
+        try:
+            from PyQt6.QtWidgets import QDialog, QVBoxLayout
+            from ui.widgets.settings.gpu_tab import GPUSettingsTab
+
+            # 다이얼로그 생성
+            dialog = QDialog(self)
+            dialog.setWindowTitle("🎮 GPU 설정 (GPU Settings)")
+            dialog.setModal(True)
+            dialog.resize(800, 700)
+
+            # 레이아웃
+            layout = QVBoxLayout(dialog)
+            layout.setContentsMargins(0, 0, 0, 0)
+
+            # GPU 설정 위젯 추가
+            gpu_widget = GPUSettingsTab()
+            layout.addWidget(gpu_widget)
+
+            # 다이얼로그 표시
+            dialog.exec()
+
+            # 설정 변경 시 재시작 안내
+            QMessageBox.information(
+                self,
+                "GPU 설정",
+                "GPU 설정이 저장되었습니다.\n변경사항은 앱 재시작 후 적용됩니다.\n\n"
+                "GPU settings saved.\nChanges will apply after app restart."
+            )
+
+        except ImportError as e:
+            QMessageBox.warning(
+                self,
+                "오류",
+                f"GPU 설정 모듈을 불러올 수 없습니다.\n{e}\n\n"
+                "ui/widgets/settings/gpu_tab.py 파일을 확인하세요."
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "오류", f"GPU 설정 오류: {e}")
 
 
 if __name__ == "__main__":

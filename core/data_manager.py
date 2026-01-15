@@ -40,6 +40,24 @@ class BotDataManager:
     MAX_ENTRY_MEMORY = 1000   # 15m candles: 1000 ≈ 10.4 days
     MAX_PATTERN_MEMORY = 300  # 1h candles: 300 ≈ 12.5 days
 
+    @staticmethod
+    def _normalize_exchange(exchange: str) -> str:
+        """거래소 이름 정규화 (SSOT: config.constants.parquet)"""
+        from config.constants import normalize_exchange
+        return normalize_exchange(exchange)
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        """심볼 정규화 (SSOT: config.constants.parquet)"""
+        from config.constants import normalize_symbol
+        return normalize_symbol(symbol)
+
+    @staticmethod
+    def _normalize_timeframe(timeframe: str) -> str:
+        """타임프레임 정규화 (SSOT: config.constants.parquet)"""
+        from config.constants import normalize_timeframe
+        return normalize_timeframe(timeframe)
+
     def __init__(
         self,
         exchange_name: str,
@@ -54,8 +72,8 @@ class BotDataManager:
             strategy_params: 전략 파라미터
             cache_dir: 캐시 디렉토리 경로 (기본: paths.Paths.CACHE)
         """
-        self.exchange_name = exchange_name.lower()
-        self.symbol_clean = symbol.lower().replace('/', '').replace(':', '').replace('-', '')
+        self.exchange_name = self._normalize_exchange(exchange_name)
+        self.symbol_clean = self._normalize_symbol(symbol)
         self.strategy_params = strategy_params or {}
         
         # 캐시 경로 설정
@@ -92,16 +110,55 @@ class BotDataManager:
     # ========== Parquet 파일 경로 ==========
     
     def get_entry_file_path(self) -> Path:
-        """15m Entry 데이터 Parquet 경로 (단일 소스)"""
-        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_15m.parquet"
-    
+        """
+        15m Entry 데이터 Parquet 경로 (단일 소스)
+
+        Returns:
+            Path 객체 (형식: {exchange}_{symbol}_15m.parquet)
+
+        Note:
+            모든 요소가 소문자로 정규화됨
+            예: bybit_btcusdt_15m.parquet
+        """
+        tf = self._normalize_timeframe('15m')
+        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_{tf}.parquet"
+
     def get_pattern_file_path(self) -> Path:
         """
         [DEPRECATED] 1h Pattern 데이터 경로
         15m 단일 소스 원칙: 15m 데이터를 resample_data()로 리샘플링하여 사용 권장
         호환성을 위해 유지하나, 새 코드는 get_entry_file_path() + resample_data() 사용
+
+        Returns:
+            Path 객체 (형식: {exchange}_{symbol}_1h.parquet)
+
+        Note:
+            모든 요소가 소문자로 정규화됨
+            예: bybit_btcusdt_1h.parquet
         """
-        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_1h.parquet"
+        tf = self._normalize_timeframe('1h')
+        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_{tf}.parquet"
+
+    def get_parquet_path(self, timeframe: str) -> Path:
+        """
+        특정 타임프레임의 Parquet 파일 경로 (범용)
+
+        Args:
+            timeframe: 타임프레임 ('15m', '1H', '4h', '1D' 등)
+
+        Returns:
+            Path 객체 (형식: {exchange}_{symbol}_{timeframe}.parquet)
+
+        Examples:
+            get_parquet_path('15m') → bybit_btcusdt_15m.parquet
+            get_parquet_path('1H') → bybit_btcusdt_1h.parquet (자동 소문자 변환)
+            get_parquet_path('4H') → bybit_btcusdt_4h.parquet
+
+        Note:
+            모든 요소가 소문자로 정규화됨
+        """
+        tf = self._normalize_timeframe(timeframe)
+        return self.cache_dir / f"{self.exchange_name}_{self.symbol_clean}_{tf}.parquet"
     
     # ========== 데이터 로드 ==========
     
@@ -174,87 +231,67 @@ class BotDataManager:
         """
         원본 데이터(df_entry_full)로부터 리샘플링 및 지표 생성
         """
-        if self.df_entry_full is None or self.df_entry_full.empty:
-            return
-        
-        try:
-            # 지표 생성기 import
-            try:
-                from utils.indicators import add_all_indicators
-            except ImportError:
-                from utils.indicators import IndicatorGenerator
-                add_all_indicators = IndicatorGenerator.add_all_indicators
-            
-            # 1. Entry TF 리샘플링
-            entry_tf = self.strategy_params.get('entry_tf', '15m')
-            if entry_tf in ['15m', '15min']:
-                self.df_entry_resampled = self.df_entry_full.copy()
-            else:
-                resample_rule = TF_RESAMPLE_FIX.get(entry_tf, entry_tf)
-                if resample_rule and resample_rule.endswith('m') and not resample_rule.endswith('min'):
-                    resample_rule = resample_rule.replace('m', 'min')
-                
-                logging.info(f"[DATA] Resampling: 15m -> {entry_tf}")
+        with self._data_lock:
+            if self.df_entry_full is None or self.df_entry_full.empty:
+                return
 
-                # TODO: Refactor to use utils.data_utils.resample_data() for SSOT compliance
-                # Current logic has conditional resample_rule which needs careful handling
+            try:
+                # 1. Entry TF 리샘플링
+                entry_tf = self.strategy_params.get('entry_tf', '15m')
+                if entry_tf in ['15m', '15min']:
+                    self.df_entry_resampled = self.df_entry_full.copy()
+                else:
+                    resample_rule = TF_RESAMPLE_FIX.get(entry_tf, entry_tf)
+                    if resample_rule and resample_rule.endswith('m') and not resample_rule.endswith('min'):
+                        resample_rule = resample_rule.replace('m', 'min')
+
+                    logging.info(f"[DATA] Resampling: 15m -> {entry_tf}")
+
+                    # SSOT: utils.data_utils.resample_data() 사용 (Phase 2 Task 2.2)
+                    from utils.data_utils import resample_data
+                    self.df_entry_resampled = resample_data(
+                        self.df_entry_full,
+                        entry_tf,
+                        add_indicators=True
+                    )
+                logging.info(f"[DATA] Entry processed ({entry_tf}): {len(self.df_entry_resampled)} candles")
+
+                # 2. Pattern Data 생성 (기본 1h, 파라미터로 변경 가능)
+                pattern_tf = self.strategy_params.get('pattern_tf', '1h')
+                resample_rule_pattern = TF_RESAMPLE_FIX.get(pattern_tf, pattern_tf)
+                if resample_rule_pattern and resample_rule_pattern.endswith('m') and not resample_rule_pattern.endswith('min'):
+                    resample_rule_pattern = resample_rule_pattern.replace('m', 'min')
+
                 df_temp = self.df_entry_full.copy()
                 if 'timestamp' in df_temp.columns:
                     df_temp = df_temp.set_index('timestamp')
 
-                if resample_rule:
-                    self.df_entry_resampled = df_temp.resample(resample_rule).agg({
-                        'open': 'first', 'high': 'max', 'low': 'min',
-                        'close': 'last', 'volume': 'sum'
-                    }).dropna().reset_index()
-                else:
-                    self.df_entry_resampled = self.df_entry_full.copy()
-            
-            # Entry 지표 추가
-            self.df_entry_resampled = add_all_indicators(self.df_entry_resampled)
-            logging.info(f"[DATA] Entry processed ({entry_tf}): {len(self.df_entry_resampled)} candles")
-            
-            # 2. Pattern Data 생성 (기본 1h, 파라미터로 변경 가능)
-            pattern_tf = self.strategy_params.get('pattern_tf', '1h')
-            resample_rule_pattern = TF_RESAMPLE_FIX.get(pattern_tf, pattern_tf)
-            if resample_rule_pattern and resample_rule_pattern.endswith('m') and not resample_rule_pattern.endswith('min'):
-                resample_rule_pattern = resample_rule_pattern.replace('m', 'min')
-                
-            df_temp = self.df_entry_full.copy()
-            if 'timestamp' in df_temp.columns:
-                df_temp = df_temp.set_index('timestamp')
-            
-            logging.info(f"[DATA] Resampling Pattern: 15m -> {pattern_tf}")
+                logging.info(f"[DATA] Resampling Pattern: 15m -> {pattern_tf}")
 
-            # TODO: Refactor to use utils.data_utils.resample_data() for SSOT compliance
-            # Current logic has conditional resample_rule_pattern which needs careful handling
-            if resample_rule_pattern:
-                self.df_pattern_full = df_temp.resample(resample_rule_pattern).agg({
-                    'open': 'first', 'high': 'max', 'low': 'min',
-                    'close': 'last', 'volume': 'sum'
-                }).dropna().reset_index()
-            else:
-                self.df_pattern_full = df_temp.copy()
-            
-            # Pattern 지표 추가
-            self.df_pattern_full = add_all_indicators(self.df_pattern_full)
-            
-            if 'timestamp' not in self.df_pattern_full.columns:
-                self.df_pattern_full = self.df_pattern_full.reset_index()
-                if 'index' in self.df_pattern_full.columns:
-                    self.df_pattern_full = self.df_pattern_full.rename(columns={'index': 'timestamp'})
-            
-            logging.info(f"[DATA] Pattern processed (1h): {len(self.df_pattern_full)} candles")
-            
-            # 캐시 동기화
-            self.indicator_cache['df_pattern'] = self.df_pattern_full
-            self.indicator_cache['df_entry'] = self.df_entry_resampled
-            self.indicator_cache['last_update'] = pd.Timestamp.utcnow()
-            
-        except Exception as e:
-            logging.error(f"[DATA] Processing failed: {e}")
-            import traceback
-            traceback.print_exc()
+                # SSOT: utils.data_utils.resample_data() 사용 (Phase 2 Task 2.2)
+                from utils.data_utils import resample_data
+                self.df_pattern_full = resample_data(
+                    self.df_entry_full,
+                    pattern_tf,
+                    add_indicators=True
+                )
+
+                if 'timestamp' not in self.df_pattern_full.columns:
+                    self.df_pattern_full = self.df_pattern_full.reset_index()
+                    if 'index' in self.df_pattern_full.columns:
+                        self.df_pattern_full = self.df_pattern_full.rename(columns={'index': 'timestamp'})
+
+                logging.info(f"[DATA] Pattern processed (1h): {len(self.df_pattern_full)} candles")
+
+                # 캐시 동기화
+                self.indicator_cache['df_pattern'] = self.df_pattern_full
+                self.indicator_cache['df_entry'] = self.df_entry_resampled
+                self.indicator_cache['last_update'] = pd.Timestamp.utcnow()
+
+            except Exception as e:
+                logging.error(f"[DATA] Processing failed: {e}")
+                import traceback
+                traceback.print_exc()
     
     # ========== 데이터 저장 ==========
     
@@ -267,45 +304,46 @@ class BotDataManager:
             - Memory (df_entry_full) limited to last 1000 candles (see append_candle)
             - Compression: zstd (5-10x size reduction)
         """
-        try:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        with self._data_lock:
+            try:
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-            # 15m 데이터 저장 (FULL HISTORY - NO TRUNCATION)
-            if self.df_entry_full is not None and len(self.df_entry_full) > 0:
-                entry_file = self.get_entry_file_path()
-                save_df = self.df_entry_full.copy()  # FULL HISTORY
+                # 15m 데이터 저장 (FULL HISTORY - NO TRUNCATION)
+                if self.df_entry_full is not None and len(self.df_entry_full) > 0:
+                    entry_file = self.get_entry_file_path()
+                    save_df = self.df_entry_full.copy()  # FULL HISTORY
 
-                # Timestamp 처리 (ms 정수로)
-                if 'timestamp' in save_df.columns:
-                    if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
-                        save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
+                    # Timestamp 처리 (ms 정수로)
+                    if 'timestamp' in save_df.columns:
+                        if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
+                            save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
 
-                save_df.to_parquet(entry_file, index=False, compression='zstd')
-                logging.debug(f"[DATA] Saved 15m: {entry_file.name} ({len(save_df)} candles)")
+                    save_df.to_parquet(entry_file, index=False, compression='zstd')
+                    logging.debug(f"[DATA] Saved 15m: {entry_file.name} ({len(save_df)} candles)")
 
-                # Bithumb -> Upbit 복제 (하이브리드 모드)
-                if self.exchange_name == 'bithumb':
-                    try:
-                        upbit_file = self.cache_dir / f"upbit_{self.symbol_clean}_15m.parquet"
-                        import shutil
-                        shutil.copy(entry_file, upbit_file)
-                    except Exception:
-                        pass  # Error silenced
+                    # Bithumb -> Upbit 복제 (하이브리드 모드)
+                    if self.exchange_name == 'bithumb':
+                        try:
+                            upbit_file = self.cache_dir / f"upbit_{self.symbol_clean}_15m.parquet"
+                            import shutil
+                            shutil.copy(entry_file, upbit_file)
+                        except Exception:
+                            pass  # Error silenced
 
-            # 1h 데이터 저장 (FULL HISTORY - NO TRUNCATION)
-            if self.df_pattern_full is not None and len(self.df_pattern_full) > 0:
-                pattern_file = self.get_pattern_file_path()
-                p_save_df = self.df_pattern_full.copy()  # FULL HISTORY
+                # 1h 데이터 저장 (FULL HISTORY - NO TRUNCATION)
+                if self.df_pattern_full is not None and len(self.df_pattern_full) > 0:
+                    pattern_file = self.get_pattern_file_path()
+                    p_save_df = self.df_pattern_full.copy()  # FULL HISTORY
 
-                if 'timestamp' in p_save_df.columns:
-                    if pd.api.types.is_datetime64_any_dtype(p_save_df['timestamp']):
-                        p_save_df['timestamp'] = p_save_df['timestamp'].astype(np.int64) // 10**6
+                    if 'timestamp' in p_save_df.columns:
+                        if pd.api.types.is_datetime64_any_dtype(p_save_df['timestamp']):
+                            p_save_df['timestamp'] = p_save_df['timestamp'].astype(np.int64) // 10**6
 
-                p_save_df.to_parquet(pattern_file, index=False, compression='zstd')
-                logging.debug(f"[DATA] Saved 1h: {pattern_file.name} ({len(p_save_df)} candles)")
+                    p_save_df.to_parquet(pattern_file, index=False, compression='zstd')
+                    logging.debug(f"[DATA] Saved 1h: {pattern_file.name} ({len(p_save_df)} candles)")
 
-        except Exception as e:
-            logging.error(f"[DATA] Save failed: {e}")
+            except Exception as e:
+                logging.error(f"[DATA] Save failed: {e}")
 
     def _save_with_lazy_merge(self) -> None:
         """Parquet Lazy Load 병합 저장
@@ -325,57 +363,65 @@ class BotDataManager:
             - Parquet 압축률 92% (280KB/35,000개)
             - Bithumb 데이터는 Upbit로 자동 복제
         """
-        try:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-            entry_file = self.get_entry_file_path()
+        with self._data_lock:
+            try:
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+                entry_file = self.get_entry_file_path()
 
-            # 1. 기존 Parquet 로드 (Lazy Load)
-            if entry_file.exists():
-                df_old = pd.read_parquet(entry_file)
+                # 1. 기존 Parquet 로드 (Lazy Load)
+                if entry_file.exists():
+                    df_old = pd.read_parquet(entry_file)
 
-                # 타임스탬프 정규화
-                if 'timestamp' in df_old.columns:
-                    if pd.api.types.is_numeric_dtype(df_old['timestamp']):
-                        df_old['timestamp'] = pd.to_datetime(df_old['timestamp'], unit='ms', utc=True)
-                    else:
-                        df_old['timestamp'] = pd.to_datetime(df_old['timestamp'])
-            else:
-                df_old = pd.DataFrame()
+                    # 타임스탬프 정규화
+                    if 'timestamp' in df_old.columns:
+                        if pd.api.types.is_numeric_dtype(df_old['timestamp']):
+                            df_old['timestamp'] = pd.to_datetime(df_old['timestamp'], unit='ms', utc=True)
+                        else:
+                            df_old['timestamp'] = pd.to_datetime(df_old['timestamp'])
+                else:
+                    df_old = pd.DataFrame()
 
-            # 2. 현재 메모리와 병합 (중복 제거)
-            if self.df_entry_full is None or self.df_entry_full.empty:
-                # 메모리에 데이터가 없으면 저장할 필요 없음
-                return
+                # 2. 현재 메모리와 병합 (중복 제거)
+                if self.df_entry_full is None or self.df_entry_full.empty:
+                    # 메모리에 데이터가 없으면 저장할 필요 없음
+                    return
 
-            if len(df_old) > 0:
-                df_merged = pd.concat([df_old, self.df_entry_full], ignore_index=True)
-            else:
-                df_merged = self.df_entry_full.copy()
+                if len(df_old) > 0:
+                    df_merged = pd.concat([df_old, self.df_entry_full], ignore_index=True)
+                else:
+                    df_merged = self.df_entry_full.copy()
 
-            df_merged = df_merged.drop_duplicates(subset='timestamp', keep='last')
-            df_merged = df_merged.sort_values('timestamp').reset_index(drop=True)
+                df_merged = df_merged.drop_duplicates(subset='timestamp', keep='last')
+                df_merged = df_merged.sort_values('timestamp').reset_index(drop=True)
 
-            # 3. Parquet 저장 (타임스탬프 int64 변환)
-            save_df = df_merged.copy()
-            if 'timestamp' in save_df.columns:
-                if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
-                    save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
+                # 3. Parquet 저장 (타임스탬프 int64 변환)
+                save_df = df_merged.copy()
+                if 'timestamp' in save_df.columns:
+                    if pd.api.types.is_datetime64_any_dtype(save_df['timestamp']):
+                        save_df['timestamp'] = save_df['timestamp'].astype(np.int64) // 10**6
 
-            save_df.to_parquet(entry_file, index=False, compression='zstd')
-            logging.debug(f"[DATA] Saved 15m: {entry_file.name} ({len(save_df)} candles)")
+                # ✅ P0-2: 트랜잭션 패턴 (파일 손상 방지)
+                temp_file = entry_file.with_suffix('.tmp')
+                save_df.to_parquet(temp_file, index=False, compression='zstd')
 
-            # Bithumb -> Upbit 복제 (한국 거래소 호환)
-            if self.exchange_name == 'bithumb':
-                try:
-                    upbit_file = self.cache_dir / f"upbit_{self.symbol_clean}_15m.parquet"
-                    import shutil
-                    shutil.copy(entry_file, upbit_file)
-                    logging.debug(f"[DATA] Replicated to Upbit: {upbit_file.name}")
-                except Exception as e:
-                    logging.warning(f"[DATA] Upbit replication failed: {e}")
+                # 성공하면 원본 교체
+                temp_file.replace(entry_file)
+                logging.debug(f"[DATA] Saved 15m: {entry_file.name} ({len(save_df)} candles)")
 
-        except Exception as e:
-            logging.error(f"[DATA] Lazy merge save failed: {e}", exc_info=True)
+                # Bithumb -> Upbit 복제 (한국 거래소 호환)
+                if self.exchange_name == 'bithumb':
+                    try:
+                        import time
+                        time.sleep(0.1)  # ✅ P1-10: 파일 시스템 동기화 대기
+                        upbit_file = self.cache_dir / f"upbit_{self.symbol_clean}_15m.parquet"
+                        import shutil
+                        shutil.copy(entry_file, upbit_file)
+                        logging.debug(f"[DATA] Replicated to Upbit: {upbit_file.name}")
+                    except Exception as e:
+                        logging.error(f"[DATA] Upbit replication failed: {e}")  # ✅ 로깅 레벨 변경
+
+            except Exception as e:
+                logging.error(f"[DATA] Lazy merge save failed: {e}", exc_info=True)
 
     # ========== 캔들 추가/보충 ==========
     
@@ -442,7 +488,7 @@ class BotDataManager:
                 last_ts = last_ts.tz_localize('UTC')
             gap_minutes = (now - last_ts).total_seconds() / 60
             
-            if gap_minutes < 16:  # 15분 이내는 정상
+            if gap_minutes < 14:  # 15분 캔들 기준 (여유 1분)
                 logging.debug(f"[BACKFILL] No gap (last: {last_ts})")
                 return 0
             
@@ -456,8 +502,13 @@ class BotDataManager:
                 if new_df is not None and len(new_df) > 0:
                     if 'timestamp' not in new_df.columns and new_df.index.name == 'timestamp':
                         new_df = new_df.reset_index()
-                    
-                    new_df['timestamp'] = pd.to_datetime(new_df['timestamp'])
+
+                    # Fix: Make a copy to avoid SettingWithCopyWarning
+                    new_df = new_df.copy()
+
+                    # Fix: Ensure timezone-aware timestamps for comparison
+                    new_df['timestamp'] = pd.to_datetime(new_df['timestamp'], utc=True)
+                    assert new_df['timestamp'].dt.tz is not None, "Timestamp must be timezone-aware"
                     fresh = new_df[new_df['timestamp'] > last_ts].copy()
                     
                     if not fresh.empty:
@@ -509,41 +560,42 @@ class BotDataManager:
             - Parquet는 전체 히스토리 보존 (35,000+ candles)
             - 백테스트는 이 메서드로 전체 데이터 로드 필요
         """
-        try:
-            entry_file = self.get_entry_file_path()
+        with self._data_lock:
+            try:
+                entry_file = self.get_entry_file_path()
 
-            if not entry_file.exists():
-                logging.warning(f"[DATA] Parquet not found: {entry_file}")
+                if not entry_file.exists():
+                    logging.warning(f"[DATA] Parquet not found: {entry_file}")
+                    return None
+
+                # Parquet 로드 (전체 히스토리)
+                df = pd.read_parquet(entry_file)
+
+                # Timestamp 변환
+                if 'timestamp' in df.columns:
+                    if pd.api.types.is_numeric_dtype(df['timestamp']):
+                        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+                    else:
+                        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+                # 지표 추가 (옵션)
+                if with_indicators:
+                    try:
+                        from utils.indicators import add_all_indicators
+                    except ImportError:
+                        from utils.indicators import IndicatorGenerator
+                        add_all_indicators = IndicatorGenerator.add_all_indicators
+
+                    df = add_all_indicators(df)
+
+                logging.info(f"[DATA] Full history loaded: {len(df)} candles")
+                return df
+
+            except Exception as e:
+                logging.error(f"[DATA] Full history load failed: {e}")
+                import traceback
+                traceback.print_exc()
                 return None
-
-            # Parquet 로드 (전체 히스토리)
-            df = pd.read_parquet(entry_file)
-
-            # Timestamp 변환
-            if 'timestamp' in df.columns:
-                if pd.api.types.is_numeric_dtype(df['timestamp']):
-                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
-                else:
-                    df['timestamp'] = pd.to_datetime(df['timestamp'])
-
-            # 지표 추가 (옵션)
-            if with_indicators:
-                try:
-                    from utils.indicators import add_all_indicators
-                except ImportError:
-                    from utils.indicators import IndicatorGenerator
-                    add_all_indicators = IndicatorGenerator.add_all_indicators
-
-                df = add_all_indicators(df)
-
-            logging.info(f"[DATA] Full history loaded: {len(df)} candles")
-            return df
-
-        except Exception as e:
-            logging.error(f"[DATA] Full history load failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
 
     def get_recent_data(
         self,
@@ -577,48 +629,49 @@ class BotDataManager:
             df = manager.get_recent_data(limit=100, warmup_window=0)
             # → 100개로 지표 계산, 초기 14개는 NaN
         """
-        if self.df_entry_full is None or self.df_entry_full.empty:
-            logging.warning("[DATA] No data in memory")
-            return None
+        with self._data_lock:
+            if self.df_entry_full is None or self.df_entry_full.empty:
+                logging.warning("[DATA] No data in memory")
+                return None
 
-        # 지표 계산 시 워밍업 윈도우 추가
-        if with_indicators and warmup_window > 0:
-            # 워밍업 윈도우 + limit 만큼 데이터 가져오기
-            fetch_size = limit + warmup_window
-            df_full = self.df_entry_full.tail(fetch_size).copy()
+            # 지표 계산 시 워밍업 윈도우 추가
+            if with_indicators and warmup_window > 0:
+                # 워밍업 윈도우 + limit 만큼 데이터 가져오기
+                fetch_size = limit + warmup_window
+                df_full = self.df_entry_full.tail(fetch_size).copy()
 
-            # 지표 계산 (전체 범위 사용)
-            try:
-                from utils.indicators import add_all_indicators
-            except ImportError:
-                from utils.indicators import IndicatorGenerator
-                add_all_indicators = IndicatorGenerator.add_all_indicators
-
-            df_full = add_all_indicators(df_full)
-
-            # 최근 limit개만 반환 (워밍업된 지표 포함)
-            df = df_full.tail(limit).copy()
-            logging.debug(
-                f"[DATA] Recent data with warmup: "
-                f"{len(df)} candles (limit={limit}, warmup={warmup_window}, total_calc={fetch_size})"
-            )
-
-        else:
-            # 지표 없거나 워밍업 불필요
-            df = self.df_entry_full.tail(limit).copy()
-
-            if with_indicators:
+                # 지표 계산 (전체 범위 사용)
                 try:
                     from utils.indicators import add_all_indicators
                 except ImportError:
                     from utils.indicators import IndicatorGenerator
                     add_all_indicators = IndicatorGenerator.add_all_indicators
 
-                df = add_all_indicators(df)
+                df_full = add_all_indicators(df_full)
 
-            logging.debug(f"[DATA] Recent data: {len(df)} candles (limit={limit})")
+                # 최근 limit개만 반환 (워밍업된 지표 포함)
+                df = df_full.tail(limit).copy()
+                logging.debug(
+                    f"[DATA] Recent data with warmup: "
+                    f"{len(df)} candles (limit={limit}, warmup={warmup_window}, total_calc={fetch_size})"
+                )
 
-        return df
+            else:
+                # 지표 없거나 워밍업 불필요
+                df = self.df_entry_full.tail(limit).copy()
+
+                if with_indicators:
+                    try:
+                        from utils.indicators import add_all_indicators
+                    except ImportError:
+                        from utils.indicators import IndicatorGenerator
+                        add_all_indicators = IndicatorGenerator.add_all_indicators
+
+                    df = add_all_indicators(df)
+
+                logging.debug(f"[DATA] Recent data: {len(df)} candles (limit={limit})")
+
+            return df
 
     def clear_cache(self):
         """메모리 캐시 클리어"""

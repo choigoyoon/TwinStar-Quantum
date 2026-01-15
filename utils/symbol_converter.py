@@ -9,28 +9,11 @@ Upbit: KRW-BTC
 Bithumb: BTC_KRW
 """
 
-EXCHANGE_PAIR_FORMAT = {
-    "bybit": "{symbol}USDT",
-    "binance": "{symbol}USDT",
-    "okx": "{symbol}USDT",
-    "bitget": "{symbol}USDT",
-    "bingx": "{symbol}USDT",
-    "upbit": "KRW-{symbol}",
-    "bithumb": "{symbol}_KRW",
-}
-
-EXCHANGE_QUOTE = {
-    "bybit": "USDT",
-    "binance": "USDT",
-    "okx": "USDT",
-    "bitget": "USDT",
-    "bingx": "USDT",
-    "upbit": "KRW",
-    "bithumb": "KRW",
-}
-
-SPOT_EXCHANGES = {"upbit", "bithumb"}
-KRW_EXCHANGES = {"upbit", "bithumb"}
+# Import from SSOT
+from config.constants import (
+    EXCHANGE_PAIR_FORMAT,
+    is_krw_exchange
+)
 
 
 def convert_symbol(base: str, exchange: str) -> str:
@@ -89,33 +72,6 @@ def extract_base(pair: str) -> str:
     
     # 이미 기본 심볼
     return pair
-
-
-def is_krw_exchange(exchange: str) -> bool:
-    """KRW 거래소 여부"""
-    return exchange.lower() in KRW_EXCHANGES
-
-
-def is_spot_exchange(exchange: str) -> bool:
-    """현물 전용 거래소 여부"""
-    return exchange.lower() in SPOT_EXCHANGES
-
-
-def get_quote_currency(exchange: str) -> str:
-    """거래소별 기준 통화"""
-    return EXCHANGE_QUOTE.get(exchange.lower(), "USDT")
-
-
-def normalize_symbol_for_storage(pair: str) -> str:
-    """저장용 심볼 정규화 (파일명용)
-    
-    Args:
-        pair: "BTCUSDT", "KRW-BTC" 등
-    
-    Returns:
-        "btcusdt" (소문자, 특수문자 제거)
-    """
-    return pair.lower().replace("-", "").replace("_", "")
 
 
 def get_display_symbol(base: str, exchange: str) -> tuple:

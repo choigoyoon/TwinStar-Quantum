@@ -9,6 +9,29 @@ SPOT_EXCHANGES = {'upbit', 'bithumb'}
 KRW_EXCHANGES = {'upbit', 'bithumb'}
 FUTURES_EXCHANGES = {'bybit', 'binance', 'okx', 'bitget', 'bingx'}
 
+# ============ 거래소 심볼 형식 ============
+EXCHANGE_PAIR_FORMAT = {
+    "bybit": "{symbol}USDT",
+    "binance": "{symbol}USDT",
+    "okx": "{symbol}USDT",
+    "bitget": "{symbol}USDT",
+    "bingx": "{symbol}USDT",
+    "upbit": "KRW-{symbol}",
+    "bithumb": "{symbol}_KRW",
+    "lighter": "{symbol}USDT"
+}
+
+EXCHANGE_QUOTE = {
+    "bybit": "USDT",
+    "binance": "USDT",
+    "okx": "USDT",
+    "bitget": "USDT",
+    "bingx": "USDT",
+    "upbit": "KRW",
+    "bithumb": "KRW",
+    "lighter": "USDT"
+}
+
 # ============ 거래소 메타데이터 ============
 EXCHANGE_INFO: Dict[str, Dict[str, Any]] = {
     'bybit': {
@@ -202,6 +225,11 @@ def is_spot_exchange(exchange: str) -> bool:
 def is_krw_exchange(exchange: str) -> bool:
     """원화 거래소 여부"""
     return exchange.lower() in KRW_EXCHANGES
+
+
+def get_quote_currency(exchange: str) -> str:
+    """거래소별 Quote 통화 반환"""
+    return EXCHANGE_QUOTE.get(exchange.lower(), "USDT")
 
 
 def requires_passphrase(exchange: str) -> bool:

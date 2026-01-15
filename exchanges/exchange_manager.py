@@ -15,16 +15,8 @@ try:
 except ImportError as e:
     logging.warning(f"[ExchangeManager] crypto_manager 없음: {e}")
 
-# constants import (config/constants 사용 - SSOT)
-try:
-    from config.constants import EXCHANGE_INFO, SPOT_EXCHANGES
-except ImportError:
-    # Fallback to GUI.constants
-    try:
-        from GUI.constants import EXCHANGE_INFO, SPOT_EXCHANGES
-    except ImportError:
-        EXCHANGE_INFO = {}
-        SPOT_EXCHANGES = {'upbit', 'bithumb'}
+# constants import (SSOT)
+from config.constants import EXCHANGE_INFO, SPOT_EXCHANGES
 
 
 # 지원 거래소 목록

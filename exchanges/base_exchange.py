@@ -9,7 +9,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime
 import pandas as pd
 
@@ -19,6 +19,16 @@ try:
 except ImportError:
     get_local_db = None
     Execution = None
+
+
+@dataclass
+class OrderResult:
+    """주문 실행 결과 (통일된 반환 타입)"""
+    success: bool
+    order_id: str | None
+    price: float | None
+    qty: float | None
+    error: str | None
 
 
 @dataclass
@@ -143,7 +153,7 @@ class BaseExchange(ABC):
         """현재 가격"""
     
     @abstractmethod
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """
         시장가 주문
         side: 'Long' or 'Short'

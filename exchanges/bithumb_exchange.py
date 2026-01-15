@@ -12,9 +12,9 @@ import logging
 import pandas as pd
 from typing import Any, cast
 from datetime import datetime
-from typing import Optional, Any, Dict, Union
+from typing import Optional, Any, Dict
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     from utils.helpers import safe_float
@@ -291,56 +291,76 @@ class BithumbExchange(BaseExchange):
         ohlcv = self.bithumb.fetch_ohlcv(symbol, timeframe, limit=limit)
         
         df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
         
         return df
     
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
+        if self.bithumb is None:
+            raise RuntimeError("Bithumb client not initialized")
+
         try:
-            if self.bithumb is None:
-                return 0.0
             if self.use_ccxt:
                 assert self.bithumb is not None, "Bithumb client must be initialized for CCXT"
                 symbol = f"{self.coin}/KRW"
                 ticker = self.bithumb.fetch_ticker(symbol)
-                return float(ticker.get('last', 0) or 0)
+                price = float(ticker.get('last', 0) or 0)
             else:
                 if pybithumb is None:
-                    return 0.0
-                price = pybithumb.get_current_price(self.coin)
-                return float(price) if price is not None else 0.0
+                    raise RuntimeError("pybithumb not available")
+                price_raw = pybithumb.get_current_price(self.coin)
+                if price_raw is None:
+                    raise RuntimeError("Price is None")
+                price = float(price_raw)
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0.0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
     
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """시장가 주문"""
         try:
             if self.bithumb is None:
                 logging.error("Bithumb not authenticated")
-                return False
-            
-            price = self.get_current_price()
-            
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error="Bithumb not authenticated")
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Bithumb] Price fetch failed: {e}")
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
             if self.use_ccxt:
                 return self._place_order_ccxt(side, size, stop_loss, price)
             else:
                 return self._place_order_pybithumb(side, size, stop_loss, price)
-                
+
         except Exception as e:
             logging.error(f"[Bithumb] Order error: {e}")
-            return False
-    
-    def _place_order_pybithumb(self, side: str, size: float, stop_loss: float, price: float) -> Union[bool, dict]:
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
+
+    def _place_order_pybithumb(self, side: str, size: float, stop_loss: float, price: float) -> OrderResult:
         """pybithumb로 주문"""
         if self.bithumb is None:
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error="Bithumb client not initialized")
+
         if side == 'Long':
             result = self.bithumb.buy_market_order(self.coin, size)
         else:
             result = self.bithumb.sell_market_order(self.coin, size)
-        
+
         if result and result[0] == 'success':
             order_id = str(result[2]) if len(result) > 2 else "True"
             self.position = Position(
@@ -356,30 +376,30 @@ class BithumbExchange(BaseExchange):
                 order_id=order_id
             )
             logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
-            
+
             # [NEW] 로컬 거래 DB 기록
             self._record_execution(side=side, price=price, amount=size, order_id=order_id)
-            
-            return {'id': order_id, 'symbol': self.symbol, 'side': side, 'price': price, 'amount': size}
-        
+
+            return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
         logging.error(f"[Bithumb] Order failed: {result}")
-        return False
-    
-    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, price: float) -> Union[bool, dict]:
+        return OrderResult(success=False, order_id=None, price=price, qty=size, error=f"Order failed: {result}")
+
+    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, price: float) -> OrderResult:
         """ccxt로 주문"""
         symbol = f"{self.coin}/KRW"
         order_side = 'buy' if side == 'Long' else 'sell'
-        
+
         if self.bithumb is None:
-            return False
-            
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error="Bithumb client not initialized")
+
         order = self.bithumb.create_order(
             symbol=symbol,
             type='market',
             side=order_side,
             amount=size
         )
-        
+
         if order:
             order_id = str(order.get('id', ''))
             self.position = Position(
@@ -395,13 +415,13 @@ class BithumbExchange(BaseExchange):
                 order_id=order_id
             )
             logging.info(f"[Bithumb] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
-            
+
             # [NEW] 로컬 거래 DB 기록
             self._record_execution(side=side, price=price, amount=size, order_id=order_id)
-            
-            return {'id': order_id, 'symbol': self.symbol, 'side': side, 'price': price, 'amount': size}
-        
-        return False
+
+            return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
+        return OrderResult(success=False, order_id=None, price=price, qty=size, error="Order creation failed")
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정 (로컬 관리 - 빗썸은 SL 미지원)"""
@@ -430,8 +450,15 @@ class BithumbExchange(BaseExchange):
                 else:
                     if self.bithumb:
                         self.bithumb.sell_market_order(self.coin, balance)
-                
-                price = self.get_current_price()
+
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[Bithumb] Price fetch failed: {e}")
+                    # 청산은 성공했지만 가격 조회 실패 - 포지션은 정리
+                    self.position = None
+                    return True
+
                 pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                 
                 logging.info(f"[Bithumb] Position closed: PnL {pnl:.2f}%")
@@ -451,9 +478,13 @@ class BithumbExchange(BaseExchange):
         try:
             if not self.position or side != self.position.side:
                 return False
-            
-            price = self.get_current_price()
-            
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Bithumb] Price fetch failed: {e}")
+                return False
+
             if self.use_ccxt:
                 symbol = f"{self.coin}/KRW"
                 order_side = 'buy' if side == 'Long' else 'sell'

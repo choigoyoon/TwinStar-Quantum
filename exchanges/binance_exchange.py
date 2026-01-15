@@ -8,12 +8,12 @@ import time
 import logging
 import pandas as pd
 from datetime import datetime
-from typing import Optional, Union, Any, cast
+from typing import Optional, Any, cast
 from typing import Sequence
 import pandas as pd
 
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     from binance.client import Client
@@ -127,7 +127,7 @@ class BinanceExchange(BaseExchange):
             df = pd.DataFrame(klines, columns=cast(Any, cols))
 
             
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
             for col in ['open', 'high', 'low', 'close', 'volume']:
                 df[col] = df[col].astype(float)
             
@@ -140,21 +140,34 @@ class BinanceExchange(BaseExchange):
             return None
     
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
         if not self.client:
-            return 0.0
+            raise RuntimeError("Client not initialized")
+
         try:
             ticker = self.client.futures_symbol_ticker(symbol=self.symbol)
-            return float(ticker['price'])
+            price = float(ticker['price'])
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
     
-    def place_market_order(self, side: str, size: float, stop_loss: Optional[float] = None, take_profit: float = 0) -> Union[bool, str]:
+    def place_market_order(self, side: str, size: float, stop_loss: Optional[float] = None, take_profit: float = 0) -> OrderResult:
         """시장가 주문 실행 + SL 실패 시 즉시 청산"""
         if not self.authenticated or self.client is None:
             logging.error("[Binance] Not authenticated - cannot place orders")
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=None, error="Not authenticated")
 
         try:
             # 주문 방향 설정 (상수 대신 문자열 사용으로 의존성 및 에러 최소화)
@@ -163,7 +176,13 @@ class BinanceExchange(BaseExchange):
 
             # 수량 처리 (간단히 소수점 3자리)
             qty = round(size, 3)
-            current_price = self.get_current_price()
+
+            # ✅ 가격 조회 (예외 처리)
+            try:
+                current_price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Binance] Price fetch failed: {e}")
+                return OrderResult(success=False, order_id=None, price=None, qty=None, error=f"Price unavailable: {e}")
 
             logging.info(f"[Binance] Placing {order_side} {qty} {self.symbol} @ {current_price} (SL: {stop_loss}, TP: {take_profit})")
 
@@ -181,11 +200,11 @@ class BinanceExchange(BaseExchange):
 
             assert self.client is not None
             order = self.client.futures_create_order(**params)
-            
+
             if not order:
                 logging.error("[Binance] Main order failed (no response)")
-                return False
-            
+                return OrderResult(success=False, order_id=None, price=current_price, qty=qty, error="Main order failed (no response)")
+
             order_id = order.get('orderId')
             logging.info(f"[Binance] Main Order Success: {order_id}")
             
@@ -216,8 +235,8 @@ class BinanceExchange(BaseExchange):
                         logging.warning(f"[Binance] ⚠️ Emregency Close Done.")
                     except Exception as close_error:
                         logging.critical(f"[Binance] 🚨 EMERGENCY CLOSE FAILED! CHECK BINANCE APP: {close_error}")
-                    
-                    return False
+
+                    return OrderResult(success=False, order_id=str(order_id) if order_id else None, price=current_price, qty=qty, error=f"SL setting failed: {sl_error}")
 
             # 3. TP 주문 설정 (Binance는 별도 주문 필요)
             if take_profit and take_profit > 0:
@@ -248,14 +267,14 @@ class BinanceExchange(BaseExchange):
                 entry_time=datetime.now(),
                 order_id=str(order_id) if order_id else ""
             )
-            
-            return str(order_id) if order_id else "True"
-            
+
+            return OrderResult(success=True, order_id=str(order_id) if order_id else None, price=current_price, qty=qty, error=None)
+
         except Exception as e:
             logging.error(f"[Binance] Order execution error: {e}")
             import traceback
             traceback.print_exc()
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=None, error=str(e))
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
@@ -318,18 +337,28 @@ class BinanceExchange(BaseExchange):
                 # but explicit reduceOnly with positionSide is safe.
 
             order = self.client.futures_create_order(**params)
-            
+
             if order:
-                price = self.get_current_price()
-                if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[Binance] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"Position closed: PnL {pnl:.2f}% (${profit_usd:.2f})")
                 else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
-                profit_usd = self.capital * self.leverage * (pnl / 100)
-                self.capital += profit_usd
-                
-                logging.info(f"Position closed: PnL {pnl:.2f}% (${profit_usd:.2f})")
+                    logging.warning("Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
                 return True
             
@@ -424,7 +453,12 @@ class BinanceExchange(BaseExchange):
             if self.position is None or side != self.position.side:
                 return False
 
-            price = self.get_current_price()
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Binance] Price fetch failed for add_position: {e}")
+                return False
+
             qty = round(size, 3)
 
             order = self.client.futures_create_order(

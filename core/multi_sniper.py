@@ -362,7 +362,7 @@ class MultiCoinSniper:
             # 새 캔들 DataFrame
             ts = candle.get('start') or candle.get('timestamp') or candle.get('t')
             new_row = pd.DataFrame([{
-                'timestamp': pd.to_datetime(ts, unit='ms') if ts is not None else pd.Timestamp.now(),
+                'timestamp': pd.to_datetime(ts, unit='ms', utc=True) if ts is not None else pd.Timestamp.now(),
                 'open': float(candle.get('open', candle.get('o', 0))),
                 'high': float(candle.get('high', candle.get('h', 0))),
                 'low': float(candle.get('low', candle.get('l', 0))),
@@ -427,7 +427,7 @@ class MultiCoinSniper:
                         candles = data['result']['list']
                         if candles:
                             df_new = pd.DataFrame([{
-                                'timestamp': pd.to_datetime(int(c[0]), unit='ms'),
+                                'timestamp': pd.to_datetime(int(c[0]), unit='ms', utc=True),
                                 'open': float(c[1]), 'high': float(c[2]),
                                 'low': float(c[3]), 'close': float(c[4]), 'volume': float(c[5])
                             } for c in candles])
@@ -449,7 +449,7 @@ class MultiCoinSniper:
                     candles = response.json()
                     if candles:
                         df_new = pd.DataFrame([{
-                            'timestamp': pd.to_datetime(c[0], unit='ms'),
+                            'timestamp': pd.to_datetime(c[0], unit='ms', utc=True),
                             'open': float(c[1]), 'high': float(c[2]),
                             'low': float(c[3]), 'close': float(c[4]), 'volume': float(c[5])
                         } for c in candles])
@@ -1399,7 +1399,7 @@ class MultiCoinSniper:
         try:
             timestamp = kline.get("start") or kline.get("timestamp")
             if timestamp:
-                timestamp = pd.to_datetime(int(timestamp), unit="ms")
+                timestamp = pd.to_datetime(int(timestamp), unit='ms', utc=True)
             else:
                 timestamp = datetime.utcnow()
             

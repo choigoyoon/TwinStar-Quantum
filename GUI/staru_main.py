@@ -160,9 +160,21 @@ except ImportError:
 
 
 # ============ 위젯 import (safe_import 사용) ============
-TradingDashboard_Pkg = load_widget('trading_dashboard_v3', 'TradingDashboardV3')
+TradingDashboard_Pkg = load_widget('trading_dashboard', 'TradingDashboard')
 TradingTabWidget_Pkg = load_widget('trading_tab_widget', 'TradingTabWidget')
-BacktestWidget_Pkg = load_widget('backtest_widget', 'BacktestWidget')
+
+# 백테스트 위젯: 신규 우선, 레거시 폴백
+_USE_NEW_BACKTEST = False
+try:
+    from ui.widgets.backtest import BacktestWidget as BacktestWidget_New
+    BacktestWidget_Pkg = BacktestWidget_New
+    _USE_NEW_BACKTEST = True
+    logger.info("✅ 신규 백테스트 위젯 로드 성공 (ui/widgets/backtest/)")
+except ImportError as e:
+    logger.warning(f"⚠️ 신규 백테스트 위젯 로드 실패, 레거시로 폴백: {e}")
+    BacktestWidget_Pkg = load_widget('backtest_widget', 'BacktestWidget')
+    _USE_NEW_BACKTEST = False
+
 HistoryWidget_Pkg = load_widget('history_widget', 'HistoryWidget')
 SettingsWidget_Pkg = load_widget('settings_widget', 'SettingsWidget')
 DataCollectorWidget_Pkg = load_widget('data_collector_widget', 'DataCollectorWidget')
@@ -250,8 +262,9 @@ class StarUWindow(QMainWindow):
 
     def init_widgets(self):
         """모든 위젯 미리 생성 (Lazy Loading 제거)"""
+        global _USE_NEW_BACKTEST
         logger.info("\n📦 위젯 초기화 중...\n")
-        
+
         # 1. Dashboard
         cls, err = TradingDashboard_Pkg
         try:
@@ -263,18 +276,28 @@ class StarUWindow(QMainWindow):
         except Exception as e:
             logger.info(f"  ❌ Dashboard 생성 실패: {e}")
             self.dashboard = self._create_error_widget("Dashboard", e)
-            
-        # 2. Backtest Widget
-        cls, err = BacktestWidget_Pkg
-        try:
-            if cls:
-                self.backtest_widget = cls()
-                logger.info("  ✅ Backtest 생성 완료")
-            else:
-                raise ImportError(f"BacktestWidget not available.\n{err}")
-        except Exception as e:
-            logger.info(f"  ❌ Backtest 생성 실패: {e}")
-            self.backtest_widget = self._create_error_widget("Backtest", e)
+
+        # 2. Backtest Widget (신규/레거시 분기)
+        if _USE_NEW_BACKTEST:
+            # 신규 백테스트 위젯 (클래스 직접 사용)
+            try:
+                self.backtest_widget = cast(Any, BacktestWidget_Pkg)()
+                logger.info("  ✅ 신규 Backtest 위젯 생성 완료 (Phase 2)")
+            except Exception as e:
+                logger.info(f"  ❌ 신규 Backtest 생성 실패: {e}")
+                self.backtest_widget = self._create_error_widget("Backtest", e)
+        else:
+            # 레거시 백테스트 위젯 (tuple 언패킹)
+            cls, err = cast(Any, BacktestWidget_Pkg)
+            try:
+                if cls:
+                    self.backtest_widget = cls()
+                    logger.info("  ✅ 레거시 Backtest 생성 완료")
+                else:
+                    raise ImportError(f"BacktestWidget not available.\n{err}")
+            except Exception as e:
+                logger.info(f"  ❌ 레거시 Backtest 생성 실패: {e}")
+                self.backtest_widget = self._create_error_widget("Backtest", e)
 
         # 2.5 Auto Pipeline (New)
         if AutoPipelineWidget_Pkg[0]:
@@ -680,9 +703,9 @@ class StarUWindow(QMainWindow):
             cast(Any, self.history_widget).add_backtest_results(trades)
         elif hasattr(self.history_widget, 'refresh_trades'):
             cast(Any, self.history_widget).refresh_trades()
-            
-        # 결과/내역 탭(5)으로 전환
-        self.tabs.setCurrentIndex(5)
+
+        # 결과/내역 탭(6)으로 전환 (Tab 0~6 중 마지막)
+        self.tabs.setCurrentIndex(6)
         
     def on_start_trading(self, config: dict):
         """트레이딩 시작 - Dashboard에서 처리"""

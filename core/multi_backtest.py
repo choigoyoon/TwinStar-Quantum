@@ -75,7 +75,7 @@ class MultiBacktester:
             # 타임스탬프 처리
             if 'timestamp' in df_15m.columns:
                 if pd.api.types.is_numeric_dtype(df_15m['timestamp']):
-                    df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'], unit='ms')
+                    df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'], unit='ms', utc=True)
                 else:
                     df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
             

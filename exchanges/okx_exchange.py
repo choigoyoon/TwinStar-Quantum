@@ -12,9 +12,9 @@ import logging
 import pandas as pd
 from typing import Any, cast
 from datetime import datetime
-from typing import Optional, Any, Dict, Union
+from typing import Optional, Any, Dict
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 # ============================================
 # CCXT (수집용)
@@ -169,7 +169,7 @@ class OKXExchange(BaseExchange):
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
             df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
             
             return df
             
@@ -178,34 +178,47 @@ class OKXExchange(BaseExchange):
             return None
     
     def get_current_price(self) -> float:
-        """현재 가격 (CCXT)"""
+        """
+        현재 가격 조회 (CCXT)
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
         if self.exchange is None:
-            return 0.0
+            raise RuntimeError("Exchange not initialized")
+
         try:
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker.get('last', 0) or 0)
+            price = float(ticker.get('last', 0) or 0)
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0.0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
     
     # ============================================
     # 매매 API (OKX SDK 직접 연결)
     # ============================================
     
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """시장가 주문 (OKX SDK 직접 호출)"""
-        
+
         # OKX SDK 사용 가능 시 직접 호출
         if USE_DIRECT_API and self.trade_api is not None:
             return self._place_order_direct(side, size, stop_loss, take_profit, client_order_id)
         else:
             return self._place_order_ccxt(side, size, stop_loss, take_profit, client_order_id)
     
-    def _place_order_direct(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def _place_order_direct(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """OKX SDK 직접 주문"""
         max_retries = 3
-        
+
         for attempt in range(max_retries):
             try:
                 inst_id = self._convert_symbol_okx(self.symbol)  # BTC-USDT-SWAP
@@ -228,16 +241,22 @@ class OKXExchange(BaseExchange):
                 result = cast(Any, self.trade_api).set_order(**order_params)
                 
                 if result.get('code') != '0':
+                    error_msg = result.get('msg', 'Unknown error')
                     logging.error(f"[OKX] Order failed: {result}")
                     if attempt < max_retries - 1:
                         time.sleep(2)
                         continue
-                    return False
+                    return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"OKX API error: {error_msg}")
                 
                 order_data = result.get('data', [{}])[0]
                 order_id = order_data.get('ordId', '')
-                price = self.get_current_price()
-                
+
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[OKX] Price fetch failed: {e}")
+                    return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
                 logging.info(f"[OKX-Direct] Order placed: {side} {size} @ {price} (ID: {order_id})")
                 
                 # 2. SL 설정 (Algo Order)
@@ -277,7 +296,7 @@ class OKXExchange(BaseExchange):
                             logging.warning("[OKX] ⚠️ Emergency Close Done.")
                         except Exception as close_err:
                             logging.critical(f"[OKX] 🚨 EMERGENCY CLOSE FAILED! CHECK OKX APP: {close_err}")
-                        return False
+                        return OrderResult(success=False, order_id=order_id, price=price, qty=size, error=f"SL setting failed: {sl_err}")
                 
                 # 3. TP 설정 (선택)
                 if take_profit > 0:
@@ -311,24 +330,24 @@ class OKXExchange(BaseExchange):
                     entry_time=datetime.now(),
                     order_id=order_id
                 )
-                
-                return {'id': order_id, 'status': 'filled'}
-                
+
+                return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
             except Exception as e:
                 logging.error(f"[OKX] Order error: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
-        
-        return False
+
+        return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
     
-    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """CCXT 폴백 주문 (기존 로직)"""
         max_retries = 3
-        
+
         for attempt in range(max_retries):
             try:
                 if self.exchange is None:
-                    return False
+                    return OrderResult(success=False, order_id=None, price=None, qty=size, error="Exchange not initialized")
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 pos_side = 'long' if side == 'Long' else 'short'
@@ -349,7 +368,11 @@ class OKXExchange(BaseExchange):
                 )
                 
                 if order:
-                    price = self.get_current_price()
+                    try:
+                        price = self.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[OKX] Price fetch failed: {e}")
+                        return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
 
                     if stop_loss > 0:
                         try:
@@ -379,7 +402,7 @@ class OKXExchange(BaseExchange):
                                 logging.warning("[OKX-CCXT] ⚠️ Emergency Close Done.")
                             except Exception as close_err:
                                 logging.critical(f"[OKX-CCXT] 🚨 EMERGENCY CLOSE FAILED! {close_err}")
-                            return False
+                            return OrderResult(success=False, order_id=order_id, price=price, qty=size, error=f"SL setting failed: {sl_err}")
 
                     
                     order_id = str(order.get('id', ''))
@@ -412,14 +435,14 @@ class OKXExchange(BaseExchange):
                         except Exception as tp_err:
                             logging.warning(f"[OKX-CCXT] TP setting failed: {tp_err}")
 
-                    return order
-                    
+                    return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
             except Exception as e:
                 logging.error(f"[OKX-CCXT] Order error: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
-        
-        return False
+
+        return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정 (OKX SDK 직접 호출)"""
@@ -551,16 +574,26 @@ class OKXExchange(BaseExchange):
             )
             
             if result.get('code') == '0':
-                price = self.get_current_price()
-                if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[OKX] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[OKX-Direct] Position closed: PnL {pnl:.2f}%")
                 else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
-                profit_usd = self.capital * self.leverage * (pnl / 100)
-                self.capital += profit_usd
-                
-                logging.info(f"[OKX-Direct] Position closed: PnL {pnl:.2f}%")
+                    logging.warning("[OKX-Direct] Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
                 return True
             else:
@@ -595,16 +628,26 @@ class OKXExchange(BaseExchange):
             )
             
             if order:
-                price = self.get_current_price()
-                if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[OKX-CCXT] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[OKX-CCXT] Position closed: PnL {pnl:.2f}%")
                 else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
-                profit_usd = self.capital * self.leverage * (pnl / 100)
-                self.capital += profit_usd
-                
-                logging.info(f"[OKX-CCXT] Position closed: PnL {pnl:.2f}%")
+                    logging.warning("[OKX-CCXT] Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
                 return True
             

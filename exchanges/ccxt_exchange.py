@@ -10,9 +10,9 @@ import pandas as pd
 from typing import Any, cast
 import threading
 from datetime import datetime
-from typing import Optional, Callable, Any, Dict, List, Union
+from typing import Optional, Callable, Any, Dict, List
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 # WebSocket 핸들러 (선택적)
 try:
@@ -275,7 +275,7 @@ class CCXTExchange(BaseExchange):
             ohlcv = self.ccxt_exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
             df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
             
             return df
             
@@ -308,21 +308,21 @@ class CCXTExchange(BaseExchange):
             logging.error(f"Price fetch error: {e}")
             return 0.0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """시장가 주문"""
         try:
             if self.ccxt_exchange is None:
                 logging.error("CCXT exchange not initialized")
-                return False
+                return OrderResult(success=False, order_id=None, price=None, qty=None, error="Exchange not initialized")
 
             symbol = self._convert_symbol(self.symbol)
             order_side = 'buy' if side == 'Long' else 'sell'
-            
+
             # 파라미터 구성
             params: Dict[str, Any] = {'recvWindow': 60000}
             if client_order_id:
                 params['clientOrderId'] = client_order_id
-            
+
             # 시장가 주문
             order = self.ccxt_exchange.create_order(
                 symbol=symbol,
@@ -331,11 +331,11 @@ class CCXTExchange(BaseExchange):
                 amount=size,
                 params=params
             )
-            
+
             if order:
                 price = self.get_current_price()
                 order_id = str(order.get('id', ''))
-                
+
                 # 손절 주문 (거래소 연동 시도, 실패해도 메인 주문은 유효)
                 try:
                     sl_side = 'sell' if side == 'Long' else 'buy'
@@ -348,7 +348,7 @@ class CCXTExchange(BaseExchange):
                     )
                 except Exception as sl_err:
                     logging.warning(f"Stop loss order failed (handled locally): {sl_err}")
-                
+
                 # 익절 주문
                 if take_profit > 0:
                     try:
@@ -375,15 +375,15 @@ class CCXTExchange(BaseExchange):
                     entry_time=datetime.now(),
                     order_id=order_id
                 )
-                
+
                 logging.info(f"Order placed: {side} {size} @ {price} (ID: {order_id})")
-                return order
-            
-            return False
-            
+                return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
+            return OrderResult(success=False, order_id=None, price=None, qty=None, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"Order error: {e}")
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=None, error=str(e))
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""

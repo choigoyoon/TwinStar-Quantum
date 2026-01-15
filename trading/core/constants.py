@@ -103,26 +103,34 @@ GRADE_CRITERIA = {
 
 def calculate_grade(win_rate: float, profit_factor: float, max_drawdown: float) -> str:
     """
-    성과 등급 계산 (v1.8.3 동일)
-    
+    성과 등급 계산 (utils.metrics wrapper - v1.8.3 호환)
+
     Args:
         win_rate: 승률 (%)
         profit_factor: 손익비
         max_drawdown: 최대 낙폭 (%)
-    
+
     Returns:
-        등급 ('S', 'A', 'B', 'C')
+        등급 ('S', 'A', 'B', 'C') - 이모지 없음
+
+    Note:
+        이 함수는 v1.8.3 호환성을 위해 유지됩니다.
+        신규 코드는 utils.metrics.assign_grade_by_preset()를 직접 사용하세요.
     """
-    mdd = abs(max_drawdown)
-    
-    if win_rate >= 85 and profit_factor >= 3.0 and mdd <= 10:
-        return 'S'
-    elif win_rate >= 75 and profit_factor >= 2.0 and mdd <= 15:
-        return 'A'
-    elif win_rate >= 65 and profit_factor >= 1.5 and mdd <= 20:
-        return 'B'
-    else:
-        return 'C'
+    from utils.metrics import assign_grade_by_preset
+
+    # 균형형 기준으로 등급 계산
+    grade_with_emoji = assign_grade_by_preset(
+        preset_type='balanced',
+        metrics={
+            'win_rate': win_rate,
+            'profit_factor': profit_factor,
+            'mdd': max_drawdown
+        }
+    )
+
+    # 이모지 제거하고 문자만 반환 ('S', 'A', 'B', 'C')
+    return grade_with_emoji.replace('🏆', '').replace('🥇', '').replace('🥈', '').replace('🥉', '')
 
 
 # =============================================================================

@@ -38,14 +38,20 @@ GRADE_CRITERIA = {
 
 
 def calculate_grade(win_rate: float, profit_factor: float, max_drawdown: float) -> str:
-    """결과 등급 계산"""
-    mdd = abs(max_drawdown)
-    
-    if win_rate >= 85 and profit_factor >= 3.0 and mdd <= 10:
-        return '🏆S'
-    elif win_rate >= 75 and profit_factor >= 2.0 and mdd <= 15:
-        return '🥇A'
-    elif win_rate >= 65 and profit_factor >= 1.5 and mdd <= 20:
-        return '🥈B'
-    else:
-        return '🥉C'
+    """
+    결과 등급 계산 (utils.metrics wrapper)
+
+    Note:
+        이 함수는 하위 호환성을 위해 유지됩니다.
+        신규 코드는 utils.metrics.assign_grade_by_preset()를 직접 사용하세요.
+    """
+    from utils.metrics import assign_grade_by_preset
+
+    return assign_grade_by_preset(
+        preset_type='balanced',
+        metrics={
+            'win_rate': win_rate,
+            'profit_factor': profit_factor,
+            'mdd': max_drawdown
+        }
+    )

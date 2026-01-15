@@ -11,7 +11,7 @@ from typing import Any, cast
 from datetime import datetime
 from typing import Optional, Any, Dict, Union
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     from pybit.unified_trading import HTTP
@@ -131,7 +131,7 @@ class BybitExchange(BaseExchange):
             if not data:
                 return None
             df = pd.DataFrame(data, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover']))
-            df['timestamp'] = pd.to_datetime(df['timestamp'].astype(int), unit='ms')
+            df['timestamp'] = pd.to_datetime(df['timestamp'].astype(int), unit='ms', utc=True)
             for col in ['open', 'high', 'low', 'close', 'volume']:
                 df[col] = df[col].astype(float)
             
@@ -184,44 +184,70 @@ class BybitExchange(BaseExchange):
             return None
 
     def get_current_price(self, symbol: Optional[str] = None) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
         if self.session is None:
-            return 0.0
+            raise RuntimeError("Session not initialized")
+
         target_symbol = symbol.upper() if symbol else self.symbol.upper()
+
         try:
-            # [FIX] API 호출 추가
             from typing import cast
             result = cast(Dict[str, Any], self.session.get_tickers(category="linear", symbol=target_symbol))
+
+            # API 에러 체크
+            if result.get('retCode') != 0:
+                raise RuntimeError(f"Ticker API error: {result.get('retMsg', 'Unknown')}")
+
             res_list = result.get('result', {}).get('list', [])
-            if res_list:
-                ticker_data = cast(Dict[str, Any], res_list[0])
-                return float(ticker_data.get('lastPrice', 0) or 0)
-            return 0.0
+            if not res_list:
+                raise RuntimeError(f"No ticker data for {target_symbol}")
+
+            ticker_data = cast(Dict[str, Any], res_list[0])
+            price = float(ticker_data.get('lastPrice', 0) or 0)
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0.0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
 
     
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> 'OrderResult':
         """시장가 주문"""
         max_retries = 3
-        
+
         for attempt in range(max_retries):
             try:
                 # 주문 전 서버 시간 재동기화
                 self.sync_time()
 
-                price = self.get_current_price()
+                # ✅ 가격 조회 (예외 발생 가능)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[Bybit] Price fetch failed: {e}")
+                    return OrderResult(success=False, order_id=None, price=None, qty=None, error=f"Price unavailable: {e}")
+
                 qty = size
-                
+
                 # 수량 소수점 처리
                 tick_size = self._get_tick_size()
                 qty = round(qty, tick_size['qty_decimals'])
                 sl_price = round(stop_loss, tick_size['price_decimals'])
                 tp_price = round(take_profit, tick_size['price_decimals']) if take_profit > 0 else 0
-                
-                # 중요: extra_params에 recvWindow 명시적으로 전달
-                extra_params = {'recvWindow': 60000}
+
+                # 서버 시간 오프셋 적용한 timestamp 생성
+                timestamp = int((time.time() * 1000) + self.time_offset)
+
                 # Construct params
                 order_params = {
                     "category": "linear",
@@ -229,6 +255,7 @@ class BybitExchange(BaseExchange):
                     "side": "Buy" if side == 'Long' else "Sell",
                     "orderType": "Market",
                     "qty": str(qty),
+                    "timestamp": timestamp,
                     "recvWindow": 60000
                 }
                 
@@ -244,7 +271,7 @@ class BybitExchange(BaseExchange):
                     order_params["takeProfit"] = str(tp_price)
 
                 if self.session is None:
-                    return False
+                    return OrderResult(success=False, order_id=None, price=None, qty=None, error="No session")
                     
                 from typing import cast
                 result = cast(Dict[str, Any], self.session.place_order(**order_params))
@@ -265,7 +292,14 @@ class BybitExchange(BaseExchange):
                         order_id=order_id
                     )
                     logging.info(f"Order placed: {side} {qty} @ {price} (ID: {order_id}, TP: {tp_price})")
-                    return order_id
+                    # 통일된 반환 타입 (OrderResult)
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        price=price,
+                        qty=qty,
+                        error=None
+                    )
                 else:
                     logging.error(f"Order error: {result.get('retMsg')} (Code: {result.get('retCode')})")
                     if attempt < max_retries - 1:
@@ -287,8 +321,15 @@ class BybitExchange(BaseExchange):
                 
                 if attempt < max_retries - 1:
                     time.sleep(2)
-        
-        return False
+
+        # 모든 재시도 실패 - 통일된 에러 반환
+        return OrderResult(
+            success=False,
+            order_id=None,
+            price=None,
+            qty=None,
+            error="Max retries exceeded"
+        )
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
@@ -335,22 +376,30 @@ class BybitExchange(BaseExchange):
                 return False
                 
             from typing import cast
+            # Bybit Linear Perpetual에서는 reduceOnly 파라미터 미지원
+            # 대신 반대 방향 주문으로 자동 청산
             result = cast(Dict[str, Any], self.session.place_order(
                 category="linear",
                 symbol=self.symbol,
                 side="Sell" if self.position.side == 'Long' else "Buy",
                 orderType="Market",
-                qty=str(self.position.size),
-                reduceOnly=True
+                qty=str(self.position.size)
+                # reduceOnly 제거 (Linear Perpetual은 자동 인식)
             ))
             
             if result.get('retCode') == 0:
-                price = self.get_current_price()
+                # ✅ 가격 조회 (예외 처리)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[Bybit] Price fetch failed during close, using 0: {e}")
+                    price = 0.0  # 청산은 성공했으므로 가격만 0으로 기록
+
                 if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100 if price > 0 else 0
                 else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
+                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100 if price > 0 else 0
+
                 profit_usd = self.capital * self.leverage * (pnl / 100)
                 self.capital += profit_usd
                 
@@ -376,7 +425,12 @@ class BybitExchange(BaseExchange):
                 logging.warning(f"Add position side mismatch: {side} vs {self.position.side}")
                 return False
 
-            price = self.get_current_price()
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Bybit] Price fetch failed for add_position: {e}")
+                return False
+
             qty = size
             
             # 수량 소수점 처리

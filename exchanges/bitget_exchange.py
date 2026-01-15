@@ -10,7 +10,7 @@ import time
 import logging
 import pandas as pd
 from datetime import datetime
-from typing import Optional, Any, Dict, Union, List, cast
+from typing import Optional, Any, Dict, List, cast
 from typing import Sequence
 import pandas as pd
 
@@ -25,7 +25,7 @@ except ImportError:
 
 USE_DIRECT_API = True
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     import ccxt
@@ -136,7 +136,7 @@ class BitgetExchange(BaseExchange):
             
             # [FIX] Ensure timestamp is treated as a compatible Sequence for Pandas
             timestamps: Any = df['timestamp']
-            df['timestamp'] = pd.to_datetime(timestamps, unit='ms')
+            df['timestamp'] = pd.to_datetime(timestamps, unit='ms', utc=True)
             
             return df
             
@@ -145,29 +145,42 @@ class BitgetExchange(BaseExchange):
             return None
     
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
         if self.exchange is None:
-            return 0.0
+            raise RuntimeError("Exchange not initialized")
+
         try:
             symbol = self._convert_symbol(self.symbol)
             ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker.get('last', 0) or 0)
+            price = float(ticker.get('last', 0) or 0)
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0.0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
 
     def _convert_symbol_direct(self, symbol: str) -> str:
         """SDK용 심볼 변환 (BTCUSDT)"""
         return symbol.replace('/', '').replace('-', '').replace(':USDT', '').upper()
     
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """시장가 주문"""
         if USE_DIRECT_API and BITGET_SDK_AVAILABLE:
             return self._place_order_direct(side, size, stop_loss, take_profit, client_order_id)
         else:
             return self._place_order_ccxt(side, size, stop_loss, take_profit, client_order_id)
 
-    def _place_order_direct(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+    def _place_order_direct(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """Bitget SDK 직접 주문"""
         max_retries = 3
         
@@ -193,8 +206,13 @@ class BitgetExchange(BaseExchange):
                 if res.get('code') == '00000':
                     order_data = res.get('data', {})
                     order_id = order_data.get('orderId', '')
-                    price = self.get_current_price()
-                    
+
+                    try:
+                        price = self.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[Bitget] Price fetch failed: {e}")
+                        return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
                     logging.info(f"[Bitget-Direct] Order SUCCESS: {side} {size} @ {price} (ID: {order_id})")
                     
                     # 2. SL 설정 (TPSL Order)
@@ -218,7 +236,7 @@ class BitgetExchange(BaseExchange):
                         except Exception as sl_err:
                             logging.error(f"[Bitget] ❌ SL FAIL! Emergency Close: {sl_err}")
                             self._close_position_direct()
-                            return False
+                            return OrderResult(success=False, order_id=order_id, price=price, qty=size, error=f"SL setting failed: {sl_err}")
                     
                     # 3. TP 설정
                     if take_profit > 0:
@@ -248,7 +266,7 @@ class BitgetExchange(BaseExchange):
                         entry_time=datetime.now(),
                         order_id=order_id
                     )
-                    return {'id': order_id, 'status': 'filled'}
+                    return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
                 else:
                     logging.error(f"[Bitget-Direct] Order API Fail: {res}")
                     if attempt < max_retries - 1: time.sleep(2)
@@ -256,17 +274,17 @@ class BitgetExchange(BaseExchange):
             except Exception as e:
                 logging.error(f"[Bitget-Direct] Exception: {e}")
                 if attempt < max_retries - 1: time.sleep(2)
-                
-        return False
 
-    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> Union[bool, dict]:
+        return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
+
+    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """기존 CCXT 주문 로직 (폴백용)"""
         max_retries = 3
-        
+
         for attempt in range(max_retries):
             try:
                 if self.exchange is None:
-                    return False
+                    return OrderResult(success=False, order_id=None, price=None, qty=size, error="Exchange not initialized")
                 symbol = self._convert_symbol(self.symbol)
                 order_side = 'buy' if side == 'Long' else 'sell'
                 
@@ -288,8 +306,12 @@ class BitgetExchange(BaseExchange):
                 )
                 
                 if order:
-                    price = self.get_current_price()
-                    
+                    try:
+                        price = self.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[Bitget] Price fetch failed: {e}")
+                        return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
                     if stop_loss > 0:
                         try:
                             sl_side = 'sell' if side == 'Long' else 'buy'
@@ -326,7 +348,7 @@ class BitgetExchange(BaseExchange):
                                 logging.warning("[Bitget] ⚠️ Emergency Close Done.")
                             except Exception as close_err:
                                 logging.critical(f"[Bitget] 🚨 EMERGENCY CLOSE FAILED! CHECK BITGET APP: {close_err}")
-                            return False
+                            return OrderResult(success=False, order_id=None, price=price, qty=size, error=f"SL setting failed: {sl_err}")
 
                     
                     order_id = str(order.get('id', ''))
@@ -364,14 +386,14 @@ class BitgetExchange(BaseExchange):
                         except Exception as tp_err:
                             logging.warning(f"[Bitget] Take profit setting failed: {tp_err}")
 
-                    return order
+                    return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
                     
             except Exception as e:
                 logging.error(f"[Bitget-CCXT] Order error: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
-        
-        return False
+
+        return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정"""
@@ -486,16 +508,26 @@ class BitgetExchange(BaseExchange):
             res = cast(Any, self.trade_api).place_order(params)
             
             if res.get('code') == '00000':
-                price = self.get_current_price()
-                if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[Bitget-Direct] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[Bitget-Direct] Position closed: PnL {pnl:.2f}%")
                 else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
-                profit_usd = self.capital * self.leverage * (pnl / 100)
-                self.capital += profit_usd
-                
-                logging.info(f"[Bitget-Direct] Position closed: PnL {pnl:.2f}%")
+                    logging.warning("[Bitget-Direct] Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
                 return True
             return False
@@ -529,16 +561,26 @@ class BitgetExchange(BaseExchange):
             )
             
             if order:
-                price = self.get_current_price()
-                if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[Bitget-CCXT] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[Bitget] Position closed: PnL {pnl:.2f}%")
                 else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
-                profit_usd = self.capital * self.leverage * (pnl / 100)
-                self.capital += profit_usd
-                
-                logging.info(f"[Bitget] Position closed: PnL {pnl:.2f}%")
+                    logging.warning("[Bitget] Position closed but PnL calculation skipped (price=0)")
+
                 self.position = None
                 return True
             

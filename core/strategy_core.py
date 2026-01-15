@@ -50,16 +50,24 @@ def _to_dt(ts: Any) -> Optional[pd.Timestamp]:
 
     try:
         if isinstance(ts, pd.Timestamp):
-            # 이미 Timestamp인 경우 바로 반환 (NaT는 위에서 체크됨)
+            # 이미 Timestamp인 경우 UTC aware로 변환
+            if ts.tz is None:
+                return ts.tz_localize('UTC')  # type: ignore[return-value]
             return ts  # type: ignore[return-value]
         elif isinstance(ts, datetime):
             result = pd.Timestamp(ts)
+            # UTC aware로 변환
+            if result.tz is None:
+                result = result.tz_localize('UTC')
         elif isinstance(ts, (int, float, np.integer, np.floating)):
             ts_int = int(ts)
             unit = 'ms' if ts_int > 1e12 else 's'
-            result = pd.Timestamp(ts_int, unit=unit)
+            result = pd.Timestamp(ts_int, unit=unit, tz='UTC')
         else:
             result = pd.Timestamp(ts)
+            # UTC aware로 변환
+            if result.tz is None:
+                result = result.tz_localize('UTC')
 
         # NaT 체크 (isinstance로 명확히 체크)
         if isinstance(result, type(pd.NaT)):
@@ -806,17 +814,28 @@ class AlphaX7Core:
         
         for i in range(len(df_entry)):
             t = times[i]
+            t_ts = _to_dt(t)  # UTC aware 타임스탬프로 변환
+            if t_ts is None:
+                continue
+
             while sig_idx < len(signals):
-                st = pd.Timestamp(signals[sig_idx]['time'])
-                if st <= pd.Timestamp(t):
+                st = _to_dt(signals[sig_idx]['time'])
+                if st is None:
+                    sig_idx += 1
+                    continue
+                if st <= t_ts:
                     order = signals[sig_idx].copy()
                     order['expire_time'] = st + timedelta(hours=entry_validity_hours)
                     pending.append(order)
                     sig_idx += 1
                 else: break
-            
-            while pending and pending[0]['expire_time'] <= pd.Timestamp(t):
-                pending.popleft()
+
+            while pending:
+                expire_ts = _to_dt(pending[0]['expire_time'])
+                if expire_ts is not None and expire_ts <= t_ts:
+                    pending.popleft()
+                else:
+                    break
             
             if positions:
                 if current_direction == 'Long':
@@ -1000,7 +1019,10 @@ class AlphaX7Core:
             return all_signals
             
         # since 이후의 시그널만 필터링
-        new_signals = [s for s in all_signals if pd.Timestamp(s['time']) > pd.Timestamp(since)]
+        since_ts = _to_dt(since)
+        if since_ts is None:
+            return all_signals
+        new_signals = [s for s in all_signals if (st := _to_dt(s['time'])) is not None and st > since_ts]
         return new_signals
 
     def manage_position_realtime(self, position: Optional[Dict] = None, current_high: float = 0, current_low: float = 0, current_rsi: float = 50, **kwargs) -> dict:

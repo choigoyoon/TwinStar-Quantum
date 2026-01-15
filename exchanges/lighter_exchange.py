@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional, Any
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     import lighter  # type: ignore
@@ -154,28 +154,48 @@ class LighterExchange(BaseExchange):
             return None
     
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
         try:
             df = self.get_klines('1', 1)
-            if df is not None and len(df) > 0:
-                return float(df.iloc[-1]['close'])
-            return 0
-        except Exception:
-            return 0
+
+            if df is None or len(df) == 0:
+                raise RuntimeError("No klines data available")
+
+            price = float(df.iloc[-1]['close'])
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
+        except Exception as e:
+            raise RuntimeError(f"Price fetch failed: {e}") from e
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float) -> OrderResult:
         """시장가 주문"""
         try:
-            price = self.get_current_price()
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Lighter] Price fetch failed: {e}")
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
             slippage = 0.01  # 1%
-            
+
             is_ask = side == 'Short'
             avg_price = price * (1 - slippage) if is_ask else price * (1 + slippage)
-            
+
             # Lighter는 정수 단위
             base_amount = int(size * 10000)  # 4 decimals
             avg_price_int = int(avg_price * 100)  # 2 decimals
-            
+
             async def create_order():
                 if self.client is None:
                     return None, None, "Client not initialized"
@@ -186,13 +206,15 @@ class LighterExchange(BaseExchange):
                     avg_execution_price=avg_price_int,
                     is_ask=is_ask
                 )
-            
+
             tx, tx_hash, err = self._run_async(create_order())
-            
+
             if err:
                 logging.error(f"Lighter order error: {err}")
-                return False
-            
+                return OrderResult(success=False, order_id=None, price=price, qty=size, error=f"Order failed: {err}")
+
+            order_id = str(tx_hash) if tx_hash else ""
+
             self.position = Position(
                 symbol=self.symbol,
                 side=side,
@@ -204,13 +226,13 @@ class LighterExchange(BaseExchange):
                 be_triggered=False,
                 entry_time=datetime.now()
             )
-            
+
             logging.info(f"Lighter order: {side} {size} @ {price}, tx={tx_hash}")
-            return True
-            
+            return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
         except Exception as e:
             logging.error(f"Lighter order error: {e}")
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정 (Lighter는 수동 관리)"""
@@ -263,8 +285,13 @@ class LighterExchange(BaseExchange):
         try:
             if not self.position:
                 return True
-            
-            price = self.get_current_price()
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Lighter] Price fetch failed: {e}")
+                return False
+
             slippage = 0.01
             
             is_ask = self.position.side == 'Long'  # 반대 방향
@@ -376,8 +403,13 @@ class LighterExchange(BaseExchange):
         try:
             if not self.position or side != self.position.side:
                 return False
-            
-            price = self.get_current_price()
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Lighter] Price fetch failed: {e}")
+                return False
+
             slippage = 0.01
             
             is_ask = side == 'Short'

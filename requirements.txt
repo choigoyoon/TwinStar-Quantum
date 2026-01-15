@@ -3,7 +3,7 @@
 
 # Core
 pandas>=2.1.0
-numpy>=1.26.0
+numpy>=1.26.0,<2.0.0  # ⚠️ lighter requires <2.0.0, pandas-ta may conflict
 pyarrow>=14.0.0
 
 # GUI (PyQt6)
@@ -20,9 +20,12 @@ ccxt>=4.2.0
 okx>=1.0.0
 bitget-python>=1.0.0
 
+# DEX
+lighter>=0.1.0
+
 # Korean Exchanges
 pyupbit>=0.2.33
-pybithumb>=0.3.2
+pybithumb>=1.0.0  # ⚠️ Updated from >=0.3.2
 
 # Technical Analysis
 ta>=0.11.0

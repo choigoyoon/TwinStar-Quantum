@@ -17,6 +17,40 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
 
+# Design System Tokens
+try:
+    from ui.design_system.tokens import ColorTokens
+    _color_tokens = ColorTokens()
+    # 색상 상수 추출
+    BG_BASE = _color_tokens.bg_base
+    BG_SURFACE = _color_tokens.bg_surface
+    BG_ELEVATED = _color_tokens.bg_elevated
+    BG_OVERLAY = _color_tokens.bg_overlay
+    TEXT_PRIMARY = _color_tokens.text_primary
+    TEXT_SECONDARY = _color_tokens.text_secondary
+    ACCENT_PRIMARY = _color_tokens.accent_primary
+    ACCENT_SECONDARY = _color_tokens.accent_secondary
+    SUCCESS = _color_tokens.success
+    DANGER = _color_tokens.danger
+    WARNING = _color_tokens.warning
+    INFO = _color_tokens.info
+    BORDER_DEFAULT = _color_tokens.border_default
+except ImportError:
+    # Fallback for standalone execution
+    BG_BASE = "#0d1117"
+    BG_SURFACE = "#161b22"
+    BG_ELEVATED = "#21262d"
+    BG_OVERLAY = "#30363d"
+    TEXT_PRIMARY = "#f0f6fc"
+    TEXT_SECONDARY = "#8b949e"
+    ACCENT_PRIMARY = "#00d4aa"
+    ACCENT_SECONDARY = "#58a6ff"
+    SUCCESS = "#3fb950"
+    DANGER = "#f85149"
+    WARNING = "#d29922"
+    INFO = "#58a6ff"
+    BORDER_DEFAULT = "#30363d"
+
 
 import sys
 import os
@@ -329,27 +363,27 @@ class SingleBacktestWidget(QWidget):
         cex_list = [k for k, v in EXCHANGE_INFO.items() if v.get('type') == 'CEX']
         self.exchange_combo.addItems(cex_list if cex_list else ['bybit', 'binance'])
         self.exchange_combo.setMinimumWidth(80)
-        self.exchange_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
+        self.exchange_combo.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; padding: 5px;")
         self.exchange_combo.currentTextChanged.connect(self._on_exchange_changed)
         row1.addWidget(self.exchange_combo)
-        
+
         row1.addWidget(QLabel(t("backtest.symbol") + ":"))
         self.symbol_combo = QComboBox()
         self.symbol_combo.setMinimumWidth(100)
-        self.symbol_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
+        self.symbol_combo.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; padding: 5px;")
         row1.addWidget(self.symbol_combo)
-        
+
         row1.addWidget(QLabel(t("backtest.timeframe") + ":"))
         self.trend_tf_combo = QComboBox()
         self.trend_tf_combo.addItems(['1h', '4h', '1d'])
         self.trend_tf_combo.setMinimumWidth(60)
         self.trend_tf_combo.setToolTip("추세 판단/데이터 필터 타임프레임\n선택한 TF의 추세가 정렬될 때만 진입합니다.")
-        self.trend_tf_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
+        self.trend_tf_combo.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; padding: 5px;")
         row1.addWidget(self.trend_tf_combo)
-        
+
         self.load_btn = QPushButton(t("backtest.load"))
         self.load_btn.clicked.connect(self._load_selected_data)
-        self.load_btn.setStyleSheet("background: #2962ff; color: white; padding: 8px 12px; border-radius: 4px;")
+        self.load_btn.setStyleSheet(f"background: {ACCENT_SECONDARY}; color: {TEXT_PRIMARY}; padding: 8px 12px; border-radius: 4px;")
         row1.addWidget(self.load_btn)
         
         self.data_status = QLabel(t("backtest.no_data"))
@@ -361,54 +395,54 @@ class SingleBacktestWidget(QWidget):
         row1.addWidget(QLabel(t("backtest.preset") + ":"))
         self.preset_combo = QComboBox()
         self.preset_combo.setMinimumWidth(200)
-        self.preset_combo.setStyleSheet("QComboBox { background: #2b2b2b; color: white; padding: 5px; }")
+        self.preset_combo.setStyleSheet(f"QComboBox {{ background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; padding: 5px; }}")
         self.preset_combo.currentTextChanged.connect(self._on_preset_changed)
         row1.addWidget(self.preset_combo)
-        
+
         refresh_btn = QPushButton("🔄 " + t("backtest.refresh"))
         refresh_btn.setToolTip(t("backtest.refresh"))
         refresh_btn.setMinimumWidth(80)
-        refresh_btn.setStyleSheet("""
-            QPushButton {
-                background: #2a2e3b; 
-                color: white; 
+        refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {BG_SURFACE};
+                color: {TEXT_PRIMARY};
                 border-radius: 4px;
                 padding: 6px 10px;
                 font-size: 12px;
-            }
-            QPushButton:hover { background: #3a3e4b; }
+            }}
+            QPushButton:hover {{ background: {BG_OVERLAY}; }}
         """)
         refresh_btn.clicked.connect(self._refresh_presets)
         row1.addWidget(refresh_btn)
-        
+
         save_btn = QPushButton("💾 " + t("common.save"))
         save_btn.setToolTip(t("common.save"))
         save_btn.setMinimumWidth(70)
-        save_btn.setStyleSheet("""
-            QPushButton {
-                background: #512da8; 
-                color: white; 
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {ACCENT_PRIMARY};
+                color: {TEXT_PRIMARY};
                 border-radius: 4px;
                 padding: 6px 10px;
                 font-size: 12px;
-            }
-            QPushButton:hover { background: #6a3fc4; }
+            }}
+            QPushButton:hover {{ background: {ACCENT_PRIMARY}dd; }}
         """)
         save_btn.clicked.connect(self._save_preset)
         row1.addWidget(save_btn)
-        
+
         delete_btn = QPushButton("🗑 " + t("common.delete"))
         delete_btn.setToolTip(t("common.delete"))
         delete_btn.setMinimumWidth(60)
-        delete_btn.setStyleSheet("""
-            QPushButton {
-                background: #c62828; 
-                color: white; 
+        delete_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {DANGER};
+                color: {TEXT_PRIMARY};
                 border-radius: 4px;
                 padding: 6px 10px;
                 font-size: 12px;
-            }
-            QPushButton:hover { background: #e53935; }
+            }}
+            QPushButton:hover {{ background: {DANGER}dd; }}
         """)
         delete_btn.clicked.connect(self._delete_preset)
         row1.addWidget(delete_btn)
@@ -422,14 +456,14 @@ class SingleBacktestWidget(QWidget):
         
         # Row 2: Parameters
         param_frame = QFrame()
-        param_frame.setStyleSheet("background: #1e222d; border-radius: 6px; padding: 8px;")
+        param_frame.setStyleSheet(f"background: {BG_SURFACE}; border-radius: 6px; padding: 8px;")
         param_grid = QGridLayout(param_frame)
         param_grid.setSpacing(10)
         param_grid.setContentsMargins(10, 8, 10, 8)
-        
-        lbl_style = "color: #888; font-size: 12px;"
-        spin_style = "background: #2b2b2b; color: white; min-width: 70px; padding: 4px;"
-        
+
+        lbl_style = f"color: {TEXT_SECONDARY}; font-size: 12px;"
+        spin_style = f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; min-width: 70px; padding: 4px;"
+
         # Row 0: Leverage, Slippage, Fee
         col = 0
         param_grid.addWidget(self._make_label(t("backtest.leverage_label") + ":", lbl_style), 0, col)
@@ -438,7 +472,7 @@ class SingleBacktestWidget(QWidget):
         self.leverage_spin.setValue(3)
         self.leverage_spin.setStyleSheet(spin_style)
         param_grid.addWidget(self.leverage_spin, 0, col + 1)
-        
+
         col += 2
         param_grid.addWidget(self._make_label(t("backtest.slippage_label") + ":", lbl_style), 0, col)
         self.slippage_spin = QDoubleSpinBox()
@@ -447,7 +481,7 @@ class SingleBacktestWidget(QWidget):
         self.slippage_spin.setSingleStep(0.01)
         self.slippage_spin.setStyleSheet(spin_style)
         param_grid.addWidget(self.slippage_spin, 0, col + 1)
-        
+
         col += 2
         param_grid.addWidget(self._make_label(t("backtest.fee_label") + ":", lbl_style), 0, col)
         self.fee_spin = QDoubleSpinBox()
@@ -456,12 +490,12 @@ class SingleBacktestWidget(QWidget):
         self.fee_spin.setSingleStep(0.005)
         self.fee_spin.setStyleSheet(spin_style)
         param_grid.addWidget(self.fee_spin, 0, col + 1)
-        
+
         col += 2
         param_grid.addWidget(self._make_label(t("backtest.direction_label") + ":", lbl_style), 0, col)
         self.direction_combo = QComboBox()
         self.direction_combo.addItems(["Both", "Long", "Short"])
-        self.direction_combo.setStyleSheet("background: #2b2b2b; color: white; min-width: 80px; padding: 4px;")
+        self.direction_combo.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; min-width: 80px; padding: 4px;")
         param_grid.addWidget(self.direction_combo, 0, col + 1)
         
         # Row 1: Fixed parameter display
@@ -476,9 +510,9 @@ class SingleBacktestWidget(QWidget):
         
         for i, (key, label, value) in enumerate(param_items):
             lbl = QLabel(f"{label}:")
-            lbl.setStyleSheet("color: #888; font-size: 11px;")
+            lbl.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px;")
             val = QLabel(value)
-            val.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 11px;")
+            val.setStyleSheet(f"color: {SUCCESS}; font-weight: bold; font-size: 11px;")
             self._fixed_labels[key] = val
             param_grid.addWidget(lbl, 1, i * 2)
             param_grid.addWidget(val, 1, i * 2 + 1)
@@ -492,32 +526,32 @@ class SingleBacktestWidget(QWidget):
         self._run_btn = QPushButton(t("backtest.run"))
         self._run_btn.clicked.connect(self._run_backtest)
         self._run_btn.setMinimumWidth(200)
-        self._run_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
+        self._run_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {SUCCESS};
+                color: {TEXT_PRIMARY};
                 padding: 12px 24px;
                 font-weight: bold;
                 font-size: 14px;
                 border: none;
                 border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #45a049; }
+            }}
+            QPushButton:hover {{ background-color: {SUCCESS}dd; }}
         """)
         row3.addWidget(self._run_btn)
-        
+
         self._progress = QProgressBar()
         self._progress.setVisible(False)
         self._progress.setMinimumWidth(200)
-        self._progress.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #363a45;
+        self._progress.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {BORDER_DEFAULT};
                 border-radius: 4px;
                 text-align: center;
-                background: #1e222d;
-                color: white;
-            }
-            QProgressBar::chunk { background-color: #4CAF50; }
+                background: {BG_SURFACE};
+                color: {TEXT_PRIMARY};
+            }}
+            QProgressBar::chunk {{ background-color: {SUCCESS}; }}
         """)
         row3.addWidget(self._progress)
         
@@ -530,30 +564,30 @@ class SingleBacktestWidget(QWidget):
         
         # Row 4: Stats summary
         stats_frame = QFrame()
-        stats_frame.setStyleSheet("background: #1e222d; border-radius: 6px;")
+        stats_frame.setStyleSheet(f"background: {BG_SURFACE}; border-radius: 6px;")
         stats_layout = QHBoxLayout(stats_frame)
         stats_layout.setContentsMargins(15, 10, 15, 10)
         stats_layout.setSpacing(30)
-        
+
         self._stat_trades = self._create_stat_label(t("backtest.stat_trades"), "0")
         self._stat_winrate = self._create_stat_label(t("backtest.stat_winrate"), "0%")
         self._stat_simple = self._create_stat_label(t("backtest.stat_simple"), "0%")
         self._stat_compound = self._create_stat_label(t("backtest.stat_compound"), "0%")
         self._stat_mdd = self._create_stat_label(t("backtest.stat_mdd"), "0%")
-        
+
         stats_layout.addWidget(self._stat_trades)
         stats_layout.addWidget(self._stat_winrate)
         stats_layout.addWidget(self._stat_simple)
         stats_layout.addWidget(self._stat_compound)
         stats_layout.addWidget(self._stat_mdd)
         stats_layout.addStretch()
-        
+
         # 결과 저장 버튼
         self.save_result_btn = QPushButton("💾 " + t("backtest.save_result"))
-        self.save_result_btn.setStyleSheet("""
-            QPushButton { background: #4CAF50; color: white; padding: 8px 16px; border-radius: 4px; font-weight: bold; }
-            QPushButton:hover { background: #388E3C; }
-            QPushButton:disabled { background: #555; }
+        self.save_result_btn.setStyleSheet(f"""
+            QPushButton {{ background: {SUCCESS}; color: {TEXT_PRIMARY}; padding: 8px 16px; border-radius: 4px; font-weight: bold; }}
+            QPushButton:hover {{ background: {SUCCESS}dd; }}
+            QPushButton:disabled {{ background: {BG_OVERLAY}; }}
         """)
         self.save_result_btn.setToolTip(t("backtest.save_result"))
         self.save_result_btn.clicked.connect(self._save_result)
@@ -584,11 +618,11 @@ class SingleBacktestWidget(QWidget):
         layout.setSpacing(8)
 
         title_lbl = QLabel(f"{title}:")
-        title_lbl.setStyleSheet("color: #787b86; font-size: 13px;")
+        title_lbl.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 13px;")
         layout.addWidget(title_lbl)
 
         value_lbl = QLabel(value)
-        value_lbl.setStyleSheet("color: white; font-size: 15px; font-weight: bold;")
+        value_lbl.setStyleSheet(f"color: {TEXT_PRIMARY}; font-size: 15px; font-weight: bold;")
         layout.addWidget(value_lbl)
 
         # 동적 속성 추가 (타입 체커 무시)
@@ -693,7 +727,7 @@ class SingleBacktestWidget(QWidget):
                 if 'atr_mult' in params:
                     info.append(f"A:{params.get('atr_mult')}")
                 self.preset_label.setText(" | ".join(info) if info else "Loaded")
-                self.preset_label.setStyleSheet("color: #00e676; font-size: 11px;")
+                self.preset_label.setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
             
         except Exception as e:
             logger.info(f"Preset load error: {e}")
@@ -768,16 +802,16 @@ class SingleBacktestWidget(QWidget):
                 
                 self.strategy = AlphaX7Core()
                 self.strategy.df_15m = df
-                
+
                 self.data_status.setText(f"{exchange}/{symbol} ({len(df):,} candles)")
-                self.data_status.setStyleSheet("color: #4CAF50; font-size: 11px;")
+                self.data_status.setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
             else:
                 self.data_status.setText("No data - download first")
-                self.data_status.setStyleSheet("color: #ef5350; font-size: 11px;")
-                
+                self.data_status.setStyleSheet(f"color: {DANGER}; font-size: 11px;")
+
         except Exception as e:
             self.data_status.setText("Load failed")
-            self.data_status.setStyleSheet("color: #ef5350; font-size: 11px;")
+            self.data_status.setStyleSheet(f"color: {DANGER}; font-size: 11px;")
             logger.info(f"Data load error: {e}")
     
     def _init_result_area(self):
@@ -788,10 +822,10 @@ class SingleBacktestWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         
         self.result_tabs = QTabWidget()
-        self.result_tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #363a45; background: #131722; }
-            QTabBar::tab { background: #1e222d; color: #787b86; padding: 8px 20px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-            QTabBar::tab:selected { background: #2962ff; color: white; font-weight: bold; }
+        self.result_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{ border: 1px solid {BORDER_DEFAULT}; background: {BG_BASE}; }}
+            QTabBar::tab {{ background: {BG_SURFACE}; color: {TEXT_SECONDARY}; padding: 8px 20px; border-top-left-radius: 4px; border-top-right-radius: 4px; }}
+            QTabBar::tab:selected {{ background: {ACCENT_SECONDARY}; color: {TEXT_PRIMARY}; font-weight: bold; }}
         """)
 
         # 1. Trades Tab
@@ -818,7 +852,7 @@ class SingleBacktestWidget(QWidget):
 
         # 우측: 차트
         self.chart_box = QGroupBox(t("backtest.chart_title"))
-        self.chart_box.setStyleSheet("QGroupBox { color: white; font-weight: bold; border: 1px solid #363a45; margin-top: 5px; }")
+        self.chart_box.setStyleSheet(f"QGroupBox {{ color: {TEXT_PRIMARY}; font-weight: bold; border: 1px solid {BORDER_DEFAULT}; margin-top: 5px; }}")
         chart_vbox = QVBoxLayout(self.chart_box)
         
         # [MOD] Use InteractiveChart component
@@ -852,10 +886,10 @@ class SingleBacktestWidget(QWidget):
         return self.result_tabs
 
     def _get_table_style(self):
-        return """
-            QTableWidget { background: #1e222d; color: white; border: none; gridline-color: #363a45; }
-            QHeaderView::section { background: #131722; color: #787b86; padding: 6px; border: 1px solid #363a45; }
-            QTableWidget::item { padding: 4px; }
+        return f"""
+            QTableWidget {{ background: {BG_SURFACE}; color: {TEXT_PRIMARY}; border: none; gridline-color: {BORDER_DEFAULT}; }}
+            QHeaderView::section {{ background: {BG_BASE}; color: {TEXT_SECONDARY}; padding: 6px; border: 1px solid {BORDER_DEFAULT}; }}
+            QTableWidget::item {{ padding: 4px; }}
         """
 
     def _on_trade_selected(self):
@@ -904,21 +938,9 @@ class SingleBacktestWidget(QWidget):
             )
             self.chart_box.setTitle(f"📊 {info}")
 
-            # 차트 줌인 (시간 범위 조정)
-            try:
-                # 진입/익절 시간 기준 ±20% 범위 표시
-                if self.candle_data is not None and not self.candle_data.empty:
-                    df = self.candle_data
-                    entry_idx = df[df['timestamp'] >= pd.Timestamp(entry_time)].index
-                    exit_idx = df[df['timestamp'] >= pd.Timestamp(exit_time)].index
-
-                    if len(entry_idx) > 0 and len(exit_idx) > 0:
-                        start_idx = max(0, entry_idx[0] - 20)
-                        end_idx = min(len(df), exit_idx[0] + 20)
-                        # 차트 범위 조정 (PyQtGraph API 사용 시)
-                        # self.chart_widget.setXRange(start_idx, end_idx)
-            except Exception as zoom_err:
-                logger.debug(f"Chart zoom error: {zoom_err}")
+            # 차트에 거래 하이라이트 (InteractiveChart.highlight_trade 사용)
+            if hasattr(self.chart_widget, 'highlight_trade'):
+                self.chart_widget.highlight_trade(trade, margin=20)
 
         except Exception as e:
             logger.debug(f"Trade selection error: {e}")
@@ -956,15 +978,15 @@ class SingleBacktestWidget(QWidget):
             direction = trade.get('type', '-')
             dir_item = QTableWidgetItem(direction)
             if 'Long' in direction:
-                dir_item.setForeground(QColor('#26a69a'))
+                dir_item.setForeground(QColor(SUCCESS))
             elif 'Short' in direction:
-                dir_item.setForeground(QColor('#ef5350'))
+                dir_item.setForeground(QColor(DANGER))
             self.result_table.setItem(row, 3, dir_item)
-            
+
             # PnL%
             pnl = trade.get('pnl', 0)
             pnl_item = QTableWidgetItem(f"{pnl:+.2f}%")
-            pnl_item.setForeground(QColor('#26a69a') if pnl >= 0 else QColor('#ef5350'))
+            pnl_item.setForeground(QColor(SUCCESS) if pnl >= 0 else QColor(DANGER))
             self.result_table.setItem(row, 4, pnl_item)
             
             # Balance & MDD 
@@ -1148,16 +1170,19 @@ class SingleBacktestWidget(QWidget):
             logic_item = QTableWidgetItem(log.get('logic', '-'))
             # 색상 코딩
             if "SIGNAL DETECTED" in logic_item.text():
-                logic_item.setForeground(QColor('#4CAF50')) # Green
+                logic_item.setForeground(QColor(SUCCESS)) # Green
             elif "SL UPDATE" in logic_item.text():
-                logic_item.setForeground(QColor('#2196F3')) # Blue
+                logic_item.setForeground(QColor(INFO)) # Blue
             elif "STOP LOSS HIT" in logic_item.text() or "CLOSE" in logic_item.text():
-                logic_item.setForeground(QColor('#f44336')) # Red
+                logic_item.setForeground(QColor(DANGER)) # Red
                 
             self.logic_table.setItem(row, 1, logic_item)
-            self.logic_table.setItem(row, 2, QTableWidgetItem(log.get('action', '-')))
-            self.logic_table.setItem(row, 3, QTableWidgetItem(log.get('pnl', '-')))
-            self.logic_table.setItem(row, 4, QTableWidgetItem(log.get('details', '-')))
+            self.logic_table.setItem(row, 2, QTableWidgetItem(str(log.get('action', '-'))))
+            # PnL을 문자열로 변환 (numpy.float64 → str)
+            pnl_value = log.get('pnl', '-')
+            pnl_str = f"{pnl_value:.2f}%" if isinstance(pnl_value, (int, float)) else str(pnl_value)
+            self.logic_table.setItem(row, 3, QTableWidgetItem(pnl_str))
+            self.logic_table.setItem(row, 4, QTableWidgetItem(str(log.get('details', '-'))))
             
         self.logic_table.scrollToBottom()
 
@@ -1260,10 +1285,10 @@ class SingleBacktestWidget(QWidget):
             
             self.strategy = AlphaX7Core()
             self.strategy.df_15m = df
-            
+
             filename = os.path.basename(file_path)
             self.data_status.setText(f"CSV: {filename} ({len(df):,} candles)")
-            self.data_status.setStyleSheet("color: #4CAF50; font-size: 11px;")
+            self.data_status.setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
             
             QMessageBox.information(self, "Loaded", f"CSV loaded!\n{len(df):,} candles")
             
@@ -1343,7 +1368,7 @@ class MultiBacktestWidget(QWidget):
         s_layout.addWidget(QLabel("거래소:"))
         self.exchange_combo = QComboBox()
         self.exchange_combo.addItems(['bybit', 'binance', 'okx', 'bitget'])
-        self.exchange_combo.setStyleSheet("background: #2b2b2b; color: white; padding: 5px;")
+        self.exchange_combo.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; padding: 5px;")
         s_layout.addWidget(self.exchange_combo)
         
         s_layout.addWidget(QLabel("TF:"))
@@ -1359,7 +1384,7 @@ class MultiBacktestWidget(QWidget):
         self.seed_spin.setRange(10, 100000)
         self.seed_spin.setValue(100)
         self.seed_spin.setPrefix("$")
-        self.seed_spin.setStyleSheet("background: #2b2b2b; color: white;")
+        self.seed_spin.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY};")
         s_layout.addWidget(self.seed_spin)
         
         s_layout.addWidget(QLabel("레버리지:"))
@@ -1367,7 +1392,7 @@ class MultiBacktestWidget(QWidget):
         self.lev_spin.setRange(1, 50)
         self.lev_spin.setValue(5)
         self.lev_spin.setSuffix("x")
-        self.lev_spin.setStyleSheet("background: #2b2b2b; color: white;")
+        self.lev_spin.setStyleSheet(f"background: {BG_ELEVATED}; color: {TEXT_PRIMARY};")
         s_layout.addWidget(self.lev_spin)
         
         s_layout.addStretch()
@@ -1375,50 +1400,49 @@ class MultiBacktestWidget(QWidget):
         
         # === 진행 상태 ===
         progress_group = QGroupBox("📊 진행 상태")
-        progress_group.setStyleSheet("""
-            QGroupBox { 
-                border: 1px solid #4CAF50; 
-                border-radius: 5px; 
-                margin-top: 10px; 
-                font-weight: bold; 
-                color: #4CAF50; 
-            }
+        progress_group.setStyleSheet(f"""
+            QGroupBox {{
+                border: 1px solid {SUCCESS};
+                border-radius: 5px;
+                margin-top: 10px;
+                font-weight: bold;
+                color: {SUCCESS};
+            }}
         """)
         p_layout = QVBoxLayout(progress_group)
         
         self.progress_bar = QProgressBar()
-        self.progress_bar.setStyleSheet("""
-            QProgressBar { 
-                border: 1px solid #333; 
-                border-radius: 5px; 
-                text-align: center; 
-                background: #1a1a2e; 
-                color: white; 
-                height: 25px; 
-            }
-            QProgressBar::chunk { 
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
-                    stop:0 #667eea, stop:1 #764ba2); 
-            }
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {BORDER_DEFAULT};
+                border-radius: 5px;
+                text-align: center;
+                background: {BG_BASE};
+                color: {TEXT_PRIMARY};
+                height: 25px;
+            }}
+            QProgressBar::chunk {{
+                background: {ACCENT_PRIMARY};
+            }}
         """)
         p_layout.addWidget(self.progress_bar)
         
         self.status_label = QLabel("대기 중 - 시작 버튼을 눌러주세요")
-        self.status_label.setStyleSheet("color: #888;")
+        self.status_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
         p_layout.addWidget(self.status_label)
         
         layout.addWidget(progress_group)
         
         # === 결과 요약 ===
         result_group = QGroupBox("📈 결과 요약")
-        result_group.setStyleSheet("""
-            QGroupBox { 
-                border: 1px solid #2962ff; 
-                border-radius: 5px; 
-                margin-top: 10px; 
-                font-weight: bold; 
-                color: #2962ff; 
-            }
+        result_group.setStyleSheet(f"""
+            QGroupBox {{
+                border: 1px solid {INFO};
+                border-radius: 5px;
+                margin-top: 10px;
+                font-weight: bold;
+                color: {INFO};
+            }}
         """)
         r_layout = QVBoxLayout(result_group)
         
@@ -1427,9 +1451,9 @@ class MultiBacktestWidget(QWidget):
         self.result_table.setHorizontalHeaderLabels(['항목', '값', '항목', '값'])
         if (header := self.result_table.horizontalHeader()) is not None:
             header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.result_table.setStyleSheet("""
-            QTableWidget { background: #1e222d; color: white; }
-            QHeaderView::section { background: #2b2b2b; color: white; }
+        self.result_table.setStyleSheet(f"""
+            QTableWidget {{ background: {BG_SURFACE}; color: {TEXT_PRIMARY}; }}
+            QHeaderView::section {{ background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; }}
         """)
         self.result_table.setMaximumHeight(150)
         self.result_table.setRowCount(4)
@@ -1439,14 +1463,14 @@ class MultiBacktestWidget(QWidget):
         
         # === 거래 내역 ===
         trades_group = QGroupBox("📜 거래 내역")
-        trades_group.setStyleSheet("""
-            QGroupBox { 
-                border: 1px solid #FF9800; 
-                border-radius: 5px; 
-                margin-top: 10px; 
-                font-weight: bold; 
-                color: #FF9800; 
-            }
+        trades_group.setStyleSheet(f"""
+            QGroupBox {{
+                border: 1px solid {WARNING};
+                border-radius: 5px;
+                margin-top: 10px;
+                font-weight: bold;
+                color: {WARNING};
+            }}
         """)
         t_layout = QVBoxLayout(trades_group)
         
@@ -1457,9 +1481,9 @@ class MultiBacktestWidget(QWidget):
         ])
         if header := self.trades_table.horizontalHeader():
             header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.trades_table.setStyleSheet("""
-            QTableWidget { background: #1e222d; color: white; }
-            QHeaderView::section { background: #2b2b2b; color: white; }
+        self.trades_table.setStyleSheet(f"""
+            QTableWidget {{ background: {BG_SURFACE}; color: {TEXT_PRIMARY}; }}
+            QHeaderView::section {{ background: {BG_ELEVATED}; color: {TEXT_PRIMARY}; }}
         """)
         t_layout.addWidget(self.trades_table)
         
@@ -1469,49 +1493,49 @@ class MultiBacktestWidget(QWidget):
         btn_layout = QHBoxLayout()
         
         self.start_btn = QPushButton("▶ 멀티 백테스트 시작")
-        self.start_btn.setStyleSheet("""
-            QPushButton { 
-                background: #4CAF50; 
-                color: white; 
-                padding: 12px 30px; 
-                border-radius: 5px; 
-                font-weight: bold; 
+        self.start_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {SUCCESS};
+                color: {TEXT_PRIMARY};
+                padding: 12px 30px;
+                border-radius: 5px;
+                font-weight: bold;
                 font-size: 14px;
-            }
-            QPushButton:hover { background: #45a049; }
-            QPushButton:disabled { background: #555; }
+            }}
+            QPushButton:hover {{ background: {SUCCESS}cc; }}
+            QPushButton:disabled {{ background: {BG_OVERLAY}; }}
         """)
         self.start_btn.clicked.connect(self._on_start)
         btn_layout.addWidget(self.start_btn)
         
         self.stop_btn = QPushButton("⏹ 중지")
         self.stop_btn.setEnabled(False)
-        self.stop_btn.setStyleSheet("""
-            QPushButton { 
-                background: #f44336; 
-                color: white; 
-                padding: 12px 30px; 
-                border-radius: 5px; 
-                font-weight: bold; 
-            }
-            QPushButton:hover { background: #d32f2f; }
-            QPushButton:disabled { background: #555; }
+        self.stop_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {DANGER};
+                color: {TEXT_PRIMARY};
+                padding: 12px 30px;
+                border-radius: 5px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: {DANGER}cc; }}
+            QPushButton:disabled {{ background: {BG_OVERLAY}; }}
         """)
         self.stop_btn.clicked.connect(self._on_stop)
         btn_layout.addWidget(self.stop_btn)
         
         self.save_btn = QPushButton("💾 결과 저장")
         self.save_btn.setEnabled(False)
-        self.save_btn.setStyleSheet("""
-            QPushButton { 
-                background: #2196F3; 
-                color: white; 
-                padding: 12px 30px; 
-                border-radius: 5px; 
-                font-weight: bold; 
-            }
-            QPushButton:hover { background: #1976D2; }
-            QPushButton:disabled { background: #555; }
+        self.save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {INFO};
+                color: {TEXT_PRIMARY};
+                padding: 12px 30px;
+                border-radius: 5px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: {INFO}cc; }}
+            QPushButton:disabled {{ background: {BG_OVERLAY}; }}
         """)
         self.save_btn.clicked.connect(self._on_save)
         btn_layout.addWidget(self.save_btn)
@@ -1629,29 +1653,29 @@ class MultiBacktestWidget(QWidget):
             
             dir_item = QTableWidgetItem(t.get('direction', ''))
             if t.get('direction') == 'Long':
-                dir_item.setForeground(QColor('#4CAF50'))
+                dir_item.setForeground(QColor(SUCCESS))
             else:
-                dir_item.setForeground(QColor('#f44336'))
+                dir_item.setForeground(QColor(DANGER))
             self.trades_table.setItem(row, 1, dir_item)
-            
+
             self.trades_table.setItem(row, 2, QTableWidgetItem(str(t.get('entry_time', ''))[:16]))
             self.trades_table.setItem(row, 3, QTableWidgetItem(str(t.get('exit_time', ''))[:16]))
             self.trades_table.setItem(row, 4, QTableWidgetItem(t.get('exit_reason', '')))
-            
+
             pnl_pct = t.get('pnl_pct', 0)
             pnl_item = QTableWidgetItem(f"{pnl_pct:+.2f}%")
             if pnl_pct > 0:
-                pnl_item.setForeground(QColor('#4CAF50'))
+                pnl_item.setForeground(QColor(SUCCESS))
             else:
-                pnl_item.setForeground(QColor('#f44336'))
+                pnl_item.setForeground(QColor(DANGER))
             self.trades_table.setItem(row, 5, pnl_item)
-            
+
             pnl_usd = t.get('pnl_usd', 0)
             usd_item = QTableWidgetItem(f"${pnl_usd:+.2f}")
             if pnl_usd > 0:
-                usd_item.setForeground(QColor('#4CAF50'))
+                usd_item.setForeground(QColor(SUCCESS))
             else:
-                usd_item.setForeground(QColor('#f44336'))
+                usd_item.setForeground(QColor(DANGER))
             self.trades_table.setItem(row, 6, usd_item)
 
 
@@ -1673,26 +1697,26 @@ class BacktestWidget(QWidget):
         
         # 서브탭
         self.sub_tabs = QTabWidget()
-        self.sub_tabs.setStyleSheet("""
-            QTabWidget::pane { 
-                border: 1px solid #444; 
-                border-radius: 4px; 
-            }
-            QTabBar::tab { 
-                background: #2b2b2b; 
-                color: #888; 
-                padding: 10px 25px; 
-                margin-right: 2px; 
+        self.sub_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {BORDER_DEFAULT};
+                border-radius: 4px;
+            }}
+            QTabBar::tab {{
+                background: {BG_ELEVATED};
+                color: {TEXT_SECONDARY};
+                padding: 10px 25px;
+                margin-right: 2px;
                 font-weight: bold;
-            }
-            QTabBar::tab:selected { 
-                background: #3c3c3c; 
-                color: white; 
-                border-bottom: 2px solid #4CAF50; 
-            }
-            QTabBar::tab:hover { 
-                background: #3c3c3c; 
-            }
+            }}
+            QTabBar::tab:selected {{
+                background: {BG_OVERLAY};
+                color: {TEXT_PRIMARY};
+                border-bottom: 2px solid {SUCCESS};
+            }}
+            QTabBar::tab:hover {{
+                background: {BG_OVERLAY};
+            }}
         """)
         
         # 싱글 백테스트 탭 (기존 기능)
@@ -1730,7 +1754,7 @@ class BacktestWidget(QWidget):
 if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
-    app.setStyleSheet("QWidget { background-color: #1e1e1e; }")
+    app.setStyleSheet(f"QWidget {{ background-color: {BG_BASE}; }}")
     w = BacktestWidget()
     w.resize(1200, 800)
     w.show()

@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
 from pathlib import Path
+import pandas as pd
 
 
 class BotStateManager:
@@ -225,7 +226,7 @@ class BotStateManager:
             성공 여부
         """
         try:
-            data['last_update'] = datetime.utcnow().isoformat()
+            data['last_update'] = pd.Timestamp.utcnow().isoformat()
             
             self.storage_dir.mkdir(parents=True, exist_ok=True)
             with open(self.cache_file, 'w', encoding='utf-8') as f:

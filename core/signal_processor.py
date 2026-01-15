@@ -89,7 +89,7 @@ class SignalProcessor:
         if validity_hours is None:
             validity_hours = self._validity_hours
         
-        now = datetime.utcnow()
+        now = pd.Timestamp.utcnow()
         validity = timedelta(hours=validity_hours)
         valid = []
         
@@ -202,7 +202,7 @@ class SignalProcessor:
                 self.last_pattern_check_time = current_time - timedelta(hours=self._validity_hours)
 
             # 마지막 캔들이 확정되었는지 확인
-            now_utc = datetime.utcnow()
+            now_utc = pd.Timestamp.utcnow()
             last_candle_time = current_time  # 이미 위에서 변환 및 검증됨
             is_candle_closed = (now_utc - last_candle_time.to_pydatetime()).total_seconds() >= (pattern_tf_minutes * 60)
             
@@ -274,12 +274,12 @@ class SignalProcessor:
     
     def get_valid_pending(self) -> list:
         """만료되지 않은 펜딩 시그널 목록"""
-        now = datetime.utcnow()
+        now = pd.Timestamp.utcnow()
         return [s for s in self.pending_signals if s.get('expire_time', now + timedelta(hours=1)) > now]
     
     def clear_expired(self):
         """만료된 시그널 제거"""
-        now = datetime.utcnow()
+        now = pd.Timestamp.utcnow()
         valid = [s for s in self.pending_signals if s.get('expire_time', now + timedelta(hours=1)) > now]
         self.pending_signals.clear()
         self.pending_signals.extend(valid)
@@ -323,7 +323,7 @@ class SignalProcessor:
             if bt_state:
                 pending_signals.extend(bt_state.get('pending', []))
             
-            now = datetime.utcnow()
+            now = pd.Timestamp.utcnow()
             valid_pending = [p for p in pending_signals if p.get('expire_time', now + timedelta(hours=1)) > now]
             
             pending_long = any(p.get('type') in ('Long', 'W', 'LONG') for p in valid_pending)
@@ -441,7 +441,7 @@ if __name__ == '__main__':
     )
     
     # 1. 시그널 추가 테스트
-    now = datetime.utcnow()
+    now = pd.Timestamp.utcnow()
     processor.add_signal({
         'type': 'Long',
         'pattern': 'W',

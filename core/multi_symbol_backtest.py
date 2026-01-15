@@ -235,7 +235,7 @@ class MultiSymbolBacktest:
                 if isinstance(timestamp, str):
                     timestamp = pd.to_datetime(timestamp)
                 elif isinstance(timestamp, (int, float)):
-                    timestamp = pd.to_datetime(timestamp, unit='ms')
+                    timestamp = pd.to_datetime(timestamp, unit='ms', utc=True)
                 
                 signals.append(Signal(
                     symbol=symbol,

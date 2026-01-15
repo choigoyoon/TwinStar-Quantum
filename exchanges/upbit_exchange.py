@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     import pyupbit
@@ -124,34 +124,56 @@ class UpbitExchange(BaseExchange):
             return []
     
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
         if pyupbit is None:
-            return 0.0
+            raise RuntimeError("pyupbit not available")
+
         try:
             price = pyupbit.get_current_price(self.symbol)
+
             if price is None:
-                return 0.0
+                raise RuntimeError("Price is None")
+
+            # Type conversion
             if isinstance(price, (int, float)):
-                return float(price)
-            if isinstance(price, str):
+                price_float = float(price)
+            elif isinstance(price, str):
                 try:
-                    return float(price)
-                except ValueError:
-                    return 0.0
-            return 0.0 # Unknown complex type
+                    price_float = float(price)
+                except ValueError as e:
+                    raise RuntimeError(f"Invalid price string: {price}") from e
+            else:
+                raise RuntimeError(f"Invalid price type: {type(price)}")
+
+            # Validation
+            if price_float <= 0:
+                raise RuntimeError(f"Invalid price: {price_float}")
+
+            return price_float
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0.0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float) -> OrderResult:
         """시장가 주문 (현물: 매수/매도)"""
         try:
             if self.upbit is None:
                 logging.error("Upbit not authenticated")
-                return False
-            
-            price = self.get_current_price()
-            
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error="Upbit not authenticated")
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Upbit] Price fetch failed: {e}")
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
             if side == 'Long':
                 # 매수: size는 KRW 금액
                 order_amount = size * price  # 코인 수량 * 가격 = KRW
@@ -159,7 +181,7 @@ class UpbitExchange(BaseExchange):
             else:
                 # 매도: size는 코인 수량
                 result = self.upbit.sell_market_order(self.symbol, size)
-            
+
             if isinstance(result, dict) and result.get('uuid'):
                 order_id = str(result.get('uuid'))
                 self.position = Position(
@@ -174,20 +196,20 @@ class UpbitExchange(BaseExchange):
                     entry_time=datetime.now(),
                     order_id=order_id
                 )
-                
+
                 logging.info(f"[Upbit] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
-                
+
                 # [NEW] 로컬 거래 DB 기록
                 self._record_execution(side=side, price=price, amount=size, order_id=order_id)
-                
-                return True # base_exchange.py usually expects bool or uses the side effect
+
+                return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
             else:
                 logging.error(f"[Upbit] Order failed: {result}")
-                return False
-                
+                return OrderResult(success=False, order_id=None, price=price, qty=size, error=f"Order failed: {result}")
+
         except Exception as e:
             logging.error(f"[Upbit] Order error: {e}")
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
     
     def update_stop_loss(self, new_sl: float) -> bool:
         """손절가 수정 (로컬 관리 - 업비트는 SL 미지원)"""
@@ -219,9 +241,16 @@ class UpbitExchange(BaseExchange):
                 
             if balance is not None and float(balance) > 0:
                 result = self.upbit.sell_market_order(self.symbol, float(balance))
-                
+
                 if isinstance(result, dict) and result.get('uuid'):
-                    price = self.get_current_price()
+                    try:
+                        price = self.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[Upbit] Price fetch failed: {e}")
+                        # 청산은 성공했지만 가격 조회 실패 - 포지션은 정리
+                        self.position = None
+                        return True
+
                     if self.position.side == 'Long':
                         pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                     else:
@@ -250,9 +279,13 @@ class UpbitExchange(BaseExchange):
             
             if self.upbit is None:
                 return False
-            
-            price = self.get_current_price()
-            
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Upbit] Price fetch failed: {e}")
+                return False
+
             if side == 'Long':
                 order_amount = size * price
                 result = self.upbit.buy_market_order(self.symbol, order_amount)

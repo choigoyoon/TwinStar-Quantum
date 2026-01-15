@@ -14,6 +14,7 @@ import sys
 import os
 import time
 import logging
+import pandas as pd
 import threading
 import requests
 from datetime import datetime
@@ -266,7 +267,7 @@ class UnifiedBot:
             'capital': (self.exchange.capital if self.exchange else 0),
             'bt_state': self.bt_state,
             'symbol': self.symbol,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': pd.Timestamp.utcnow().isoformat()
         }
         self.mod_state.save_state(state)
 
@@ -380,16 +381,18 @@ class UnifiedBot:
             )
 
     def _on_candle_close(self, candle: dict):
-        self.mod_data.append_candle(candle)
-        self._process_historical_data()
-        import pandas as pd
-        df_pattern = self.df_pattern_full if self.df_pattern_full is not None else pd.DataFrame()
-        self.mod_signal.add_patterns_from_df(df_pattern)
+        # 전체 캔들 처리를 락으로 보호 (데이터 무결성 보장)
+        with self.mod_data._data_lock:
+            self.mod_data.append_candle(candle)
+            self._process_historical_data()
+            import pandas as pd
+            df_pattern = self.df_pattern_full if self.df_pattern_full is not None else pd.DataFrame()
+            self.mod_signal.add_patterns_from_df(df_pattern)
 
     def _on_price_update(self, price: float):
         self.last_ws_price = price
         if self.position:
-            candle = {'high': price, 'low': price, 'close': price, 'timestamp': datetime.utcnow()}
+            candle = {'high': price, 'low': price, 'close': price, 'timestamp': pd.Timestamp.utcnow()}
             res = self.mod_position.manage_live(self.bt_state, candle, self.df_entry_resampled)
             if res and res.get('action') == 'CLOSE':
                 if self.mod_order.execute_close(self.position, price, reason=res.get('reason', 'WS_UPDATE'), bt_state=self.bt_state):

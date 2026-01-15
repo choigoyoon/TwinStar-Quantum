@@ -28,7 +28,7 @@ class OptimizationResult:
     """최적화 결과 데이터"""
     params: Dict
     win_rate: float
-    simple_return: float
+    total_pnl: float  # ✅ SSOT 표준 필드명 (구 simple_return)
     compound_return: float
     max_drawdown: float
     sharpe_ratio: float
@@ -36,6 +36,11 @@ class OptimizationResult:
     profit_factor: float
     strategy_type: str = ""
     stability: str = "⚠️"
+
+    @property
+    def simple_return(self) -> float:
+        """Deprecated: 하위 호환성을 위한 alias. total_pnl을 사용하세요."""
+        return self.total_pnl
 
 
 # ============ 필터 기준 (결과 탈락 조건) ============
@@ -67,15 +72,25 @@ def passes_filter(result, total_days: float = 365.0) -> bool:
 
 
 def calculate_grade(win_rate: float, mdd: float, pf: float) -> str:
-    """등급 계산 (S/A/B/C)"""
-    mdd = abs(mdd)
-    if win_rate >= 85 and mdd <= 12 and pf >= 3.0:
-        return "🏆S"
-    if win_rate >= 75 and mdd <= 17 and pf >= 2.0:
-        return "🥇A"
-    if win_rate >= 70 and mdd <= 20 and pf >= 1.5:
-        return "🥈B"
-    return "🥉C"
+    """
+    등급 계산 (utils.metrics wrapper - 하위 호환성)
+
+    Note:
+        이 함수는 하위 호환성을 위해 유지됩니다.
+        신규 코드는 utils.metrics.assign_grade_by_preset()를 직접 사용하세요.
+    """
+    from utils.metrics import assign_grade_by_preset
+
+    # 기본값: 균형형 기준 사용
+    return assign_grade_by_preset(
+        preset_type='balanced',
+        metrics={
+            'win_rate': win_rate,
+            'mdd': mdd,
+            'profit_factor': pf,
+            'sharpe_ratio': 0  # 계산 필요시 전달
+        }
+    )
 
 
 # ============ 4단계 순차 최적화 Grid 정의 (프리셋 기반) ============
@@ -148,18 +163,18 @@ STAGE3_GRID = STAGE3_STANDARD
 def calculate_optimal_leverage(mdd: float, target_mdd: float = 20.0) -> int:
     """
     MDD 기반 적정 레버리지 계산
-    
+
+    Wrapper for utils.metrics.calculate_optimal_leverage() (SSOT)
+
     Args:
         mdd: 현재 MDD (%)
         target_mdd: 목표 MDD (기본 20%)
-    
+
     Returns:
         적정 레버리지 (최대 10)
     """
-    if mdd <= 0:
-        return 1
-    leverage = target_mdd / mdd
-    return min(max(1, int(leverage)), 10)
+    from utils.metrics import calculate_optimal_leverage as calc_opt_lev
+    return calc_opt_lev(mdd, target_mdd, max_leverage=10)
 
 
 # ============ 멀티프로세스 워커 함수 (모듈 레벨) ============
@@ -192,7 +207,7 @@ def _worker_run_backtest(args):
             ts = df['timestamp']
             # int/float (ms) → datetime
             if pd.api.types.is_numeric_dtype(ts):
-                df['timestamp'] = pd.to_datetime(ts, unit='ms')
+                df['timestamp'] = pd.to_datetime(ts, unit='ms', utc=True)
             # string → datetime
             elif pd.api.types.is_string_dtype(ts):
                 df['timestamp'] = pd.to_datetime(ts)
@@ -239,7 +254,7 @@ def _worker_run_backtest(args):
         
         if not trades:
             return OptimizationResult(
-                params=params, win_rate=0, simple_return=0, compound_return=0,
+                params=params, win_rate=0, total_pnl=0, compound_return=0,
                 max_drawdown=0, sharpe_ratio=0, trade_count=0, profit_factor=0
             )
         
@@ -248,10 +263,16 @@ def _worker_run_backtest(args):
         pnls = [t.get('pnl', 0) * leverage for t in trades]
         simple_return = sum(pnls)
         
-        # Compound return (청산/파산 안전 처리)
+        # ✅ Phase 1-E P1-1: 클램핑 정책 적용
+        # Compound return (청산/파산 안전 처리 + 클램핑)
+        MAX_SINGLE_PNL = 50.0
+        MIN_SINGLE_PNL = -50.0
+
         equity = 1.0
         for p in pnls:
-            equity *= (1 + p / 100)
+            # 클램핑 적용
+            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, p))
+            equity *= (1 + clamped_pnl / 100)
             if equity <= 0:  # 파산 (전액 손실)
                 equity = 0
                 break
@@ -262,12 +283,14 @@ def _worker_run_backtest(args):
         wins = [p for p in pnls if p > 0]
         win_rate = len(wins) / len(trades) * 100 if trades else 0
         
-        # MDD (청산 안전 처리)
+        # MDD (청산 안전 처리 + 클램핑)
         equity_mdd = 1.0
         peak = 1.0
         mdd = 0
         for p in pnls:
-            equity_mdd *= (1 + p / 100)
+            # 클램핑 적용
+            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, p))
+            equity_mdd *= (1 + clamped_pnl / 100)
             if equity_mdd <= 0:  # 파산 시 MDD = 100%
                 mdd = 100.0
                 break
@@ -279,8 +302,9 @@ def _worker_run_backtest(args):
         
         # Strategy type
         strategy_type = "⚖ 균형"
+        total_pnl_value = simple_return  # 변수명 통일 전환
         if mdd < 10 and win_rate > 60: strategy_type = "🛡 보수"
-        elif simple_return > 100 or leverage > 10: strategy_type = "🔥 공격"
+        elif total_pnl_value > 100 or leverage > 10: strategy_type = "🔥 공격"
         
         # Sharpe Ratio - SSOT (252 × 4 통일)
         sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 4)
@@ -289,16 +313,9 @@ def _worker_run_backtest(args):
         trades_for_pf = [{'pnl': p} for p in pnls]
         profit_factor = calculate_profit_factor(trades_for_pf)
         
-        # Stability
-        n = len(pnls)
-        if n >= 3:
-            p1 = sum(pnls[:n//3])
-            p2 = sum(pnls[n//3:2*n//3])
-            p3 = sum(pnls[2*n//3:])
-            score = sum([p1 > 0, p2 > 0, p3 > 0])
-            stability = "✅" * score + "⚠️" * (3 - score)
-        else:
-            stability = "⚠️"
+        # Stability (SSOT 호출)
+        from utils.metrics import calculate_stability
+        stability = calculate_stability(pnls)
         
         # === 탐색용 기본 필터 (최종 선별은 get_top_n에서) ===
         # PF ≥ 1.0 (손실 아님), 거래수 ≥ 10
@@ -308,7 +325,7 @@ def _worker_run_backtest(args):
         return OptimizationResult(
             params=params,
             win_rate=win_rate,
-            simple_return=simple_return,
+            total_pnl=simple_return,  # ✅ SSOT 표준 필드명
             compound_return=compound_return,
             max_drawdown=mdd,
             sharpe_ratio=sharpe,
@@ -403,7 +420,7 @@ class OptimizationEngine:
             
             if not trades:
                 return OptimizationResult(
-                    params=params, win_rate=0, simple_return=0, compound_return=0,
+                    params=params, win_rate=0, total_pnl=0, compound_return=0,
                     max_drawdown=0, sharpe_ratio=0, trade_count=0, profit_factor=0
                 )
             
@@ -443,8 +460,9 @@ class OptimizationEngine:
             
             # Determine strategy type
             strategy_type = "⚖ 균형"
+            total_pnl_value = simple_return  # 변수명 통일 전환
             if mdd < 10 and win_rate > 60: strategy_type = "🛡 보수"
-            elif simple_return > 100 or leverage > 10: strategy_type = "🔥 공격"
+            elif total_pnl_value > 100 or leverage > 10: strategy_type = "🔥 공격"
             
             # Sharpe Ratio - SSOT (252 × 4 통일)
             sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 4)
@@ -453,21 +471,14 @@ class OptimizationEngine:
             trades_for_pf = [{'pnl': p} for p in pnls]
             profit_factor = calculate_profit_factor(trades_for_pf)
             
-            # Stability (3 stages)
-            n = len(pnls)
-            if n >= 3:
-                p1 = sum(pnls[:n//3])
-                p2 = sum(pnls[n//3:2*n//3])
-                p3 = sum(pnls[2*n//3:])
-                score = sum([p1 > 0, p2 > 0, p3 > 0])
-                stability = "✅" * score + "⚠️" * (3 - score)
-            else:
-                stability = "⚠️"
+            # Stability (SSOT 호출)
+            from utils.metrics import calculate_stability
+            stability = calculate_stability(pnls)
                 
             return OptimizationResult(
                 params=params,
                 win_rate=win_rate,
-                simple_return=simple_return,
+                total_pnl=simple_return,  # ✅ SSOT 표준 필드명
                 compound_return=compound_return,
                 max_drawdown=mdd,
                 sharpe_ratio=sharpe,
@@ -576,7 +587,7 @@ class OptimizationEngine:
 
         # sort_by mapping
         key_map = {
-            'Return': 'compound_return' if capital_mode.upper() == 'COMPOUND' else 'simple_return',
+            'Return': 'compound_return' if capital_mode.upper() == 'COMPOUND' else 'total_pnl',  # ✅ SSOT 표준
             'WinRate': 'win_rate',
             'Sharpe': 'sharpe_ratio',
             'MDD': 'max_drawdown',
@@ -639,7 +650,7 @@ class OptimizationEngine:
         def balanced_score(r):
             """MDD가 낮으면서 수익률도 좋은지 평가"""
             # capital_mode에 따른 수익률 선택
-            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.simple_return
+            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.total_pnl  # ✅ SSOT 표준
             # MDD 페널티: 15% 초과분에 대해 강한 페널티
             mdd_penalty = max(0, r.max_drawdown - 12) * 5.0
             # 수익률 보너스 (로그 수익률로 과적합 방지하며 점진적 보너스)

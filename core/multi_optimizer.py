@@ -19,6 +19,15 @@ from pathlib import Path
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
+# ✅ Phase 1-E: SSOT 메트릭 계산 (P0-1)
+from utils.metrics import (
+    calculate_win_rate,
+    calculate_mdd,
+    calculate_profit_factor,
+    calculate_sharpe_ratio,
+    calculate_stability
+)
+
 # DataManager import
 try:
     from GUI.data_cache import DataManager
@@ -182,7 +191,7 @@ class MultiOptimizer:
             # 타임스탬프 정규화
             if 'timestamp' in df_15m.columns:
                 if pd.api.types.is_numeric_dtype(df_15m['timestamp']):
-                    df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'], unit='ms')
+                    df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'], unit='ms', utc=True)
                 else:
                     df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
             
@@ -256,30 +265,38 @@ class MultiOptimizer:
                     
                     if not result or len(result) < self.MIN_TRADES:
                         continue
-                    
-                    wins = len([t for t in result if t.get('pnl', 0) > 0])
-                    win_rate = wins / len(result)
+
+                    # ✅ Phase 1-E P0-1 + P1-2: SSOT 메트릭 계산 + 클램핑 정책
+                    # 클램핑 정책 (-50% ~ +50%)
+                    MAX_SINGLE_PNL = 50.0
+                    MIN_SINGLE_PNL = -50.0
+
+                    # 거래 리스트를 표준 형식으로 변환 (클램핑 적용)
+                    trades_list = [
+                        {'pnl': max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, t.get('pnl', 0)))}
+                        for t in result
+                    ]
+
+                    # SSOT 함수 호출
+                    win_rate = calculate_win_rate(trades_list) / 100.0  # % → decimal (0~1)
+                    mdd = calculate_mdd(trades_list)  # % 단위로 반환됨
                     total_pnl = sum(t.get('pnl', 0) for t in result)
-                    
-                    # MDD 계산
-                    cumsum = 0
-                    peak = 0
-                    mdd = 0
-                    for t in result:
-                        cumsum += t.get('pnl', 0)
-                        peak = max(peak, cumsum)
-                        mdd = max(mdd, peak - cumsum)
-                    
+                    pf = calculate_profit_factor(trades_list)
+
                     # 기준 충족 확인
                     if win_rate < self.MIN_WIN_RATE:
                         continue
-                    if mdd / 100 > self.MAX_MDD:
+                    if mdd > self.MAX_MDD * 100:  # MAX_MDD는 0.25 (25%), mdd는 % 단위
                         continue
-                    
+
+                    # 추가 메트릭 계산
+                    pnl_list = [t.get('pnl', 0) for t in result]
+                    sharpe = calculate_sharpe_ratio(pnl_list, periods_per_year=252 * 4)  # 15분봉 기준
+                    stability = calculate_stability(pnl_list)
+
                     # 점수 계산 (승률 + PF)
-                    pf = total_pnl / max(abs(sum(t.get('pnl_pct', 0) for t in result if t.get('pnl_pct', 0) < 0)), 1)
                     score = win_rate * 0.6 + min(pf / 3, 1) * 0.4
-                    
+
                     if score > best_score:
                         best_score = score
                         best_result = {
@@ -289,6 +306,8 @@ class MultiOptimizer:
                             'total_pnl': total_pnl,
                             'mdd': mdd,
                             'pf': pf,
+                            'sharpe_ratio': sharpe,
+                            'stability': stability,
                             'score': score
                         }
                         

@@ -8,12 +8,7 @@ import pandas as pd
 # 메트릭 계산 (SSOT)
 from utils.metrics import calculate_profit_factor, calculate_sharpe_ratio
 
-try:
-    from config.parameters import PARAM_RANGES, DEFAULT_PARAMS
-except ImportError:
-    # Fallback or Mock for testing
-    PARAM_RANGES = {}
-    DEFAULT_PARAMS = {}
+from config.parameters import PARAM_RANGES, DEFAULT_PARAMS
 
 try:
     from core.strategy_core import AlphaX7Core
@@ -240,7 +235,7 @@ def _worker_run_backtest(args):
         strategy = AlphaX7Core(use_mtf=True)  # MTF 필터 활성화 (추세 정렬)
 
         # 비용 합산 (백테스트 UI와 동일)
-        combined_cost = params.get('slippage', 0.0006) + params.get('fee', 0.00055)
+        combined_cost = params.get('slippage', DEFAULT_PARAMS['slippage']) + params.get('fee', DEFAULT_PARAMS['fee'])
         
         # 백테스트 실행
         bt_params = {k: v for k, v in params.items() if k not in ['slippage', 'fee', 'filter_tf']}

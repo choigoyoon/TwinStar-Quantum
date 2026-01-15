@@ -28,23 +28,12 @@ TF_RESAMPLE_MAP = {
     '1w': 'W-MON', '1W': 'W-MON'
 }
 
-# ============ 방향 상수 (config/parameters.py에서 import) ============
-try:
-    from config.parameters import (
-        SLIPPAGE, FEE, TOTAL_COST,
-        DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
-        to_api_direction, from_api_direction # type: ignore
-    )
-except ImportError:
-    # Fallback
-    SLIPPAGE = 0.0006
-    FEE = 0.00055
-    TOTAL_COST = SLIPPAGE + FEE
-    DIRECTION_LONG = 'Long'
-    DIRECTION_SHORT = 'Short'
-    DIRECTION_BOTH = 'Both'
-    def to_api_direction(d): return 'Buy' if d == 'Long' else 'Sell'
-    def from_api_direction(d): return 'Long' if d.lower() in ('buy', 'long') else 'Short'
+# ============ 방향 상수 (config/parameters.py에서 import - SSOT) ============
+from config.parameters import (
+    SLIPPAGE, FEE, TOTAL_COST,
+    DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
+    to_api_direction, from_api_direction # type: ignore
+)
 
 # ============ 기본 파라미터 (전체 프로젝트 공용) ============
 # [Phase 3] Single Source of Truth: config/parameters.py에서 import

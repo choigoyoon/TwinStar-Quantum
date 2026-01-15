@@ -195,14 +195,16 @@ class BotDataManager:
                     resample_rule = resample_rule.replace('m', 'min')
                 
                 logging.info(f"[DATA] Resampling: 15m -> {entry_tf}")
-                
+
+                # TODO: Refactor to use utils.data_utils.resample_data() for SSOT compliance
+                # Current logic has conditional resample_rule which needs careful handling
                 df_temp = self.df_entry_full.copy()
                 if 'timestamp' in df_temp.columns:
                     df_temp = df_temp.set_index('timestamp')
-                
+
                 if resample_rule:
                     self.df_entry_resampled = df_temp.resample(resample_rule).agg({
-                        'open': 'first', 'high': 'max', 'low': 'min', 
+                        'open': 'first', 'high': 'max', 'low': 'min',
                         'close': 'last', 'volume': 'sum'
                     }).dropna().reset_index()
                 else:
@@ -223,9 +225,12 @@ class BotDataManager:
                 df_temp = df_temp.set_index('timestamp')
             
             logging.info(f"[DATA] Resampling Pattern: 15m -> {pattern_tf}")
+
+            # TODO: Refactor to use utils.data_utils.resample_data() for SSOT compliance
+            # Current logic has conditional resample_rule_pattern which needs careful handling
             if resample_rule_pattern:
                 self.df_pattern_full = df_temp.resample(resample_rule_pattern).agg({
-                    'open': 'first', 'high': 'max', 'low': 'min', 
+                    'open': 'first', 'high': 'max', 'low': 'min',
                     'close': 'last', 'volume': 'sum'
                 }).dropna().reset_index()
             else:
@@ -489,6 +494,132 @@ class BotDataManager:
             'pattern_full': len(self.df_pattern_full) if self.df_pattern_full is not None else 0
         }
     
+    def get_full_history(self, with_indicators: bool = True) -> Optional[pd.DataFrame]:
+        """
+        Parquet에서 전체 히스토리 로드 (백테스트용)
+
+        Args:
+            with_indicators: 지표 포함 여부 (기본: True)
+
+        Returns:
+            전체 히스토리 데이터프레임 (None if not exists)
+
+        Note:
+            - 메모리(df_entry_full)는 최근 1000개만 유지
+            - Parquet는 전체 히스토리 보존 (35,000+ candles)
+            - 백테스트는 이 메서드로 전체 데이터 로드 필요
+        """
+        try:
+            entry_file = self.get_entry_file_path()
+
+            if not entry_file.exists():
+                logging.warning(f"[DATA] Parquet not found: {entry_file}")
+                return None
+
+            # Parquet 로드 (전체 히스토리)
+            df = pd.read_parquet(entry_file)
+
+            # Timestamp 변환
+            if 'timestamp' in df.columns:
+                if pd.api.types.is_numeric_dtype(df['timestamp']):
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+                else:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+            # 지표 추가 (옵션)
+            if with_indicators:
+                try:
+                    from utils.indicators import add_all_indicators
+                except ImportError:
+                    from utils.indicators import IndicatorGenerator
+                    add_all_indicators = IndicatorGenerator.add_all_indicators
+
+                df = add_all_indicators(df)
+
+            logging.info(f"[DATA] Full history loaded: {len(df)} candles")
+            return df
+
+        except Exception as e:
+            logging.error(f"[DATA] Full history load failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    def get_recent_data(
+        self,
+        limit: int = 100,
+        with_indicators: bool = True,
+        warmup_window: int = 100
+    ) -> Optional[pd.DataFrame]:
+        """
+        메모리에서 최근 N개 데이터 반환 (실시간 매매용)
+
+        Args:
+            limit: 반환할 캔들 수 (기본: 100)
+            with_indicators: 지표 포함 여부 (기본: True)
+            warmup_window: 지표 계산 워밍업 윈도우 (기본: 100)
+                          - RSI(14), ATR(14) 등 워밍업을 위해 limit보다 많은 데이터 사용
+                          - 예: limit=100, warmup=100 → 200개로 지표 계산 후 최근 100개 반환
+
+        Returns:
+            최근 N개 데이터프레임 (None if no data)
+
+        Note:
+            - 백테스트와 실시간 매매의 지표 계산 범위 통일 (Phase A-2)
+            - 지표 없이 사용 시 (with_indicators=False): warmup_window 무시
+
+        Example:
+            # ✅ 올바른 사용법 (지표 계산 정확도 보장)
+            df = manager.get_recent_data(limit=100, warmup_window=100)
+            # → 200개로 지표 계산, 최근 100개 반환
+
+            # ❌ 잘못된 사용법 (지표 계산 부정확)
+            df = manager.get_recent_data(limit=100, warmup_window=0)
+            # → 100개로 지표 계산, 초기 14개는 NaN
+        """
+        if self.df_entry_full is None or self.df_entry_full.empty:
+            logging.warning("[DATA] No data in memory")
+            return None
+
+        # 지표 계산 시 워밍업 윈도우 추가
+        if with_indicators and warmup_window > 0:
+            # 워밍업 윈도우 + limit 만큼 데이터 가져오기
+            fetch_size = limit + warmup_window
+            df_full = self.df_entry_full.tail(fetch_size).copy()
+
+            # 지표 계산 (전체 범위 사용)
+            try:
+                from utils.indicators import add_all_indicators
+            except ImportError:
+                from utils.indicators import IndicatorGenerator
+                add_all_indicators = IndicatorGenerator.add_all_indicators
+
+            df_full = add_all_indicators(df_full)
+
+            # 최근 limit개만 반환 (워밍업된 지표 포함)
+            df = df_full.tail(limit).copy()
+            logging.debug(
+                f"[DATA] Recent data with warmup: "
+                f"{len(df)} candles (limit={limit}, warmup={warmup_window}, total_calc={fetch_size})"
+            )
+
+        else:
+            # 지표 없거나 워밍업 불필요
+            df = self.df_entry_full.tail(limit).copy()
+
+            if with_indicators:
+                try:
+                    from utils.indicators import add_all_indicators
+                except ImportError:
+                    from utils.indicators import IndicatorGenerator
+                    add_all_indicators = IndicatorGenerator.add_all_indicators
+
+                df = add_all_indicators(df)
+
+            logging.debug(f"[DATA] Recent data: {len(df)} candles (limit={limit})")
+
+        return df
+
     def clear_cache(self):
         """메모리 캐시 클리어"""
         self.df_entry_full = None

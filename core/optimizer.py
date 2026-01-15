@@ -561,6 +561,10 @@ class OptimizationResult:
     capital_mode: str = "compound"        # 자본 모드
     avg_pnl: float = 0.0                  # [NEW] 평균 PnL (%)
     cagr: float = 0.0                     # [NEW] 연간 복리 수익률 (%)
+    passes_filter: bool = True            # [NEW] 필터 통과 여부 (MDD, 승률, 거래수)
+    symbol: str = ""                      # [NEW] 심볼 (백테스트용)
+    timeframe: str = ""                   # [NEW] 타임프레임 (백테스트용)
+    final_capital: float = 0.0            # [NEW] 최종 자본 (백테스트용)
 
 
 # calculate_grade() 함수 제거 (utils.metrics.assign_grade_by_preset()로 대체)
@@ -839,8 +843,8 @@ class BacktestOptimizer:
                 _symbol = params.get('symbol', 'BTCUSDT')
                 _leverage = params.get('leverage', 3)
                 if isinstance(_leverage, list): _leverage = _leverage[0]
-                _slippage = params.get('slippage', DEFAULT_PARAMS.get('slippage', 0.0005))
-                _fee = params.get('fee', DEFAULT_PARAMS.get('fee', 0.00055))
+                _slippage = params.get('slippage', DEFAULT_PARAMS['slippage'])
+                _fee = params.get('fee', DEFAULT_PARAMS['fee'])
 
                 futures.append(executor.submit(
                     _worker_run_single,
@@ -912,7 +916,7 @@ class BacktestOptimizer:
         logger.info(f"✅ 최적화 완료: {len(self.results)}개 대표 결과 도출")
         return self.results
     
-    def _run_single(self, params: Dict, slippage: float, fee: float = 0.00055) -> Optional[OptimizationResult]:
+    def _run_single(self, params: Dict, slippage: float, fee: float) -> Optional[OptimizationResult]:
         """단일 파라미터 조합으로 백테스트 실행"""
         if self.df is None:
             return None

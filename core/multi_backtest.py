@@ -13,6 +13,7 @@ from pathlib import Path
 
 # Logging
 from utils.logger import get_module_logger
+from utils.data_utils import resample_data
 logger = get_module_logger(__name__)
 
 try:
@@ -79,17 +80,12 @@ class MultiBacktester:
                 else:
                     df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
             
-            # 1H 패턴용 리샘플링
-            df_temp = df_15m.set_index('timestamp')
-            df_pattern = df_temp.resample('1h').agg({
-                'open': 'first', 'high': 'max', 'low': 'min',
-                'close': 'last', 'volume': 'sum'
-            }).dropna().reset_index()
-            
-            # 지표 추가
+            # 1H 패턴용 리샘플링 (SSOT: utils.data_utils)
+            df_pattern = resample_data(df_15m, '1h', add_indicators=True)
+
+            # 15m 지표 추가
             from utils.indicators import IndicatorGenerator
             df_15m = IndicatorGenerator.add_all_indicators(df_15m)
-            df_pattern = IndicatorGenerator.add_all_indicators(df_pattern)
             
             return df_pattern, df_15m
         except Exception as e:

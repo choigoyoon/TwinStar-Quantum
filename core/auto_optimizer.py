@@ -9,8 +9,10 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Dict
+import pandas as pd
 
 from paths import Paths
+from utils.data_utils import resample_data
 PRESET_DIR: Path = Path(Paths.PRESETS)
 CACHE_DIR: Path = Path(Paths.CACHE)
 
@@ -116,12 +118,8 @@ class AutoOptimizer:
                 self.save_preset(self.DEFAULT_PARAMS, timeframe)
                 return {"timeframe": timeframe, "params": self.DEFAULT_PARAMS}
 
-            # 1시간 리샘플링
-            df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
-            df_1h = df_15m.set_index('timestamp').resample('1h').agg({
-                'open': 'first', 'high': 'max', 'low': 'min',
-                'close': 'last', 'volume': 'sum'
-            }).dropna().reset_index()
+            # 1시간 리샘플링 (SSOT: utils.data_utils)
+            df_1h = resample_data(df_15m, '1h', add_indicators=False)
 
             # 최적화 실행 (BacktestOptimizer API에 맞게 수정)
             # BacktestOptimizer(strategy_class, df)를 사용

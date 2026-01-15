@@ -14,6 +14,7 @@ from core.trade_common import CoinStatus, CoinState, WS_LIMITS
 from core.capital_manager import CapitalManager
 from core.strategy_core import AlphaX7Core
 from config.constants.paths import DATA_DIR, CONFIG_DIR, PRESET_DIR
+from utils.data_utils import resample_data
 
 class Paths:
     BASE = os.path.dirname(CONFIG_DIR)
@@ -275,12 +276,8 @@ class MultiCoinSniper:
             optimal_tf = self._select_optimal_tf(len(df))
             self.logger.info(f"[{symbol}] 캔들 {len(df)}개 → TF: {optimal_tf}")
             
-            # TF에 맞게 리샘플링
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-            df_resampled = df.set_index('timestamp').resample(optimal_tf).agg({
-                'open': 'first', 'high': 'max', 'low': 'min',
-                'close': 'last', 'volume': 'sum'
-            }).dropna().reset_index()
+            # TF에 맞게 리샘플링 (SSOT: utils.data_utils)
+            df_resampled = resample_data(df, optimal_tf, add_indicators=False)
             
             if len(df_resampled) < 50:
                 self.logger.debug(f"{symbol} 리샘플링 후 데이터 부족")

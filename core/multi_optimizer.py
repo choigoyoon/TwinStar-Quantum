@@ -17,6 +17,7 @@ from pathlib import Path
 
 # Logging
 from utils.logger import get_module_logger
+from utils.data_utils import resample_data
 logger = get_module_logger(__name__)
 
 # ✅ Phase 1-E: SSOT 메트릭 계산 (P0-1)
@@ -195,18 +196,13 @@ class MultiOptimizer:
                 else:
                     df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
             
-            # 1H 리샘플링 (패턴용)
-            df_temp = df_15m.set_index('timestamp')
-            df_1h = df_temp.resample('1h').agg({
-                'open': 'first', 'high': 'max', 'low': 'min',
-                'close': 'last', 'volume': 'sum'
-            }).dropna().reset_index()
-            
-            # 지표 추가
+            # 1H 리샘플링 (패턴용, SSOT: utils.data_utils)
+            df_1h = resample_data(df_15m, '1h', add_indicators=True)
+
+            # 15m 지표 추가
             try:
                 from utils.indicators import IndicatorGenerator
                 df_15m = IndicatorGenerator.add_all_indicators(df_15m)
-                df_1h = IndicatorGenerator.add_all_indicators(df_1h)
             except ImportError as e:
                 logging.debug(f"[OPTIMIZER] IndicatorGenerator not found: {e}")
             

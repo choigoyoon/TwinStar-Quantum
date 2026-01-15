@@ -13,6 +13,9 @@ import time
 from datetime import datetime
 from typing import Optional, Dict, Any, Callable, Union
 
+# Configuration
+from config.parameters import DEFAULT_PARAMS
+
 # Logging
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
@@ -115,7 +118,7 @@ class OrderExecutor:
             pnl_usd_raw = size * (entry_price - exit_price)
         
         # 수수료 차감
-        fee_rate = self.strategy_params.get('slippage', 0.0006)
+        fee_rate = self.strategy_params.get('slippage', DEFAULT_PARAMS['slippage'])
         total_fee = size * entry_price * fee_rate + size * exit_price * fee_rate
         pnl_usd = pnl_usd_raw - total_fee
         
@@ -695,7 +698,7 @@ if __name__ == '__main__':
     
     executor = OrderExecutor(
         exchange=MockExchange(),
-        strategy_params={'slippage': 0.0006, 'leverage': 10},
+        strategy_params={'slippage': DEFAULT_PARAMS['slippage'], 'leverage': 10},
         dry_run=True
     )
     

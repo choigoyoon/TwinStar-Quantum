@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy
-from ui.design_system.tokens import Colors, Radius, Spacing
+from ui.design_system.tokens import Colors, Radius, Spacing, Typography, Size
 
 class RiskHeaderWidget(QFrame):
     """글로벌 리스크 현황 헤더"""
@@ -11,14 +11,14 @@ class RiskHeaderWidget(QFrame):
                 border-bottom: 2px solid {Colors.accent_primary};
                 border-radius: {Radius.radius_md};
             }}
-            QLabel {{ color: {Colors.text_primary}; font-weight: bold; font-size: 14px; padding: {Spacing.space_2}; }}
+            QLabel {{ color: {Colors.text_primary}; font-weight: bold; font-size: {Typography.text_base}; padding: {Spacing.space_2}; }}
         """)
         self._init_ui()
-        
+
     def _init_ui(self):
         # 반응형 레이아웃
         self.setMinimumHeight(40)
-        self.setMaximumHeight(60)
+        self.setMaximumHeight(Size.header_max_height)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         layout = QHBoxLayout(self)

@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from typing import Dict, Any
 from PyQt6.QtCore import pyqtSignal, Qt
-from ui.design_system.tokens import Colors, Spacing, Typography, Radius
+from ui.design_system.tokens import Colors, Spacing, Typography, Radius, Size
 
 class TradePanel(QWidget):
     """단일 트레이딩 패널 (싱글/멀티 공용)"""
@@ -29,31 +29,31 @@ class TradePanel(QWidget):
     def _init_ui(self, title):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        
+        layout.setSpacing(Spacing.i_space_3)
+
         # 헤더
         header = QHBoxLayout()
-        
+
         title_label = QLabel(f"{'🎯' if self.mode == 'single' else '🔍'} {title}")
         title_label.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {Colors.accent_primary};")
 
         self.status_label = QLabel("대기 중")
         self.status_label.setStyleSheet(f"color: {Colors.text_secondary};")
-        
+
         header.addWidget(title_label)
         header.addStretch()
         header.addWidget(self.status_label)
-        
+
         layout.addLayout(header)
-        
+
         # 설정 그리드 (세로형 컴팩트)
         settings = QVBoxLayout()
-        settings.setSpacing(16)
-        
+        settings.setSpacing(Spacing.i_space_4)
+
         # Helper to create compact rows
         def create_row(icon: str, label: str, widget: QWidget):
             row = QVBoxLayout()
-            row.setSpacing(4)
+            row.setSpacing(Spacing.i_space_1)
             lbl_layout = QHBoxLayout()
             lbl = QLabel(f"{icon} {label}")
             lbl.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_muted}; font-weight: 600;")
@@ -61,7 +61,7 @@ class TradePanel(QWidget):
             lbl_layout.addStretch()
             row.addLayout(lbl_layout)
             row.addWidget(widget)
-            widget.setMinimumHeight(32)
+            widget.setMinimumHeight(Size.input_md)
             return row
 
         # 1. 거래소
@@ -80,12 +80,12 @@ class TradePanel(QWidget):
         else:
             # 멀티 모드: 자동 선택 안내
             info_layout = QVBoxLayout()
-            info_layout.setSpacing(4)
+            info_layout.setSpacing(Spacing.i_space_1)
             info_label_header = QLabel("💎 TARGET")
             info_label_header.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_muted}; font-weight: 600;")
             info_label_desc = QLabel("📊 Top N by 24h Volume")
             info_label_desc.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary}; padding: 8px; background: {Colors.bg_base}; border-radius: {Radius.radius_sm};")
-            info_label_desc.setMinimumHeight(32)
+            info_label_desc.setMinimumHeight(Size.input_md)
             info_layout.addWidget(info_label_header)
             info_layout.addWidget(info_label_desc)
             settings.addLayout(info_layout)
@@ -147,10 +147,10 @@ class TradePanel(QWidget):
         
         # 버튼
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(12)
-        
+        btn_layout.setSpacing(Spacing.i_space_3)
+
         self.start_btn = QPushButton("▶ START SNIPING")
-        self.start_btn.setFixedHeight(44)
+        self.start_btn.setFixedHeight(Size.button_xl)
         self.start_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start_btn.setStyleSheet(f"""
             QPushButton {{
@@ -172,9 +172,9 @@ class TradePanel(QWidget):
             }}
         """)
         self.start_btn.clicked.connect(self._on_start)
-        
+
         self.stop_btn = QPushButton("⏹ STOP")
-        self.stop_btn.setFixedHeight(40)
+        self.stop_btn.setFixedHeight(Size.button_lg)
         self.stop_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.stop_btn.setEnabled(False)
         self.stop_btn.setStyleSheet(f"""

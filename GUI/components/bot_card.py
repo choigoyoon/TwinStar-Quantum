@@ -56,7 +56,7 @@ class BotCard(QFrame):
         
         # 상태 표시 (Running)
         self.status_dot = QLabel("●")
-        self.status_dot.setStyleSheet(f"color: {Colors.success}; font-size: 14px;")
+        self.status_dot.setStyleSheet(f"color: {Colors.success}; font-size: {Typography.text_base};")
         header.addWidget(self.status_dot)
         
         layout.addLayout(header)
@@ -165,7 +165,7 @@ class BotCard(QFrame):
         self.pnl_pct_label.setStyleSheet(f"font-size: {Typography.text_sm}; font-weight: 600; color: {color};")
         
         # 호버 효과 색상 업데이트 (동적)
-        self.status_dot.setStyleSheet(f"color: {color}; font-size: 14px;")
+        self.status_dot.setStyleSheet(f"color: {color}; font-size: {Typography.text_base};")
 
     def _on_stop_clicked(self):
         self.stop_signal.emit(self.bot_key)

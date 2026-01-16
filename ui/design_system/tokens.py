@@ -64,8 +64,10 @@ class ColorTokens:
     # === Semantic Colors ===
     success: str = "#3fb950"       # 수익/성공/매수
     success_bg: str = "#0d2818"    # 성공 배경
+    success_hover: str = "#2e7d32" # 성공 호버 (버튼 등)
     danger: str = "#f85149"        # 손실/위험/매도
     danger_bg: str = "#2d1214"     # 위험 배경
+    danger_hover: str = "#b71c1c"  # 위험 호버 (버튼 등)
     warning: str = "#d29922"       # 경고
     warning_bg: str = "#2d2305"    # 경고 배경
     info: str = "#58a6ff"          # 정보
@@ -252,6 +254,7 @@ class SizeTokens:
     button_sm: int = 32      # 작은 버튼
     button_md: int = 36      # 중간 버튼 (기본)
     button_lg: int = 40      # 큰 버튼
+    button_xl: int = 44      # 아주 큰 버튼
 
     # === Input Field Heights ===
     input_sm: int = 28       # 작은 입력 필드
@@ -270,6 +273,27 @@ class SizeTokens:
 
     # === Component Specific ===
     refresh_button_size: int = 36  # 새로고침 버튼 (정사각형)
+    header_max_height: int = 60    # 헤더 최대 높이
+
+    # === Bot Control Card Specific ===
+    bot_num_width: int = 25        # #번호 라벨
+    bot_exchange_width: int = 90   # 거래소 콤보
+    bot_symbol_width: int = 100    # 심볼 콤보
+    bot_seed_width: int = 70       # 시드 입력
+    bot_arrow_width: int = 15      # 화살표
+    bot_current_width: int = 75    # 현재가
+    bot_pnl_width: int = 65        # PnL
+    bot_mode_width: int = 40       # 모드
+    bot_lock_width: int = 25       # 잠금 버튼
+    bot_adj_width: int = 20        # 조정 버튼
+    bot_leverage_width: int = 50   # 레버리지
+    bot_preset_width: int = 130    # 프리셋
+    bot_direction_width: int = 65  # 방향
+    bot_start_width: int = 30      # 시작 버튼
+    bot_stop_width: int = 30       # 정지 버튼
+    bot_status_width: int = 20     # 상태
+    bot_balance_width: int = 75    # 잔고
+    bot_message_width: int = 150   # 메시지
 
 
 # ============================================================

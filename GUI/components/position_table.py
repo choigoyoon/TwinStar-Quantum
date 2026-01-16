@@ -3,7 +3,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QColor
 import logging
 from locales.lang_manager import t
-from ui.design_system.tokens import Colors, Radius
+from ui.design_system.tokens import Colors, Radius, Spacing
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class PositionTable(QTableWidget):
             QHeaderView::section {{
                 background-color: {Colors.bg_elevated};
                 color: {Colors.text_secondary};
-                padding: 4px;
+                padding: {Spacing.space_1};
                 border: 1px solid {Colors.border_default};
             }}
         """)
@@ -95,7 +95,7 @@ class PositionTable(QTableWidget):
                     color: white;
                     border: none;
                     border-radius: {Radius.radius_sm};
-                    padding: 2px 5px;
+                    padding: {Spacing.space_1} {Spacing.space_2};
                 }}
                 QPushButton:hover {{ background-color: #d32f2f; }}
             """)

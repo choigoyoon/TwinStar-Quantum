@@ -26,7 +26,8 @@ logger = get_module_logger(__name__)
 MODE_MAP = {
     0: 'quick',
     1: 'standard',
-    2: 'deep'
+    2: 'deep',
+    3: 'meta'  # 메타 최적화 (v7.20 - 범위 자동 탐색)
 }
 
 

@@ -12,7 +12,7 @@ Zone A 마이그레이션:
 """
 
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict
 from PyQt6.QtCore import QThread, pyqtSignal
 import pandas as pd
 
@@ -55,22 +55,24 @@ class OptimizationWorker(QThread):
         self,
         engine: Any,  # OptimizationEngine (순환 import 방지)
         df: pd.DataFrame,
-        param_grid: dict,
+        param_grid: List[Dict[str, Any]],
         max_workers: int = 4,
         symbol: str = "",
         timeframe: str = "",
         capital_mode: str = "compound",
+        strategy_type: str = "macd",
         parent: Optional[QThread] = None
     ):
         """
         Args:
             engine: OptimizationEngine 인스턴스
             df: 백테스트 데이터프레임
-            param_grid: 파라미터 그리드 {'atr_mult': [1.5, 2.0], ...}
+            param_grid: 파라미터 그리드 [{'atr_mult': 1.5, ...}, ...]
             max_workers: 최대 워커 수 (기본: 4)
             symbol: 심볼 (로깅용)
             timeframe: 타임프레임 (로깅용)
             capital_mode: 자본 모드 ('compound' or 'fixed')
+            strategy_type: 전략 유형 ('macd' or 'adx') - v3.0
             parent: 부모 스레드
         """
         super().__init__(parent)
@@ -81,11 +83,12 @@ class OptimizationWorker(QThread):
         self.symbol = symbol
         self.timeframe = timeframe
         self.capital_mode = capital_mode
+        self.strategy_type = strategy_type
         self._cancelled = False
 
         logger.debug(
             f"OptimizationWorker 초기화: {symbol} {timeframe}, "
-            f"max_workers={max_workers}, capital_mode={capital_mode}"
+            f"max_workers={max_workers}, capital_mode={capital_mode}, strategy_type={strategy_type}"
         )
     
     def run(self):

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "quick_preset_1",
+    "params": {
+      "filter_tf": "12h",
+      "entry_validity_hours": 48,
+      "atr_mult": 2.0,
+      "trail_start_r": 1.0,
+      "trail_dist_r": 0.2,
+      "trend_interval": "1h",
+      "entry_tf": "15m",
+      "leverage": 1,
+      "direction": "Both",
+      "max_mdd": 100.0
+    },
+    "metrics": {
+      "score": 72.71,
+      "win_rate": 77.47,
+      "mdd": 5.32,
+      "trades_per_day": 1.4952874646559848,
+      "simple_return": 973.4,
+      "compound_return": 1517943.64,
+      "profit_factor": 3.26
+    }
+  }
+]

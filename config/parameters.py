@@ -106,6 +106,144 @@ PARAM_RANGES = {
 }
 
 
+# ============ 모드별 최적화 범위 (v7.18 - 문서 권장사항 반영) ============
+#
+# 배경:
+# - PARAM_RANGES는 튜플 형식으로 전체 범위만 정의 (모드 구분 없음)
+# - optimizer.py의 generate_*_grid() 함수들이 실제 모드별 범위를 하드코딩
+# - SSOT 원칙 위반: 모드별 범위가 optimizer.py에 중복 정의됨
+#
+# 목적:
+# - 모드별 파라미터 범위를 config/ 모듈로 중앙화 (SSOT 복원)
+# - filter_tf 범위 추가 (기존 누락)
+# - entry_validity_hours 범위에 기본값 6.0 포함
+#
+# 조합 수 변화:
+# - Quick:    4개 → 8개 (2×2×1×2)
+# - Standard: 32개 → 60개
+# - Deep:     ~540개 → ~1,080개
+#
+PARAM_RANGES_BY_MODE = {
+    # 필터 타임프레임 (문자열 리스트)
+    'filter_tf': {
+        'quick': ['12h', '1d'],              # 문서 권장: 긴 TF로 필터 강화
+        'standard': ['4h', '6h', '12h'],      # 12h 추가
+        'deep': ['2h', '4h', '6h', '12h', '1d']  # 전체 범위 탐색
+    },
+
+    # 진입 유효시간 (시간 단위)
+    'entry_validity_hours': {
+        'quick': [48, 72],                    # 문서 권장: 48~96h
+        'standard': [6, 12, 24, 48, 72],      # 기본값 6.0 포함
+        'deep': [6, 12, 24, 36, 48, 72, 96]   # 96h 추가
+    },
+
+    # ATR 배수 (손절 거리)
+    'atr_mult': {
+        'quick': [1.25, 2.0],                 # DEFAULT_PARAMS 포함
+        'standard': [1.25, 1.5, 2.0, 2.5],
+        'deep': [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
+    },
+
+    # 트레일링 시작 배수
+    'trail_start_r': {
+        'quick': [1.0, 1.5],
+        'standard': [1.0, 1.5, 2.0, 2.5],
+        'deep': [0.8, 1.0, 1.5, 2.0, 2.5, 3.0]
+    },
+
+    # 트레일링 간격
+    'trail_dist_r': {
+        'quick': [0.2],
+        'standard': [0.2, 0.3],
+        'deep': [0.15, 0.2, 0.25, 0.3]
+    },
+}
+
+
+def get_param_range_by_mode(key: str, mode: str = 'standard') -> list | None:
+    """
+    모드별 파라미터 범위 조회
+
+    Args:
+        key: 파라미터 키 (예: 'filter_tf', 'entry_validity_hours')
+        mode: 최적화 모드 ('quick', 'standard', 'deep')
+
+    Returns:
+        파라미터 값 리스트 또는 None
+
+    Examples:
+        >>> get_param_range_by_mode('filter_tf', 'quick')
+        ['12h', '1d']
+
+        >>> get_param_range_by_mode('entry_validity_hours', 'deep')
+        [6, 12, 24, 36, 48, 72, 96]
+    """
+    if key not in PARAM_RANGES_BY_MODE:
+        return None
+
+    mode_lower = mode.lower()
+    if mode_lower not in PARAM_RANGES_BY_MODE[key]:
+        return PARAM_RANGES_BY_MODE[key].get('standard')  # 기본값
+
+    return PARAM_RANGES_BY_MODE[key][mode_lower]
+
+
+# ============ 최적화 필터 기준 (SSOT) ============
+# 사용자 목표:
+# - 승률 ≥ 80%
+# - MDD ≤ 20%
+# - 전체 단리 수익률 ≥ 0.5%
+# - 일평균 거래 빈도 ≥ 0.5회/일 (2일 1회)
+OPTIMIZATION_FILTER = {
+    'min_win_rate': 80.0,           # 승률 ≥ 80%
+    'max_mdd': 20.0,                # MDD ≤ 20%
+    'min_total_return': 0.5,        # 전체 단리 수익률 ≥ 0.5%
+    'min_trades_per_day': 0.5,      # 일평균 거래 빈도 ≥ 0.5회/일
+    'min_absolute_trades': 10       # 절대 최소 거래수 (샘플 크기)
+}
+
+
+# ============ 전략별 지표 파라미터 (MACD vs ADX) ============
+# Phase 2: 전략 분리를 위한 지표별 파라미터 정의
+STRATEGY_INDICATOR_PARAMS = {
+    'macd': {
+        'macd_fast': {
+            'quick': [6],
+            'standard': [6, 8],
+            'deep': [6, 8, 12]
+        },
+        'macd_slow': {
+            'quick': [18],
+            'standard': [18, 21],
+            'deep': [18, 21, 26]
+        },
+        'macd_signal': {
+            'quick': [7],
+            'standard': [7, 9],
+            'deep': [7, 9, 11]
+        },
+    },
+    'adx': {
+        'adx_period': {
+            'quick': [14],
+            'standard': [14, 21],
+            'deep': [14, 21, 28]
+        },
+        'adx_threshold': {
+            'quick': [25],
+            'standard': [20, 25],
+            'deep': [20, 25, 30]
+        },
+        'di_threshold': {
+            'quick': [20],
+            'standard': [20, 25],
+            'deep': [20, 25, 30]
+        },
+    }
+}
+
+
 # ============ 필수 파라미터 (최적화 결과 필수) ============
 REQUIRED_PARAMS = ['atr_mult', 'trail_start_r', 'trail_dist_r']
 

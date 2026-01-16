@@ -3,9 +3,14 @@
 
 from .common import *
 
-# 하위 위젯들은 기존 파일에서 가져옴
+# 하위 위젯들은 신규 UI 시스템에서 가져옴
 try:
-    from GUI.optimization_widget import SingleOptimizerWidget, BatchOptimizerWidget
+    from ui.widgets.optimization.single import SingleOptimizationWidget
+    from ui.widgets.optimization.batch import BatchOptimizationWidget
+
+    # 레거시 이름 호환성
+    SingleOptimizerWidget = SingleOptimizationWidget
+    BatchOptimizerWidget = BatchOptimizationWidget
 except ImportError:
     SingleOptimizerWidget = None
     BatchOptimizerWidget = None
@@ -62,9 +67,9 @@ class OptimizationWidget(QWidget):
         
         # 시그널 연결
         if hasattr(self, 'single_widget') and hasattr(self.single_widget, 'settings_applied'):
-            self.single_widget.settings_applied.connect(self.settings_applied.emit)
+            self.single_widget.settings_applied.connect(self.settings_applied.emit)  # type: ignore[attr-defined]
 
     def _load_data_sources(self):
         """데이터 소스 새로고침"""
-        if hasattr(self, 'single_widget'):
-            self.single_widget._load_data_sources()
+        if hasattr(self, 'single_widget') and hasattr(self.single_widget, '_load_data_sources'):
+            self.single_widget._load_data_sources()  # type: ignore[attr-defined]

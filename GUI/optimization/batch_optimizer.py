@@ -14,6 +14,6 @@ for path in [project_root, gui_dir]:
 
 # 직접 접근용 (하위 호환성)
 try:
-    from GUI.optimization_widget import BatchOptimizerWidget
+    from ui.widgets.optimization.batch import BatchOptimizationWidget as BatchOptimizerWidget
 except ImportError:
     BatchOptimizerWidget = None

@@ -15,6 +15,7 @@ def generate_preset_filename(
     symbol: str,
     timeframe: str,
     mode: Optional[str] = None,
+    strategy_type: Optional[str] = None,
     timestamp: Optional[datetime] = None,
     use_timestamp: bool = True
 ) -> str:
@@ -26,15 +27,16 @@ def generate_preset_filename(
         symbol: 심볼 (BTCUSDT, ETHUSDT 등)
         timeframe: 타임프레임 (1h, 4h, 1d 등)
         mode: 최적화 모드 (quick, standard, deep) - 선택
+        strategy_type: 전략 유형 (macd, adx) - 선택
         timestamp: 생성 시각 (None이면 현재 시각)
         use_timestamp: 타임스탬프 포함 여부
 
     Returns:
-        표준 파일명 (예: bybit_BTCUSDT_1h_20260114_235959_quick.json)
+        표준 파일명 (예: bybit_BTCUSDT_1h_macd_20260114_235959_quick.json)
 
     Examples:
-        >>> generate_preset_filename('bybit', 'BTCUSDT', '1h', 'quick')
-        'bybit_BTCUSDT_1h_20260114_235959_quick.json'
+        >>> generate_preset_filename('bybit', 'BTCUSDT', '1h', 'quick', 'macd')
+        'bybit_BTCUSDT_1h_macd_20260114_235959_quick.json'
 
         >>> generate_preset_filename('bybit', 'BTCUSDT', '1h', use_timestamp=False)
         'bybit_BTCUSDT_1h.json'
@@ -45,6 +47,10 @@ def generate_preset_filename(
     tf_norm = timeframe.lower()
 
     parts = [exchange_norm, symbol_norm, tf_norm]
+
+    # 전략 유형 추가 (선택) - 타임스탬프 앞에 배치
+    if strategy_type:
+        parts.append(strategy_type.lower())
 
     # 타임스탬프 추가
     if use_timestamp:

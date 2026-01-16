@@ -172,50 +172,54 @@ INDICATOR_RANGE = {
 
 # ==================== 모드별 지표 범위 ====================
 
-# Quick 모드 (최소 조합, ~100개)
+# Quick 모드 (최소 조합, 4개) - 승률 80%+ & 매매빈도 0.5회/일 목표
+# ✅ DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
 INDICATOR_RANGE_QUICK = {
     'macd_fast': [8, 12],
     'macd_slow': [20, 26],
     'macd_signal': [9],
     'ema_period': [20, 50],
-    'atr_mult': [1.5, 2.0],
+    'atr_mult': [1.25, 2.5],             # 2개 - 최적값(1.25) + 보수값(2.5)
     'atr_period': [14],
-    'rsi_period': [14],
+    'rsi_period': [14],                  # 1개 - 표준값 (고정)
     'trail_start_r': [0.7, 1.0],
     'trail_dist_r': [0.35, 0.5],
     'pullback_rsi_long': [40],
     'pullback_rsi_short': [60],
     'pattern_tolerance': [0.05],
-    'entry_validity_hours': [24],
+    'entry_validity_hours': [6, 48],     # 2개 - 최적값(6) + 저빈도(48)
     'max_adds': [0, 1],
 }
+# 핵심 조합: 2 (atr_mult) × 1 (rsi_period) × 2 (entry_validity_hours) = 4개
 
-# Standard 모드 (균형, ~500개)
+# Standard 모드 (균형, 36개) - 승률 75%+ & 매매빈도 1-2회/일 목표
+# ✅ DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
 INDICATOR_RANGE_STANDARD = {
     'macd_fast': [6, 8, 10, 12],
     'macd_slow': [18, 20, 24, 26],
     'macd_signal': [7, 9, 12],
     'ema_period': [10, 20, 30, 50],
-    'atr_mult': [1.0, 1.5, 2.0, 2.5],
+    'atr_mult': [1.25, 1.5, 2.0, 2.5],       # 4개 - 최적값(1.25) 포함
     'atr_period': [7, 14, 21],
-    'rsi_period': [7, 14, 21],
+    'rsi_period': [7, 14, 21],               # 3개 - 단기/표준/장기 균형
     'trail_start_r': [0.5, 0.7, 1.0, 1.2],
     'trail_dist_r': [0.2, 0.35, 0.5, 0.7],
     'pullback_rsi_long': [35, 40, 45],
     'pullback_rsi_short': [55, 60, 65],
     'pattern_tolerance': [0.03, 0.04, 0.05],
-    'entry_validity_hours': [12, 24, 48],
+    'entry_validity_hours': [6, 12, 24],     # 3개 - 최적값(6) 포함
     'max_adds': [0, 1, 2],
 }
+# 핵심 조합: 4 (atr_mult) × 3 (rsi_period) × 3 (entry_validity_hours) = 36개
 
-# Deep 모드 (완전 탐색, ~5000개)
-# 주의: generate_deep_grid()와 중복되지 않도록 실제 사용 파라미터만 정의
+# Deep 모드 (완전 탐색, 252개) - 다양한 스타일 탐색 (공격×3, 균형, 보수, 고승률, 저빈도)
+# ✅ DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
 INDICATOR_RANGE_DEEP = {
-    'atr_mult': [0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.2, 2.5, 2.8, 3.0],
-    'rsi_period': [5, 7, 9, 11, 14, 17, 21, 25, 30],
-    'entry_validity_hours': [6, 12, 18, 24, 36, 48],
-    # 10 × 9 × 6 = 540개 조합
+    'atr_mult': [1.0, 1.25, 1.5, 2.0, 2.5, 3.0],  # 6개 - 최적값(1.25) 포함, 3.5 제거
+    'rsi_period': [5, 7, 11, 14, 21, 25, 30],     # 7개 - 전체 범위
+    'entry_validity_hours': [6, 12, 24, 36, 48, 72],  # 6개 - 최적값(6) 포함
 }
+# 핵심 조합: 6 (atr_mult) × 7 (rsi_period) × 6 (entry_validity_hours) = 252개
 
 
 def get_indicator_range(mode: str = 'standard') -> Dict:
@@ -245,48 +249,66 @@ def get_indicator_range(mode: str = 'standard') -> Dict:
 
 def generate_full_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
     """
-    Standard 모드용 Grid (~3,000개) - 승률 & 매매빈도 최적화
+    Standard 모드용 Grid (~60개) - 승률 & 매매빈도 최적화
     """
+    from config.parameters import get_param_range_by_mode, DEFAULT_PARAMS
+
     tf_range = TF_AUTO_RANGE.get(trend_tf, TF_AUTO_RANGE['1h'])
+
+    # None 방어: get_param_range_by_mode() 반환값 None 체크 + 기본값 폴백
+    filter_tf = get_param_range_by_mode('filter_tf', 'standard') or [DEFAULT_PARAMS.get('filter_tf', '4h')]
+    atr_mult = get_param_range_by_mode('atr_mult', 'standard') or [DEFAULT_PARAMS.get('atr_mult', 1.5)]
+    trail_start_r = get_param_range_by_mode('trail_start_r', 'standard') or [DEFAULT_PARAMS.get('trail_start_r', 0.8)]
+    trail_dist_r = get_param_range_by_mode('trail_dist_r', 'standard') or [DEFAULT_PARAMS.get('trail_dist_r', 0.1)]
+    entry_validity_hours = get_param_range_by_mode('entry_validity_hours', 'standard') or [DEFAULT_PARAMS.get('entry_validity_hours', 6.0)]
 
     return {
         'trend_interval': [trend_tf],
-        'filter_tf': tf_range['filter_tf'][:3],      # 3개 (4h, 6h, 12h)
-        'entry_tf': [tf_range['entry_tf'][0]],       # 1개 (15m)
-        'leverage': [1, 3, 5],                       # 3개 (보수적)
-        'direction': ['Both', 'Long'],               # 2개
-        'max_mdd': [max_mdd],
-        'atr_mult': [1.5, 2.0, 2.5, 3.0],            # 4개 (보수적 범위)
-        'trail_start_r': [1.0, 1.5, 2.0, 2.5],       # 4개 (느린 시작)
-        'trail_dist_r': [0.2, 0.3, 0.4],             # 3개
-        'pattern_tolerance': [0.05],                 # 1개 (고정)
-        'entry_validity_hours': [12.0, 24.0, 48.0],  # 3개 (길게)
-        'pullback_rsi_long': [35, 40],               # 2개
-        'pullback_rsi_short': [60, 65],              # 2개
-        # Total: 3×1×3×2×4×4×3×3×2×2 = 5,184개
+        'filter_tf': filter_tf,                                              # 3개 ['4h', '6h', '12h']
+        'entry_tf': [tf_range['entry_tf'][0]],                               # 1개 (15m)
+        'leverage': [1],                                                      # 1개 (고정)
+        'direction': ['Both'],                                                # 1개 (고정)
+        'max_mdd': [max_mdd],                                                 # 1개 (고정)
+        'atr_mult': atr_mult,                                                 # 4개 [1.25, 1.5, 2.0, 2.5]
+        'trail_start_r': trail_start_r,                                       # 4개 [1.0, 1.5, 2.0, 2.5]
+        'trail_dist_r': trail_dist_r,                                         # 2개 [0.2, 0.3]
+        'pattern_tolerance': [0.05],                                          # 1개 (고정)
+        'entry_validity_hours': entry_validity_hours,                         # 5개 [6, 12, 24, 48, 72]
+        'pullback_rsi_long': [40],                                            # 1개 (고정)
+        'pullback_rsi_short': [60],                                           # 1개 (고정)
+        # Total: 3×1×1×1×1×4×4×2×1×5×1×1 = 120개 ✅
     }
 
 
 
 def generate_quick_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
-    """Quick 모드용 최소 Grid (~96개) - 승률 80% & 매매빈도 0.5회/일 목표"""
+    """Quick 모드용 최소 Grid (~8개) - 승률 80% & 매매빈도 0.5회/일 목표"""
+    from config.parameters import get_param_range_by_mode, DEFAULT_PARAMS
+
     tf_range = TF_AUTO_RANGE.get(trend_tf, TF_AUTO_RANGE['1h'])
+
+    # None 방어: get_param_range_by_mode() 반환값 None 체크 + 기본값 폴백
+    filter_tf = get_param_range_by_mode('filter_tf', 'quick') or [DEFAULT_PARAMS.get('filter_tf', '4h')]
+    atr_mult = get_param_range_by_mode('atr_mult', 'quick') or [DEFAULT_PARAMS.get('atr_mult', 1.5)]
+    trail_start_r = get_param_range_by_mode('trail_start_r', 'quick') or [DEFAULT_PARAMS.get('trail_start_r', 0.8)]
+    trail_dist_r = get_param_range_by_mode('trail_dist_r', 'quick') or [DEFAULT_PARAMS.get('trail_dist_r', 0.1)]
+    entry_validity_hours = get_param_range_by_mode('entry_validity_hours', 'quick') or [DEFAULT_PARAMS.get('entry_validity_hours', 6.0)]
 
     return {
         'trend_interval': [trend_tf],
-        'filter_tf': tf_range['filter_tf'][:2],      # 2개 (4h, 6h) - 필터 강화
-        'entry_tf': [tf_range['entry_tf'][0]],       # 1개 (15m 고정)
-        'leverage': [1, 3],                          # 2개 (보수적 범위)
-        'direction': ['Both'],                       # 1개 (고정)
-        'max_mdd': [max_mdd],
-        'atr_mult': [1.5, 2.0, 2.5, 3.0, 3.5],       # [EXTENDED] PnL 0.5% 목표 달성을 위해 범위 확장
-        'trail_start_r': [1.0, 1.5, 2.0, 2.5, 3.0],  # [EXTENDED] 익절 지연으로 PnL 상향 유도
-        'trail_dist_r': [0.15, 0.2, 0.3],            # [TIGHT] 트레일링 간격 미세 조정
-        'pattern_tolerance': [0.05],                 # 1개 (고정)
-        'entry_validity_hours': [12.0, 24.0],        # 2개 (길게 → 매매 감소)
-        'pullback_rsi_long': [40],                   # 1개 (고정)
-        'pullback_rsi_short': [60],                  # 1개 (고정)
-        # Total: 2×2×3×3×2×2 = 144개
+        'filter_tf': filter_tf,                                                # 2개 ['12h', '1d']
+        'entry_tf': [tf_range['entry_tf'][0]],                                # 1개 (15m 고정)
+        'leverage': [1],                                                       # 1개 (고정)
+        'direction': ['Both'],                                                 # 1개 (고정)
+        'max_mdd': [max_mdd],                                                  # 1개 (고정)
+        'atr_mult': atr_mult,                                                  # 2개 [1.25, 2.0]
+        'trail_start_r': trail_start_r,                                        # 2개 [1.0, 1.5]
+        'trail_dist_r': trail_dist_r,                                          # 1개 [0.2]
+        'pattern_tolerance': [0.05],                                           # 1개 (고정)
+        'entry_validity_hours': entry_validity_hours,                          # 2개 [48, 72]
+        'pullback_rsi_long': [40],                                             # 1개 (고정)
+        'pullback_rsi_short': [60],                                            # 1개 (고정)
+        # Total: 2×1×1×1×1×2×2×1×1×2×1×1 = 8개 ✅
     }
 
 
@@ -296,24 +318,33 @@ def generate_standard_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
     return generate_full_grid(trend_tf, max_mdd)
 
 def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
-    """Deep 모드용 정밀 Grid (~50,000개) - 전수 조사"""
+    """Deep 모드용 정밀 Grid (~1,080개) - 전수 조사"""
+    from config.parameters import get_param_range_by_mode, DEFAULT_PARAMS
+
     tf_range = TF_AUTO_RANGE.get(trend_tf, TF_AUTO_RANGE['1h'])
+
+    # None 방어: get_param_range_by_mode() 반환값 None 체크 + 기본값 폴백
+    filter_tf = get_param_range_by_mode('filter_tf', 'deep') or [DEFAULT_PARAMS.get('filter_tf', '4h')]
+    atr_mult = get_param_range_by_mode('atr_mult', 'deep') or [DEFAULT_PARAMS.get('atr_mult', 1.5)]
+    trail_start_r = get_param_range_by_mode('trail_start_r', 'deep') or [DEFAULT_PARAMS.get('trail_start_r', 0.8)]
+    trail_dist_r = get_param_range_by_mode('trail_dist_r', 'deep') or [DEFAULT_PARAMS.get('trail_dist_r', 0.1)]
+    entry_validity_hours = get_param_range_by_mode('entry_validity_hours', 'deep') or [DEFAULT_PARAMS.get('entry_validity_hours', 6.0)]
 
     return {
         'trend_interval': [trend_tf],
-        'filter_tf': tf_range['filter_tf'],          # 4개 전체 (4h, 6h, 12h, 1d)
-        'entry_tf': tf_range['entry_tf'][:2],        # 2개 (15m, 30m)
-        'leverage': [1, 2, 3, 5],                    # 4개 (보수적, 10 제거)
-        'direction': ['Both', 'Long', 'Short'],      # 3개
-        'max_mdd': [max_mdd],
-        'atr_mult': [1.5, 2.0, 2.5, 3.0, 3.5],       # 5개 (보수적 범위)
-        'trail_start_r': [0.8, 1.0, 1.5, 2.0, 2.5, 3.0],  # 6개 (느린 시작)
-        'trail_dist_r': [0.15, 0.2, 0.25, 0.3, 0.4], # 5개
-        'pattern_tolerance': [0.04, 0.05],           # 2개
-        'entry_validity_hours': [12.0, 24.0, 48.0],  # 3개 (길게)
-        'pullback_rsi_long': [35, 40, 45],           # 3개
-        'pullback_rsi_short': [55, 60, 65],          # 3개
-        # Total: 4×2×4×3×5×6×5×2×3×3×3 = 259,200개
+        'filter_tf': filter_tf,                                               # 5개 ['2h', '4h', '6h', '12h', '1d']
+        'entry_tf': [tf_range['entry_tf'][0]],                               # 1개 (15m 고정)
+        'leverage': [1],                                                      # 1개 (고정)
+        'direction': ['Both'],                                                # 1개 (고정)
+        'max_mdd': [max_mdd],                                                 # 1개 (고정)
+        'atr_mult': atr_mult,                                                 # 6개 [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
+        'trail_start_r': trail_start_r,                                       # 6개 [0.8, 1.0, 1.5, 2.0, 2.5, 3.0]
+        'trail_dist_r': trail_dist_r,                                         # 4개 [0.15, 0.2, 0.25, 0.3]
+        'pattern_tolerance': [0.05],                                          # 1개 (고정)
+        'entry_validity_hours': entry_validity_hours,                         # 7개 [6, 12, 24, 36, 48, 72, 96]
+        'pullback_rsi_long': [40],                                            # 1개 (고정)
+        'pullback_rsi_short': [60],                                           # 1개 (고정)
+        # Total: 5×1×1×1×1×6×6×4×1×7×1×1 = 1,080개 ✅
     }
 
 
@@ -675,14 +706,21 @@ class BacktestOptimizer:
     
     # TF 매핑은 상단에서 import한 TF_MAPPING 사용
     
-    def __init__(self, strategy_class, df: Optional[pd.DataFrame] = None):
+    def __init__(
+        self,
+        strategy_class,
+        df: Optional[pd.DataFrame] = None,
+        strategy_type: str = 'macd'
+    ):
         """
         Args:
             strategy_class: X7PlusStrategy 등 전략 클래스
             df: 백테스트용 데이터프레임
+            strategy_type: 전략 유형 ('macd' or 'adx')
         """
         self.strategy_class = strategy_class
         self.df = df
+        self.strategy_type = strategy_type
         self.results: List[OptimizationResult] = []
         self.progress_callback: Optional[Callable] = None
         self.cancelled = False
@@ -853,24 +891,32 @@ class BacktestOptimizer:
                     logger.info("❌ 최적화 취소됨")
                     executor.shutdown(wait=False, cancel_futures=True)
                     break
-                
+
                 try:
-                    result = future.result()
+                    # 타임아웃 10초 설정 (Deep 모드 대응)
+                    result = future.result(timeout=10)
                     if result:
-                        # === 필터링 조건 (v2.2 - 사용자 기준 적용) ===
+                        # === 필터링 조건 (v3.0 - SSOT 기반 사용자 목표) ===
                         # 전략: 고품질 결과만 수집 → 정렬로 최적 조합 찾기
-                        # 1. MDD ≤ 20% (강화된 조건)
-                        # 2. 승률 ≥ 75% (강화된 조건)
-                        # 3. 최소 거래수 ≥ 10 (통계적 유의성)
-                        #
-                        # 제외된 조건 (정렬 기준으로 활용):
-                        # - PF, 매매빈도 → run_optimization 후 상위 결과 선별
+                        # SSOT: config.parameters.OPTIMIZATION_FILTER
+                        # 1. 승률 ≥ 80%
+                        # 2. MDD ≤ 20%
+                        # 3. 전체 단리 수익률 ≥ 0.5%
+                        # 4. 일평균 거래 빈도 ≥ 0.5회/일
+                        # 5. 절대 최소 거래수 ≥ 10개
+                        from config.parameters import OPTIMIZATION_FILTER
+
+                        # 거래 빈도 계산 (avg_trades_per_day는 이미 result에 있음)
+                        avg_trades_per_day = result.avg_trades_per_day
+
                         passes_filter = (
-                            abs(result.max_drawdown) <= 20.0 and
-                            result.win_rate >= 75.0 and
-                            result.trades >= 10
+                            result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
+                            abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
+                            result.simple_return >= OPTIMIZATION_FILTER['min_total_return'] and
+                            avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
+                            result.trades >= OPTIMIZATION_FILTER['min_absolute_trades']
                         )
-                        
+
                         if passes_filter:
                             self.results.append(result)
                             if task_callback:

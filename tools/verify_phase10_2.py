@@ -76,8 +76,8 @@ print('-' * 40)
 try:
     from GUI.trading_dashboard import TradingDashboard
     from GUI.dashboard.multi_explorer import MultiExplorer
-    from GUI.optimization_widget import OptimizationWidget
-    from GUI.backtest_widget import BacktestWidget
+    from ui.widgets.optimization import OptimizationWidget
+    from ui.widgets.backtest import BacktestWidget
     print('✅ 모든 GUI 모듈 로드 성공')
     gui_ok = True
 except Exception as e:

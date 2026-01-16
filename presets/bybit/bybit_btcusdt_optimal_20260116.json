@@ -1,0 +1,13 @@
+{
+  "name": "Bybit BTC/USDT - 최적형 - 모든 목표 달성 (추천)",
+  "description": "최적형 - 모든 목표 달성 (추천)",
+  "created_at": "2026-01-16T22:27:48.620867",
+  "params": {
+    "filter_tf": "12h",
+    "atr_mult": 1.5,
+    "trail_start_r": 1.0,
+    "trail_dist_r": 0.02,
+    "entry_validity_hours": 48.0,
+    "leverage": 2.35
+  }
+}

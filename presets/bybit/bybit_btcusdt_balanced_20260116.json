@@ -1,0 +1,13 @@
+{
+  "name": "Bybit BTC/USDT - 균형형 - Phase 5 개선",
+  "description": "균형형 - Phase 5 개선",
+  "created_at": "2026-01-16T22:27:50.223017",
+  "params": {
+    "filter_tf": "6h",
+    "atr_mult": 1.5,
+    "trail_start_r": 1.0,
+    "trail_dist_r": 0.02,
+    "entry_validity_hours": 24.0,
+    "leverage": 2.59
+  }
+}

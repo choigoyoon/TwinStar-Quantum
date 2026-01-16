@@ -38,12 +38,14 @@ class OptimizationResult:
         return self.total_pnl
 
 
-# ============ 필터 기준 (결과 탈락 조건) ============
+# ============ 필터 기준 (DEPRECATED - SSOT 사용) ============
+# DEPRECATED: config.parameters.OPTIMIZATION_FILTER로 이전됨
+# 하위 호환성을 위해 유지하지만 사용하지 마세요.
 FILTER_CRITERIA = {
-    'max_mdd': 20.0,           # MDD ≤ 20%
-    'min_win_rate': 70.0,      # 승률 ≥ 70%
-    'min_pf': 1.5,             # PF ≥ 1.5
-    'min_trades_per_day': 0.33 # 3일에 1번 이상 (일평균 0.33회)
+    'max_mdd': 20.0,
+    'min_win_rate': 70.0,
+    'min_pf': 1.5,
+    'min_trades_per_day': 0.33
 }
 
 # ============ 등급 기준 (S/A/B/C) ============
@@ -55,14 +57,34 @@ GRADE_CRITERIA = {
 }
 
 
-def passes_filter(result, total_days: float = 365.0) -> bool:
-    """최적화 결과가 필터 기준을 통과하는지 확인"""
-    avg_trades = result.trade_count / max(total_days, 1)
+def passes_filter(result, total_days: float) -> bool:
+    """
+    최적화 결과 필터링 (SSOT 기준 사용)
+
+    Args:
+        result: OptimizationResult 객체
+        total_days: 실제 백테스트 데이터 기간 (일) - 필수
+
+    Returns:
+        필터 통과 여부
+
+    Note:
+        v3.0부터 config.parameters.OPTIMIZATION_FILTER를 사용합니다.
+        total_days는 필수 매개변수입니다 (365일 고정값 제거).
+    """
+    from config.parameters import OPTIMIZATION_FILTER
+
+    if total_days <= 0:
+        return False
+
+    avg_trades_per_day = result.trade_count / total_days
+
     return (
-        abs(result.max_drawdown) <= FILTER_CRITERIA['max_mdd'] and
-        result.win_rate >= FILTER_CRITERIA['min_win_rate'] and
-        result.profit_factor >= FILTER_CRITERIA['min_pf'] and
-        avg_trades >= FILTER_CRITERIA['min_trades_per_day']
+        result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
+        abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
+        result.total_return >= OPTIMIZATION_FILTER['min_total_return'] and
+        avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
+        result.trade_count >= OPTIMIZATION_FILTER['min_absolute_trades']
     )
 
 
@@ -379,23 +401,39 @@ class OptimizationEngine:
         
         return grid
     
-    def generate_grid_from_options(self, param_options: Dict[str, List]) -> List[Dict]:
+    def generate_grid_from_options(self, param_options: Dict[str, List]) -> List[Dict[str, Any]]:
         """주어진 파라미터 옵션(List)들의 모든 조합 생성"""
         import itertools
         from config.parameters import DEFAULT_PARAMS
 
-        keys = list(param_options.keys())
-        values_list = list(param_options.values())
-        
+        # None 값 필터링 및 기본값 제공 (런타임 에러 방지)
+        filtered_options = {}
+        for key, values in param_options.items():
+            if values is None or (isinstance(values, list) and len(values) == 0):
+                # None 또는 빈 리스트: 기본값으로 대체
+                default_value = DEFAULT_PARAMS.get(key)
+                if default_value is not None:
+                    filtered_options[key] = [default_value]
+                # 기본값도 없으면 해당 키 제외 (skip)
+            else:
+                filtered_options[key] = values
+
+        # 유효한 파라미터가 없으면 빈 그리드 반환
+        if not filtered_options:
+            return []
+
+        keys = list(filtered_options.keys())
+        values_list = list(filtered_options.values())
+
         combinations = list(itertools.product(*values_list))
-        
+
         grid = []
         for combo in combinations:
             params = DEFAULT_PARAMS.copy()
             for i, key in enumerate(keys):
                 params[key] = combo[i]
             grid.append(params)
-        
+
         return grid
 
     
@@ -519,9 +557,10 @@ class OptimizationEngine:
             for future in as_completed(self._futures):
                 if self._stop_requested:
                     break
-                
+
                 try:
-                    result = future.result(timeout=1)
+                    # 타임아웃 10초로 증가 (Deep 모드 대응, 대형 DataFrame 처리)
+                    result = future.result(timeout=10)
                     if result:
                         results.append(result)
                         if task_callback:
@@ -545,10 +584,16 @@ class OptimizationEngine:
                 # 남은 futures 취소
                 for future in list(self._futures.keys()):
                     future.cancel()
-                
-                # Executor 종료 (즉시)
-                self._executor.shutdown(wait=False, cancel_futures=True)
-                
+
+                # Executor 종료 (Python 버전 호환성 체크)
+                import sys
+                if sys.version_info >= (3, 9):
+                    # Python 3.9+: cancel_futures 파라미터 지원
+                    self._executor.shutdown(wait=False, cancel_futures=True)
+                else:
+                    # Python 3.8 이하: cancel_futures 미지원
+                    self._executor.shutdown(wait=False)
+
                 # 자식 프로세스 강제 종료
                 import os
                 import signal

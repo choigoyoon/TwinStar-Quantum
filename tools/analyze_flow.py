@@ -21,11 +21,18 @@ print('  → 결과 평가 (Sharpe, PF, MDD)')
 print('  → config/presets/*.json 저장')
 print()
 
-from GUI.optimization_widget import OptimizationWidget
-methods = [m for m in dir(OptimizationWidget) if not m.startswith('_') and callable(getattr(OptimizationWidget, m, None))]
-print('주요 메서드:')
-for m in methods[:10]:
-    print(f'  - {m}')
+try:
+    from ui.widgets.optimization import OptimizationWidget
+except ImportError:
+    OptimizationWidget = None
+
+if OptimizationWidget:
+    methods = [m for m in dir(OptimizationWidget) if not m.startswith('_') and callable(getattr(OptimizationWidget, m, None))]
+    print('주요 메서드:')
+    for m in methods[:10]:
+        print(f'  - {m}')
+else:
+    print('OptimizationWidget not available')
 print()
 
 # 2. 백테스트 흐름
@@ -41,12 +48,18 @@ print('  → PnL, 승률, MDD 계산')
 print('  → InteractiveChart에 표시')
 print()
 
-from GUI.backtest_widget import BacktestWidget
+try:
+    from ui.widgets.backtest import BacktestWidget
+except ImportError:
+    BacktestWidget = None
 from core.strategy_core import AlphaX7Core
-print('BacktestWidget 주요 메서드:')
-bt_methods = [m for m in dir(BacktestWidget) if not m.startswith('_')]
-for m in bt_methods[:8]:
-    print(f'  - {m}')
+if BacktestWidget:
+    print('BacktestWidget 주요 메서드:')
+    bt_methods = [m for m in dir(BacktestWidget) if not m.startswith('_')]
+    for m in bt_methods[:8]:
+        print(f'  - {m}')
+else:
+    print('BacktestWidget not available')
 print()
 print('AlphaX7Core 주요 메서드:')
 ax_methods = [m for m in dir(AlphaX7Core) if not m.startswith('_')]

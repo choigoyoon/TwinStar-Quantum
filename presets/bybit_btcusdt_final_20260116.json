@@ -1,0 +1,138 @@
+{
+  "name": "bybit_btcusdt_final_20260116",
+  "description": "최종 최적화 완료 - 승률 79.46%, MDD 7.73%, PF 4.64 (목표 거의 달성!)",
+  "version": "2.0",
+  "created_at": "2026-01-16T17:35:00Z",
+  "optimization_method": "6-phase_comprehensive",
+  "data_range": "2020-03-25 ~ 2026-01-16 (5.8년, 203,794개 캔들)",
+  "backtest_performance": {
+    "win_rate": 79.46,
+    "mdd": 7.73,
+    "profit_factor": 4.64,
+    "total_trades": 3700,
+    "trades_per_day": 1.74
+  },
+  "goal_achievement": {
+    "win_rate_goal": {
+      "target": 80.0,
+      "achieved": 79.46,
+      "gap": -0.54,
+      "status": "거의 달성 (99.3%)"
+    },
+    "mdd_goal": {
+      "target": 20.0,
+      "achieved": 7.73,
+      "improvement": -61.4,
+      "status": "초과 달성"
+    },
+    "pf_goal": {
+      "target": 0.5,
+      "achieved": 4.64,
+      "status": "초과 달성"
+    }
+  },
+  "parameters": {
+    "exchange": "bybit",
+    "symbol": "BTCUSDT",
+    "strategy": "wm_pattern",
+    "leverage": 2,
+    "trend_interval": "1h",
+    "filter_tf": "4h",
+    "atr_mult": 1.5,
+    "trail_start_r": 1.0,
+    "entry_validity_hours": 6.0,
+    "trail_dist_r": 0.02,
+    "macd_fast": 6,
+    "macd_slow": 18,
+    "macd_signal": 7,
+    "tolerance": 0.12,
+    "use_adx_filter": false,
+    "adx_threshold": 25,
+    "max_mdd": 20.0
+  },
+  "risk_levels": {
+    "conservative": {
+      "leverage": 1,
+      "expected_win_rate": 79.46,
+      "expected_mdd": 3.92,
+      "description": "가장 안전한 조합 (MDD 4% 미만)"
+    },
+    "moderate": {
+      "leverage": 2,
+      "expected_win_rate": 79.46,
+      "expected_mdd": 7.73,
+      "description": "균형잡힌 조합 (권장, MDD 8% 미만)"
+    },
+    "aggressive": {
+      "leverage": 3,
+      "expected_win_rate": 79.46,
+      "expected_mdd": 11.44,
+      "description": "공격적 조합 (MDD 12% 미만)"
+    }
+  },
+  "optimization_history": [
+    {
+      "phase": 1,
+      "name": "데이터 수집",
+      "result": "203,794개 캔들 (5.8년)"
+    },
+    {
+      "phase": 2,
+      "name": "filter_tf 가설 검증",
+      "result": "filter_tf=4h 최적 (12h/1d 가설 기각)"
+    },
+    {
+      "phase": 3,
+      "name": "atr_mult 최적화",
+      "result": "atr_mult=1.5 최적 (MDD -37%)"
+    },
+    {
+      "phase": 4,
+      "name": "그리드 서치",
+      "result": "filter_tf=4h + atr_mult=1.5 확정"
+    },
+    {
+      "phase": 5,
+      "name": "trail+entry_validity 최적화",
+      "result": "trail_start_r=1.0, trail_dist_r=0.02 최적 (승률 79.46%)"
+    },
+    {
+      "phase": 6,
+      "name": "leverage 정밀 조정",
+      "result": "leverage=2x 최적 (MDD 7.73%, 목표 달성)"
+    }
+  },
+  "comparison_with_previous": {
+    "previous_best": {
+      "date": "2026-01-01",
+      "win_rate": 84.3,
+      "mdd": 9.2,
+      "leverage": 3,
+      "params": "DEFAULT_PARAMS (atr_mult=1.25, trail_start_r=0.8, trail_dist_r=0.1)"
+    },
+    "current_best": {
+      "date": "2026-01-16",
+      "win_rate": 79.46,
+      "mdd": 7.73,
+      "leverage": 2,
+      "params": "Phase5 최적 (atr_mult=1.5, trail_start_r=1.0, trail_dist_r=0.02)"
+    },
+    "analysis": "승률 -4.8%, MDD -16% (데이터 기간 변경으로 인한 차이)"
+  },
+  "key_insights": [
+    "trail_start_r=1.0 (빠른 익절) → MDD 대폭 감소",
+    "trail_dist_r=0.02 (타이트한 추적) → PF 4.64 달성",
+    "leverage=2x → MDD 8% 미만 유지",
+    "atr_mult=1.5 > 1.0 (역설: 타이트한 손절이 오히려 MDD 악화)"
+  ],
+  "warnings": [
+    "승률 80% 목표에 0.54% 부족 (79.46%)",
+    "거래 빈도 1.74회/일 (목표 0.5-1.0 초과, 통계적 신뢰도는 향상)",
+    "leverage=1x 권장 (실전 매매 시 안전성 우선)"
+  ],
+  "next_steps": [
+    "데모 계좌에서 1개월 테스트 (leverage=1x or 2x)",
+    "승률 80% 달성을 위한 추가 최적화 (선택 사항)",
+    "ADX 필터 추가 고려 (레인지 시장 회피)"
+  ]
+}

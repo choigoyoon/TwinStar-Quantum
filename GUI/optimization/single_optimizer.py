@@ -39,7 +39,7 @@ def get_single_optimizer_widget():
 
 # 직접 접근용 (하위 호환성)
 try:
-    # 메인 모듈에서 직접 import 시도
-    from GUI.optimization_widget import SingleOptimizerWidget
+    # 신규 UI 시스템에서 가져옴
+    from ui.widgets.optimization.single import SingleOptimizationWidget as SingleOptimizerWidget
 except ImportError:
     SingleOptimizerWidget = None

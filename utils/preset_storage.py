@@ -67,16 +67,18 @@ class PresetStorage:
         symbol: str,
         tf: str,
         mode: str | None = None,
+        strategy_type: str | None = None,
         use_timestamp: bool = True,
         exchange: str | None = None
     ) -> Path:
         """
-        프리셋 파일 경로 (v2.0 - 표준 네이밍 규칙)
+        프리셋 파일 경로 (v3.0 - 전략 유형 추가)
 
         Args:
             symbol: 심볼
             tf: 타임프레임
             mode: 최적화 모드 (quick/standard/deep)
+            strategy_type: 전략 유형 (macd/adx)
             use_timestamp: 타임스탬프 포함 여부 (기본 True)
             exchange: 거래소 (None이면 self.exchange 사용)
         """
@@ -90,6 +92,7 @@ class PresetStorage:
             symbol=symbol,
             timeframe=tf,
             mode=mode,
+            strategy_type=strategy_type,
             use_timestamp=use_timestamp
         )
         return self.base_path / filename
@@ -102,10 +105,11 @@ class PresetStorage:
         optimization_result: Dict | None = None,
         chart_profile: Dict | None = None,
         mode: str | None = None,
+        strategy_type: str | None = None,
         exchange: str | None = None
     ) -> bool:
         """
-        프리셋 저장 (v2.0 - 타임스탬프 포함)
+        프리셋 저장 (v3.0 - 전략 유형 추가)
 
         Args:
             symbol: 심볼 (예: BTCUSDT)
@@ -114,6 +118,7 @@ class PresetStorage:
             optimization_result: 최적화 결과 (승률, MDD 등)
             chart_profile: 차트 프로파일
             mode: 최적화 모드 (quick/standard/deep)
+            strategy_type: 전략 유형 (macd/adx)
             exchange: 거래소 (None이면 self.exchange 사용)
 
         Returns:
@@ -121,20 +126,24 @@ class PresetStorage:
         """
         try:
             key = self._get_preset_key(symbol, tf)
-            path = self._get_preset_path(symbol, tf, mode=mode, use_timestamp=True, exchange=exchange)
+            path = self._get_preset_path(
+                symbol, tf, mode=mode, strategy_type=strategy_type,
+                use_timestamp=True, exchange=exchange
+            )
             
             preset_data = {
                 'symbol': symbol.upper(),
                 'timeframe': tf.lower(),
+                'strategy_type': strategy_type or 'macd',  # v3.0: 전략 유형 추가
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                
+
                 # 파라미터
                 'params': params,
-                
+
                 # 최적화 결과
                 'optimization': optimization_result or {},
-                
+
                 # 차트 프로파일 (유사도 매칭용)
                 'chart_profile': chart_profile or {},
                 

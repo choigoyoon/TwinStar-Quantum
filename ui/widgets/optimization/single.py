@@ -219,6 +219,24 @@ class SingleOptimizationWidget(QWidget):
         tf_layout.addStretch()
         layout.addLayout(tf_layout)
 
+        # 전략 선택 (v3.0 - Phase 3)
+        strategy_layout = QHBoxLayout()
+        strategy_layout.setSpacing(Spacing.i_space_2)
+
+        strategy_label = QLabel("전략:")
+        strategy_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
+        strategy_layout.addWidget(strategy_label)
+
+        self.strategy_combo = QComboBox()
+        self.strategy_combo.addItems(["📊 MACD", "📈 ADX"])
+        self.strategy_combo.setMinimumWidth(Size.control_min_width)
+        self.strategy_combo.setStyleSheet(self._get_combo_style())
+        self.strategy_combo.currentIndexChanged.connect(self._on_strategy_changed)
+        strategy_layout.addWidget(self.strategy_combo)
+
+        strategy_layout.addStretch()
+        layout.addLayout(strategy_layout)
+
         # 최적화 모드 선택
         mode_layout = QHBoxLayout()
         mode_layout.setSpacing(Spacing.i_space_2)
@@ -386,17 +404,18 @@ class SingleOptimizationWidget(QWidget):
             Spacing.i_space_2
         )
 
-        # 결과 테이블
+        # 결과 테이블 (7개 컬럼)
         self.result_table = QTableWidget(0, 7)
         self.result_table.setHorizontalHeaderLabels([
-            "순위", "총 수익률 (%)", "승률 (%)", "Profit Factor",
-            "MDD (%)", "Sharpe", "파라미터"
+            "승률 (%)", "단리 (%)", "복리 (%)", "MDD (%)", "Sharpe", "거래수", "평균 PnL (%)"
         ])
         header = self.result_table.horizontalHeader()
         if header:
             header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            header.setSortIndicatorShown(True)  # 정렬 화살표 표시
         self.result_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.result_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.result_table.setSortingEnabled(True)  # 정렬 활성화
         self.result_table.setStyleSheet(f"""
             QTableWidget {{
                 background-color: {Colors.bg_base};
@@ -508,7 +527,7 @@ class SingleOptimizationWidget(QWidget):
         # 3. 파라미터 그리드 생성
         from core.optimizer import generate_grid_by_mode
 
-        grid = generate_grid_by_mode(
+        grid_options = generate_grid_by_mode(
             trend_tf=timeframe,
             mode=mode
         )
@@ -520,6 +539,13 @@ class SingleOptimizationWidget(QWidget):
         # symbol, timeframe, capital_mode는 Worker에 전달
         engine = OptimizationEngine()
 
+        # 파라미터 그리드 expand (Dict → List[Dict])
+        grid = engine.generate_grid_from_options(grid_options)
+
+        # 전략 타입 가져오기 (v3.0 - Phase 3)
+        strategy_index = self.strategy_combo.currentIndex()
+        strategy_type = 'macd' if strategy_index == 0 else 'adx'
+
         # 5. Worker 생성 및 시그널 연결
         self.worker = OptimizationWorker(
             engine=engine,
@@ -528,7 +554,8 @@ class SingleOptimizationWidget(QWidget):
             max_workers=max_workers,
             symbol=symbol,
             timeframe=timeframe,
-            capital_mode='compound'
+            capital_mode='compound',
+            strategy_type=strategy_type
         )
 
         # 시그널 연결
@@ -596,40 +623,53 @@ class SingleOptimizationWidget(QWidget):
 
     def _update_result_table(self, results: list):
         """결과 테이블 업데이트"""
+        self.result_table.setSortingEnabled(False)  # 업데이트 중 정렬 비활성화
         self.result_table.setRowCount(len(results))
 
         for i, result in enumerate(results):
-            # 순위
-            self.result_table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-
-            # 총 수익률 (%)
-            total_return = result.get('total_return', 0.0)
-            self.result_table.setItem(i, 1, QTableWidgetItem(f"{total_return:.2f}"))
-
             # 승률 (%)
-            win_rate = result.get('win_rate', 0.0)
-            self.result_table.setItem(i, 2, QTableWidgetItem(f"{win_rate:.1f}"))
+            win_rate = getattr(result, 'win_rate', 0.0)
+            item = QTableWidgetItem(f"{win_rate:.1f}")
+            item.setData(0x0100, win_rate)  # 정렬용 원본 데이터
+            self.result_table.setItem(i, 0, item)
 
-            # Profit Factor
-            pf = result.get('profit_factor', 0.0)
-            self.result_table.setItem(i, 3, QTableWidgetItem(f"{pf:.2f}"))
+            # 단리 (%) - total_pnl
+            simple_return = getattr(result, 'total_pnl', 0.0)
+            item = QTableWidgetItem(f"{simple_return:.2f}")
+            item.setData(0x0100, simple_return)
+            self.result_table.setItem(i, 1, item)
+
+            # 복리 (%) - compound_return
+            compound_return = getattr(result, 'compound_return', 0.0)
+            item = QTableWidgetItem(f"{compound_return:.2f}")
+            item.setData(0x0100, compound_return)
+            self.result_table.setItem(i, 2, item)
 
             # MDD (%)
-            mdd = result.get('max_drawdown', 0.0)
-            self.result_table.setItem(i, 4, QTableWidgetItem(f"{mdd:.1f}"))
+            mdd = getattr(result, 'max_drawdown', 0.0)
+            item = QTableWidgetItem(f"{mdd:.1f}")
+            item.setData(0x0100, mdd)
+            self.result_table.setItem(i, 3, item)
 
-            # Sharpe
-            sharpe = result.get('sharpe_ratio', 0.0)
-            self.result_table.setItem(i, 5, QTableWidgetItem(f"{sharpe:.2f}"))
+            # Sharpe Ratio
+            sharpe = getattr(result, 'sharpe_ratio', 0.0)
+            item = QTableWidgetItem(f"{sharpe:.2f}")
+            item.setData(0x0100, sharpe)
+            self.result_table.setItem(i, 4, item)
 
-            # 파라미터
-            params_str = ", ".join([
-                f"{k}={v}" for k, v in result.items()
-                if k not in ['total_return', 'win_rate', 'profit_factor',
-                            'max_drawdown', 'sharpe_ratio', 'sortino_ratio',
-                            'calmar_ratio', 'trade_count']
-            ])
-            self.result_table.setItem(i, 6, QTableWidgetItem(params_str))
+            # 거래 횟수
+            trade_count = getattr(result, 'trade_count', 0)
+            item = QTableWidgetItem(f"{trade_count}")
+            item.setData(0x0100, trade_count)
+            self.result_table.setItem(i, 5, item)
+
+            # 평균 PnL (%) = 단리 / 거래수
+            avg_pnl = simple_return / trade_count if trade_count > 0 else 0.0
+            item = QTableWidgetItem(f"{avg_pnl:.3f}")
+            item.setData(0x0100, avg_pnl)
+            self.result_table.setItem(i, 6, item)
+
+        self.result_table.setSortingEnabled(True)  # 정렬 재활성화
 
     def _on_apply_params(self):
         """선택한 파라미터 적용"""
@@ -640,6 +680,21 @@ class SingleOptimizationWidget(QWidget):
 
         # TODO: 선택한 파라미터 emit
         logger.info(f"파라미터 적용: 행 {selected_row}")
+
+    def _on_strategy_changed(self, index: int):
+        """
+        전략 변경 시 처리 (v3.0 - Phase 3)
+
+        Args:
+            index: 콤보박스 인덱스 (0=MACD, 1=ADX)
+        """
+        strategy_type = 'macd' if index == 0 else 'adx'
+
+        # TODO: 전략별 파라미터 위젯 표시/숨김 처리
+        # MACD: macd_fast, macd_slow, macd_signal
+        # ADX: adx_period, adx_threshold, di_threshold
+
+        logger.info(f"전략 변경: {strategy_type}")
 
     def _on_mode_changed(self, index: int):
         """

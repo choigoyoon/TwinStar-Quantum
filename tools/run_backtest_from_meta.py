@@ -85,6 +85,9 @@ def run_backtest_with_grid(
     dm = BotDataManager(exchange, symbol, {'entry_tf': '15m'})
     dm.load_historical()
 
+    if dm.df_entry_full is None:
+        raise ValueError(f"데이터 로드 실패: {exchange} {symbol}")
+
     # 리샘플링 (15m → 1h)
     df_15m = dm.df_entry_full.copy()
     df_15m = df_15m.set_index('timestamp')

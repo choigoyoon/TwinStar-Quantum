@@ -44,6 +44,7 @@ class MetaOptimizationWorker(QThread):
     # Signals
     iteration_started = pyqtSignal(int, int)       # (반복 번호, 샘플 수)
     iteration_finished = pyqtSignal(int, int, float)  # (반복 번호, 결과 수, 최고 점수)
+    backtest_progress = pyqtSignal(int, int, int)  # (반복 번호, 완료 수, 전체 수)
     finished = pyqtSignal(dict)                    # 최종 결과
     error = pyqtSignal(str)                        # 에러 메시지
 
@@ -120,7 +121,8 @@ class MetaOptimizationWorker(QThread):
                 df=df,
                 trend_tf=self.timeframe,
                 metric=self.metric,
-                callback=self._emit_progress
+                callback=self._emit_progress,
+                progress_callback=self._emit_backtest_progress
             )
 
             logger.info(
@@ -189,6 +191,21 @@ class MetaOptimizationWorker(QThread):
 
         except Exception as e:
             logger.warning(f"진행 상황 시그널 에러: {e}")
+
+    def _emit_backtest_progress(self, event: str, *args):
+        """백테스트 진행도 시그널 발생
+
+        Args:
+            event: 이벤트 타입 ('backtest_progress')
+            *args: (iteration, completed, total)
+        """
+        try:
+            if event == 'backtest_progress':
+                iteration, completed, total = args
+                self.backtest_progress.emit(iteration, completed, total)
+
+        except Exception as e:
+            logger.warning(f"백테스트 진행도 시그널 에러: {e}")
 
 
 if __name__ == '__main__':

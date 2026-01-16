@@ -41,6 +41,9 @@ def main():
     dm = BotDataManager('bybit', 'BTCUSDT', {'entry_tf': '15m'})
     dm.load_historical()
 
+    if dm.df_entry_full is None:
+        raise ValueError("데이터 로드 실패")
+
     # 리샘플링
     df_15m = dm.df_entry_full.copy()
     df_15m = df_15m.set_index('timestamp')

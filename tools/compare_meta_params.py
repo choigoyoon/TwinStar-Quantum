@@ -55,6 +55,10 @@ print("="*80)
 print("\n데이터 로드...")
 dm = BotDataManager('bybit', 'BTCUSDT', {'entry_tf': '15m'})
 dm.load_historical()
+
+if dm.df_entry_full is None:
+    raise ValueError("데이터 로드 실패")
+
 df = dm.df_entry_full.copy().set_index('timestamp')
 df = df.resample('1h').agg({'open':'first','high':'max','low':'min','close':'last','volume':'sum'}).dropna().reset_index()
 df = add_all_indicators(df, inplace=False)

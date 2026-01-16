@@ -73,8 +73,9 @@ class OptimizationRequest(BaseModel):
     exchange: str
     symbol: str
     timeframe: str = "15m"
-    mode: str = "standard"  # "quick", "standard", "deep"
+    mode: str = "meta"  # "meta", "quick", "deep" (v2.1: Meta 기본값)
     param_ranges: Optional[Dict[str, List[float]]] = None
+    strategies: Dict[str, bool] = {"macd": True, "adxdi": False}  # v2.1: 전략 선택
 
 class PresetRequest(BaseModel):
     name: str
@@ -229,7 +230,7 @@ async def get_backtest_params():
 # ----------- Optimization -----------
 @app.post("/api/optimization/start")
 async def start_optimization(request: OptimizationRequest, background_tasks: BackgroundTasks):
-    """최적화 시작 (Quick/Standard/Deep 모드)"""
+    """최적화 시작 (Meta/Quick/Deep 모드)"""
     if not CORE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Core modules not available")
 
@@ -276,7 +277,7 @@ async def run_optimization_task(
     mode: str,
     param_ranges: Optional[Dict[str, List[float]]]
 ):
-    """백그라운드 최적화 작업"""
+    """백그라운드 최적화 작업 (Meta/Quick/Deep 모드 지원)"""
     try:
         # 데이터 로드
         manager = get_data_manager(exchange, symbol)
@@ -287,16 +288,41 @@ async def run_optimization_task(
             optimization_jobs[job_id]["error"] = "No data available"
             return
 
-        # 파라미터 범위 준비
-        if param_ranges is None:
-            param_ranges = PARAM_RANGES_BY_MODE.get(mode, PARAM_RANGES_BY_MODE["standard"])
+        optimizer = get_optimizer(df)
 
-        # param_ranges가 여전히 None이면 기본값 사용
+        # Meta 모드: MetaOptimizer 사용
+        if mode == "meta":
+            try:
+                from core.meta_optimizer import MetaOptimizer
+
+                meta = MetaOptimizer(
+                    base_optimizer=optimizer,
+                    sample_size=1000,
+                    max_iterations=3
+                )
+
+                # 메타 최적화 실행
+                result = meta.run_meta_optimization(df, metric='sharpe_ratio')
+
+                # 결과 저장
+                optimization_jobs[job_id]["status"] = "completed"
+                optimization_jobs[job_id]["progress"] = 100
+                optimization_jobs[job_id]["results"] = result.get('iteration_results', [])[:20]
+                optimization_jobs[job_id]["extracted_ranges"] = result.get('extracted_ranges')
+                optimization_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+                return
+
+            except ImportError:
+                # Meta 모드 미지원 시 Quick 모드로 폴백
+                logger.warning("MetaOptimizer not available, falling back to Quick mode") if logger else None
+                mode = "quick"
+
+        # Quick/Deep 모드: 기존 로직
+        if param_ranges is None:
+            param_ranges = PARAM_RANGES_BY_MODE.get(mode, PARAM_RANGES_BY_MODE.get("quick"))
+
         if param_ranges is None:
             raise HTTPException(status_code=500, detail="Parameter ranges not available")
-
-        # 최적화 실행
-        optimizer = get_optimizer(df)
 
         # 파라미터 그리드 생성
         grid: Dict[str, List[float]] = {}
@@ -351,17 +377,17 @@ async def get_optimization_modes():
 
     return {
         "modes": {
+            "meta": {
+                "name": "Meta Mode",
+                "combinations": "1,000개 × 3회",
+                "time": "~30분",
+                "description": "랜덤 샘플링 + 최적 범위 자동 추출"
+            },
             "quick": {
                 "name": "Quick Mode",
                 "combinations": "~8개",
                 "time": "~2분",
                 "description": "문서 권장값 우선 탐색"
-            },
-            "standard": {
-                "name": "Standard Mode",
-                "combinations": "~60개",
-                "time": "~15분",
-                "description": "균형잡힌 범위 탐색"
             },
             "deep": {
                 "name": "Deep Mode",
@@ -402,17 +428,50 @@ async def get_latest_preset(symbol: str, timeframe: str):
 
 @app.post("/api/presets")
 async def save_new_preset(request: PresetRequest):
-    """프리셋 저장"""
+    """프리셋 저장 (실제 백테스트 결과 포함)"""
     if not CORE_AVAILABLE or preset_storage is None:
         raise HTTPException(status_code=503, detail="Core modules not available")
 
     try:
-        optimization_result = {
-            "win_rate": 0.0,
-            "mdd": 0.0,
-            "profit_factor": 0.0,
-            "total_return": 0.0
-        }
+        # ✅ 실제 백테스트 실행하여 메트릭 계산
+        manager = get_data_manager(request.exchange, request.symbol)
+        df = manager.get_full_history(with_indicators=False)
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=404, detail="No data available for backtest")
+
+        # 파라미터 준비
+        full_params = DEFAULT_PARAMS.copy()
+        full_params.update(request.params)
+
+        # 백테스트 실행
+        optimizer = get_optimizer(df)
+        result = optimizer._run_single(
+            params=full_params,
+            slippage=0.001,  # 0.1%
+            fee=0.0004       # 0.04%
+        )
+
+        if result is None:
+            # 백테스트 실패 시 기본값 사용
+            optimization_result = {
+                "win_rate": 0.0,
+                "mdd": 0.0,
+                "profit_factor": 0.0,
+                "total_return": 0.0
+            }
+        else:
+            # 실제 백테스트 결과 사용
+            optimization_result = {
+                "win_rate": result.win_rate,
+                "mdd": result.max_drawdown,
+                "profit_factor": result.profit_factor,
+                "total_return": result.compound_return,
+                "sharpe_ratio": result.sharpe_ratio,
+                "cagr": result.cagr,
+                "total_trades": result.trades,
+                "grade": result.grade
+            }
 
         preset_storage.save_preset(
             symbol=request.symbol,
@@ -421,7 +480,11 @@ async def save_new_preset(request: PresetRequest):
             optimization_result=optimization_result,
             exchange=request.exchange
         )
-        return {"success": True, "message": f"Preset saved for {request.symbol} {request.timeframe}"}
+        return {
+            "success": True,
+            "message": f"Preset saved for {request.symbol} {request.timeframe}",
+            "metrics": optimization_result
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

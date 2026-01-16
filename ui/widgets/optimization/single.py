@@ -74,7 +74,8 @@ class SingleOptimizationWidget(QWidget):
         self.rsi_period_widget: ParamIntRangeWidget
         self.entry_validity_widget: ParamRangeWidget
 
-        # 진행 바
+        # 상태 메시지 & 진행 바
+        self.status_label: QLabel
         self.progress_bar: QProgressBar
 
         # 버튼
@@ -116,7 +117,23 @@ class SingleOptimizationWidget(QWidget):
         control_layout = self._create_control_section()
         layout.addLayout(control_layout)
 
-        # === 4. 진행 바 ===
+        # === 4. 상태 메시지 & 진행 바 ===
+        # 상태 메시지 라벨
+        self.status_label = QLabel("")
+        self.status_label.setVisible(False)
+        self.status_label.setStyleSheet(f"""
+            QLabel {{
+                font-size: {Typography.text_sm};
+                color: {Colors.accent_primary};
+                padding: {Spacing.space_1} {Spacing.space_2};
+                background: {Colors.bg_elevated};
+                border: 1px solid {Colors.border_muted};
+                border-radius: {Radius.radius_sm};
+            }}
+        """)
+        layout.addWidget(self.status_label)
+
+        # 진행 바
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         self.progress_bar.setStyleSheet(f"""
@@ -828,14 +845,18 @@ class SingleOptimizationWidget(QWidget):
         # 3. 시그널 연결
         self.meta_worker.iteration_started.connect(self._on_meta_iteration_started)
         self.meta_worker.iteration_finished.connect(self._on_meta_iteration_finished)
+        self.meta_worker.backtest_progress.connect(self._on_meta_backtest_progress)
         self.meta_worker.finished.connect(self._on_meta_finished)
         self.meta_worker.error.connect(self._on_meta_error)
 
         # 4. UI 상태 업데이트
         self.run_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
+        self.status_label.setVisible(True)
+        self.status_label.setText("🔍 메타 최적화 준비 중...")
+        self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.progress_bar.setMaximum(3)  # 최대 3회 반복
+        self.progress_bar.setMaximum(3000)  # 3회 × 1,000개 = 3,000개
 
         # 5. Worker 시작
         self.meta_worker.start()
@@ -849,14 +870,28 @@ class SingleOptimizationWidget(QWidget):
     def _on_meta_iteration_started(self, iteration: int, sample_size: int):
         """메타 최적화 반복 시작"""
         logger.info(f"  Iteration {iteration} started: {sample_size} samples")
-        self.progress_bar.setValue(iteration - 1)
-        # TODO: 상태 메시지 표시 (선택 사항)
+        self.status_label.setText(f"🔄 Iteration {iteration}/3: {sample_size}개 조합 테스트 중...")
+        # 진행 바는 백테스트 진행도로 업데이트됨
+
+    def _on_meta_backtest_progress(self, iteration: int, completed: int, total: int):
+        """백테스트 진행도 업데이트"""
+        # 전체 진행도 계산 (iteration별 가중치)
+        base_progress = (iteration - 1) * 1000
+        current_progress = base_progress + completed
+        self.progress_bar.setValue(current_progress)
+
+        # 상태 메시지 업데이트
+        percentage = (completed / total * 100) if total > 0 else 0
+        self.status_label.setText(
+            f"🔄 Iteration {iteration}/3: {completed}/{total} 백테스트 완료 ({percentage:.1f}%)"
+        )
 
     def _on_meta_iteration_finished(self, iteration: int, result_count: int, best_score: float):
         """메타 최적화 반복 완료"""
         logger.info(f"  Iteration {iteration} finished: {result_count} results, best score={best_score:.2f}")
-        self.progress_bar.setValue(iteration)
-        # TODO: 상태 메시지 업데이트 (선택 사항)
+        self.status_label.setText(
+            f"✅ Iteration {iteration}/3 완료: {result_count}개 결과, 최고 점수={best_score:.2f}"
+        )
 
     def _on_meta_finished(self, result: Dict[str, Any]):
         """메타 최적화 완료"""
@@ -866,6 +901,14 @@ class SingleOptimizationWidget(QWidget):
         self.run_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.progress_bar.setValue(self.progress_bar.maximum())
+
+        # 상태 메시지 업데이트
+        statistics = result.get('statistics', {})
+        elapsed = statistics.get('time_elapsed_seconds', 0)
+        total_tested = statistics.get('total_combinations_tested', 0)
+        self.status_label.setText(
+            f"🎉 메타 최적화 완료! {total_tested:,}개 조합 테스트 (소요 시간: {elapsed:.1f}초)"
+        )
 
         # 2. 결과 표시
         extracted_ranges = result.get('extracted_ranges', {})

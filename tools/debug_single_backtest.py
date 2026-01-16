@@ -1,177 +1,299 @@
-"""단일 백테스트 디버그 (추출된 범위)
+"""Meta 최적화 결과 상세 분석 - 거래 로그 및 통계
 
-메타 최적화에서 추출한 최적 파라미터로 백테스트 1회 실행하여
-문제 진단
+이 스크립트는 Meta 최적화로 추출된 파라미터로 백테스트를 실행하고,
+개별 거래의 상세 정보를 분석합니다.
+
+분석 항목:
+1. 백테스트 메트릭 (Sharpe, Win Rate, MDD, PF 등)
+2. 거래 통계 (평균 PnL, 중앙값, 표준편차 등)
+3. 거래 로그 (상위 30개)
+4. PnL 분포 (백분위수)
+5. 시간대별 거래 분포
+
+Usage:
+    python tools/debug_single_backtest.py
 
 Author: Claude Sonnet 4.5
 Date: 2026-01-17
 """
 
 import sys
-from pathlib import Path
+sys.path.insert(0, '.')
 
-# 프로젝트 루트를 Python 경로에 추가
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import json
+import pandas as pd
+import numpy as np
+from core.data_manager import BotDataManager
+from core.strategy_core import AlphaX7Core
+from utils.indicators import add_all_indicators
+from utils.metrics import calculate_backtest_metrics
 
-import logging
 
-# 로깅 설정
-logging.basicConfig(
-    level=logging.DEBUG,  # DEBUG 레벨로 상세 로그
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+def analyze_trades(trades):
+    """거래 통계 분석"""
+    if not trades:
+        return None
 
-# UTF-8 출력 설정 (Windows용)
-import io
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    df_trades = pd.DataFrame(trades)
+
+    # PnL 계산 (이미 있을 수도 있음)
+    if 'pnl' not in df_trades.columns:
+        df_trades['pnl'] = df_trades.apply(
+            lambda r: ((r['exit_price'] - r['entry_price']) / r['entry_price'] * 100)
+            if r['side'] == 'Long' else
+            ((r['entry_price'] - r['exit_price']) / r['entry_price'] * 100),
+            axis=1
+        )
+
+    # 승/패 분리
+    winning_trades = df_trades[df_trades['pnl'] > 0]
+    losing_trades = df_trades[df_trades['pnl'] <= 0]
+
+    stats = {
+        'total_trades': len(df_trades),
+        'winning_trades': len(winning_trades),
+        'losing_trades': len(losing_trades),
+        'win_rate': len(winning_trades) / len(df_trades) * 100 if len(df_trades) > 0 else 0,
+
+        # PnL 통계
+        'avg_pnl': df_trades['pnl'].mean(),
+        'median_pnl': df_trades['pnl'].median(),
+        'std_pnl': df_trades['pnl'].std(),
+        'max_profit': df_trades['pnl'].max(),
+        'max_loss': df_trades['pnl'].min(),
+
+        # 승리 거래 통계
+        'avg_win': winning_trades['pnl'].mean() if len(winning_trades) > 0 else 0,
+        'max_win': winning_trades['pnl'].max() if len(winning_trades) > 0 else 0,
+
+        # 손실 거래 통계
+        'avg_loss': losing_trades['pnl'].mean() if len(losing_trades) > 0 else 0,
+        'max_loss_trade': losing_trades['pnl'].min() if len(losing_trades) > 0 else 0,
+
+        # Profit Factor
+        'total_profit': winning_trades['pnl'].sum() if len(winning_trades) > 0 else 0,
+        'total_loss': abs(losing_trades['pnl'].sum()) if len(losing_trades) > 0 else 0,
+    }
+
+    if stats['total_loss'] > 0:
+        stats['profit_factor'] = stats['total_profit'] / stats['total_loss']
+    else:
+        stats['profit_factor'] = float('inf') if stats['total_profit'] > 0 else 0
+
+    return stats
+
+
+def print_trade_log(trades, n=30):
+    """거래 로그 출력 (상위 N개)"""
+    if not trades:
+        print("거래 없음")
+        return
+
+    df = pd.DataFrame(trades)
+
+    # PnL 계산
+    if 'pnl' not in df.columns:
+        df['pnl'] = df.apply(
+            lambda r: ((r['exit_price'] - r['entry_price']) / r['entry_price'] * 100)
+            if r['side'] == 'Long' else
+            ((r['entry_price'] - r['exit_price']) / r['entry_price'] * 100),
+            axis=1
+        )
+
+    # 타임스탬프 변환
+    if 'entry_time' in df.columns:
+        df['entry_time'] = pd.to_datetime(df['entry_time'])
+
+    print("\n" + "="*100)
+    print(f"거래 로그 (상위 {min(n, len(df))}개)")
+    print("="*100)
+    print(f"{'Timestamp':<20s} {'Side':<6s} {'Entry':>10s} {'Exit':>10s} {'PnL(%)':>8s} {'Pattern':<10s}")
+    print("-"*100)
+
+    for _, row in df.head(n).iterrows():
+        timestamp_val = row.get('entry_time', 'N/A')
+        timestamp = 'N/A'
+        if isinstance(timestamp_val, pd.Timestamp):
+            timestamp = timestamp_val.strftime('%Y-%m-%d %H:%M')
+        elif isinstance(timestamp_val, str):
+            timestamp = timestamp_val
+
+        side = str(row.get('side', 'N/A'))
+        entry = float(row.get('entry_price', 0))
+        exit_price = float(row.get('exit_price', 0))
+        pnl = float(row.get('pnl', 0))
+        pattern = str(row.get('pattern', 'N/A'))
+
+        pnl_str = f"{pnl:+.2f}%"
+        print(f"{timestamp:<20s} {side:<6s} {entry:>10.2f} {exit_price:>10.2f} {pnl_str:>8s} {pattern:<10s}")
+
+    if len(df) > n:
+        print(f"... ({len(df) - n}개 거래 생략)")
 
 
 def main():
-    """메인 함수"""
-    print("=" * 80)
-    print("단일 백테스트 디버그")
-    print("=" * 80)
-    print()
+    # Meta 결과 로드
+    meta_file = 'presets/meta_ranges/bybit_BTCUSDT_1h_meta_20260117_010105.json'
 
-    # 1. 데이터 로드
-    print("1. 데이터 로드 중...")
-    from core.data_manager import BotDataManager
+    print("="*100)
+    print("Meta 최적화 결과 상세 분석")
+    print("="*100)
 
-    dm = BotDataManager(
-        exchange_name='bybit',
-        symbol='BTCUSDT',
-        strategy_params={'entry_tf': '15m'}
-    )
+    with open(meta_file, 'r') as f:
+        meta = json.load(f)
 
-    if not dm.load_historical():
-        print("❌ 데이터 로드 실패")
+    # 데이터 로드
+    print("\n데이터 로드 중...")
+    dm = BotDataManager('bybit', 'BTCUSDT', {'entry_tf': '15m'})
+    dm.load_historical()
+
+    if dm.df_entry_full is None:
+        print("데이터 로드 실패")
         return
 
-    df = dm.df_entry_full
+    df = dm.df_entry_full.copy().set_index('timestamp')
+    df = df.resample('1h').agg({
+        'open': 'first',
+        'high': 'max',
+        'low': 'min',
+        'close': 'last',
+        'volume': 'sum'
+    }).dropna()
+    df = df.reset_index()
+    df = add_all_indicators(df, inplace=False)
 
-    if df is None or df.empty:
-        print("❌ 데이터가 비어있습니다")
-        return
+    print(f"데이터: {len(df)}개 캔들 ({df['timestamp'].iloc[0]} ~ {df['timestamp'].iloc[-1]})")
 
-    print(f"✅ 데이터 로드 완료: {len(df):,}개 캔들")
-    print(f"   기간: {df.index[0]} ~ {df.index[-1]}")
-    print()
-
-    # 2. 파라미터 설정 (메타 최적화 최고 결과)
-    print("2. 파라미터 설정")
+    # Quick 파라미터 (시작값 - 최적 파라미터)
+    p = meta['param_ranges_by_mode']
     params = {
-        'trend_interval': '1h',
-        'entry_tf': '15m',
-        'leverage': 1,
-        'direction': 'Both',
-        'max_mdd': 20.0,
-        'pattern_tolerance': 0.05,
-        'pullback_rsi_long': 40,
-        'pullback_rsi_short': 60,
-
-        # 메타 최적화 최적 파라미터
-        'atr_mult': 1.0,
-        'filter_tf': '2h',
-        'trail_start_r': 0.5,
-        'trail_dist_r': 0.015,
-        'entry_validity_hours': 12.0
+        'atr_mult': p['atr_mult']['quick'][0],
+        'filter_tf': p['filter_tf']['quick'][0],
+        'trail_start_r': p['trail_start_r']['quick'][0],
+        'trail_dist_r': p['trail_dist_r']['quick'][0],
+        'entry_validity_hours': p['entry_validity_hours']['quick'][0]
     }
 
-    for key, value in params.items():
-        print(f"  {key}: {value}")
+    print("\n최적 파라미터:")
+    for k, v in params.items():
+        print(f"  {k:22s}: {v}")
+
+    # 백테스트 실행
+    print("\n백테스트 실행 중...")
+    strategy = AlphaX7Core(use_mtf=True)
+    trades = strategy.run_backtest(
+        df_pattern=df,
+        df_entry=df,
+        slippage=0.0005,
+        pattern_tolerance=0.05,
+        enable_pullback=False,
+        **params
+    )
+
+    if not trades:
+        print("\n거래 없음 - 파라미터 확인 필요")
+        return
+
+    # 거래 통계 분석
+    stats = analyze_trades(trades)
+
+    if stats is None:
+        print("\n거래 통계 분석 실패")
+        return
+
+    # 메트릭 계산
+    metrics = calculate_backtest_metrics(trades, leverage=1, capital=100.0)
+
+    # 결과 출력
+    print("\n" + "="*100)
+    print("백테스트 메트릭")
+    print("="*100)
+    print(f"Sharpe Ratio      : {metrics['sharpe_ratio']:10.2f}")
+    print(f"Win Rate          : {metrics['win_rate']:9.1f}%")
+    print(f"MDD               : {metrics['mdd']:9.2f}%")
+    print(f"Profit Factor     : {metrics['profit_factor']:10.2f}")
+    print(f"Total Trades      : {metrics['total_trades']:10d}")
+    print(f"Total PnL         : {metrics['total_pnl']:9.2f}%")
+
+    # 거래 통계
+    print("\n" + "="*100)
+    print("거래 통계")
+    print("="*100)
+    print(f"총 거래           : {stats['total_trades']:10d}개")
+    print(f"승리 거래         : {stats['winning_trades']:10d}개 ({stats['win_rate']:.1f}%)")
+    print(f"손실 거래         : {stats['losing_trades']:10d}개")
     print()
+    print(f"평균 PnL          : {stats['avg_pnl']:+10.3f}%")
+    print(f"중앙값 PnL        : {stats['median_pnl']:+10.3f}%")
+    print(f"표준편차          : {stats['std_pnl']:10.3f}%")
+    print()
+    print(f"최대 수익         : {stats['max_profit']:+10.3f}%")
+    print(f"최대 손실         : {stats['max_loss']:+10.3f}%")
+    print()
+    print(f"평균 승리         : {stats['avg_win']:+10.3f}%")
+    print(f"평균 손실         : {stats['avg_loss']:+10.3f}%")
+    print()
+    print(f"총 수익           : {stats['total_profit']:+10.2f}%")
+    print(f"총 손실           : {stats['total_loss']:10.2f}%")
+    print(f"Profit Factor     : {stats['profit_factor']:10.2f}")
 
-    # 3. 백테스트 실행
-    print("3. 백테스트 실행 중...")
-    print("-" * 80)
+    # 거래 로그
+    print_trade_log(trades, n=30)
 
-    from core.strategy_core import AlphaX7Core
+    # PnL 분포 분석
+    print("\n" + "="*100)
+    print("PnL 분포 (백분위수)")
+    print("="*100)
 
-    try:
-        strategy = AlphaX7Core(use_mtf=True)
-
-        # DataFrame 복사 (안전성)
-        df_pattern = df.copy()
-        df_entry = df.copy()
-
-        print(f"  df_pattern: {len(df_pattern)}개 캔들")
-        print(f"  df_entry: {len(df_entry)}개 캔들")
-        print()
-
-        # 백테스트 실행
-        trades = strategy.run_backtest(
-            df_pattern=df_pattern,
-            df_entry=df_entry,
-            slippage=0.0005,
-            **{k: v for k, v in params.items() if k not in ['trend_interval', 'entry_tf', 'leverage', 'direction', 'max_mdd']}
+    df_trades = pd.DataFrame(trades)
+    if 'pnl' not in df_trades.columns:
+        df_trades['pnl'] = df_trades.apply(
+            lambda r: ((r['exit_price'] - r['entry_price']) / r['entry_price'] * 100)
+            if r['side'] == 'Long' else
+            ((r['entry_price'] - r['exit_price']) / r['entry_price'] * 100),
+            axis=1
         )
 
-        print()
-        print("-" * 80)
+    percentiles = [0, 5, 10, 25, 50, 75, 90, 95, 100]
+    for p_val in percentiles:
+        value = np.percentile(df_trades['pnl'], p_val)
+        print(f"  {p_val:3d}%: {value:+8.3f}%")
 
-        if not trades:
-            print("❌ 거래 내역이 없습니다")
-            print("   원인: 신호 미발생 또는 전략 조건 불충족")
-            return
+    # 시간대별 분석
+    if 'entry_time' in df_trades.columns:
+        df_trades['entry_time'] = pd.to_datetime(df_trades['entry_time'])
+        df_trades['hour'] = df_trades['entry_time'].dt.hour
+        df_trades['weekday'] = df_trades['entry_time'].dt.dayofweek
 
-        print(f"✅ 백테스트 완료: {len(trades)}개 거래")
-        print()
+        print("\n" + "="*100)
+        print("시간대별 거래 분포")
+        print("="*100)
 
-        # 4. 메트릭 계산
-        print("4. 메트릭 계산 중...")
-        from utils.metrics import calculate_backtest_metrics
+        hourly_counts = df_trades.groupby('hour').size()
+        print("\n시간별 거래수 (상위 10개):")
+        top_hours = hourly_counts.sort_values(ascending=False).head(10)
+        for hour_val in top_hours.index:
+            hour_int = int(hour_val) if isinstance(hour_val, (int, float, np.integer, np.floating)) else 0
+            count_val = int(top_hours[hour_val])
+            print(f"  {hour_int:2d}시: {count_val:4d}개 ({count_val/len(df_trades)*100:5.1f}%)")
 
-        metrics = calculate_backtest_metrics(
-            trades=trades,
-            leverage=params['leverage'],
-            capital=100.0
-        )
+        print("\n요일별 거래수:")
+        weekdays = ['월', '화', '수', '목', '금', '토', '일']
+        weekday_counts = df_trades.groupby('weekday').size()
+        for day_val in weekday_counts.index:
+            day_int = int(day_val) if isinstance(day_val, (int, float, np.integer, np.floating)) else 0
+            count_val = int(weekday_counts[day_val])
+            # 인덱스 범위 체크
+            if 0 <= day_int < len(weekdays):
+                day_name = weekdays[day_int]
+            else:
+                day_name = f"Day{day_int}"
+            print(f"  {day_name}: {count_val:4d}개 ({count_val/len(df_trades)*100:5.1f}%)")
 
-        print("✅ 메트릭 계산 완료")
-        print()
-
-        # 5. 결과 출력
-        print("5. 백테스트 결과")
-        print("=" * 80)
-        print(f"  Sharpe Ratio: {metrics['sharpe_ratio']:.4f}")
-        print(f"  Win Rate: {metrics['win_rate']:.2f}%")
-        print(f"  Profit Factor: {metrics['profit_factor']:.2f}")
-        print(f"  MDD: {metrics['mdd']:.2f}%")
-        print(f"  Total Return: {metrics['total_pnl']:.2f}%")
-        print(f"  Total Trades: {metrics['total_trades']}")
-        print()
-
-        # 6. 거래 샘플 (처음 5개)
-        print("6. 거래 샘플 (처음 5개)")
-        print("-" * 80)
-        for i, trade in enumerate(trades[:5], 1):
-            print(f"  Trade {i}:")
-            print(f"    Side: {trade.get('side', 'N/A')}")
-            print(f"    Entry: {trade.get('entry_price', 0):.2f}")
-            print(f"    Exit: {trade.get('exit_price', 0):.2f}")
-            print(f"    PnL: {trade.get('pnl', 0):.2f}%")
-            print()
-
-        print("=" * 80)
-        print("디버그 완료!")
-        print("=" * 80)
-
-    except Exception as e:
-        print(f"\n\n❌ 에러 발생: {e}")
-        import traceback
-        traceback.print_exc()
+    print("\n" + "="*100)
+    print("분석 완료")
+    print("="*100)
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n\n⚠️ 사용자에 의해 중단됨")
-    except Exception as e:
-        print(f"\n\n❌ 에러 발생: {e}")
-        import traceback
-        traceback.print_exc()
+    main()

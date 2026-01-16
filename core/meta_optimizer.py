@@ -104,7 +104,8 @@ class MetaOptimizer:
         df: pd.DataFrame,
         trend_tf: str = '1h',
         metric: str = 'sharpe_ratio',
-        callback: Optional[Callable] = None
+        callback: Optional[Callable] = None,
+        progress_callback: Optional[Callable] = None
     ) -> Dict:
         """메타 최적화 메인 루프
 
@@ -166,7 +167,11 @@ class MetaOptimizer:
             logger.info(f"  Sampled {len(sampled_combos)} combinations")
 
             # 3. 백테스트 실행 (샘플링된 조합만)
-            results = self._run_backtest_on_samples(df, grid, sampled_combos, metric)
+            results = self._run_backtest_on_samples(
+                df, grid, sampled_combos, metric,
+                iteration=iteration,
+                progress_callback=progress_callback
+            )
 
             if not results:
                 logger.warning(f"  Iteration {iteration}: No valid results")
@@ -254,7 +259,9 @@ class MetaOptimizer:
         df,
         grid: Dict[str, List],
         sampled_combos: List[tuple],
-        metric: str
+        metric: str,
+        iteration: int = 1,
+        progress_callback: Optional[Callable] = None
     ) -> List:
         """샘플링된 조합만 백테스트 실행
 
@@ -273,6 +280,7 @@ class MetaOptimizer:
 
         param_names = list(grid.keys())
         results = []
+        total_combos = len(sampled_combos)
 
         # CPU 코어 수
         n_cores = max(1, multiprocessing.cpu_count() - 1)
@@ -290,6 +298,7 @@ class MetaOptimizer:
                 futures[future] = params
 
             # 결과 수집
+            completed_count = 0
             for future in as_completed(futures):
                 try:
                     result = future.result()
@@ -297,6 +306,16 @@ class MetaOptimizer:
                         results.append(result)
                 except Exception as e:
                     logger.debug(f"Backtest failed: {e}")
+
+                # 진행도 콜백
+                completed_count += 1
+                if progress_callback:
+                    progress_callback(
+                        'backtest_progress',
+                        iteration,
+                        completed_count,
+                        total_combos
+                    )
 
         # 지표 기준 정렬
         if results:

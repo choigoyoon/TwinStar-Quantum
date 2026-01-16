@@ -311,18 +311,14 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="text-sm text-gray-400 block mb-1">
-                                    최적화 모드 
-                                    <span v-if="userTier === 'ADMIN'" class="text-red-400 text-xs">[ADMIN]</span>
-                                </label>
-                                <select v-model="optimization.mode" class="input-field w-full px-4 py-2 rounded-lg"
-                                        :disabled="userTier !== 'ADMIN'">
-                                    <option value="single">싱글 최적화</option>
-                                    <option v-if="userTier === 'ADMIN'" value="batch">배치 최적화</option>
-                                    <option v-if="userTier === 'ADMIN'" value="walk_forward">Walk-Forward</option>
+                                <label class="text-sm text-gray-400 block mb-2">최적화 모드</label>
+                                <select v-model="optimization.mode" class="input-field w-full px-4 py-2 rounded-lg">
+                                    <option value="meta">🔍 Meta 모드 (~30분, 자동 범위 탐색)</option>
+                                    <option value="quick">⚡ Quick 모드 (~2분, 8개 조합)</option>
+                                    <option value="deep">🎯 Deep 모드 (~4.5시간, 1,080개 조합)</option>
                                 </select>
-                                <p v-if="userTier !== 'ADMIN'" class="text-xs text-gray-500 mt-1">
-                                    * ADMIN 등급만 다른 모드 사용 가능
+                                <p class="text-xs text-gray-500 mt-1">
+                                    * Meta: 최적 범위 자동 탐색 (1,000개 샘플 × 3회 반복)
                                 </p>
                             </div>
                             <!-- [NEW] 전략 선택 체크박스 -->
@@ -1203,8 +1199,8 @@
                 const backtest = reactive({ symbol: 'BTCUSDT', timeframe: '1h', running: false });
                 const backtestResult = ref(null);
                 
-                const optimization = reactive({ 
-                    symbol: 'BTCUSDT', timeframe: '1h', mode: 'single', running: false, progress: 0, result: null,
+                const optimization = reactive({
+                    symbol: 'BTCUSDT', timeframe: '1h', mode: 'meta', running: false, progress: 0, result: null,
                     topResults: [],  // 상위 5개 결과
                     // [NEW] 전략 선택
                     strategies: {

@@ -324,8 +324,14 @@ class ParamIntRangeWidget(QWidget):
         min_v = self.min_spin.value()
         max_v = self.max_spin.value()
         step_v = self.step_spin.value()
-        
+
         if step_v <= 0:
             return [min_v]
-        
+
         return list(range(min_v, max_v + 1, step_v))
+
+    def set_values(self, min_val: int, max_val: int, step: int):
+        """값 설정"""
+        self.min_spin.setValue(min_val)
+        self.max_spin.setValue(max_val)
+        self.step_spin.setValue(step)

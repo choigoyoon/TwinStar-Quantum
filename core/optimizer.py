@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Callable, Any, cast
 from dataclasses import dataclass
+from pathlib import Path
 import multiprocessing as mp
 
 # 메트릭 계산 (SSOT)
@@ -208,21 +209,12 @@ INDICATOR_RANGE_STANDARD = {
 }
 
 # Deep 모드 (완전 탐색, ~5000개)
+# 주의: generate_deep_grid()와 중복되지 않도록 실제 사용 파라미터만 정의
 INDICATOR_RANGE_DEEP = {
-    'macd_fast': [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-    'macd_slow': [16, 18, 20, 22, 24, 26, 28, 30, 32, 34],
-    'macd_signal': [5, 6, 7, 8, 9, 10, 11, 12, 13],
-    'ema_period': [8, 10, 12, 15, 20, 25, 30, 40, 50, 60],
     'atr_mult': [0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.2, 2.5, 2.8, 3.0],
-    'atr_period': [5, 7, 10, 14, 18, 21, 25, 30],
     'rsi_period': [5, 7, 9, 11, 14, 17, 21, 25, 30],
-    'trail_start_r': [0.3, 0.5, 0.7, 0.9, 1.0, 1.2, 1.5, 1.8, 2.0],
-    'trail_dist_r': [0.1, 0.2, 0.3, 0.35, 0.4, 0.5, 0.6, 0.7, 0.8],
-    'pullback_rsi_long': [30, 35, 40, 45, 50],
-    'pullback_rsi_short': [50, 55, 60, 65, 70],
-    'pattern_tolerance': [0.02, 0.03, 0.04, 0.05, 0.06],
     'entry_validity_hours': [6, 12, 18, 24, 36, 48],
-    'max_adds': [0, 1, 2, 3],
+    # 10 × 9 × 6 = 540개 조합
 }
 
 
@@ -329,7 +321,7 @@ def generate_grid_by_mode(
     trend_tf: str,
     mode: str = 'standard',
     max_mdd: float = 20.0,
-    use_indicator_ranges: bool = True
+    use_indicator_ranges: bool = False  # 기본값 False로 변경 (중복 방지)
 ) -> Dict:
     """
     모드에 따라 적절한 그리드 생성 (통합 함수)
@@ -915,6 +907,66 @@ class BacktestOptimizer:
         
         logger.info(f"✅ 최적화 완료: {len(self.results)}개 대표 결과 도출")
         return self.results
+
+    def save_results_to_csv(
+        self,
+        exchange: str,
+        symbol: str,
+        timeframe: str,
+        mode: str = 'deep',
+        output_dir: str = 'data/optimization_results'
+    ) -> str:
+        """
+        최적화 결과를 CSV로 저장
+
+        Args:
+            exchange: 거래소
+            symbol: 심볼
+            timeframe: 타임프레임
+            mode: 최적화 모드
+            output_dir: 출력 디렉토리
+
+        Returns:
+            저장된 CSV 파일 경로
+        """
+        from datetime import datetime
+
+        if not self.results:
+            raise ValueError("저장할 결과가 없습니다")
+
+        # 1. DataFrame 생성
+        rows = []
+        for rank, result in enumerate(self.results, 1):
+            row = {
+                'rank': rank,
+                'score': result.profit_factor * (result.win_rate / 100) if result.win_rate else 0,
+                'win_rate': result.win_rate,
+                'profit_factor': result.profit_factor,
+                'mdd': result.max_drawdown,
+                'sharpe': result.sharpe_ratio,
+                'sortino': getattr(result, 'sortino_ratio', 0),
+                'calmar': getattr(result, 'calmar_ratio', 0),
+                'trades': result.trades,
+                'total_return': result.simple_return,
+                **result.params  # 모든 파라미터 컬럼으로 추가
+            }
+            rows.append(row)
+
+        df = pd.DataFrame(rows)
+
+        # 2. 파일명 생성
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{exchange}_{symbol}_{timeframe}_{mode}_{timestamp}.csv"
+
+        # 3. 저장
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        csv_path = output_path / filename
+
+        df.to_csv(csv_path, index=False, encoding='utf-8')
+
+        logger.info(f"CSV 저장 완료: {csv_path} ({len(df)} rows)")
+        return str(csv_path)
     
     def _run_single(self, params: Dict, slippage: float, fee: float) -> Optional[OptimizationResult]:
         """단일 파라미터 조합으로 백테스트 실행"""

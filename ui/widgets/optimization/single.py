@@ -9,7 +9,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QSpinBox, QProgressBar,
-    QGroupBox, QTableWidget, QHeaderView,
+    QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox
 )
 from PyQt6.QtCore import pyqtSignal
@@ -21,6 +21,13 @@ from ui.design_system.tokens import Colors, Typography, Spacing, Radius, Size
 
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
+
+# 최적화 모드 매핑
+MODE_MAP = {
+    0: 'quick',
+    1: 'standard',
+    2: 'deep'
+}
 
 
 class SingleOptimizationWidget(QWidget):
@@ -52,7 +59,13 @@ class SingleOptimizationWidget(QWidget):
         self.exchange_combo: QComboBox
         self.symbol_combo: QComboBox
         self.timeframe_combo: QComboBox
+        self.mode_combo: QComboBox
         self.max_workers_spin: QSpinBox
+
+        # 정보 표시 라벨
+        self.estimated_combo_label: QLabel
+        self.estimated_time_label: QLabel
+        self.recommended_workers_label: QLabel
 
         # 파라미터 입력 위젯
         self.atr_mult_widget: ParamRangeWidget
@@ -128,6 +141,10 @@ class SingleOptimizationWidget(QWidget):
         result_group = self._create_result_section()
         layout.addWidget(result_group, stretch=1)
 
+        # === 6. 초기 모드 적용 ===
+        # Standard 모드 (index=1) 기본 설정
+        self._on_mode_changed(1)
+
     def _create_input_section(self) -> QGroupBox:
         """거래소/심볼 입력 섹션 생성"""
         group = QGroupBox("거래소 및 심볼 선택")
@@ -201,6 +218,54 @@ class SingleOptimizationWidget(QWidget):
 
         tf_layout.addStretch()
         layout.addLayout(tf_layout)
+
+        # 최적화 모드 선택
+        mode_layout = QHBoxLayout()
+        mode_layout.setSpacing(Spacing.i_space_2)
+
+        mode_label = QLabel("최적화 모드:")
+        mode_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
+        mode_layout.addWidget(mode_label)
+
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["⚡ Quick (~50개)", "📊 Standard (~5,000개)", "🔬 Deep (~50,000개)"])
+        self.mode_combo.setCurrentIndex(1)  # Standard 기본
+        self.mode_combo.setMinimumWidth(Size.control_min_width)
+        self.mode_combo.setStyleSheet(self._get_combo_style())
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        mode_layout.addWidget(self.mode_combo)
+
+        mode_layout.addStretch()
+        layout.addLayout(mode_layout)
+
+        # 예상 정보 표시
+        info_layout = QHBoxLayout()
+        info_layout.setSpacing(Spacing.i_space_3)
+
+        self.estimated_combo_label = QLabel("예상 조합 수: ~50개")
+        self.estimated_combo_label.setStyleSheet(f"""
+            font-size: {Typography.text_sm};
+            color: {Colors.accent_primary};
+            font-weight: {Typography.font_bold};
+        """)
+        info_layout.addWidget(self.estimated_combo_label)
+
+        self.estimated_time_label = QLabel("예상 시간: 2분")
+        self.estimated_time_label.setStyleSheet(f"""
+            font-size: {Typography.text_sm};
+            color: {Colors.text_secondary};
+        """)
+        info_layout.addWidget(self.estimated_time_label)
+
+        self.recommended_workers_label = QLabel("권장 워커: 4개")
+        self.recommended_workers_label.setStyleSheet(f"""
+            font-size: {Typography.text_sm};
+            color: {Colors.text_secondary};
+        """)
+        info_layout.addWidget(self.recommended_workers_label)
+
+        info_layout.addStretch()
+        layout.addLayout(info_layout)
 
         return group
 
@@ -414,25 +479,157 @@ class SingleOptimizationWidget(QWidget):
         """최적화 실행"""
         logger.info("최적화 시작")
 
-        # TODO: 데이터 로드 및 OptimizationEngine 생성
-        # TODO: Worker 생성 및 시작
+        # 1. 거래소/심볼 정보
+        exchange = self.exchange_combo.currentText().lower()
+        symbol = self.symbol_combo.currentText()
+        timeframe = self.timeframe_combo.currentText()
+        mode_index = self.mode_combo.currentIndex()
+        mode = MODE_MAP.get(mode_index, 'standard')
+        max_workers = self.max_workers_spin.value()
 
+        # 2. 데이터 로드
+        from core.data_manager import BotDataManager
+
+        try:
+            dm = BotDataManager(exchange, symbol, {'entry_tf': timeframe})
+            if not dm.load_historical():
+                QMessageBox.warning(self, "오류", "데이터 로드 실패")
+                return
+
+            if dm.df_entry_full is None or dm.df_entry_full.empty:
+                QMessageBox.warning(self, "오류", "데이터가 비어있습니다")
+                return
+
+        except Exception as e:
+            QMessageBox.critical(self, "오류", f"데이터 로드 중 에러:\n{str(e)}")
+            logger.error(f"데이터 로드 실패: {e}")
+            return
+
+        # 3. 파라미터 그리드 생성
+        from core.optimizer import generate_grid_by_mode
+
+        grid = generate_grid_by_mode(
+            trend_tf=timeframe,
+            mode=mode
+        )
+
+        # 4. OptimizationEngine 생성
+        from core.optimization_logic import OptimizationEngine
+
+        # OptimizationEngine은 strategy, param_ranges, progress_callback만 받음
+        # symbol, timeframe, capital_mode는 Worker에 전달
+        engine = OptimizationEngine()
+
+        # 5. Worker 생성 및 시그널 연결
+        self.worker = OptimizationWorker(
+            engine=engine,
+            df=dm.df_entry_full,
+            param_grid=grid,
+            max_workers=max_workers,
+            symbol=symbol,
+            timeframe=timeframe,
+            capital_mode='compound'
+        )
+
+        # 시그널 연결
+        self.worker.progress.connect(self._on_progress_update)
+        self.worker.finished.connect(self._on_optimization_finished)
+        self.worker.error.connect(self._on_optimization_error)
+
+        # 6. UI 상태 변경 및 시작
         self.run_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
 
-        QMessageBox.information(
-            self,
-            "준비 중",
-            "최적화 기능은 아직 구현 중입니다.\n백엔드 엔진 연결이 필요합니다."
-        )
+        logger.info(f"최적화 시작: {mode} 모드, {max_workers}개 워커")
+        self.worker.start()
 
     def _on_stop_optimization(self):
         """최적화 중지"""
         if self.worker:
             logger.info("최적화 중지 요청")
             self.worker.cancel()
+
+    def _on_progress_update(self, completed: int, total: int):
+        """진행률 업데이트"""
+        if total > 0:
+            progress = int((completed / total) * 100)
+            self.progress_bar.setValue(progress)
+            logger.debug(f"진행률: {completed}/{total} ({progress}%)")
+
+    def _on_optimization_finished(self, results: list):
+        """최적화 완료"""
+        logger.info(f"최적화 완료: {len(results)}개 결과")
+
+        # UI 상태 복원
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.progress_bar.setValue(100)
+
+        # 결과 저장
+        self.results = results
+
+        # 결과 테이블 업데이트
+        self._update_result_table(results)
+
+        QMessageBox.information(
+            self,
+            "완료",
+            f"최적화 완료!\n총 {len(results)}개 결과"
+        )
+
+    def _on_optimization_error(self, error_msg: str):
+        """최적화 에러"""
+        logger.error(f"최적화 에러: {error_msg}")
+
+        # UI 상태 복원
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.progress_bar.setVisible(False)
+
+        QMessageBox.critical(
+            self,
+            "오류",
+            f"최적화 중 오류 발생:\n{error_msg}"
+        )
+
+    def _update_result_table(self, results: list):
+        """결과 테이블 업데이트"""
+        self.result_table.setRowCount(len(results))
+
+        for i, result in enumerate(results):
+            # 순위
+            self.result_table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+
+            # 총 수익률 (%)
+            total_return = result.get('total_return', 0.0)
+            self.result_table.setItem(i, 1, QTableWidgetItem(f"{total_return:.2f}"))
+
+            # 승률 (%)
+            win_rate = result.get('win_rate', 0.0)
+            self.result_table.setItem(i, 2, QTableWidgetItem(f"{win_rate:.1f}"))
+
+            # Profit Factor
+            pf = result.get('profit_factor', 0.0)
+            self.result_table.setItem(i, 3, QTableWidgetItem(f"{pf:.2f}"))
+
+            # MDD (%)
+            mdd = result.get('max_drawdown', 0.0)
+            self.result_table.setItem(i, 4, QTableWidgetItem(f"{mdd:.1f}"))
+
+            # Sharpe
+            sharpe = result.get('sharpe_ratio', 0.0)
+            self.result_table.setItem(i, 5, QTableWidgetItem(f"{sharpe:.2f}"))
+
+            # 파라미터
+            params_str = ", ".join([
+                f"{k}={v}" for k, v in result.items()
+                if k not in ['total_return', 'win_rate', 'profit_factor',
+                            'max_drawdown', 'sharpe_ratio', 'sortino_ratio',
+                            'calmar_ratio', 'trade_count']
+            ])
+            self.result_table.setItem(i, 6, QTableWidgetItem(params_str))
 
     def _on_apply_params(self):
         """선택한 파라미터 적용"""
@@ -443,6 +640,69 @@ class SingleOptimizationWidget(QWidget):
 
         # TODO: 선택한 파라미터 emit
         logger.info(f"파라미터 적용: 행 {selected_row}")
+
+    def _on_mode_changed(self, index: int):
+        """
+        최적화 모드 변경 시 파라미터 자동 설정
+
+        Args:
+            index: 콤보박스 인덱스 (0=Quick, 1=Standard, 2=Deep)
+        """
+        from core.optimizer import get_indicator_range, get_worker_info, estimate_combinations, generate_grid_by_mode
+
+        mode = MODE_MAP.get(index, 'standard')
+
+        # 1. 파라미터 범위 가져오기
+        ranges = get_indicator_range(mode)
+
+        # 2. 파라미터 위젯 업데이트
+        # ATR 배수
+        atr_values = ranges['atr_mult']
+        self.atr_mult_widget.set_values(
+            min(atr_values),
+            max(atr_values),
+            atr_values[1] - atr_values[0] if len(atr_values) > 1 else 0.5
+        )
+
+        # RSI 기간
+        rsi_values = ranges['rsi_period']
+        self.rsi_period_widget.set_values(
+            min(rsi_values),
+            max(rsi_values),
+            rsi_values[1] - rsi_values[0] if len(rsi_values) > 1 else 1
+        )
+
+        # 진입 유효시간
+        entry_values = ranges['entry_validity_hours']
+        self.entry_validity_widget.set_values(
+            min(entry_values),
+            max(entry_values),
+            entry_values[1] - entry_values[0] if len(entry_values) > 1 else 6.0
+        )
+
+        # 3. 파라미터 그리드 생성
+        grid = generate_grid_by_mode(
+            trend_tf=self.timeframe_combo.currentText(),
+            mode=mode
+        )
+
+        # 4. 예상 조합 수 및 시간 계산
+        combo_count, estimated_time_min = estimate_combinations(grid)
+
+        # 5. 워커 정보 가져오기
+        worker_info = get_worker_info(mode)
+
+        # 6. UI 업데이트
+        self.estimated_combo_label.setText(f"예상 조합 수: ~{combo_count:,}개")
+        self.estimated_time_label.setText(f"예상 시간: {estimated_time_min:.1f}분")
+        self.recommended_workers_label.setText(
+            f"권장 워커: {worker_info['workers']}개 (코어 {worker_info['usage_percent']:.0f}% 사용)"
+        )
+
+        # 7. 워커 수 자동 설정
+        self.max_workers_spin.setValue(worker_info['workers'])
+
+        logger.info(f"모드 변경: {mode} (조합 수: {combo_count}, 워커: {worker_info['workers']})")
 
 
 __all__ = ['SingleOptimizationWidget']

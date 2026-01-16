@@ -336,10 +336,29 @@ CMD ["uvicorn", "web.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
   - 결과 표시: OptimizationResult 필드 (7개 지표)
   - 버전: v1.8.3 → v2.0.0
 
+### 웹/UI 완전 동기화 (25c371f8)
+- **날짜**: 2026-01-17
+- **내용**: 웹 버전과 UI 버전 기능 100% 동기화
+- **변경**:
+  1. **Meta 최적화 모드 추가**
+     - 프론트엔드: Meta/Quick/Deep 3개 모드 통일
+     - 백엔드: MetaOptimizer 통합 (1,000개 샘플 × 3회)
+     - 모드 기본값: single → meta (UI와 동일)
+  2. **전략 선택 기능 추가**
+     - OptimizationRequest.strategies 필드
+     - 기본값: {"macd": True, "adxdi": False}
+  3. **프리셋 저장 로직 수정**
+     - 실제 백테스트 실행 후 메트릭 저장
+     - win_rate, mdd, profit_factor, sharpe_ratio, cagr, grade
+  4. **GUI 최적화 버그 수정**
+     - df_entry_full (1,000개) → get_full_history() (35,000+개)
+- **버전**: v2.0.0 → v2.1.0
+
 ---
 
-**버전**: v2.0.0
+**버전**: v2.1.0
 **상태**: ✅ 프로덕션 준비 완료
 **백엔드**: ✅ 실제 core 모듈 통합 (100%)
 **프론트엔드**: ✅ 전체 데이터 자동 사용 (100%)
-**다음**: 디자인 시스템 통합 (선택 사항)
+**동기화**: ✅ 웹/UI 기능 일치 (100%)
+**다음**: Phase 2 - 결과 일치성 검증 (선택 사항)

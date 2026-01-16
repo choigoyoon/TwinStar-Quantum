@@ -808,3 +808,251 @@ class OptimizationEngine:
             'grade': grade if best_result else "🥉C",
             'impact_report': report_path  # 영향도 리포트 경로
         }
+
+    def run_adaptive_meta_optimization(
+        self,
+        df: pd.DataFrame,
+        target_mdd: float = 20.0,
+        max_workers: int = 4,
+        stage_callback: Optional[Callable[[int, str, Optional[dict]], None]] = None,
+        capital_mode: str = 'COMPOUND',
+        samples_per_round: int = 6,
+        max_rounds: int = 3
+    ) -> Dict:
+        """
+        적응형 메타 최적화 (Adaptive Meta Grid Optimization)
+        
+        철학: "범위는 넓게, 값은 빠르게"
+        - 소수 샘플로 반응도 확인 → 좋은 영역으로 범위 좁힘 → 반복
+        
+        Args:
+            df: 백테스트 데이터
+            target_mdd: 목표 MDD (기본 20%)
+            max_workers: 병렬 워커 수
+            stage_callback: 단계 완료 콜백
+            capital_mode: 'COMPOUND' 또는 'SIMPLE'
+            samples_per_round: 라운드당 샘플 수 (기본 6개)
+            max_rounds: 최대 라운드 수 (기본 3회)
+        
+        Returns:
+            Dict with: params, result, rounds_history, leverage
+        
+        Example:
+            Round 1: filter_tf=[4h, 12h, 1d] × direction=[Both, Long] = 6개
+                     → 12h+Long이 베스트 (승률 82%, MDD 10%)
+            
+            Round 2: filter_tf=[10h, 12h, 14h] × atr_mult=[0.9, 1.0, 1.1] = 9개
+                     → 범위 좁혀서 세밀 탐색
+            
+            Round 3: 최종 미세 조정
+        """
+        import itertools
+        import numpy as np
+        
+        def notify(round_num, msg, params=None):
+            if stage_callback:
+                stage_callback(round_num, msg, params or {})
+            logger.info(f"[AdaptiveMeta] Round {round_num}: {msg}")
+        
+        def balanced_score(r):
+            """MDD 낮고 수익률 높은 결과 우선"""
+            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.total_pnl
+            mdd_penalty = max(0, r.max_drawdown - 12) * 5.0
+            return ret * 0.01 - mdd_penalty
+        
+        # ============ 파라미터 범위 정의 (넓게 시작) ============
+        param_ranges = {
+            'filter_tf': {
+                'values': ['4h', '6h', '12h', '1d'],
+                'type': 'categorical'
+            },
+            'direction': {
+                'values': ['Both', 'Long', 'Short'],
+                'type': 'categorical'
+            },
+            'atr_mult': {
+                'min': 0.8, 'max': 1.5, 'step': 0.1,
+                'type': 'numeric'
+            },
+            'trail_start_r': {
+                'min': 0.3, 'max': 0.9, 'step': 0.1,
+                'type': 'numeric'
+            },
+            'trail_dist_r': {
+                'min': 0.05, 'max': 0.15, 'step': 0.02,
+                'type': 'numeric'
+            },
+            'entry_validity_hours': {
+                'min': 6.0, 'max': 72.0, 'step': 12.0,
+                'type': 'numeric'
+            }
+        }
+        
+        # 현재 활성 파라미터 (좁혀갈 대상)
+        active_params = ['filter_tf', 'direction', 'atr_mult']
+        
+        fixed_params = DEFAULT_PARAMS.copy()
+        fixed_params['leverage'] = 1
+        
+        rounds_history = []
+        best_overall = None
+        
+        # ============ 라운드별 적응형 탐색 ============
+        for round_num in range(1, max_rounds + 1):
+            notify(round_num, f"시작 - 활성 파라미터: {active_params}")
+            
+            # 1. 현재 범위에서 샘플 생성
+            sample_grid = []
+            
+            for param_name in active_params:
+                pdef = param_ranges[param_name]
+                
+                if pdef['type'] == 'categorical':
+                    # 카테고리형: 현재 values 그대로
+                    sample_grid.append((param_name, pdef['values']))
+                else:
+                    # 수치형: min~max 사이 균등 샘플링
+                    vals = np.arange(pdef['min'], pdef['max'] + pdef['step']/2, pdef['step'])
+                    # 샘플 수 제한 (최대 3개)
+                    if len(vals) > 3:
+                        indices = np.linspace(0, len(vals)-1, 3, dtype=int)
+                        vals = [vals[i] for i in indices]
+                    sample_grid.append((param_name, list(vals)))
+            
+            # 조합 생성
+            keys = [s[0] for s in sample_grid]
+            value_lists = [s[1] for s in sample_grid]
+            combos = list(itertools.product(*value_lists))
+            
+            # 샘플 수 제한
+            if len(combos) > samples_per_round * 2:
+                # 균등 샘플링
+                indices = np.linspace(0, len(combos)-1, samples_per_round, dtype=int)
+                combos = [combos[i] for i in indices]
+            
+            notify(round_num, f"샘플 {len(combos)}개 테스트 중...")
+            
+            # 2. 백테스트 실행
+            test_grid = []
+            for combo in combos:
+                params = fixed_params.copy()
+                for i, key in enumerate(keys):
+                    params[key] = combo[i]
+                test_grid.append(params)
+            
+            results = self.run_optimization(df, test_grid, max_workers, capital_mode=capital_mode)
+            
+            if not results:
+                notify(round_num, "결과 없음 - 종료")
+                break
+            
+            # 3. 결과 분석 및 베스트 선택
+            sorted_results = sorted(results, key=balanced_score, reverse=True)
+            best = sorted_results[0]
+            
+            # 반응도 분석: 각 파라미터별 베스트 값 확인
+            param_best_values = {}
+            for param_name in active_params:
+                # 해당 파라미터 값별 평균 스코어
+                value_scores = {}
+                for r in results:
+                    val = r.params.get(param_name)
+                    if val not in value_scores:
+                        value_scores[val] = []
+                    value_scores[val].append(balanced_score(r))
+                
+                # 평균 스코어가 가장 높은 값
+                best_val = max(value_scores.keys(), key=lambda v: np.mean(value_scores[v]))
+                param_best_values[param_name] = {
+                    'best': best_val,
+                    'scores': {k: np.mean(v) for k, v in value_scores.items()}
+                }
+            
+            round_info = {
+                'round': round_num,
+                'samples': len(combos),
+                'best_params': best.params.copy(),
+                'best_score': balanced_score(best),
+                'win_rate': best.win_rate,
+                'mdd': best.max_drawdown,
+                'param_analysis': param_best_values
+            }
+            rounds_history.append(round_info)
+            
+            notify(round_num, f"베스트: 승률={best.win_rate:.1f}%, MDD={best.max_drawdown:.1f}%")
+            
+            # 4. 범위 좁히기 (다음 라운드용)
+            for param_name in active_params:
+                pdef = param_ranges[param_name]
+                best_val = param_best_values[param_name]['best']
+                
+                if pdef['type'] == 'categorical':
+                    # 카테고리형: 베스트 값 주변만 유지
+                    current_vals = pdef['values']
+                    if len(current_vals) > 2:
+                        # 베스트 + 인접값만 유지
+                        if best_val in current_vals:
+                            idx = current_vals.index(best_val)
+                            new_vals = [current_vals[max(0, idx-1)], best_val]
+                            if idx + 1 < len(current_vals):
+                                new_vals.append(current_vals[idx+1])
+                            param_ranges[param_name]['values'] = list(set(new_vals))
+                else:
+                    # 수치형: 베스트 값 주변으로 범위 축소
+                    old_range = pdef['max'] - pdef['min']
+                    new_range = old_range * 0.5  # 범위 절반으로
+                    
+                    new_min = max(pdef['min'], best_val - new_range / 2)
+                    new_max = min(pdef['max'], best_val + new_range / 2)
+                    new_step = pdef['step'] * 0.5  # 스텝도 절반
+                    
+                    param_ranges[param_name]['min'] = round(new_min, 2)
+                    param_ranges[param_name]['max'] = round(new_max, 2)
+                    param_ranges[param_name]['step'] = round(max(new_step, 0.01), 2)
+            
+            # 5. 다음 라운드 파라미터 전환
+            if round_num == 1:
+                # 2라운드: trail 파라미터로 전환
+                active_params = ['atr_mult', 'trail_start_r', 'trail_dist_r']
+                # 1라운드 베스트 고정
+                fixed_params.update({
+                    'filter_tf': best.params.get('filter_tf'),
+                    'direction': best.params.get('direction')
+                })
+            elif round_num == 2:
+                # 3라운드: entry_validity + 미세조정
+                active_params = ['entry_validity_hours', 'atr_mult']
+                fixed_params.update({
+                    'trail_start_r': best.params.get('trail_start_r'),
+                    'trail_dist_r': best.params.get('trail_dist_r')
+                })
+            
+            # 전체 베스트 업데이트
+            if best_overall is None or balanced_score(best) > balanced_score(best_overall):
+                best_overall = best
+        
+        # ============ 최종 결과 ============
+        if best_overall:
+            final_params = best_overall.params.copy()
+            mdd = best_overall.max_drawdown
+            optimal_leverage = calculate_optimal_leverage(mdd, target_mdd)
+            final_params['leverage'] = optimal_leverage
+            grade = calculate_grade(best_overall.win_rate, mdd, best_overall.profit_factor)
+        else:
+            final_params = fixed_params
+            mdd = 0
+            optimal_leverage = 1
+            grade = "🥉C"
+        
+        total_samples = sum(r['samples'] for r in rounds_history)
+        notify(max_rounds, f"완료: 총 {total_samples}개 샘플, 레버리지={optimal_leverage}x, 등급={grade}")
+        
+        return {
+            'params': final_params,
+            'final_result': best_overall,
+            'rounds_history': rounds_history,
+            'mdd': mdd,
+            'leverage': optimal_leverage,
+            'total_samples': total_samples,
+            'grade': grade
+        }

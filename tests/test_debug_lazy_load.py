@@ -30,8 +30,11 @@ def test_debug_lazy_load():
                 })
 
             # 배치 후 상태 확인
-            print(f"메모리 개수: {len(manager.df_entry_full)}")
-            print(f"메모리 close 범위: {manager.df_entry_full['close'].min()} ~ {manager.df_entry_full['close'].max()}")
+            if manager.df_entry_full is not None:
+                print(f"메모리 개수: {len(manager.df_entry_full)}")
+                print(f"메모리 close 범위: {manager.df_entry_full['close'].min()} ~ {manager.df_entry_full['close'].max()}")
+            else:
+                print("메모리: 데이터 없음")
 
             # Parquet 확인
             entry_file = manager.get_entry_file_path()

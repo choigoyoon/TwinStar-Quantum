@@ -327,7 +327,9 @@ class SingleOptimizationWidget(QWidget):
             "순위", "총 수익률 (%)", "승률 (%)", "Profit Factor",
             "MDD (%)", "Sharpe", "파라미터"
         ])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header = self.result_table.horizontalHeader()
+        if header:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.result_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.result_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.result_table.setStyleSheet(f"""

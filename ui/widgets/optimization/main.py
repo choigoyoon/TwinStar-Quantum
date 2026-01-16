@@ -45,24 +45,24 @@ class OptimizationWidget(QWidget):
         
         # 싱글 최적화 탭
         try:
-            from .single import SingleOptimizerWidget
-            self.single_widget = SingleOptimizerWidget()
+            from .single import SingleOptimizationWidget
+            self.single_widget = SingleOptimizationWidget()
             self.sub_tabs.addTab(self.single_widget, "🔧 싱글 심볼")
-            
+
             # 시그널 연결
-            if hasattr(self.single_widget, 'settings_applied'):
-                self.single_widget.settings_applied.connect(self.settings_applied.emit)
+            if hasattr(self.single_widget, 'best_params_selected'):
+                self.single_widget.best_params_selected.connect(self.settings_applied.emit)
         except ImportError as e:
-            logger.warning(f"SingleOptimizerWidget 로드 실패: {e}")
+            logger.warning(f"SingleOptimizationWidget 로드 실패: {e}")
             self._add_placeholder_tab("싱글 심볼", "🔧")
-        
+
         # 배치 최적화 탭
         try:
-            from .batch import BatchOptimizerWidget
-            self.batch_widget = BatchOptimizerWidget()
+            from .batch import BatchOptimizationWidget
+            self.batch_widget = BatchOptimizationWidget()
             self.sub_tabs.addTab(self.batch_widget, "⚡ 배치 (전체)")
         except ImportError as e:
-            logger.warning(f"BatchOptimizerWidget 로드 실패: {e}")
+            logger.warning(f"BatchOptimizationWidget 로드 실패: {e}")
             self._add_placeholder_tab("배치 (전체)", "⚡")
         
         layout.addWidget(self.sub_tabs)

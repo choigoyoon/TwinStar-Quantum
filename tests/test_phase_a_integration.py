@@ -52,6 +52,69 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
+# ==================== Helper Functions ====================
+
+def generate_test_data(num_candles: int = 2000, use_current_time: bool = False) -> pd.DataFrame:
+    """테스트용 OHLCV 데이터 생성 (Phase A-2 테스트와 동일)
+
+    Args:
+        num_candles: 생성할 캔들 수
+        use_current_time: True이면 현재 시간 기준 (backfill 테스트용), False이면 과거 데이터
+    """
+    base_price = 50000.0
+
+    if use_current_time:
+        # 현재 시간에서 과거로 거슬러 올라가며 생성 (backfill 테스트용)
+        end_time = pd.Timestamp.utcnow()
+        timestamps = pd.date_range(end=end_time, periods=num_candles, freq='15min')
+    else:
+        # 과거 데이터 생성 (일반 테스트용)
+        timestamps = pd.date_range(start='2024-01-01', periods=num_candles, freq='15min')
+
+    data = []
+    for i, ts in enumerate(timestamps):
+        close = base_price + np.sin(i / 10) * 1000 + np.random.randn() * 100
+        high = close + abs(np.random.randn() * 50)
+        low = close - abs(np.random.randn() * 50)
+        open_ = (high + low) / 2
+        volume = 1000 + np.random.randn() * 100
+
+        data.append({
+            'timestamp': ts,
+            'open': open_,
+            'high': high,
+            'low': low,
+            'close': close,
+            'volume': volume
+        })
+
+    return pd.DataFrame(data)
+
+
+def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """모든 지표 추가 (RSI, ATR, MACD 등)"""
+    from utils.indicators import calculate_rsi, calculate_atr
+
+    df = df.copy()
+
+    # RSI 계산 (return_series=True로 전체 Series 반환)
+    df['rsi'] = calculate_rsi(df['close'], period=14, return_series=True)
+
+    # ATR 계산 (DataFrame 전체를 넘김, return_series=True)
+    df['atr'] = calculate_atr(df, period=14, return_series=True)
+
+    # MACD 계산 (간단한 버전)
+    ema_12 = df['close'].ewm(span=12, adjust=False).mean()
+    ema_26 = df['close'].ewm(span=26, adjust=False).mean()
+    df['macd'] = ema_12 - ema_26
+    df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+    df['macd_hist'] = df['macd'] - df['macd_signal']
+
+    return df
+
+
+# ==================== Tests ====================
+
 def test_backtest_with_simulated_data():
     """시뮬레이션 데이터로 백테스트 실행"""
     logger.info("\n=== Test 1: Backtest with Simulated Data ===")
@@ -273,43 +336,6 @@ def test_metrics_consistency():
 
     # Note: 시뮬레이션 데이터는 메트릭 차이가 발생할 수 있으므로 경고만 출력
     logger.info("✅ Test 5 Passed: 메트릭 비교 완료 (실제 데이터에서는 차이 < 허용 오차 확인 필요)")
-
-
-def generate_test_data(num_candles: int = 2000, use_current_time: bool = False) -> pd.DataFrame:
-    """테스트용 OHLCV 데이터 생성 (Phase A-2 테스트와 동일)
-
-    Args:
-        num_candles: 생성할 캔들 수
-        use_current_time: True이면 현재 시간 기준 (backfill 테스트용), False이면 과거 데이터
-    """
-    base_price = 50000.0
-
-    if use_current_time:
-        # 현재 시간에서 과거로 거슬러 올라가며 생성 (backfill 테스트용)
-        end_time = pd.Timestamp.utcnow()
-        timestamps = pd.date_range(end=end_time, periods=num_candles, freq='15min')
-    else:
-        # 과거 데이터 생성 (일반 테스트용)
-        timestamps = pd.date_range(start='2024-01-01', periods=num_candles, freq='15min')
-
-    data = []
-    for i, ts in enumerate(timestamps):
-        close = base_price + np.sin(i / 10) * 1000 + np.random.randn() * 100
-        high = close + abs(np.random.randn() * 50)
-        low = close - abs(np.random.randn() * 50)
-        open_ = (high + low) / 2
-        volume = 1000 + np.random.randn() * 100
-
-        data.append({
-            'timestamp': ts,
-            'open': open_,
-            'high': high,
-            'low': low,
-            'close': close,
-            'volume': volume
-        })
-
-    return pd.DataFrame(data)
 
 
 if __name__ == '__main__':

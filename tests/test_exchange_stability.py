@@ -37,6 +37,7 @@ class TestExchangeCompatibility:
 
     def test_all_exchanges_implement_base_methods(self):
         """모든 거래소가 BaseExchange 필수 메서드 구현했는지 검증"""
+        import pytest
 
         required_methods = [
             'get_position',
@@ -47,9 +48,19 @@ class TestExchangeCompatibility:
         ]
 
         for module_name, class_name in EXCHANGE_MODULES:
-            # 동적 import
-            module = __import__(f'exchanges.{module_name}_exchange', fromlist=[class_name])
-            exchange_class = getattr(module, class_name)
+            # 동적 import (안전한 에러 처리)
+            try:
+                module = __import__(f'exchanges.{module_name}_exchange', fromlist=[class_name])
+            except ImportError as e:
+                pytest.fail(f"Failed to import exchanges.{module_name}_exchange: {e}")
+                continue
+
+            # 클래스 가져오기
+            try:
+                exchange_class = getattr(module, class_name)
+            except AttributeError as e:
+                pytest.fail(f"Class {class_name} not found in exchanges.{module_name}_exchange: {e}")
+                continue
 
             # BaseExchange 상속 확인
             assert issubclass(exchange_class, BaseExchange), \

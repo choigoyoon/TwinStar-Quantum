@@ -7,6 +7,8 @@ Zone A 마이그레이션:
     - GUI/optimization_widget.py에서 OptimizationWorker 추출
     - 타입 안전성 확보
     - 취소 기능 개선
+
+타입 안전성 강화 (v7.12 - 2026-01-16)
 """
 
 import logging

@@ -3,16 +3,19 @@ TwinStar Quantum - Parameter Input Widgets
 ==========================================
 
 최적화 파라미터 입력 컴포넌트들
+
+토큰 기반 디자인 시스템 적용 (v7.12 - 2026-01-16)
 """
 
 import numpy as np
+from typing import Optional
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QLabel, 
-    QDoubleSpinBox, QCheckBox
+    QWidget, QHBoxLayout, QLabel,
+    QDoubleSpinBox, QCheckBox, QSpinBox
 )
 
-# 디자인 시스템 import
-from ui.design_system.tokens import Colors, Typography
+# 디자인 시스템 import (SSOT)
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius
 
 
 class ParamRangeWidget(QWidget):
@@ -41,52 +44,79 @@ class ParamRangeWidget(QWidget):
         self.tooltip = tooltip
         self._init_ui(min_val, max_val, step, decimals)
     
-    def _init_ui(self, min_val, max_val, step, decimals):
+    def _init_ui(self, min_val: float, max_val: float, step: float, decimals: int):
         if self.tooltip:
             self.setToolTip(self.tooltip)
-        
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+        layout.setSpacing(Spacing.i_space_2)  # 8px
+
         # 라벨
         label = QLabel(f"{self.name}:")
         label.setMinimumWidth(100)
-        label.setStyleSheet(f"color: {Colors.text_secondary};")
+        label.setStyleSheet(f"""
+            color: {Colors.text_secondary};
+            font-size: {Typography.text_sm};
+        """)
         layout.addWidget(label)
-        
+
+        # SpinBox 공통 스타일
+        spinbox_style = f"""
+            QDoubleSpinBox {{
+                background-color: {Colors.bg_elevated};
+                color: {Colors.text_primary};
+                border: 1px solid {Colors.border_muted};
+                border-radius: {Radius.radius_sm};
+                padding: {Spacing.space_1} {Spacing.space_2};
+                font-size: {Typography.text_sm};
+                min-width: 80px;
+            }}
+            QDoubleSpinBox:hover {{
+                border-color: {Colors.accent_primary};
+            }}
+            QDoubleSpinBox:focus {{
+                border-color: {Colors.accent_primary};
+                background-color: {Colors.bg_surface};
+            }}
+        """
+
         # 최소값
-        layout.addWidget(QLabel("최소"))
+        min_label = QLabel("최소")
+        min_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
+        layout.addWidget(min_label)
+
         self.min_spin = QDoubleSpinBox()
         self.min_spin.setRange(0, 100)
         self.min_spin.setDecimals(decimals)
         self.min_spin.setValue(min_val)
-        self.min_spin.setStyleSheet(f"""
-            background: {Colors.bg_elevated}; 
-            color: {Colors.text_primary};
-            border: 1px solid #30363d;
-            border-radius: 4px;
-            padding: 4px;
-        """)
+        self.min_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.min_spin)
-        
+
         # 최대값
-        layout.addWidget(QLabel("최대"))
+        max_label = QLabel("최대")
+        max_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
+        layout.addWidget(max_label)
+
         self.max_spin = QDoubleSpinBox()
         self.max_spin.setRange(0, 100)
         self.max_spin.setDecimals(decimals)
         self.max_spin.setValue(max_val)
-        self.max_spin.setStyleSheet(self.min_spin.styleSheet())
+        self.max_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.max_spin)
-        
+
         # 스텝
-        layout.addWidget(QLabel("단계"))
+        step_label = QLabel("단계")
+        step_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
+        layout.addWidget(step_label)
+
         self.step_spin = QDoubleSpinBox()
         self.step_spin.setRange(0.01, 10)
         self.step_spin.setDecimals(decimals)
         self.step_spin.setValue(step)
-        self.step_spin.setStyleSheet(self.min_spin.styleSheet())
+        self.step_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.step_spin)
-        
+
         layout.addStretch()
     
     def get_values(self) -> list:
@@ -133,37 +163,51 @@ class ParamChoiceWidget(QWidget):
         self.tooltip = tooltip
         self._init_ui(checked_indices or [0])
     
-    def _init_ui(self, checked_indices):
+    def _init_ui(self, checked_indices: list):
         if self.tooltip:
             self.setToolTip(self.tooltip)
-        
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+        layout.setSpacing(Spacing.i_space_2)  # 8px
+
         # 라벨
         label = QLabel(f"{self.name}:")
         label.setMinimumWidth(100)
-        label.setStyleSheet(f"color: {Colors.text_secondary};")
+        label.setStyleSheet(f"""
+            color: {Colors.text_secondary};
+            font-size: {Typography.text_sm};
+        """)
         layout.addWidget(label)
-        
+
         # 체크박스들
-        self.checkboxes = []
+        self.checkboxes: list[QCheckBox] = []
         for i, choice in enumerate(self.choices):
             cb = QCheckBox(str(choice))
             cb.setChecked(i in checked_indices)
             cb.setStyleSheet(f"""
                 QCheckBox {{
                     color: {Colors.text_primary};
-                    spacing: 4px;
+                    font-size: {Typography.text_sm};
+                    spacing: {Spacing.space_1};
                 }}
                 QCheckBox::indicator {{
                     width: 16px;
                     height: 16px;
+                    border: 1px solid {Colors.border_muted};
+                    border-radius: {Radius.radius_sm};
+                }}
+                QCheckBox::indicator:checked {{
+                    background-color: {Colors.accent_primary};
+                    border-color: {Colors.accent_primary};
+                }}
+                QCheckBox::indicator:hover {{
+                    border-color: {Colors.accent_primary};
                 }}
             """)
             self.checkboxes.append(cb)
             layout.addWidget(cb)
-        
+
         layout.addStretch()
     
     def get_values(self) -> list:
@@ -203,53 +247,76 @@ class ParamIntRangeWidget(QWidget):
         self.tooltip = tooltip
         self._init_ui(min_val, max_val, step)
     
-    def _init_ui(self, min_val, max_val, step):
-        from PyQt6.QtWidgets import QSpinBox
-        
+    def _init_ui(self, min_val: int, max_val: int, step: int):
         if self.tooltip:
             self.setToolTip(self.tooltip)
-        
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+        layout.setSpacing(Spacing.i_space_2)  # 8px
+
         # 라벨
         label = QLabel(f"{self.name}:")
         label.setMinimumWidth(100)
-        label.setStyleSheet(f"color: {Colors.text_secondary};")
+        label.setStyleSheet(f"""
+            color: {Colors.text_secondary};
+            font-size: {Typography.text_sm};
+        """)
         layout.addWidget(label)
-        
-        style = f"""
-            background: {Colors.bg_elevated}; 
-            color: {Colors.text_primary};
-            border: 1px solid #30363d;
-            border-radius: 4px;
-            padding: 4px;
+
+        # SpinBox 공통 스타일
+        spinbox_style = f"""
+            QSpinBox {{
+                background-color: {Colors.bg_elevated};
+                color: {Colors.text_primary};
+                border: 1px solid {Colors.border_muted};
+                border-radius: {Radius.radius_sm};
+                padding: {Spacing.space_1} {Spacing.space_2};
+                font-size: {Typography.text_sm};
+                min-width: 80px;
+            }}
+            QSpinBox:hover {{
+                border-color: {Colors.accent_primary};
+            }}
+            QSpinBox:focus {{
+                border-color: {Colors.accent_primary};
+                background-color: {Colors.bg_surface};
+            }}
         """
-        
+
         # 최소값
-        layout.addWidget(QLabel("최소"))
+        min_label = QLabel("최소")
+        min_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
+        layout.addWidget(min_label)
+
         self.min_spin = QSpinBox()
         self.min_spin.setRange(1, 1000)
         self.min_spin.setValue(min_val)
-        self.min_spin.setStyleSheet(style)
+        self.min_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.min_spin)
-        
+
         # 최대값
-        layout.addWidget(QLabel("최대"))
+        max_label = QLabel("최대")
+        max_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
+        layout.addWidget(max_label)
+
         self.max_spin = QSpinBox()
         self.max_spin.setRange(1, 1000)
         self.max_spin.setValue(max_val)
-        self.max_spin.setStyleSheet(style)
+        self.max_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.max_spin)
-        
+
         # 스텝
-        layout.addWidget(QLabel("단계"))
+        step_label = QLabel("단계")
+        step_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
+        layout.addWidget(step_label)
+
         self.step_spin = QSpinBox()
         self.step_spin.setRange(1, 100)
         self.step_spin.setValue(step)
-        self.step_spin.setStyleSheet(style)
+        self.step_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.step_spin)
-        
+
         layout.addStretch()
     
     def get_values(self) -> list:

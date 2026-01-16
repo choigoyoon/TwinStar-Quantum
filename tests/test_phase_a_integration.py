@@ -148,18 +148,19 @@ def test_data_gap_handling():
     """데이터 갭 발생 시 backfill 작동 확인"""
     logger.info("\n=== Test 3: Data Gap Handling ===")
 
-    # 시뮬레이션 데이터 생성
-    df_full = generate_test_data(num_candles=2000)
+    # 현재 시간 기준 시뮬레이션 데이터 생성 (backfill은 현재 시간과 비교)
+    df_full = generate_test_data(num_candles=2000, use_current_time=True)
 
-    # 갭 시뮬레이션 (중간 100개 제거)
-    df_with_gap = pd.concat([df_full.iloc[:1000], df_full.iloc[1100:]], ignore_index=True)
+    # 갭 시뮬레이션 (최근 100개 제거 - 25시간 갭)
+    # backfill()은 마지막 타임스탬프와 현재 시간을 비교하므로, 최근 데이터를 제거해야 함
+    df_with_gap = df_full.iloc[:-100].copy()  # 마지막 100개 제거
 
     manager = BotDataManager('bybit', 'BTCUSDT', cache_dir='data/cache')
     manager.df_entry_full = df_with_gap.copy()
 
-    # backfill 실행 (REST API 모의)
+    # backfill 실행 (REST API 모의) - 제거된 100개를 반환
     initial_count = len(manager.df_entry_full)
-    added = manager.backfill(lambda lim: df_full.iloc[1000:1100])
+    added = manager.backfill(lambda lim: df_full.tail(lim))
 
     logger.info(f"초기 캔들 수: {initial_count}")
     logger.info(f"추가된 캔들 수: {added}")
@@ -274,10 +275,22 @@ def test_metrics_consistency():
     logger.info("✅ Test 5 Passed: 메트릭 비교 완료 (실제 데이터에서는 차이 < 허용 오차 확인 필요)")
 
 
-def generate_test_data(num_candles: int = 2000) -> pd.DataFrame:
-    """테스트용 OHLCV 데이터 생성 (Phase A-2 테스트와 동일)"""
+def generate_test_data(num_candles: int = 2000, use_current_time: bool = False) -> pd.DataFrame:
+    """테스트용 OHLCV 데이터 생성 (Phase A-2 테스트와 동일)
+
+    Args:
+        num_candles: 생성할 캔들 수
+        use_current_time: True이면 현재 시간 기준 (backfill 테스트용), False이면 과거 데이터
+    """
     base_price = 50000.0
-    timestamps = pd.date_range(start='2024-01-01', periods=num_candles, freq='15min')
+
+    if use_current_time:
+        # 현재 시간에서 과거로 거슬러 올라가며 생성 (backfill 테스트용)
+        end_time = pd.Timestamp.utcnow()
+        timestamps = pd.date_range(end=end_time, periods=num_candles, freq='15min')
+    else:
+        # 과거 데이터 생성 (일반 테스트용)
+        timestamps = pd.date_range(start='2024-01-01', periods=num_candles, freq='15min')
 
     data = []
     for i, ts in enumerate(timestamps):

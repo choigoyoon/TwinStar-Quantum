@@ -152,7 +152,7 @@ class TestGPUHeatmapWidget:
         x_labels, y_labels = sample_labels
 
         widget.update_heatmap(sample_data, x_labels, y_labels)
-        widget.clear()
+        widget.clear_heatmap()
 
         assert widget.heatmap_data is None
         assert widget._x_labels == []

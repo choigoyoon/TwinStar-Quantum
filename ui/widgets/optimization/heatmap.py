@@ -327,16 +327,32 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
             value = self.heatmap_data[y, x]
             self.cell_clicked.emit(x, y, value)
 
-    def clear(self):
-        """히트맵 초기화"""
-        # 데이터 초기화
+    def clear_heatmap(self):
+        """히트맵 초기화
+
+        Note: 메서드 이름을 clear_heatmap()으로 변경
+              (PyQtGraph GraphicsLayoutWidget의 clear() 메서드와 충돌 방지)
+        """
+        # ✅ 데이터 명시적 삭제 (참조 카운트 해제)
+        if hasattr(self, 'heatmap_data') and self.heatmap_data is not None:
+            del self.heatmap_data
         self.heatmap_data = None
+
         self._x_labels = []
         self._y_labels = []
 
-        # ImageItem 초기화
+        # ✅ ImageItem 완전 재생성 (clear()만으로는 내부 캐싱 때문에 데이터가 남을 수 있음)
         if hasattr(self, 'image_item') and self.image_item is not None:
-            self.image_item.clear()
+            # 기존 ImageItem 제거
+            self.plot_item.removeItem(self.image_item)
+
+            # 새 ImageItem 생성 및 추가
+            self.image_item = pg.ImageItem()
+            self.plot_item.addItem(self.image_item)
+
+            # ColorBar 다시 연결 (있는 경우)
+            if hasattr(self, 'colorbar') and self.colorbar is not None:
+                self.colorbar.setImageItem(self.image_item, insert_in=self.plot_item)
 
         # 툴팁 제거
         if hasattr(self, '_tooltip_label') and self._tooltip_label:
@@ -483,7 +499,7 @@ class HeatmapViewer(QWidget):
 
     def clear(self):
         """히트맵 초기화"""
-        self.heatmap.clear()
+        self.heatmap.clear_heatmap()
 
 
 # ==================== 테스트 코드 ====================

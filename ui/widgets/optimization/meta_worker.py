@@ -153,16 +153,13 @@ class MetaOptimizationWorker(QThread):
                 strategy_params={'entry_tf': self.timeframe}
             )
 
-            # 데이터 로드
-            if not dm.load_historical():
-                raise ValueError(f"데이터 로드 실패: {self.exchange} {self.symbol}")
-
-            df = dm.df_entry_full
+            # ✅ 전체 히스토리 로드 (Parquet에서 35,000+ 캔들)
+            df = dm.get_full_history(with_indicators=False)
 
             if df is None or df.empty:
                 raise ValueError(f"데이터가 비어있습니다: {self.exchange} {self.symbol}")
 
-            logger.info(f"  데이터 로드 완료: {len(df)} rows")
+            logger.info(f"  데이터 로드 완료: {len(df):,}개 캔들 (전체 히스토리)")
 
             return df
 

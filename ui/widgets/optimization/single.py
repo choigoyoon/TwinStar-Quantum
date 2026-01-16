@@ -518,18 +518,20 @@ class SingleOptimizationWidget(QWidget):
             self._run_meta_optimization(exchange, symbol, timeframe)
             return
 
-        # 2. 데이터 로드
+        # 2. 데이터 로드 (전체 히스토리)
         from core.data_manager import BotDataManager
 
         try:
             dm = BotDataManager(exchange, symbol, {'entry_tf': timeframe})
-            if not dm.load_historical():
-                QMessageBox.warning(self, "오류", "데이터 로드 실패")
+
+            # ✅ 전체 히스토리 로드 (Parquet에서 35,000+ 캔들)
+            df_full = dm.get_full_history(with_indicators=False)
+
+            if df_full is None or df_full.empty:
+                QMessageBox.warning(self, "오류", "데이터가 비어있습니다.\nParquet 파일을 확인하세요.")
                 return
 
-            if dm.df_entry_full is None or dm.df_entry_full.empty:
-                QMessageBox.warning(self, "오류", "데이터가 비어있습니다")
-                return
+            logger.info(f"데이터 로드 완료: {len(df_full):,}개 캔들")
 
         except Exception as e:
             QMessageBox.critical(self, "오류", f"데이터 로드 중 에러:\n{str(e)}")
@@ -561,7 +563,7 @@ class SingleOptimizationWidget(QWidget):
         # 5. Worker 생성 및 시그널 연결
         self.worker = OptimizationWorker(
             engine=engine,
-            df=dm.df_entry_full,
+            df=df_full,  # ✅ 전체 히스토리 사용 (35,000+ 캔들)
             param_grid=grid,
             max_workers=max_workers,
             symbol=symbol,

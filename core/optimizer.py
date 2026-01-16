@@ -639,7 +639,13 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
         if isinstance(filter_tf, list): filter_tf = filter_tf[0]
         
         # 전략 인스턴스 생성
-        strategy = strategy_class()
+        # AlphaX7Core는 use_mtf=True 파라미터 필요
+        use_mtf = params.get('use_mtf', True)  # 기본값 True
+        try:
+            strategy = strategy_class(use_mtf=use_mtf)
+        except TypeError:
+            # use_mtf 파라미터가 없는 전략 클래스
+            strategy = strategy_class()
         
         # 총 비용
         total_cost = slippage + fee
@@ -721,7 +727,11 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
             avg_pnl=metrics.get('avg_pnl', 0.0),
             cagr=metrics.get('cagr', 0.0)
         )
-    except Exception:
+    except Exception as e:
+        # 디버깅: 예외 로깅
+        import traceback
+        logger.debug(f"Worker failed: {e}")
+        logger.debug(traceback.format_exc())
         return None
 
 

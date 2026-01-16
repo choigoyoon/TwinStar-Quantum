@@ -19,7 +19,6 @@ try:
     from core.strategy_core import AlphaX7Core
     from core.data_manager import BotDataManager
     from utils.preset_storage import PresetStorage
-    from utils.metrics import calculate_backtest_metrics
     from config.constants import EXCHANGE_INFO, TF_MAPPING
     from config.parameters import DEFAULT_PARAMS, PARAM_RANGES_BY_MODE
     from utils.logger import get_module_logger
@@ -166,14 +165,39 @@ async def run_backtest(request: BacktestRequest):
             raise HTTPException(status_code=404, detail="No data available")
 
         # 파라미터 준비
-        params = request.params if request.params else DEFAULT_PARAMS.copy()
+        params = request.params if request.params else {}
+        full_params = DEFAULT_PARAMS.copy()
+        full_params.update(params)
 
-        # 백테스트 실행
+        # 백테스트 실행 (BacktestOptimizer._run_single)
         optimizer = get_optimizer(df)
-        trades = optimizer.run_single_backtest(df, params)
+        result = optimizer._run_single(
+            params=full_params,
+            slippage=0.001,  # 0.1% 슬리피지
+            fee=0.0004       # 0.04% 수수료
+        )
 
-        # 메트릭 계산
-        metrics = calculate_backtest_metrics(trades, leverage=params.get('leverage', 10))
+        if result is None:
+            return {
+                "success": False,
+                "error": "Backtest failed (no trades or insufficient data)"
+            }
+
+        # 결과 포맷팅
+        metrics = {
+            "win_rate": result.win_rate,
+            "mdd": result.max_drawdown,
+            "profit_factor": result.profit_factor,
+            "total_trades": result.trades,
+            "simple_return": result.simple_return,
+            "compound_return": result.compound_return,
+            "sharpe_ratio": result.sharpe_ratio,
+            "cagr": result.cagr,
+            "avg_trades_per_day": result.avg_trades_per_day,
+            "avg_pnl": result.avg_pnl,
+            "grade": result.grade,
+            "final_capital": result.final_capital
+        }
 
         return {
             "success": True,
@@ -182,9 +206,8 @@ async def run_backtest(request: BacktestRequest):
             "timeframe": request.timeframe,
             "data_points": len(df),
             "period": f"{df.iloc[0]['timestamp']} ~ {df.iloc[-1]['timestamp']}",
-            "params": params,
-            "metrics": metrics,
-            "trades": trades[:50]  # 최근 50개만 반환
+            "params": result.params,
+            "metrics": metrics
         }
 
     except Exception as e:
@@ -268,18 +291,26 @@ async def run_optimization_task(
         if param_ranges is None:
             param_ranges = PARAM_RANGES_BY_MODE.get(mode, PARAM_RANGES_BY_MODE["standard"])
 
+        # param_ranges가 여전히 None이면 기본값 사용
+        if param_ranges is None:
+            raise HTTPException(status_code=500, detail="Parameter ranges not available")
+
         # 최적화 실행
         optimizer = get_optimizer(df)
 
         # 파라미터 그리드 생성
+        grid: Dict[str, List[float]] = {}
         if mode == "quick":
             # Quick 모드: 소수의 조합만
-            grid = {k: v[:2] if isinstance(v, list) and len(v) >= 2 else v
-                    for k, v in param_ranges.items()}
+            for k, v in param_ranges.items():
+                if isinstance(v, list) and len(v) >= 2:
+                    grid[k] = v[:2]
+                else:
+                    grid[k] = v
         else:
             grid = param_ranges
 
-        results = optimizer.run_optimization(df, grid)
+        results = optimizer.run_optimization(df, grid, mode=mode)
 
         # 결과 저장
         optimization_jobs[job_id]["status"] = "completed"

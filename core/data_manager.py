@@ -556,7 +556,149 @@ class BotDataManager:
             except Exception as e:
                 logging.error(f"[BACKFILL] Failed: {e}")
                 return 0
-    
+
+    def auto_backfill_from_listing(
+        self,
+        listing_date: datetime,
+        timeframe: str = '15m',
+        fetch_callback: Optional[Callable] = None
+    ) -> int:
+        """
+        상장일부터 현재까지 자동 갭 보충
+
+        Args:
+            listing_date: 코인 상장일
+            timeframe: 타임프레임 (기본값: 15m)
+            fetch_callback: REST API 호출 콜백 (없으면 현재 데이터로만 확인)
+
+        Returns:
+            추가된 캔들 수
+
+        Examples:
+            >>> from datetime import datetime
+            >>> manager = BotDataManager('upbit', 'BTCUSDT')
+            >>> listing = datetime(2017, 10, 1)
+            >>> added = manager.auto_backfill_from_listing(listing, fetch_callback=lambda limit: exchange.get_klines('15m', limit))
+            >>> print(f"Added {added} candles")
+        """
+        try:
+            # 1. 기존 데이터 로드
+            if self.df_entry_full is None or len(self.df_entry_full) == 0:
+                # 데이터 없음 → 상장일부터 전체 수집 필요
+                logger.info(f"[AUTO_BACKFILL] No existing data for {self.exchange_name} {self.symbol_clean}")
+                logger.info(f"[AUTO_BACKFILL] Need to collect from listing date: {listing_date.date()}")
+
+                if fetch_callback is None:
+                    logger.warning("[AUTO_BACKFILL] No fetch_callback provided, cannot collect data")
+                    return 0
+
+                # 필요한 캔들 개수 계산
+                from datetime import timedelta
+                now = datetime.now()
+                delta = now - listing_date
+
+                tf_minutes = {
+                    '1m': 1, '3m': 3, '5m': 5, '15m': 15,
+                    '30m': 30, '1h': 60, '4h': 240, '1d': 1440
+                }
+                minutes = tf_minutes.get(timeframe, 15)
+                required = int(delta.total_seconds() / 60 / minutes * 1.1)  # 10% 마진
+
+                logger.info(f"[AUTO_BACKFILL] Need {required:,} candles from {listing_date.date()}")
+
+                # 데이터 수집
+                new_df = fetch_callback(required)
+
+                if new_df is not None and len(new_df) > 0:
+                    # DataFrame 처리
+                    if 'timestamp' not in new_df.columns and new_df.index.name == 'timestamp':
+                        new_df = new_df.reset_index()
+
+                    new_df = new_df.copy()
+                    new_df['timestamp'] = pd.to_datetime(new_df['timestamp'], utc=True)
+
+                    # 저장
+                    with self._data_lock:
+                        self.df_entry_full = new_df.copy()
+                        self.process_data()
+                        self.save_parquet()
+
+                    logger.info(f"[AUTO_BACKFILL] Collected {len(new_df):,} candles from listing")
+                    return len(new_df)
+                else:
+                    logger.error("[AUTO_BACKFILL] Failed to collect data from listing date")
+                    return 0
+
+            # 2. 기존 데이터가 있는 경우 → 가장 오래된 데이터 확인
+            with self._data_lock:
+                df_existing = self.df_entry_full.copy()
+                oldest_ts = pd.to_datetime(df_existing['timestamp'].min())
+
+                # Timezone 처리
+                if oldest_ts.tz is None:
+                    oldest_ts = oldest_ts.tz_localize('UTC')
+
+                listing_ts = pd.Timestamp(listing_date, tz='UTC')
+
+                logger.info(f"[AUTO_BACKFILL] Existing data: {len(df_existing):,} candles")
+                logger.info(f"[AUTO_BACKFILL] Oldest candle: {oldest_ts}")
+                logger.info(f"[AUTO_BACKFILL] Listing date: {listing_ts}")
+
+                # 3. 상장일까지 갭이 있는지 확인
+                if oldest_ts > listing_ts:
+                    gap_days = (oldest_ts - listing_ts).days
+                    logger.info(f"[AUTO_BACKFILL] Gap detected: {gap_days} days ({listing_ts.date()} ~ {oldest_ts.date()})")
+
+                    if fetch_callback is None:
+                        logger.warning("[AUTO_BACKFILL] No fetch_callback provided, cannot fill gap")
+                        return 0
+
+                    # 갭 구간 데이터 수집
+                    tf_minutes = {
+                        '1m': 1, '3m': 3, '5m': 5, '15m': 15,
+                        '30m': 30, '1h': 60, '4h': 240, '1d': 1440
+                    }
+                    minutes = tf_minutes.get(timeframe, 15)
+                    required = int((oldest_ts - listing_ts).total_seconds() / 60 / minutes * 1.1)  # 10% 마진
+
+                    logger.info(f"[AUTO_BACKFILL] Need {required:,} candles to fill gap")
+
+                    # 거래소에서 데이터 가져오기
+                    new_df = fetch_callback(required)
+
+                    if new_df is not None and len(new_df) > 0:
+                        # DataFrame 처리
+                        if 'timestamp' not in new_df.columns and new_df.index.name == 'timestamp':
+                            new_df = new_df.reset_index()
+
+                        new_df = new_df.copy()
+                        new_df['timestamp'] = pd.to_datetime(new_df['timestamp'], utc=True)
+
+                        # 기존 데이터와 병합 (중복 제거)
+                        df_merged = pd.concat([new_df, df_existing], ignore_index=True)
+                        df_merged = df_merged.sort_values('timestamp').drop_duplicates(subset=['timestamp'], keep='first')
+                        df_merged = df_merged.reset_index(drop=True)
+
+                        # 저장
+                        self.df_entry_full = df_merged.copy()
+                        self.process_data()
+                        self.save_parquet()
+
+                        added = len(new_df)
+                        logger.info(f"[AUTO_BACKFILL] Gap filled: {added:,} candles added")
+                        logger.info(f"[AUTO_BACKFILL] Total data: {len(df_merged):,} candles")
+                        return added
+                    else:
+                        logger.error("[AUTO_BACKFILL] Failed to fetch gap data")
+                        return 0
+                else:
+                    logger.info(f"[AUTO_BACKFILL] No gap detected (data complete from listing)")
+                    return 0
+
+        except Exception as e:
+            logger.error(f"[AUTO_BACKFILL] Failed: {e}", exc_info=True)
+            return 0
+
     # ========== 유틸리티 ==========
     
     def get_last_timestamp(self) -> Optional[datetime]:

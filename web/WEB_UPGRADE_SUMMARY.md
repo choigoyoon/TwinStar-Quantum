@@ -297,19 +297,33 @@ CMD ["uvicorn", "web.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ## 검증 완료
 
-- ✅ Pyright 에러: 0개
+- ✅ Pyright 에러: 0개 (3단계 수정 완료)
 - ✅ 실제 core 모듈 통합: 100%
 - ✅ v7.20 메타 최적화 시스템: 완전 통합
 - ✅ 하위 호환성: 100% 유지
 - ✅ API 응답 시간: <300ms (백테스트)
 - ✅ 백그라운드 작업: FastAPI BackgroundTasks 지원
+- ✅ 타입 안전성: OptimizationResult 정확한 필드 사용
 
 ## 커밋 정보
 
-- **커밋**: 7bcfc3ee
+### 초기 통합 (7bcfc3ee)
 - **브랜치**: feat/indicator-ssot-integration
 - **날짜**: 2026-01-17
 - **파일 변경**: 2개 (+665줄, -76줄)
+- **내용**: 웹 백엔드 v2.0.0 초기 통합
+
+### API 수정 1차 (bff2dcfb)
+- **내용**: BacktestOptimizer import 수정
+- **변경**: Optimizer → BacktestOptimizer + AlphaX7Core
+
+### API 수정 2차 (a416b02c)
+- **내용**: 메서드 및 타입 수정 (Pyright 에러 0개 달성)
+- **변경**:
+  - run_single_backtest → _run_single
+  - OptimizationResult 필드 정정
+  - param_ranges None 체크 추가
+  - 타입 힌트 개선
 
 ---
 

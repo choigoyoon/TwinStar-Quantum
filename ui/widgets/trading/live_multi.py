@@ -22,7 +22,7 @@ from utils.logger import get_module_logger
 
 # 디자인 토큰 및 스타일
 try:
-    from ui.design_system.tokens import Colors, Spacing, Typography, Radius
+    from ui.design_system.tokens import Colors, Spacing, Typography, Radius, Size
     from ui.widgets.backtest.styles import BacktestStyles
 except ImportError:
     # Fallback (하위 호환성)
@@ -172,7 +172,7 @@ class LiveMultiWidget(QWidget):
         self.exchange_combo = QComboBox()
         self.exchange_combo.addItems(['bybit', 'binance', 'okx', 'bitget'])
         self.exchange_combo.setStyleSheet(BacktestStyles.combo_box())
-        self.exchange_combo.setMinimumWidth(120)
+        self.exchange_combo.setMinimumWidth(Size.control_min_width)
         grid.addWidget(self.exchange_combo, row, 1)
 
         # 감시 대상 수
@@ -220,7 +220,7 @@ class LiveMultiWidget(QWidget):
         self.mode_combo = QComboBox()
         self.mode_combo.addItems(["📈 복리 (Compound)", "📊 고정 (Fixed)"])
         self.mode_combo.setStyleSheet(BacktestStyles.combo_box())
-        self.mode_combo.setMinimumWidth(150)
+        self.mode_combo.setMinimumWidth(Size.input_min_width)
         grid.addWidget(self.mode_combo, row, 5)
 
         # 컬럼 stretch
@@ -283,7 +283,7 @@ class LiveMultiWidget(QWidget):
         self.pending_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.pending_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.pending_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.pending_table.setMaximumHeight(150)
+        self.pending_table.setMaximumHeight(Size.input_min_width)  # 200px (충분한 높이)
 
         # 헤더 설정
         header = self.pending_table.horizontalHeader()
@@ -304,7 +304,7 @@ class LiveMultiWidget(QWidget):
         self.start_btn = QPushButton("▶ Start Trading")
         self.start_btn.setStyleSheet(BacktestStyles.button_primary())
         self.start_btn.clicked.connect(self._toggle_trading)
-        self.start_btn.setMinimumWidth(150)
+        self.start_btn.setMinimumWidth(Size.input_min_width)  # 200px
         row.addWidget(self.start_btn)
 
         row.addStretch()

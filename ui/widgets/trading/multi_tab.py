@@ -13,7 +13,7 @@ from utils.logger import get_module_logger
 
 # 디자인 토큰
 try:
-    from ui.design_system.tokens import Spacing
+    from ui.design_system.tokens import Spacing, Size
     from ui.widgets.backtest.styles import BacktestStyles
 except ImportError:
     class _SpacingFallback:
@@ -104,7 +104,7 @@ class MultiTradingTab(QWidget):
         # 백테스트 → 실시간 복사
         copy_btn = QPushButton("📋 Copy Backtest Settings to Live")
         copy_btn.setStyleSheet(BacktestStyles.button_info())
-        copy_btn.setMinimumWidth(200)
+        copy_btn.setMinimumWidth(Size.input_min_width)
         copy_btn.clicked.connect(self._copy_backtest_to_live)
         copy_btn.setToolTip("백테스트 설정을 실시간 매매로 복사합니다")
         row.addWidget(copy_btn)

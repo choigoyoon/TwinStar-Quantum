@@ -1,4 +1,4 @@
-# 🧠 TwinStar-Quantum Development Rules (v7.12 - Phase 4 완료)
+# 🧠 TwinStar-Quantum Development Rules (v7.13 - Phase 5 완료)
 
 > **핵심 원칙**: 이 프로젝트는 **VS Code 기반의 통합 개발 환경**에서 완벽하게 동작해야 한다. 
 > AI 개발자(안티그래피티)는 단순히 코드 로직만 고치는 것이 아니라, **VS Code 'Problems' 탭의 에러를 0으로 만드는 환경의 무결성**을 일차적 책임으로 가진다.
@@ -1360,13 +1360,20 @@ TwinStar Quantum - 작업 로그
 
 ## 📌 버전 정보
 
-- **문서 버전**: v7.12 (Phase 4 완료 - 최적화 위젯 UI 개편)
+- **문서 버전**: v7.13 (Phase 5 완료 - 트레이딩 위젯 토큰화)
 - **마지막 업데이트**: 2026-01-16
 - **Python 버전**: 3.12
 - **PyQt 버전**: 6.6.0+
 - **타입 체커**: Pyright (VS Code Pylance)
 
 **변경 이력**:
+- v7.13 (2026-01-16): **Phase 5 완료** - 트레이딩 위젯 토큰화
+  - ui/widgets/trading/ 2개 파일 Size 토큰 통합
+  - live_multi.py: 하드코딩 4곳 제거 (120px, 150px, 200px → Size 토큰)
+  - multi_tab.py: 하드코딩 1곳 제거 (200px → Size.input_min_width)
+  - 변경: +7줄, -7줄
+  - Pyright 에러: 0개 유지
+  - 작업 시간: 20분
 - v7.12 (2026-01-16): **Phase 4 완료** - 최적화 위젯 UI 개편
   - ui/widgets/optimization/ 3개 파일 토큰 기반 리팩토링
   - batch.py 대폭 개선 (415줄 → 토큰 기반)

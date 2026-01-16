@@ -164,6 +164,11 @@ class UnifiedBot:
         self.df_pattern_full: Optional[pd.DataFrame] = None
         self.df_entry_full: Optional[pd.DataFrame] = None
 
+        # ✅ v7.16: 증분 지표 트래커 (실시간 거래 최적화)
+        self.inc_rsi: Optional[Any] = None  # IncrementalRSI
+        self.inc_atr: Optional[Any] = None  # IncrementalATR
+        self._incremental_initialized = False
+
         # 3. Capital Management (Centralized)
         initial_capital = getattr(exchange, 'amount_usd', 100) if exchange else 100
         fixed_amount = getattr(exchange, 'fixed_amount', 100) if exchange else 100
@@ -237,6 +242,64 @@ class UnifiedBot:
         except Exception as e:
             logging.error(f"[INIT] Modular init failed: {e}")
             raise e
+
+    def _init_incremental_indicators(self) -> bool:
+        """
+        증분 지표 초기화 (v7.16 - 실시간 거래 최적화)
+
+        워밍업 데이터(100개)로 RSI/ATR 트래커를 초기화합니다.
+        WebSocket으로 새 캔들이 들어올 때 O(1) 시간에 업데이트됩니다.
+
+        Returns:
+            bool: 초기화 성공 여부
+
+        Note:
+            - 최소 100개 캔들 필요
+            - 초기화 후 self._incremental_initialized = True
+            - 실패 시 배치 계산으로 폴백
+        """
+        try:
+            from utils.incremental_indicators import IncrementalRSI, IncrementalATR
+
+            # 워밍업 데이터 확인
+            if not hasattr(self, 'mod_data') or self.mod_data.df_entry_full is None:
+                logger.warning("[INCREMENTAL] No data available, skipping initialization")
+                return False
+
+            df_warmup = self.mod_data.get_recent_data(limit=100)
+            if df_warmup is None or len(df_warmup) < 100:
+                logger.warning(f"[INCREMENTAL] Insufficient data ({len(df_warmup) if df_warmup is not None else 0}/100), skipping")
+                return False
+
+            # RSI 기간 (파라미터에서 가져오기)
+            rsi_period = self.strategy_params.get('rsi_period', 14)
+            atr_period = self.strategy_params.get('atr_period', 14)
+
+            # RSI 트래커 초기화
+            self.inc_rsi = IncrementalRSI(period=rsi_period)
+            for close in df_warmup['close']:
+                self.inc_rsi.update(float(close))
+
+            # ATR 트래커 초기화
+            self.inc_atr = IncrementalATR(period=atr_period)
+            for _, row in df_warmup.iterrows():
+                self.inc_atr.update(
+                    high=float(row['high']),
+                    low=float(row['low']),
+                    close=float(row['close'])
+                )
+
+            self._incremental_initialized = True
+            logger.info(
+                f"[INCREMENTAL] ✅ Initialized RSI({rsi_period}), ATR({atr_period}) "
+                f"with {len(df_warmup)} candles"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"[INCREMENTAL] Initialization failed: {e}")
+            self._incremental_initialized = False
+            return False
 
     # ========== Public/GUI Methods ==========
     def get_readiness_status(self) -> dict:
@@ -530,6 +593,25 @@ class UnifiedBot:
             # 4. lock 외부에서 Parquet 저장 (비동기)
             self.mod_data._save_with_lazy_merge()
 
+            # ✅ v7.16: 증분 지표 업데이트 (O(1) 복잡도)
+            if self._incremental_initialized and self.inc_rsi and self.inc_atr:
+                try:
+                    # RSI 업데이트
+                    rsi = self.inc_rsi.update(float(candle['close']))
+                    self.indicator_cache['rsi'] = rsi
+
+                    # ATR 업데이트
+                    atr = self.inc_atr.update(
+                        high=float(candle['high']),
+                        low=float(candle['low']),
+                        close=float(candle['close'])
+                    )
+                    self.indicator_cache['atr'] = atr
+
+                    logging.debug(f"[INCREMENTAL] ✅ RSI={rsi:.2f}, ATR={atr:.4f}")
+                except Exception as e:
+                    logging.error(f"[INCREMENTAL] Update failed: {e}")
+
             # 5. 패턴 데이터 업데이트
             self._process_historical_data()
 
@@ -654,6 +736,11 @@ class UnifiedBot:
                 return
 
         self._init_indicator_cache()
+
+        # v7.16: 증분 지표 초기화 (실시간 거래 최적화)
+        if hasattr(self, '_init_incremental_indicators'):
+            self._init_incremental_indicators()
+
         if getattr(self.strategy_params, 'use_websocket', True): self._start_websocket()
         self._start_data_monitor()
         

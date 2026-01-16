@@ -46,63 +46,43 @@ def calculate_rsi(
         pd.Series: 전체 RSI 시리즈 (return_series=True)
 
     Note:
-        - SMA 방식 사용 (strategy_core.run_backtest와 동일)
+        - Wilder's Smoothing (EWM) 방식 사용 (금융 산업 표준)
+        - com=period-1로 EWM 적용 (Wilder 1978 논문 기준)
         - 데이터가 부족하면 기본값 50 반환
     """
     if isinstance(data, np.ndarray):
         if len(data) < period + 1:
             return pd.Series([50.0] * len(data)) if return_series else 50.0
-        
-        # numpy 배열용 계산 (strategy_core.calculate_rsi 방식)
-        deltas = np.diff(data)
-        gains = np.where(deltas > 0, deltas, 0)
-        losses = np.where(-deltas > 0, -deltas, 0)
-        
-        if return_series:
-            # 전체 시리즈 계산
-            series = pd.Series(data)
-            delta = series.diff()
-            gain = delta.where(delta > 0, 0)
-            loss = -delta.where(delta < 0, 0)
-            avg_gain = gain.rolling(window=period).mean()
-            avg_loss = loss.rolling(window=period).mean()
-            rs = avg_gain / avg_loss.replace(0, np.nan)
-            rsi = 100 - (100 / (1 + rs.fillna(100)))
-            return rsi.fillna(50)
-        else:
-            # 마지막 값만 계산
-            avg_gain = np.mean(gains[-period:])
-            avg_loss = np.mean(losses[-period:])
-            if avg_loss == 0:
-                return 100.0
-            rs = avg_gain / avg_loss
-            return float(100 - (100 / (1 + rs)))
-    
+
+        # numpy 배열 → pandas Series 변환 (EWM 사용 위해)
+        series = pd.Series(data)
     elif isinstance(data, pd.Series):
-        # [OPT] 성능 최적 화 (긴 데이터 제한)
+        # [OPT] 성능 최적화 (긴 데이터 제한)
         if len(data) > 1000 and not return_series:
             data = data.tail(1000)
 
         if len(data) < period + 1:
             return pd.Series([50.0] * len(data), index=data.index) if return_series else 50.0
-            
-        delta = data.diff()
-        gain = delta.where(delta > 0, 0)
-        loss = -delta.where(delta < 0, 0)
-        
-        # SMA 방식 (rolling mean)
-        avg_gain = gain.rolling(window=period).mean()
-        avg_loss = loss.rolling(window=period).mean()
-        
-        # 0 나누기 방지
-        rs = avg_gain / avg_loss.replace(0, np.nan)
-        rsi = 100 - (100 / (1 + rs.fillna(100)))
-        rsi = rsi.fillna(50)
-        
-        return rsi if return_series else float(rsi.iloc[-1])
-    
+
+        series = data
     else:
         raise TypeError(f"data must be numpy.ndarray or pandas.Series, got {type(data)}")
+
+    # Gain/Loss 계산
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+
+    # Wilder's Smoothing (EWM with com=period-1)
+    avg_gain = gain.ewm(com=period-1, adjust=False).mean()
+    avg_loss = loss.ewm(com=period-1, adjust=False).mean()
+
+    # RS 및 RSI 계산
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    rsi = 100 - (100 / (1 + rs.fillna(100)))
+    rsi = rsi.fillna(50)
+
+    return rsi if return_series else float(rsi.iloc[-1])
 
 
 @overload
@@ -137,33 +117,34 @@ def calculate_atr(
         pd.Series: 전체 ATR 시리즈 (return_series=True)
 
     Note:
-        - SMA (Simple Moving Average) 방식 사용
+        - Wilder's Smoothing (EWM) 방식 사용 (금융 산업 표준)
+        - span=period로 EWM 적용 (Wilder 1978 논문 기준)
         - 데이터가 부족하면 0 반환
     """
     if df is None or len(df) < period + 1:
         return pd.Series([0.0] * len(df) if df is not None else []) if return_series else 0.0
 
-    highs = np.asarray(df['high'].values)
-    lows = np.asarray(df['low'].values)
-    closes = np.asarray(df['close'].values)
+    # True Range 계산 (pandas 기반)
+    high = df['high']
+    low = df['low']
+    close = df['close']
+    prev_close = close.shift(1)
 
-    # True Range 계산
     # TR = max(H-L, |H-Pc|, |L-Pc|)
-    high_low = highs - lows
-    high_close = np.abs(highs - np.roll(closes, 1))
-    low_close = np.abs(lows - np.roll(closes, 1))
+    tr1 = high - low
+    tr2 = (high - prev_close).abs()
+    tr3 = (low - prev_close).abs()
 
-    # 첫 번째 값 보정 (roll로 인한 잘못된 값)
-    high_close[0] = high_low[0]
-    low_close[0] = high_low[0]
+    # 최대값 선택
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
 
-    true_range = np.maximum(np.maximum(high_low, high_close), low_close)
+    # Wilder's Smoothing (EWM with span=period)
+    atr = tr.ewm(span=period, adjust=False).mean()
 
     if return_series:
-        atr = pd.Series(true_range, index=df.index).rolling(window=period).mean()
         return atr.fillna(0)
     else:
-        return float(np.mean(true_range[-period:]))
+        return float(atr.iloc[-1])
 
 
 def calculate_macd(

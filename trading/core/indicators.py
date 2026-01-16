@@ -22,13 +22,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# 기존 indicators.py와 병합 - 기존 함수 유지를 위한 import
-try:
-    from utils.indicators import calculate_rsi as _legacy_rsi
-    from utils.indicators import calculate_atr as _legacy_atr
-except ImportError:
-    _legacy_rsi = None
-    _legacy_atr = None
+# SSOT: utils.indicators 모듈 사용 (Phase 1)
+# calculate_rsi, calculate_atr는 utils.indicators에서 직접 import
 
 
 @dataclass
@@ -72,31 +67,7 @@ class IndicatorSet:
         }
 
 
-def calculate_rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    """
-    RSI (Relative Strength Index) 계산
-    
-    Args:
-        close: 종가 시리즈
-        period: RSI 기간 (기본: 14)
-    
-    Returns:
-        RSI 값 시리즈 (0-100)
-    """
-    if len(close) < period + 1:
-        return pd.Series([50.0] * len(close), index=close.index)
-    
-    delta = close.diff()
-    gain = delta.where(delta > 0, 0.0)
-    loss = (-delta).where(delta < 0, 0.0)
-    
-    avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
-    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
-    
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs))
-    
-    return rsi.fillna(50)
+# calculate_rsi() 삭제 → utils.indicators 사용 (SSOT)
 
 
 def calculate_ema(close: pd.Series, period: int = 20) -> pd.Series:
@@ -157,32 +128,7 @@ def calculate_macd(close: pd.Series,
     }
 
 
-def calculate_atr(high: pd.Series, 
-                  low: pd.Series, 
-                  close: pd.Series, 
-                  period: int = 14) -> pd.Series:
-    """
-    ATR (Average True Range) 계산
-    
-    Args:
-        high: 고가 시리즈
-        low: 저가 시리즈
-        close: 종가 시리즈
-        period: ATR 기간 (기본: 14)
-    
-    Returns:
-        ATR 값 시리즈
-    """
-    prev_close = close.shift(1)
-    
-    tr1 = high - low
-    tr2 = abs(high - prev_close)
-    tr3 = abs(low - prev_close)
-    
-    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    atr = tr.ewm(span=period, adjust=False).mean()
-    
-    return atr
+# calculate_atr() 삭제 → utils.indicators 사용 (SSOT)
 
 
 def calculate_bollinger_bands(close: pd.Series, 
@@ -239,51 +185,54 @@ def calculate_stochastic(high: pd.Series,
     return {'k': k, 'd': d}
 
 
-def calculate_indicators(df: pd.DataFrame, 
+def calculate_indicators(df: pd.DataFrame,
                          params: Optional[Dict[str, Any]] = None) -> IndicatorSet:
     """
     통합 지표 계산 함수
-    
+
     Args:
         df: OHLCV 데이터프레임 (columns: open, high, low, close, volume)
         params: 지표 파라미터 딕셔너리
-    
+
     Returns:
         IndicatorSet 객체 (최신 지표 값들)
-    
+
     Example:
         df = pd.DataFrame({'close': [...], 'high': [...], 'low': [...]})
         indicators = calculate_indicators(df, {'rsi_period': 14, 'ema_period': 20})
     """
+    from utils.indicators import calculate_rsi, calculate_atr
+
     params = params or {}
-    
+
     close = df['close']
     high = df.get('high', close)
     low = df.get('low', close)
-    
-    # RSI
+
+    # RSI (utils.indicators 사용 - SSOT)
     rsi_period = params.get('rsi_period', 14)
-    rsi = calculate_rsi(close, rsi_period)
-    
+    rsi = calculate_rsi(close, period=rsi_period, return_series=True)
+
     # EMA
     ema_period = params.get('ema_period', 20)
     ema = calculate_ema(close, ema_period)
-    
+
     # MACD
     macd_fast = params.get('macd_fast', 12)
     macd_slow = params.get('macd_slow', 26)
     macd_signal = params.get('macd_signal', 9)
     macd_result = calculate_macd(close, macd_fast, macd_slow, macd_signal)
-    
-    # ATR
+
+    # ATR (utils.indicators 사용 - SSOT)
     atr_period = params.get('atr_period', 14)
-    atr = calculate_atr(high, low, close, atr_period)
-    
+    atr_df = df[['high', 'low', 'close']].copy()
+    atr = calculate_atr(atr_df, period=atr_period, return_series=True)
+
     # 볼린저 밴드
     bb_period = params.get('bb_period', 20)
     bb_std = params.get('bb_std', 2.0)
     bb = calculate_bollinger_bands(close, bb_period, bb_std)
-    
+
     # 최신 값 반환
     return IndicatorSet(
         rsi=float(rsi.iloc[-1]) if len(rsi) > 0 else None,
@@ -317,27 +266,27 @@ def add_indicators_to_df(df: pd.DataFrame,
                           params: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
     """
     데이터프레임에 지표 컬럼 추가
-    
+
     Args:
         df: OHLCV 데이터프레임
         params: 지표 파라미터
-    
+
     Returns:
         지표가 추가된 데이터프레임
     """
+    from utils.indicators import calculate_rsi, calculate_atr
+
     params = params or {}
     result = df.copy()
-    
+
     close = df['close']
-    high = df.get('high', close)
-    low = df.get('low', close)
-    
-    # RSI
-    result['rsi'] = calculate_rsi(close, params.get('rsi_period', 14))
-    
+
+    # RSI (utils.indicators 사용 - SSOT)
+    result['rsi'] = calculate_rsi(close, period=params.get('rsi_period', 14), return_series=True)
+
     # EMA
     result['ema'] = calculate_ema(close, params.get('ema_period', 20))
-    
+
     # MACD
     macd = calculate_macd(
         close,
@@ -348,8 +297,9 @@ def add_indicators_to_df(df: pd.DataFrame,
     result['macd'] = macd['macd']
     result['macd_signal'] = macd['signal']
     result['macd_hist'] = macd['histogram']
-    
-    # ATR
-    result['atr'] = calculate_atr(high, low, close, params.get('atr_period', 14))
-    
+
+    # ATR (utils.indicators 사용 - SSOT)
+    atr_df = df[['high', 'low', 'close']].copy()
+    result['atr'] = calculate_atr(atr_df, period=params.get('atr_period', 14), return_series=True)
+
     return result

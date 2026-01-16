@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ============= Core Imports =============
 try:
-    from core.optimizer import Optimizer
+    from core.optimizer import BacktestOptimizer, generate_fast_grid
+    from core.strategy_core import AlphaX7Core
     from core.data_manager import BotDataManager
     from utils.preset_storage import PresetStorage
     from utils.metrics import calculate_backtest_metrics
@@ -90,11 +91,11 @@ def get_data_manager(exchange: str, symbol: str) -> BotDataManager:
         raise HTTPException(status_code=503, detail="Core modules not available")
     return BotDataManager(exchange, symbol)
 
-def get_optimizer(exchange: str, symbol: str) -> Optimizer:
-    """Optimizer 인스턴스 생성"""
+def get_optimizer(df) -> 'BacktestOptimizer':
+    """BacktestOptimizer 인스턴스 생성"""
     if not CORE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Core modules not available")
-    return Optimizer(exchange, symbol)
+    return BacktestOptimizer(AlphaX7Core, df)
 
 # ============= API Routes =============
 
@@ -168,8 +169,8 @@ async def run_backtest(request: BacktestRequest):
         params = request.params if request.params else DEFAULT_PARAMS.copy()
 
         # 백테스트 실행
-        optimizer = get_optimizer(request.exchange, request.symbol)
-        trades, _ = optimizer.run_single_backtest(df, params)
+        optimizer = get_optimizer(df)
+        trades = optimizer.run_single_backtest(df, params)
 
         # 메트릭 계산
         metrics = calculate_backtest_metrics(trades, leverage=params.get('leverage', 10))
@@ -268,13 +269,17 @@ async def run_optimization_task(
             param_ranges = PARAM_RANGES_BY_MODE.get(mode, PARAM_RANGES_BY_MODE["standard"])
 
         # 최적화 실행
-        optimizer = get_optimizer(exchange, symbol)
-        results = optimizer.optimize_parameters(
-            df=df,
-            mode=mode,
-            param_ranges=param_ranges,
-            workers=4
-        )
+        optimizer = get_optimizer(df)
+
+        # 파라미터 그리드 생성
+        if mode == "quick":
+            # Quick 모드: 소수의 조합만
+            grid = {k: v[:2] if isinstance(v, list) and len(v) >= 2 else v
+                    for k, v in param_ranges.items()}
+        else:
+            grid = param_ranges
+
+        results = optimizer.run_optimization(df, grid)
 
         # 결과 저장
         optimization_jobs[job_id]["status"] = "completed"

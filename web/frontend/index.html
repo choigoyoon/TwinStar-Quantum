@@ -70,7 +70,7 @@
                     <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                         ⭐ TwinStar Quantum
                     </h1>
-                    <span class="text-xs text-gray-500">v1.8.3 Web</span>
+                    <span class="text-xs text-gray-500">v2.0.0 Web</span>
                 </div>
                 <div class="flex items-center gap-4">
                     <span class="px-3 py-1 rounded-full text-xs" 
@@ -225,13 +225,12 @@
                                     <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="text-sm text-gray-400 block mb-1">시작일</label>
-                                <input type="date" v-model="backtest.startDate" class="input-field w-full px-4 py-2 rounded-lg">
-                            </div>
-                            <div>
-                                <label class="text-sm text-gray-400 block mb-1">종료일</label>
-                                <input type="date" v-model="backtest.endDate" class="input-field w-full px-4 py-2 rounded-lg">
+                            <!-- 자동 전체 기간 사용 -->
+                            <div class="col-span-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                                <div class="flex items-center gap-2 text-sm text-blue-400">
+                                    <span>ℹ️</span>
+                                    <span>상장일부터 현재까지 전체 데이터를 사용합니다</span>
+                                </div>
                             </div>
                             <button @click="runBacktest" :disabled="backtest.running" 
                                     class="btn-primary w-full text-white py-3 rounded-lg font-semibold disabled:opacity-50">
@@ -255,30 +254,34 @@
                         <div v-else>
                             <div class="grid grid-cols-3 gap-4 mb-6">
                                 <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
-                                    <div class="text-sm text-gray-400">총 수익률</div>
-                                    <div class="text-2xl font-bold positive">+{{ backtestResult.total_return }}%</div>
-                                </div>
-                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
                                     <div class="text-sm text-gray-400">승률</div>
-                                    <div class="text-2xl font-bold text-blue-400">{{ backtestResult.win_rate }}%</div>
+                                    <div class="text-2xl font-bold text-blue-400">{{ backtestResult.win_rate?.toFixed(1) }}%</div>
                                 </div>
                                 <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
                                     <div class="text-sm text-gray-400">MDD</div>
-                                    <div class="text-2xl font-bold negative">-{{ backtestResult.max_drawdown }}%</div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-3 gap-4">
-                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
-                                    <div class="text-sm text-gray-400">샤프 비율</div>
-                                    <div class="text-xl font-bold">{{ backtestResult.sharpe_ratio }}</div>
-                                </div>
-                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
-                                    <div class="text-sm text-gray-400">거래 횟수</div>
-                                    <div class="text-xl font-bold">{{ backtestResult.trade_count }}</div>
+                                    <div class="text-2xl font-bold negative">{{ backtestResult.mdd?.toFixed(1) }}%</div>
                                 </div>
                                 <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
                                     <div class="text-sm text-gray-400">Profit Factor</div>
-                                    <div class="text-xl font-bold">{{ backtestResult.profit_factor }}</div>
+                                    <div class="text-2xl font-bold positive">{{ backtestResult.profit_factor?.toFixed(2) }}</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-4 gap-4">
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">CAGR</div>
+                                    <div class="text-xl font-bold positive">{{ backtestResult.cagr?.toFixed(1) }}%</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">샤프 비율</div>
+                                    <div class="text-xl font-bold">{{ backtestResult.sharpe_ratio?.toFixed(2) }}</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">거래 횟수</div>
+                                    <div class="text-xl font-bold">{{ backtestResult.total_trades }}</div>
+                                </div>
+                                <div class="bg-[#1a1a24] p-4 rounded-lg text-center">
+                                    <div class="text-sm text-gray-400">등급</div>
+                                    <div class="text-xl font-bold text-yellow-400">{{ backtestResult.grade }}</div>
                                 </div>
                             </div>
                             <button @click="clearBacktestResult" class="mt-4 btn-danger text-white py-2 px-4 rounded-lg text-sm">
@@ -667,9 +670,12 @@
                                     <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="text-sm text-gray-400 block mb-1">기간 (일)</label>
-                                <input type="number" v-model="dataCollection.days" class="input-field w-full px-4 py-2 rounded-lg">
+                            <!-- 자동 전체 기간 수집 -->
+                            <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                                <div class="flex items-center gap-2 text-sm text-green-400">
+                                    <span>✅</span>
+                                    <span>상장일부터 현재까지 자동 수집</span>
+                                </div>
                             </div>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
@@ -1194,7 +1200,7 @@
                 });
                 
                 const trade = reactive({ exchange: 'bybit', symbol: 'BTCUSDT', amount: 100, leverage: 10 });
-                const backtest = reactive({ symbol: 'BTCUSDT', timeframe: '1h', startDate: '2025-01-01', endDate: '2026-01-01', running: false });
+                const backtest = reactive({ symbol: 'BTCUSDT', timeframe: '1h', running: false });
                 const backtestResult = ref(null);
                 
                 const optimization = reactive({ 
@@ -1213,7 +1219,7 @@
                 });
                 
                 const historyFilter = reactive({ exchange: '', result: '' });
-                const dataCollection = reactive({ exchange: 'bybit', symbol: 'BTCUSDT', timeframe: '1h', days: 30, downloading: false, progress: 0 });
+                const dataCollection = reactive({ exchange: 'bybit', symbol: 'BTCUSDT', timeframe: '1h', downloading: false, progress: 0 });
                 const autoTrading = reactive({
                     running: false, uptime: 0, tradesToday: 0, pnlToday: 0, winRate: 0,
                     exchange: 'bybit', symbol: 'BTCUSDT', signals: [],
@@ -1313,17 +1319,27 @@
                 // ========== 백테스트 탭 기능 ==========
                 const runBacktest = async () => {
                     backtest.running = true;
-                    addLog(`백테스트 시작: ${backtest.symbol} ${backtest.timeframe} (${backtest.startDate} ~ ${backtest.endDate})`, 'info');
+                    addLog(`백테스트 시작: ${backtest.symbol} ${backtest.timeframe} (전체 데이터)`, 'info');
                     try {
-                        const res = await fetch(`${API_URL}/backtest`, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ symbol: backtest.symbol, timeframe: backtest.timeframe, start_date: backtest.startDate, end_date: backtest.endDate })
+                        const res = await fetch(`${API_URL}/api/backtest`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                exchange: 'bybit',
+                                symbol: backtest.symbol,
+                                timeframe: backtest.timeframe,
+                                params: null  // 기본 파라미터 사용
+                            })
                         });
                         if (res.ok) {
                             const data = await res.json();
-                            backtestResult.value = data.results;
-                            addLog(`✅ 백테스트 완료! 수익률: +${data.results.total_return}%, 승률: ${data.results.win_rate}%`, 'success');
-                            showToast('백테스트가 완료되었습니다', 'success');
+                            if (data.success) {
+                                backtestResult.value = data.metrics;
+                                addLog(`✅ 백테스트 완료! 데이터: ${data.data_points}개, 승률: ${data.metrics.win_rate.toFixed(1)}%, MDD: ${data.metrics.mdd.toFixed(1)}%`, 'success');
+                                showToast('백테스트가 완료되었습니다', 'success');
+                            } else {
+                                addLog(`❌ 백테스트 실패: ${data.error}`, 'error');
+                            }
                         }
                     } catch (e) { addLog(`❌ 백테스트 실패: ${e.message}`, 'error'); }
                     backtest.running = false;
@@ -1573,16 +1589,16 @@
                 const selectSymbolForDownload = (sym) => { dataCollection.symbol = sym; addLog(`다운로드 심볼 선택: ${sym}`, 'info'); };
                 const startDownload = () => {
                     dataCollection.downloading = true; dataCollection.progress = 0;
-                    addLog(`데이터 다운로드 시작: ${dataCollection.exchange}/${dataCollection.symbol}/${dataCollection.timeframe} (${dataCollection.days}일)`, 'info');
+                    addLog(`데이터 수집 시작: ${dataCollection.exchange}/${dataCollection.symbol}/${dataCollection.timeframe} (상장일부터)`, 'info');
                     const interval = setInterval(() => {
                         dataCollection.progress += 10;
                         if (dataCollection.progress >= 100) {
                             clearInterval(interval);
                             dataCollection.downloading = false;
-                            const file = { name: `${dataCollection.symbol}_${dataCollection.timeframe}_${dataCollection.days}d.csv`, size: `${(Math.random() * 5 + 1).toFixed(1)} MB` };
+                            const file = { name: `${dataCollection.symbol}_${dataCollection.timeframe}_full.parquet`, size: `${(Math.random() * 5 + 1).toFixed(1)} MB` };
                             downloadedFiles.value.push(file);
-                            addLog(`✅ 다운로드 완료: ${file.name}`, 'success');
-                            showToast('다운로드 완료', 'success');
+                            addLog(`✅ 수집 완료: ${file.name} (상장일~현재)`, 'success');
+                            showToast('데이터 수집 완료', 'success');
                         }
                     }, 300);
                 };

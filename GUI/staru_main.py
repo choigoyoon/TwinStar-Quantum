@@ -163,32 +163,17 @@ except ImportError:
 TradingDashboard_Pkg = load_widget('trading_dashboard', 'TradingDashboard')
 TradingTabWidget_Pkg = load_widget('trading_tab_widget', 'TradingTabWidget')
 
-# 백테스트 위젯: 신규 우선, 레거시 폴백
-_USE_NEW_BACKTEST = False
-try:
-    from ui.widgets.backtest import BacktestWidget as BacktestWidget_New
-    BacktestWidget_Pkg = BacktestWidget_New
-    _USE_NEW_BACKTEST = True
-    logger.info("✅ 신규 백테스트 위젯 로드 성공 (ui/widgets/backtest/)")
-except ImportError as e:
-    logger.warning(f"⚠️ 신규 백테스트 위젯 로드 실패, 레거시로 폴백: {e}")
-    BacktestWidget_Pkg = load_widget('backtest_widget', 'BacktestWidget')
-    _USE_NEW_BACKTEST = False
+# 백테스트 위젯: 신규 버전 사용
+from ui.widgets.backtest import BacktestWidget as BacktestWidget_Pkg
+logger.info("✅ 백테스트 위젯 로드 (ui/widgets/backtest/)")
 
 HistoryWidget_Pkg = load_widget('history_widget', 'HistoryWidget')
 SettingsWidget_Pkg = load_widget('settings_widget', 'SettingsWidget')
 DataCollectorWidget_Pkg = load_widget('data_collector_widget', 'DataCollectorWidget')
 
-# Optimization Widget: ui.widgets.optimization 우선, 실패 시 레거시 폴백
-try:
-    from ui.widgets.optimization import OptimizationWidget as OptimizationWidget_New
-    OptimizationWidget_Pkg = OptimizationWidget_New
-    _USE_NEW_OPTIMIZATION = True
-    logger.info("✅ 신규 최적화 위젯 로드 성공 (ui/widgets/optimization/)")
-except ImportError as e:
-    logger.warning(f"⚠️ 신규 최적화 위젯 로드 실패, 레거시로 폴백: {e}")
-    OptimizationWidget_Pkg = load_widget('optimization_widget', 'OptimizationWidget')
-    _USE_NEW_OPTIMIZATION = False
+# Optimization Widget: 신규 버전 사용
+from ui.widgets.optimization import OptimizationWidget as OptimizationWidget_Pkg
+logger.info("✅ 최적화 위젯 로드 (ui/widgets/optimization/)")
 # TradeHistoryWidget_Pkg = load_widget('trading_dashboard', 'TradeHistoryWidget') # REMOVED: Merged into History/Results
 AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget')
 IndicatorComparisonWidget_Pkg = load_widget('GUI.optimization.indicator_comparison', 'IndicatorComparisonWidget')
@@ -290,27 +275,13 @@ class StarUWindow(QMainWindow):
             logger.info(f"  ❌ Dashboard 생성 실패: {e}")
             self.dashboard = self._create_error_widget("Dashboard", e)
 
-        # 2. Backtest Widget (신규/레거시 분기)
-        if _USE_NEW_BACKTEST:
-            # 신규 백테스트 위젯 (클래스 직접 사용)
-            try:
-                self.backtest_widget = cast(Any, BacktestWidget_Pkg)()
-                logger.info("  ✅ 신규 Backtest 위젯 생성 완료 (Phase 2)")
-            except Exception as e:
-                logger.info(f"  ❌ 신규 Backtest 생성 실패: {e}")
-                self.backtest_widget = self._create_error_widget("Backtest", e)
-        else:
-            # 레거시 백테스트 위젯 (tuple 언패킹)
-            cls, err = cast(Any, BacktestWidget_Pkg)
-            try:
-                if cls:
-                    self.backtest_widget = cls()
-                    logger.info("  ✅ 레거시 Backtest 생성 완료")
-                else:
-                    raise ImportError(f"BacktestWidget not available.\n{err}")
-            except Exception as e:
-                logger.info(f"  ❌ 레거시 Backtest 생성 실패: {e}")
-                self.backtest_widget = self._create_error_widget("Backtest", e)
+        # 2. Backtest Widget (신규 버전)
+        try:
+            self.backtest_widget = cast(Any, BacktestWidget_Pkg)()
+            logger.info("  ✅ Backtest 위젯 생성 완료")
+        except Exception as e:
+            logger.info(f"  ❌ Backtest 생성 실패: {e}")
+            self.backtest_widget = self._create_error_widget("Backtest", e)
 
         # 2.5 Auto Pipeline (New)
         if AutoPipelineWidget_Pkg[0]:
@@ -368,27 +339,13 @@ class StarUWindow(QMainWindow):
             logger.info(f"  ❌ DataCollector 생성 실패: {e}")
             self.data_collector_widget = self._create_error_widget("DataCollector", e)
             
-        # 6. Optimization Widget (신규/레거시 분기)
-        if _USE_NEW_OPTIMIZATION:
-            # 신규 최적화 위젯 (클래스 직접 사용)
-            try:
-                self.optimization_widget = cast(Any, OptimizationWidget_Pkg)()
-                logger.info("  ✅ 신규 Optimization 위젯 생성 완료 (Zone A)")
-            except Exception as e:
-                logger.info(f"  ❌ 신규 Optimization 생성 실패: {e}")
-                self.optimization_widget = self._create_error_widget("Optimization", e)
-        else:
-            # 레거시 최적화 위젯
-            cls, err = cast(Any, OptimizationWidget_Pkg)
-            try:
-                if cls:
-                    self.optimization_widget = cls()
-                    logger.info("  ✅ 레거시 Optimization 생성 완료")
-                else:
-                    raise ImportError(f"OptimizationWidget not available.\n{err}")
-            except Exception as e:
-                logger.info(f"  ❌ 레거시 Optimization 생성 실패: {e}")
-                self.optimization_widget = self._create_error_widget("Optimization", e)
+        # 6. Optimization Widget (신규 버전)
+        try:
+            self.optimization_widget = cast(Any, OptimizationWidget_Pkg)()
+            logger.info("  ✅ Optimization 위젯 생성 완료")
+        except Exception as e:
+            logger.info(f"  ❌ Optimization 생성 실패: {e}")
+            self.optimization_widget = self._create_error_widget("Optimization", e)
 
         # 7. Indicator Comparison Widget (Session 8)
         cls, err = IndicatorComparisonWidget_Pkg

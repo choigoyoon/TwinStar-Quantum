@@ -132,8 +132,8 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
 
-        # 데이터
-        self._data: Optional[np.ndarray] = None
+        # 데이터 (heatmap_data로 변경 - PyQtGraph의 _data와 충돌 방지)
+        self.heatmap_data: Optional[np.ndarray] = None
         self._x_labels: List[str] = []
         self._y_labels: List[str] = []
         self._current_colormap = 'viridis'
@@ -208,7 +208,7 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
         if data is None or data.size == 0:
             return
 
-        self._data = data.copy()  # NumPy 배열 복사 (참조가 아닌 복사본 저장)
+        self.heatmap_data = data.copy()  # NumPy 배열 복사 (참조가 아닌 복사본 저장)
         self._x_labels = x_labels.copy() if x_labels else []
         self._y_labels = y_labels.copy() if y_labels else []
 
@@ -274,16 +274,19 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
                 self._tooltip_label = None
             return
 
-        if self._data is None:
+        if self.heatmap_data is None:
             return
 
         # 마우스 위치 → 데이터 좌표
         pos = event.pos()
         x, y = int(pos.x()), int(pos.y())
 
-        height, width = self._data.shape
+        if self.heatmap_data is None:
+            return
+
+        height, width = self.heatmap_data.shape
         if 0 <= x < width and 0 <= y < height:
-            value = self._data[y, x]
+            value = self.heatmap_data[y, x]
 
             # 툴팁 텍스트 생성
             tooltip_text = f"값: {value:.4f}"
@@ -309,31 +312,34 @@ class GPUHeatmapWidget(pg.GraphicsLayoutWidget):
 
     def _on_click(self, event):
         """마우스 클릭 시 셀 선택"""
-        if self._data is None:
+        if self.heatmap_data is None:
             return
 
         # 마우스 위치 → 데이터 좌표
         mouse_point = self.plot_item.vb.mapSceneToView(event.scenePos())
         x, y = int(mouse_point.x()), int(mouse_point.y())
 
-        height, width = self._data.shape
+        if self.heatmap_data is None:
+            return
+
+        height, width = self.heatmap_data.shape
         if 0 <= x < width and 0 <= y < height:
-            value = self._data[y, x]
+            value = self.heatmap_data[y, x]
             self.cell_clicked.emit(x, y, value)
 
     def clear(self):
         """히트맵 초기화"""
         # 데이터 초기화
-        self._data = None
+        self.heatmap_data = None
         self._x_labels = []
         self._y_labels = []
 
         # ImageItem 초기화
-        if self.image_item is not None:
+        if hasattr(self, 'image_item') and self.image_item is not None:
             self.image_item.clear()
 
         # 툴팁 제거
-        if self._tooltip_label:
+        if hasattr(self, '_tooltip_label') and self._tooltip_label:
             self.plot_item.removeItem(self._tooltip_label)
             self._tooltip_label = None
 

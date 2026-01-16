@@ -99,7 +99,7 @@ class TestGPUHeatmapWidget:
     def test_init(self, qapp):
         """위젯 초기화"""
         widget = GPUHeatmapWidget()
-        assert widget._data is None
+        assert widget.heatmap_data is None
         assert widget._x_labels == []
         assert widget._y_labels == []
         assert widget._current_colormap == 'viridis'
@@ -111,8 +111,8 @@ class TestGPUHeatmapWidget:
 
         widget.update_heatmap(sample_data, x_labels, y_labels)
 
-        assert widget._data is not None
-        np.testing.assert_array_equal(widget._data, sample_data)
+        assert widget.heatmap_data is not None
+        np.testing.assert_array_equal(widget.heatmap_data, sample_data)
         assert widget._x_labels == x_labels
         assert widget._y_labels == y_labels
 
@@ -121,7 +121,7 @@ class TestGPUHeatmapWidget:
         widget = GPUHeatmapWidget()
         widget.update_heatmap(sample_data)
 
-        assert widget._data is not None
+        assert widget.heatmap_data is not None
         assert widget._x_labels == []
         assert widget._y_labels == []
 
@@ -154,7 +154,7 @@ class TestGPUHeatmapWidget:
         widget.update_heatmap(sample_data, x_labels, y_labels)
         widget.clear()
 
-        assert widget._data is None
+        assert widget.heatmap_data is None
         assert widget._x_labels == []
         assert widget._y_labels == []
 
@@ -230,8 +230,8 @@ class TestHeatmapViewer:
 
         viewer.update_heatmap(sample_data, x_labels, y_labels)
 
-        assert viewer.heatmap._data is not None
-        np.testing.assert_array_equal(viewer.heatmap._data, sample_data)
+        assert viewer.heatmap.heatmap_data is not None
+        np.testing.assert_array_equal(viewer.heatmap.heatmap_data, sample_data)
 
     def test_colormap_integration(self, qapp, sample_data):
         """컨트롤 패널 → 히트맵 컬러맵 연동"""
@@ -250,7 +250,7 @@ class TestHeatmapViewer:
         viewer.update_heatmap(sample_data)
         viewer.clear()
 
-        assert viewer.heatmap._data is None
+        assert viewer.heatmap.heatmap_data is None
 
 
 # ==================== 성능 벤치마크 ====================
@@ -312,7 +312,7 @@ class TestEdgeCases:
         widget = GPUHeatmapWidget()
         widget.update_heatmap(np.array([]))
 
-        assert widget._data is None
+        assert widget.heatmap_data is None
 
     def test_1x1_heatmap(self, qapp):
         """1×1 히트맵"""
@@ -320,8 +320,8 @@ class TestEdgeCases:
         data = np.array([[0.5]])
         widget.update_heatmap(data)
 
-        assert widget._data is not None
-        assert widget._data.shape == (1, 1)
+        assert widget.heatmap_data is not None
+        assert widget.heatmap_data.shape == (1, 1)
 
     def test_large_heatmap(self, qapp):
         """대형 히트맵 (1000×1000)"""
@@ -331,8 +331,8 @@ class TestEdgeCases:
         # 업데이트 (오류 없이 완료)
         widget.update_heatmap(data)
 
-        assert widget._data is not None
-        assert widget._data.shape == (1000, 1000)
+        assert widget.heatmap_data is not None
+        assert widget.heatmap_data.shape == (1000, 1000)
 
     def test_nan_values(self, qapp):
         """NaN 값 포함 데이터"""
@@ -342,8 +342,8 @@ class TestEdgeCases:
 
         widget.update_heatmap(data)
 
-        assert widget._data is not None
-        assert np.isnan(widget._data[5, 5])
+        assert widget.heatmap_data is not None
+        assert np.isnan(widget.heatmap_data[5, 5])
 
 
 if __name__ == '__main__':

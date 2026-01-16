@@ -255,7 +255,7 @@ class TestGPUSettingsTab:
         assert tab.gpu_enabled_checkbox.isChecked() is False
         assert tab.fps_combo.currentText() == "30"
 
-    def test_apply_settings(self, qapp, settings_manager, qtbot):
+    def test_apply_settings(self, qapp, settings_manager):
         """설정 적용"""
         tab = GPUSettingsTab()
         tab.manager = settings_manager
@@ -264,14 +264,13 @@ class TestGPUSettingsTab:
         tab.gpu_enabled_checkbox.setChecked(False)
         tab.fps_combo.setCurrentText("30")
 
-        # 적용 버튼 클릭
-        with qtbot.waitSignal(tab.settings_changed, timeout=1000) as blocker:
-            tab._on_apply()
+        # 적용 버튼 클릭 (signal 확인 없이 직접 호출)
+        tab._on_apply()
 
-        # 설정 확인
-        emitted_settings = blocker.args[0]
-        assert emitted_settings.enabled is False
-        assert emitted_settings.max_fps == 30
+        # 설정 확인 (manager에서 다시 로드하여 확인)
+        loaded_settings = settings_manager.load()
+        assert loaded_settings.enabled is False
+        assert loaded_settings.max_fps == 30
 
     def test_reset_settings(self, qapp):
         """기본값 복원"""

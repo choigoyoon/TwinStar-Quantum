@@ -345,7 +345,7 @@ class TestGarbageCollectionEfficiency:
         """순환 참조 정리 테스트"""
         class Node:
             def __init__(self):
-                self.ref = None
+                self.ref: 'Node | None' = None
 
         # 순환 참조 생성
         node1 = Node()

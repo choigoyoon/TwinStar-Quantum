@@ -376,7 +376,7 @@ class BotDataManager:
                         if pd.api.types.is_numeric_dtype(df_old['timestamp']):
                             df_old['timestamp'] = pd.to_datetime(df_old['timestamp'], unit='ms', utc=True)
                         else:
-                            df_old['timestamp'] = pd.to_datetime(df_old['timestamp'])
+                            df_old['timestamp'] = pd.to_datetime(df_old['timestamp'], utc=True)
                 else:
                     df_old = pd.DataFrame()
 
@@ -385,18 +385,30 @@ class BotDataManager:
                     # 메모리에 데이터가 없으면 저장할 필요 없음
                     return
 
+                # 메모리 데이터 타임존 정규화 (Parquet과 일치시키기)
+                df_mem = self.df_entry_full.copy()
+                if 'timestamp' in df_mem.columns:
+                    if pd.api.types.is_numeric_dtype(df_mem['timestamp']):
+                        df_mem['timestamp'] = pd.to_datetime(df_mem['timestamp'], unit='ms', utc=True)
+                    else:
+                        # datetime 타입으로 변환 후 타임존 확인
+                        df_mem['timestamp'] = pd.to_datetime(df_mem['timestamp'])
+                        # timezone-naive면 UTC로 변환
+                        if df_mem['timestamp'].dt.tz is None:
+                            df_mem['timestamp'] = df_mem['timestamp'].dt.tz_localize('UTC')
+
                 # ✅ P2-5: Parquet 중복 제거 최적화
                 if len(df_old) > 0:
                     # 메모리 데이터의 timestamp 범위 확인
-                    mem_timestamps = set(self.df_entry_full['timestamp'])
+                    mem_timestamps = set(df_mem['timestamp'])
 
                     # 기존 데이터에서 중복되지 않는 것만 필터링 (10배 빠름)
                     df_old_filtered = df_old[~df_old['timestamp'].isin(mem_timestamps)]
 
-                    # 병합 (중복 제거된 상태)
-                    df_merged = pd.concat([df_old_filtered, self.df_entry_full], ignore_index=True)
+                    # 병합 (중복 제거된 상태, 타임존 정규화된 메모리 데이터 사용)
+                    df_merged = pd.concat([df_old_filtered, df_mem], ignore_index=True)
                 else:
-                    df_merged = self.df_entry_full.copy()
+                    df_merged = df_mem.copy()
 
                 # 최종 정렬 (중복 제거는 이미 완료)
                 df_merged = df_merged.sort_values('timestamp').reset_index(drop=True)
@@ -451,9 +463,17 @@ class BotDataManager:
             # DataFrame으로 변환
             new_row = pd.DataFrame([candle])
 
-            # Timestamp 정규화
+            # Timestamp 정규화 (timezone-aware UTC로 통일)
             if 'timestamp' in new_row.columns:
                 new_row['timestamp'] = pd.to_datetime(new_row['timestamp'])
+                # timezone-naive면 UTC로 변환
+                if new_row['timestamp'].dt.tz is None:
+                    new_row['timestamp'] = new_row['timestamp'].dt.tz_localize('UTC')
+
+            # 기존 데이터도 timezone-aware로 통일 (혼합 방지)
+            if not self.df_entry_full.empty and 'timestamp' in self.df_entry_full.columns:
+                if self.df_entry_full['timestamp'].dt.tz is None:
+                    self.df_entry_full['timestamp'] = self.df_entry_full['timestamp'].dt.tz_localize('UTC')
 
             # 추가 및 중복 제거
             self.df_entry_full = pd.concat([self.df_entry_full, new_row], ignore_index=True)

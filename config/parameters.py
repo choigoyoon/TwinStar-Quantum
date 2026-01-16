@@ -244,6 +244,38 @@ STRATEGY_INDICATOR_PARAMS = {
 }
 
 
+# ============ 최적화 모드 정의 (v7.21 - Meta 기본) ============
+# Standard 모드 제거 (v7.21): Quick/Deep으로 충분, Meta가 가장 효율적
+OPTIMIZATION_MODES = {
+    'meta': {
+        'name': '🎯 Meta (자동 범위 탐색)',
+        'description': '3,000개 조합을 20초에 실행하여 최적 범위 자동 추출 (권장)',
+        'method': 'meta_optimization',
+        'sample_size': 3000,
+        'time_estimate': '20초',
+        'use_case': '초보자 + 일반 사용자',
+        'output': 'extracted_ranges.json + best_params.json'
+    },
+    'quick': {
+        'name': '⚡ Quick (빠른 검증)',
+        'description': 'Meta 추출 범위의 양 끝만 테스트 (검증용)',
+        'method': 'use_extracted_ranges',
+        'density': 'endpoints',
+        'time_estimate': '2분',
+        'use_case': 'Meta 결과 빠른 검증',
+        'requires': 'meta_results'
+    },
+    'deep': {
+        'name': '🔬 Deep (세부 최적화)',
+        'description': 'Meta 추출 범위 전체 탐색 (최종 파라미터)',
+        'method': 'use_extracted_ranges',
+        'density': 'full',
+        'time_estimate': '2분',
+        'use_case': '정밀 최적화 필요 시',
+        'requires': 'meta_results'
+    }
+}
+
 # ============ 필수 파라미터 (최적화 결과 필수) ============
 REQUIRED_PARAMS = ['atr_mult', 'trail_start_r', 'trail_dist_r']
 

@@ -314,8 +314,27 @@ def generate_quick_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
 
 
 def generate_standard_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
-    """Standard 모드용 Grid (~5,000개)"""
-    return generate_full_grid(trend_tf, max_mdd)
+    """
+    [DEPRECATED v7.21] Standard 모드 제거됨
+
+    Standard 모드는 Quick/Deep으로 충분하며 Meta가 가장 효율적입니다.
+    하위 호환성을 위해 Quick 그리드로 fallback합니다.
+
+    Args:
+        trend_tf: 타임프레임
+        max_mdd: 최대 MDD
+
+    Returns:
+        Quick 모드 그리드 (하위 호환성)
+    """
+    import warnings
+    warnings.warn(
+        "generate_standard_grid()는 v7.21에서 deprecated되었습니다. "
+        "Meta 모드를 사용하거나 Quick/Deep 모드를 선택하세요.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return generate_quick_grid(trend_tf, max_mdd)
 
 def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
     """Deep 모드용 정밀 Grid (~1,080개) - 전수 조사"""
@@ -350,7 +369,7 @@ def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
 
 def generate_grid_by_mode(
     trend_tf: str,
-    mode: str = 'standard',
+    mode: str = 'meta',  # v7.21: 기본값 'meta'로 변경
     max_mdd: float = 20.0,
     use_indicator_ranges: bool = False  # 기본값 False로 변경 (중복 방지)
 ) -> Dict:
@@ -359,7 +378,7 @@ def generate_grid_by_mode(
 
     Args:
         trend_tf: 추세 타임프레임
-        mode: 'quick', 'standard', 'deep'
+        mode: 'meta', 'quick', 'deep' (v7.21: standard 제거)
         max_mdd: 최대 낙폭 허용치
         use_indicator_ranges: True면 모드별 지표 범위 사용, False면 기존 그리드 유지
 
@@ -367,16 +386,26 @@ def generate_grid_by_mode(
         파라미터 그리드
 
     Examples:
-        Quick 모드 (2-3분, ~100 조합):
+        Meta 모드 (20초, ~3,000개) - 권장:
+            grid = generate_grid_by_mode('1h', 'meta')
+
+        Quick 모드 (2분, ~8개):
             grid = generate_grid_by_mode('1h', 'quick')
 
-        Standard 모드 (5-10분, ~500 조합):
-            grid = generate_grid_by_mode('1h', 'standard')
-
-        Deep 모드 (30-60분, ~5000 조합):
+        Deep 모드 (2분, ~1,080개):
             grid = generate_grid_by_mode('1h', 'deep')
     """
     mode = mode.lower()
+
+    # Standard 모드 deprecated 경고 (v7.21)
+    if mode == 'standard':
+        import warnings
+        warnings.warn(
+            "Standard 모드는 v7.21에서 제거되었습니다. Quick 모드로 fallback합니다.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        mode = 'quick'
 
     # 기존 그리드 함수 사용 (하위 호환성)
     if mode == 'quick':

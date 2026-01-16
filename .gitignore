@@ -47,3 +47,5 @@ api_keys*.json
 tmpclaude-*/
 venv*/
 .venv/
+nul
+NUL

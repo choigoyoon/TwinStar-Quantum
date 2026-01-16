@@ -23,12 +23,12 @@ from ui.design_system.tokens import Colors, Typography, Spacing, Radius, Size
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
-# 최적화 모드 매핑
+# 최적화 모드 매핑 (v7.21: Standard 제거, Meta 기본)
 MODE_MAP = {
-    0: 'quick',
-    1: 'standard',
-    2: 'deep',
-    3: 'meta'  # 메타 최적화 (v7.20 - 범위 자동 탐색)
+    0: 'meta',  # v7.21: Meta를 첫 번째로 (기본값)
+    1: 'quick',
+    2: 'deep'
+    # Standard 모드 제거 (v7.21): Quick/Deep으로 충분, Meta가 가장 효율적
 }
 
 
@@ -144,8 +144,8 @@ class SingleOptimizationWidget(QWidget):
         layout.addWidget(result_group, stretch=1)
 
         # === 6. 초기 모드 적용 ===
-        # Standard 모드 (index=1) 기본 설정
-        self._on_mode_changed(1)
+        # Meta 모드 (index=0) 기본 설정 (v7.21)
+        self._on_mode_changed(0)
 
     def _create_input_section(self) -> QGroupBox:
         """거래소/심볼 입력 섹션 생성"""
@@ -248,13 +248,13 @@ class SingleOptimizationWidget(QWidget):
         mode_layout.addWidget(mode_label)
 
         self.mode_combo = QComboBox()
+        # v7.21: Standard 제거, Meta 기본
         self.mode_combo.addItems([
-            "⚡ Quick (~50개)",
-            "📊 Standard (~5,000개)",
-            "🔬 Deep (~50,000개)",
-            "🔍 Meta (범위 자동 탐색, ~3,000개)"  # 메타 최적화 (v7.20)
+            "🎯 Meta (자동 범위 탐색, ~3,000개, 20초) - 권장",
+            "⚡ Quick (빠른 검증, ~8개, 2분)",
+            "🔬 Deep (세부 최적화, ~1,080개, 2분)"
         ])
-        self.mode_combo.setCurrentIndex(1)  # Standard 기본
+        self.mode_combo.setCurrentIndex(0)  # v7.21: Meta 기본
         self.mode_combo.setMinimumWidth(Size.control_min_width)
         self.mode_combo.setStyleSheet(self._get_combo_style())
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
@@ -510,7 +510,7 @@ class SingleOptimizationWidget(QWidget):
         symbol = self.symbol_combo.currentText()
         timeframe = self.timeframe_combo.currentText()
         mode_index = self.mode_combo.currentIndex()
-        mode = MODE_MAP.get(mode_index, 'standard')
+        mode = MODE_MAP.get(mode_index, 'meta')  # v7.21: fallback도 meta로
         max_workers = self.max_workers_spin.value()
 
         # Meta 모드는 별도 실행 (v7.20)
@@ -713,11 +713,11 @@ class SingleOptimizationWidget(QWidget):
         최적화 모드 변경 시 파라미터 자동 설정
 
         Args:
-            index: 콤보박스 인덱스 (0=Quick, 1=Standard, 2=Deep, 3=Meta)
+            index: 콤보박스 인덱스 (0=Meta, 1=Quick, 2=Deep) - v7.21
         """
         from core.optimizer import get_indicator_range, get_worker_info, estimate_combinations, generate_grid_by_mode
 
-        mode = MODE_MAP.get(index, 'standard')
+        mode = MODE_MAP.get(index, 'meta')  # v7.21: fallback도 meta로
 
         # Meta 모드는 별도 처리 (v7.20)
         if mode == 'meta':

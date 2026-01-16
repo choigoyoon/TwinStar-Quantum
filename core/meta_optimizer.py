@@ -149,27 +149,24 @@ class MetaOptimizer:
 
             logger.info(f"  Iteration {iteration}/{self.max_iterations} started")
 
-            # 1. 랜덤 샘플링 그리드 생성
+            # 1. 그리드 준비
             if iteration == 1:
                 # 첫 반복: META_PARAM_RANGES 사용
-                grid = self._generate_random_sample(self.meta_ranges)
+                grid = self.meta_ranges
             else:
                 # 이후 반복: 추출된 범위 사용
                 if self.extracted_ranges is None:
                     logger.warning("  추출된 범위가 없습니다. 첫 반복 범위 재사용.")
-                    grid = self._generate_random_sample(self.meta_ranges)
+                    grid = self.meta_ranges
                 else:
-                    grid = self._generate_random_sample(self.extracted_ranges)
+                    grid = self.extracted_ranges
 
-            # 2. 백테스트 실행 (기존 Optimizer 재사용)
-            logger.info(f"  Running backtest: {len(grid[list(grid.keys())[0]])} unique combos")
+            # 2. 랜덤 샘플링 (전체 조합 중 일부만 선택)
+            sampled_combos = self._generate_random_sample_combos(grid)
+            logger.info(f"  Sampled {len(sampled_combos)} combinations")
 
-            results = self.base_optimizer.run_optimization(
-                df=df,
-                grid=grid,
-                metric=metric,
-                mode='custom'
-            )
+            # 3. 백테스트 실행 (샘플링된 조합만)
+            results = self._run_backtest_on_samples(df, grid, sampled_combos, metric)
 
             if not results:
                 logger.warning(f"  Iteration {iteration}: No valid results")
@@ -226,6 +223,160 @@ class MetaOptimizer:
                 'top_score_history': self.iteration_results
             }
         }
+
+    def _generate_random_sample_combos(
+        self,
+        ranges: Dict[str, List]
+    ) -> List[tuple]:
+        """랜덤 샘플링으로 조합 생성
+
+        전체 조합에서 sample_size 개만큼 랜덤 샘플링합니다.
+
+        Args:
+            ranges: 파라미터 범위
+
+        Returns:
+            샘플링된 조합 리스트
+        """
+        # 전체 조합 생성
+        all_combinations = list(itertools.product(*ranges.values()))
+
+        # 샘플 수 결정
+        actual_sample_size = min(self.sample_size, len(all_combinations))
+
+        # 랜덤 샘플링
+        sampled_combos = random.sample(all_combinations, actual_sample_size)
+
+        return sampled_combos
+
+    def _run_backtest_on_samples(
+        self,
+        df,
+        grid: Dict[str, List],
+        sampled_combos: List[tuple],
+        metric: str
+    ) -> List:
+        """샘플링된 조합만 백테스트 실행
+
+        Args:
+            df: 데이터프레임
+            grid: 파라미터 그리드 (키 순서 참조용)
+            sampled_combos: 샘플링된 조합
+            metric: 최적화 지표
+
+        Returns:
+            최적화 결과 리스트
+        """
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from core.optimizer import OptimizationResult
+        import multiprocessing
+
+        param_names = list(grid.keys())
+        results = []
+
+        # CPU 코어 수
+        n_cores = max(1, multiprocessing.cpu_count() - 1)
+
+        # 병렬 백테스트 실행
+        with ProcessPoolExecutor(max_workers=n_cores) as executor:
+            futures = {}
+
+            for combo in sampled_combos:
+                # 조합을 딕셔너리로 변환
+                params = dict(zip(param_names, combo))
+
+                # 백테스트 작업 제출
+                future = executor.submit(self._single_backtest, params, df)
+                futures[future] = params
+
+            # 결과 수집
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                except Exception as e:
+                    logger.debug(f"Backtest failed: {e}")
+
+        # 지표 기준 정렬
+        if results:
+            results.sort(key=lambda r: getattr(r, metric), reverse=True)
+
+        logger.info(f"  Completed {len(results)}/{len(sampled_combos)} backtests")
+
+        return results
+
+    @staticmethod
+    def _single_backtest(params: Dict, df):
+        """단일 백테스트 실행 (ProcessPool용 정적 메서드)
+
+        Args:
+            params: 파라미터 딕셔너리
+            df: 데이터프레임
+
+        Returns:
+            OptimizationResult 또는 None
+        """
+        from core.strategy_core import AlphaX7Core
+        from core.optimizer import OptimizationResult
+        from config.parameters import DEFAULT_PARAMS
+
+        try:
+            # 전략 인스턴스 생성
+            strategy = AlphaX7Core(use_mtf=True)
+
+            # 백테스트 실행 (_worker_run_single 패턴 사용)
+            trades = strategy.run_backtest(
+                df_pattern=df,  # 15m 데이터
+                df_entry=df,     # 15m 데이터
+                slippage=0.0005,  # 슬리피지
+                atr_mult=params.get('atr_mult', DEFAULT_PARAMS.get('atr_mult', 1.5)),
+                trail_start_r=params.get('trail_start_r', DEFAULT_PARAMS.get('trail_start_r', 0.8)),
+                trail_dist_r=params.get('trail_dist_r', DEFAULT_PARAMS.get('trail_dist_r', 0.02)),
+                pattern_tolerance=params.get('pattern_tolerance', DEFAULT_PARAMS.get('pattern_tolerance', 0.03)),
+                entry_validity_hours=params.get('entry_validity_hours', DEFAULT_PARAMS.get('entry_validity_hours', 24.0)),
+                pullback_rsi_long=params.get('pullback_rsi_long', DEFAULT_PARAMS.get('pullback_rsi_long', 35)),
+                pullback_rsi_short=params.get('pullback_rsi_short', DEFAULT_PARAMS.get('pullback_rsi_short', 65)),
+                max_adds=params.get('max_adds', DEFAULT_PARAMS.get('max_adds', 1)),
+                filter_tf=params.get('filter_tf', '4h'),
+                rsi_period=params.get('rsi_period', DEFAULT_PARAMS.get('rsi_period', 14)),
+                atr_period=params.get('atr_period', DEFAULT_PARAMS.get('atr_period', 14)),
+                macd_fast=params.get('macd_fast', DEFAULT_PARAMS.get('macd_fast', 12)),
+                macd_slow=params.get('macd_slow', DEFAULT_PARAMS.get('macd_slow', 26)),
+                macd_signal=params.get('macd_signal', DEFAULT_PARAMS.get('macd_signal', 9)),
+                ema_period=params.get('ema_period', DEFAULT_PARAMS.get('ema_period', 20)),
+                enable_pullback=params.get('enable_pullback', False)
+            )
+
+            if not trades or len(trades) == 0:
+                return None
+
+            # 메트릭 계산
+            from utils.metrics import calculate_backtest_metrics
+
+            bt_metrics = calculate_backtest_metrics(
+                trades=trades,
+                leverage=params.get('leverage', 1),
+                capital=100.0
+            )
+
+            # OptimizationResult 생성
+            result = OptimizationResult(
+                params=params,
+                trades=bt_metrics.get('total_trades', 0),
+                win_rate=bt_metrics.get('win_rate', 0),
+                total_return=bt_metrics.get('total_pnl', 0),
+                simple_return=bt_metrics.get('total_pnl', 0),
+                compound_return=bt_metrics.get('total_pnl', 0),
+                max_drawdown=bt_metrics.get('mdd', 0),
+                sharpe_ratio=bt_metrics.get('sharpe_ratio', 0),
+                profit_factor=bt_metrics.get('profit_factor', 0)
+            )
+
+            return result
+
+        except Exception:
+            return None
 
     def _generate_random_sample(
         self,
@@ -380,20 +531,17 @@ class MetaOptimizer:
         if len(self.iteration_results) < 2:
             return False
 
-        improvements = []
-        for i in range(-2, 0):  # 최근 2회
-            prev = self.iteration_results[i - 1]
-            curr = self.iteration_results[i]
+        # 최근 2회 개선율 계산 (올바른 인덱싱)
+        prev = self.iteration_results[-2]  # 이전 반복
+        curr = self.iteration_results[-1]  # 현재 반복
 
-            if prev == 0:
-                improvement = 0
-            else:
-                improvement = (curr - prev) / prev
+        if prev == 0:
+            improvement = 0
+        else:
+            improvement = (curr - prev) / prev
 
-            improvements.append(improvement)
-
-        # 모두 min_improvement 미만이면 수렴
-        return all(imp < self.min_improvement for imp in improvements)
+        # 개선율이 min_improvement 미만이면 수렴
+        return improvement < self.min_improvement
 
     def save_meta_ranges(
         self,

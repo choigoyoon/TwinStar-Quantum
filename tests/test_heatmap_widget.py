@@ -19,6 +19,7 @@ import numpy as np
 from PyQt6.QtWidgets import QApplication, QPushButton
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtTest import QTest
+from typing import Any
 
 from ui.widgets.optimization.heatmap import (
     GPUHeatmapWidget,
@@ -258,7 +259,7 @@ class TestHeatmapViewer:
 class TestPerformance:
     """성능 벤치마크"""
 
-    def test_update_100x100(self, qapp, benchmark):
+    def test_update_100x100(self, qapp: QApplication, benchmark: Any) -> None:
         """100×100 히트맵 업데이트 성능"""
         widget = GPUHeatmapWidget()
         data = np.random.rand(100, 100)
@@ -272,7 +273,7 @@ class TestPerformance:
         # 목표: 20ms 이하 (GPU 오버헤드 고려)
         assert result.stats['mean'] < 0.020  # 20ms
 
-    def test_update_500x500(self, qapp, benchmark):
+    def test_update_500x500(self, qapp: QApplication, benchmark: Any) -> None:
         """500×500 히트맵 업데이트 성능"""
         widget = GPUHeatmapWidget()
         data = np.random.rand(500, 500)
@@ -286,7 +287,7 @@ class TestPerformance:
         # 목표: 50ms 이하 (대용량 데이터 처리)
         assert result.stats['mean'] < 0.050  # 50ms
 
-    def test_colormap_change(self, qapp, benchmark):
+    def test_colormap_change(self, qapp: QApplication, benchmark: Any) -> None:
         """컬러맵 변경 성능"""
         widget = GPUHeatmapWidget()
         data = np.random.rand(100, 100)

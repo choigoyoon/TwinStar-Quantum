@@ -200,6 +200,107 @@ COMMON_KRW_SYMBOLS = [
 ]
 
 
+# ============ 상장일 정보 ============
+
+UPBIT_LISTING_DATES = {
+    # 주요 코인 (2017-2018)
+    'BTC': '2017-10-01',
+    'ETH': '2017-10-01',
+    'XRP': '2017-10-24',
+    'LTC': '2017-11-06',
+    'BCH': '2017-11-09',
+    'DASH': '2017-12-05',
+    'ETC': '2018-03-21',
+
+    # 2019-2020
+    'TRX': '2019-01-25',
+    'EOS': '2019-04-16',
+    'VET': '2019-05-23',
+    'LINK': '2020-07-30',
+    'ADA': '2021-02-03',
+    'DOGE': '2021-02-05',
+    'DOT': '2021-01-28',
+    'UNI': '2020-10-22',
+
+    # 2021 (DeFi/Layer1 붐)
+    'MATIC': '2021-03-29',
+    'THETA': '2021-03-19',
+    'FIL': '2021-03-18',
+    'AAVE': '2021-05-13',
+    'SOL': '2021-08-17',
+    'AVAX': '2021-08-19',
+    'ALGO': '2021-09-09',
+
+    # 2021-2022 (메타버스/Layer2)
+    'SAND': '2021-11-11',
+    'MANA': '2021-11-11',
+    'CHZ': '2021-11-18',
+    'GRT': '2021-12-09',
+    'NEAR': '2022-01-13',
+    'ARB': '2023-03-23',
+    'OP': '2022-08-11',
+
+    # 2023-2024 (최신)
+    'SUI': '2023-05-11',
+    'APT': '2022-10-19',
+    'STX': '2024-01-25',
+    'HBAR': '2024-03-14',
+    'EGLD': '2024-05-09',
+    'ICP': '2024-08-01',
+    'FLOW': '2024-09-12',
+}
+
+
+BITHUMB_LISTING_DATES = {
+    # 빗썸 주요 코인 상장일
+    # 업비트와 유사한 시기에 상장되었으나, 일부 차이 있음
+    'BTC': '2014-01-01',  # 빗썸은 2014년부터 운영
+    'ETH': '2016-07-21',
+    'XRP': '2017-05-12',
+    'LTC': '2017-09-25',
+    'BCH': '2017-08-03',
+    'DASH': '2017-11-15',
+    'ETC': '2017-07-24',
+
+    # 2018-2020
+    'TRX': '2018-05-31',
+    'EOS': '2018-06-14',
+    'VET': '2019-08-13',
+    'LINK': '2020-09-24',
+    'ADA': '2021-03-02',
+    'DOGE': '2021-05-10',
+    'DOT': '2021-02-22',
+    'UNI': '2021-09-15',
+
+    # 2021-2022
+    'MATIC': '2021-05-27',
+    'THETA': '2021-04-23',
+    'FIL': '2021-03-31',
+    'AAVE': '2021-09-30',
+    'SOL': '2021-10-07',
+    'AVAX': '2021-09-30',
+    'ALGO': '2021-11-04',
+
+    # 최신 (메타버스/Layer2)
+    'SAND': '2021-11-24',
+    'MANA': '2021-11-26',
+    'CHZ': '2021-12-16',
+    'GRT': '2022-02-17',
+    'NEAR': '2022-04-21',
+    'ARB': '2023-06-08',
+    'OP': '2023-01-19',
+
+    # 2023-2024
+    'SUI': '2023-08-10',
+    'APT': '2022-12-20',
+    'STX': '2024-02-15',
+    'HBAR': '2024-04-25',
+    'EGLD': '2024-06-13',
+    'ICP': '2024-09-05',
+    'FLOW': '2024-10-18',
+}
+
+
 # ============ 헬퍼 함수 ============
 
 def get_exchange_symbols(exchange: str) -> List[str]:
@@ -246,3 +347,47 @@ def get_all_exchanges() -> List[str]:
 def get_futures_exchanges() -> List[str]:
     """선물 거래소 목록"""
     return list(FUTURES_EXCHANGES)
+
+
+def get_listing_date(exchange: str, symbol: str) -> str | None:
+    """거래소별 코인 상장일 반환
+
+    Args:
+        exchange: 거래소 이름 ('upbit', 'bithumb')
+        symbol: 코인 심볼 ('BTC', 'ETH' 등)
+
+    Returns:
+        상장일 문자열 (YYYY-MM-DD) 또는 None
+
+    Examples:
+        >>> get_listing_date('upbit', 'BTC')
+        '2017-10-01'
+        >>> get_listing_date('bithumb', 'ETH')
+        '2016-07-21'
+    """
+    if exchange.lower() == 'upbit':
+        return UPBIT_LISTING_DATES.get(symbol.upper())
+    elif exchange.lower() == 'bithumb':
+        return BITHUMB_LISTING_DATES.get(symbol.upper())
+    return None
+
+
+def get_all_listing_dates(exchange: str) -> Dict[str, str]:
+    """거래소의 모든 상장일 정보 반환
+
+    Args:
+        exchange: 거래소 이름 ('upbit', 'bithumb')
+
+    Returns:
+        {심볼: 상장일} 딕셔너리
+
+    Examples:
+        >>> dates = get_all_listing_dates('upbit')
+        >>> dates['BTC']
+        '2017-10-01'
+    """
+    if exchange.lower() == 'upbit':
+        return UPBIT_LISTING_DATES.copy()
+    elif exchange.lower() == 'bithumb':
+        return BITHUMB_LISTING_DATES.copy()
+    return {}

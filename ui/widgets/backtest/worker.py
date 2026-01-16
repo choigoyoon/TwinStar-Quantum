@@ -20,15 +20,6 @@ from utils.metrics import (
     calculate_cagr,
     assign_grade_by_preset
 )
-try:
-    from config.constants import TF_RESAMPLE_MAP
-except ImportError:
-    TF_RESAMPLE_MAP = {
-        '15m': '15T',
-        '1h': '1H',
-        '4h': '4H',
-        '1d': '1D'
-    }
 
 try:
     from config.parameters import DEFAULT_PARAMS
@@ -248,27 +239,12 @@ class BacktestWorker(QThread):
         Returns:
             리샘플링된 패턴 데이터
         """
+        from utils.data_utils import resample_data
+
         trend_tf: str = params.get('trend_interval', '1h') or '1h'  # None 방지
-        rule: str = TF_RESAMPLE_MAP.get(trend_tf, '1H')  # 기본값 '1H'
 
-        df_temp = df_entry.copy()
-
-        # 타임스탬프 변환
-        if not pd.api.types.is_datetime64_any_dtype(df_temp['timestamp']):
-            if pd.api.types.is_numeric_dtype(df_temp['timestamp']):
-                df_temp['timestamp'] = pd.to_datetime(df_temp['timestamp'], unit='ms')
-            else:
-                df_temp['timestamp'] = pd.to_datetime(df_temp['timestamp'])
-
-        # 리샘플링
-        df_temp = df_temp.set_index('timestamp')
-        df_pattern = df_temp.resample(rule).agg({
-            'open': 'first',
-            'high': 'max',
-            'low': 'min',
-            'close': 'last',
-            'volume': 'sum'
-        }).dropna().reset_index()
+        # SSOT: utils.data_utils.resample_data() 사용
+        df_pattern = resample_data(df_entry, trend_tf, add_indicators=False)
 
         logger.info(f"패턴 데이터 생성 완료: {len(df_pattern)} rows ({trend_tf})")
         return df_pattern

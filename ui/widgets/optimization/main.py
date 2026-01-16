@@ -37,7 +37,7 @@ class OptimizationWidget(QWidget):
     
     def _init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 0, 0, 0)  # Zero margins for container
         
         # 서브 탭 위젯
         self.sub_tabs = QTabWidget()
@@ -76,7 +76,7 @@ class OptimizationWidget(QWidget):
         layout = QVBoxLayout(placeholder)
         label = QLabel(f"{icon} {name}\n\n로드 중...")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 16px;")
+        label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: {Typography.text_lg};")
         layout.addWidget(label)
         
         self.sub_tabs.addTab(placeholder, f"{icon} {name}")
@@ -92,7 +92,7 @@ class OptimizationWidget(QWidget):
             QTabBar::tab {{ 
                 background: {Colors.bg_surface}; 
                 color: {Colors.text_secondary}; 
-                padding: 10px 25px; 
+                padding: {Spacing.space_2} {Spacing.space_6}; 
                 margin-right: 2px; 
                 font-weight: {Typography.font_semibold};
                 border-top-left-radius: 6px;

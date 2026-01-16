@@ -3,7 +3,8 @@
 
 파라미터 그리드 서치를 수행하고 최적 파라미터를 찾는 위젯
 
-토큰 기반 디자인 시스템 적용 (v7.12 - 2026-01-16)
+v7.20 (2026-01-17): 메타 최적화 모드 추가
+v7.12 (2026-01-16): 토큰 기반 디자인 시스템 적용
 """
 
 from PyQt6.QtWidgets import (
@@ -247,7 +248,12 @@ class SingleOptimizationWidget(QWidget):
         mode_layout.addWidget(mode_label)
 
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["⚡ Quick (~50개)", "📊 Standard (~5,000개)", "🔬 Deep (~50,000개)"])
+        self.mode_combo.addItems([
+            "⚡ Quick (~50개)",
+            "📊 Standard (~5,000개)",
+            "🔬 Deep (~50,000개)",
+            "🔍 Meta (범위 자동 탐색, ~3,000개)"  # 메타 최적화 (v7.20)
+        ])
         self.mode_combo.setCurrentIndex(1)  # Standard 기본
         self.mode_combo.setMinimumWidth(Size.control_min_width)
         self.mode_combo.setStyleSheet(self._get_combo_style())
@@ -507,6 +513,11 @@ class SingleOptimizationWidget(QWidget):
         mode = MODE_MAP.get(mode_index, 'standard')
         max_workers = self.max_workers_spin.value()
 
+        # Meta 모드는 별도 실행 (v7.20)
+        if mode == 'meta':
+            self._run_meta_optimization(exchange, symbol, timeframe)
+            return
+
         # 2. 데이터 로드
         from core.data_manager import BotDataManager
 
@@ -702,11 +713,16 @@ class SingleOptimizationWidget(QWidget):
         최적화 모드 변경 시 파라미터 자동 설정
 
         Args:
-            index: 콤보박스 인덱스 (0=Quick, 1=Standard, 2=Deep)
+            index: 콤보박스 인덱스 (0=Quick, 1=Standard, 2=Deep, 3=Meta)
         """
         from core.optimizer import get_indicator_range, get_worker_info, estimate_combinations, generate_grid_by_mode
 
         mode = MODE_MAP.get(index, 'standard')
+
+        # Meta 모드는 별도 처리 (v7.20)
+        if mode == 'meta':
+            self._on_meta_mode_selected()
+            return
 
         # 1. 파라미터 범위 가져오기
         ranges = get_indicator_range(mode)
@@ -759,6 +775,185 @@ class SingleOptimizationWidget(QWidget):
         self.max_workers_spin.setValue(worker_info['workers'])
 
         logger.info(f"모드 변경: {mode} (조합 수: {combo_count}, 워커: {worker_info['workers']})")
+
+    def _on_meta_mode_selected(self):
+        """
+        메타 최적화 모드 선택 시 UI 업데이트 (v7.20)
+
+        메타 최적화는 파라미터 범위를 자동으로 탐색하므로
+        수동 범위 입력 필요 없음.
+        """
+        # 1. 예상 정보 업데이트
+        self.estimated_combo_label.setText("예상 조합 수: ~3,000개 (1,000개 × 3회 반복)")
+        self.estimated_time_label.setText("예상 시간: 0.3분 (20초)")
+        self.recommended_workers_label.setText("권장 워커: 8개 (코어 100% 사용)")
+
+        # 2. 워커 수 자동 설정 (최대 성능)
+        import multiprocessing
+        self.max_workers_spin.setValue(max(1, multiprocessing.cpu_count() - 1))
+
+        # 3. 파라미터 위젯은 비활성화 (자동 탐색이므로 수동 입력 불필요)
+        # 주의: 파라미터 위젯을 완전히 숨기면 오히려 사용자 혼란 가능
+        # 따라서 힌트만 표시 (선택 사항)
+
+        logger.info("메타 최적화 모드 선택: 파라미터 범위 자동 탐색")
+
+    def _run_meta_optimization(self, exchange: str, symbol: str, timeframe: str):
+        """
+        메타 최적화 실행 (v7.20)
+
+        Args:
+            exchange: 거래소명
+            symbol: 심볼명
+            timeframe: 타임프레임
+        """
+        logger.info(f"🔍 메타 최적화 시작: {exchange} {symbol} {timeframe}")
+
+        # 1. MetaOptimizationWorker 임포트
+        from ui.widgets.optimization.meta_worker import MetaOptimizationWorker
+
+        # 2. Worker 생성
+        self.meta_worker = MetaOptimizationWorker(
+            exchange=exchange,
+            symbol=symbol,
+            timeframe=timeframe,
+            sample_size=1000,
+            max_iterations=3,
+            metric='sharpe_ratio',
+            callback=self._on_meta_progress
+        )
+
+        # 3. 시그널 연결
+        self.meta_worker.iteration_started.connect(self._on_meta_iteration_started)
+        self.meta_worker.iteration_finished.connect(self._on_meta_iteration_finished)
+        self.meta_worker.finished.connect(self._on_meta_finished)
+        self.meta_worker.error.connect(self._on_meta_error)
+
+        # 4. UI 상태 업데이트
+        self.run_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setMaximum(3)  # 최대 3회 반복
+
+        # 5. Worker 시작
+        self.meta_worker.start()
+
+        logger.info("  MetaOptimizationWorker 시작됨")
+
+    def _on_meta_progress(self, event: str, *args):
+        """메타 최적화 진행 상황 콜백"""
+        logger.debug(f"  Meta progress: {event} {args}")
+
+    def _on_meta_iteration_started(self, iteration: int, sample_size: int):
+        """메타 최적화 반복 시작"""
+        logger.info(f"  Iteration {iteration} started: {sample_size} samples")
+        self.progress_bar.setValue(iteration - 1)
+        # TODO: 상태 메시지 표시 (선택 사항)
+
+    def _on_meta_iteration_finished(self, iteration: int, result_count: int, best_score: float):
+        """메타 최적화 반복 완료"""
+        logger.info(f"  Iteration {iteration} finished: {result_count} results, best score={best_score:.2f}")
+        self.progress_bar.setValue(iteration)
+        # TODO: 상태 메시지 업데이트 (선택 사항)
+
+    def _on_meta_finished(self, result: Dict[str, Any]):
+        """메타 최적화 완료"""
+        logger.info(f"✅ 메타 최적화 완료: {result['iterations']} iterations")
+
+        # 1. UI 상태 복원
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.progress_bar.setValue(self.progress_bar.maximum())
+
+        # 2. 결과 표시
+        extracted_ranges = result.get('extracted_ranges', {})
+        statistics = result.get('statistics', {})
+
+        # 메시지 박스로 결과 요약 표시
+        from PyQt6.QtWidgets import QMessageBox
+
+        message = (
+            f"🎉 메타 최적화 완료\n\n"
+            f"반복 횟수: {result['iterations']}\n"
+            f"총 조합 수: {statistics.get('total_combinations_tested', 0):,}개\n"
+            f"소요 시간: {statistics.get('time_elapsed_seconds', 0):.1f}초\n"
+            f"수렴 이유: {result['convergence_reason']}\n\n"
+            f"추출된 범위:\n"
+        )
+
+        # 파라미터별 범위 표시 (Deep 모드 기준)
+        for param, ranges in extracted_ranges.items():
+            deep_range = ranges.get('deep', [])
+            if isinstance(deep_range[0], str):
+                message += f"  {param}: {', '.join(deep_range[:3])}\n"
+            else:
+                message += f"  {param}: [{deep_range[0]:.2f} ~ {deep_range[-1]:.2f}]\n"
+
+        message += "\n추출된 범위를 저장하시겠습니까?"
+
+        reply = QMessageBox.question(
+            self,
+            "메타 최적화 완료",
+            message,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        # 3. 저장 여부 확인
+        if reply == QMessageBox.StandardButton.Yes:
+            self._save_meta_ranges(result)
+
+    def _on_meta_error(self, error_msg: str):
+        """메타 최적화 에러"""
+        logger.error(f"❌ 메타 최적화 에러: {error_msg}")
+
+        # 1. UI 상태 복원
+        self.run_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+
+        # 2. 에러 메시지 표시
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.critical(
+            self,
+            "메타 최적화 에러",
+            f"메타 최적화 중 오류 발생:\n{error_msg}"
+        )
+
+    def _save_meta_ranges(self, result: Dict[str, Any]):
+        """메타 범위 저장"""
+        try:
+            # 1. MetaOptimizer를 통해 저장
+            from core.meta_optimizer import MetaOptimizer
+
+            # MetaOptimizer 인스턴스 생성 (저장용)
+            meta = MetaOptimizer(base_optimizer=None)  # base_optimizer는 저장 시 불필요
+            meta.extracted_ranges = result.get('extracted_ranges', {})
+            meta.iteration_results = result.get('statistics', {}).get('top_score_history', [])
+
+            # 2. JSON 저장
+            exchange = self.exchange_combo.currentText().lower()
+            symbol = self.symbol_combo.currentText()
+            timeframe = self.timeframe_combo.currentText()
+
+            filepath = meta.save_meta_ranges(exchange, symbol, timeframe)
+
+            # 3. 성공 메시지
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                "저장 완료",
+                f"메타 범위가 저장되었습니다:\n{filepath}"
+            )
+
+            logger.info(f"  메타 범위 저장 완료: {filepath}")
+
+        except Exception as e:
+            logger.error(f"  메타 범위 저장 실패: {e}")
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "저장 실패",
+                f"메타 범위 저장 중 오류 발생:\n{str(e)}"
+            )
 
 
 __all__ = ['SingleOptimizationWidget']

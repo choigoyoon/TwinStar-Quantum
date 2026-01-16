@@ -9,7 +9,8 @@ Date: 2026-01-17
 
 import logging
 from typing import Optional, Dict, Callable, Any
-from PyQt6.QtCore import QThread, pyqtSignal, QWidget
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import QWidget
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -147,9 +148,9 @@ class MetaOptimizationWorker(QThread):
 
         try:
             dm = BotDataManager(
-                exchange=self.exchange,
+                exchange_name=self.exchange,
                 symbol=self.symbol,
-                params={'entry_tf': self.timeframe}
+                strategy_params={'entry_tf': self.timeframe}
             )
 
             # 데이터 로드

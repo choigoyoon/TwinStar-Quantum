@@ -90,9 +90,10 @@ def calculate_grade(win_rate: float, mdd: float, pf: float) -> str:
 
 # ============ 4단계 순차 최적화 Grid 정의 (프리셋 기반) ============
 
-# --- Quick 모드: 빠르게 대략 탐색 (~10개 총합) ---
+# --- Quick 모드: 빠르게 대략 탐색 (~20개 총합) ---
+# [UPDATE 2026-01-16] filter_tf 12h 추가, entry_validity 48h 추가
 STAGE1_QUICK = {
-    'filter_tf': ['4h'],                     # 1 (베스트 TF)
+    'filter_tf': ['4h', '12h'],              # 2 (베스트 TF + 강한 필터)
     'atr_mult': [0.95, 1.05],                # 2
     'direction': ['Both'],                   # 1
 }
@@ -101,30 +102,35 @@ STAGE2_QUICK = {
     'trail_dist_r': [0.1],                   # 1
 }
 STAGE3_QUICK = {
-    'entry_validity_hours': [12.0],          # 1
+    'entry_validity_hours': [12.0, 48.0],    # 2 (기본 + 장기)
     'pullback_rsi_long': [40],               # 1
     'pullback_rsi_short': [60],              # 1
 }
 
-# --- Standard 모드: 실사용 권장 (~144개 총합) ---
+# --- Standard 모드: 실사용 권장 (~216개 총합) ---
+# [UPDATE 2026-01-16] 7차 세션 권장사항 반영
+# - filter_tf: 12h 추가 (거래빈도 감소)
+# - direction: Short 추가 (양방향 완전 지원)
+# - entry_validity_hours: 48h 추가 (패턴 유효기간 확장)
 STAGE1_STANDARD = {
-    'filter_tf': ['2h', '4h', '6h'],         # 3
+    'filter_tf': ['4h', '6h', '12h'],        # 3 (2h 제외, 12h 추가)
     'atr_mult': [0.95, 1.0, 1.05],           # 3
-    'direction': ['Both', 'Long'],           # 2
+    'direction': ['Both', 'Long', 'Short'],  # 3 (Short 추가)
 }
 STAGE2_STANDARD = {
     'trail_start_r': [0.4, 0.5, 0.6, 0.7],   # 4
     'trail_dist_r': [0.08, 0.1, 0.12],       # 3
 }
 STAGE3_STANDARD = {
-    'entry_validity_hours': [6.0, 12.0, 24.0], # 3
+    'entry_validity_hours': [12.0, 24.0, 48.0], # 3 (6h→12h, 48h 추가)
     'pullback_rsi_long': [35, 40],           # 2
     'pullback_rsi_short': [60, 65],          # 2
 }
 
-# --- Deep 모드: 촘촘한 전수조사 (~500개 총합) ---
+# --- Deep 모드: 촘촘한 전수조사 (~675개 총합) ---
+# [UPDATE 2026-01-16] filter_tf 12h/1d 추가, entry_validity 72h 추가
 STAGE1_DEEP = {
-    'filter_tf': ['2h', '4h', '6h'],         # 3
+    'filter_tf': ['4h', '6h', '12h', '1d'],  # 4 (2h 제외, 12h/1d 추가)
     'atr_mult': [0.9, 0.95, 1.0, 1.05, 1.1], # 5
     'direction': ['Both', 'Long', 'Short'],  # 3
 }
@@ -133,7 +139,7 @@ STAGE2_DEEP = {
     'trail_dist_r': [0.08, 0.09, 0.1, 0.11, 0.12], # 5
 }
 STAGE3_DEEP = {
-    'entry_validity_hours': [6.0, 12.0, 18.0, 24.0, 48.0], # 5
+    'entry_validity_hours': [12.0, 24.0, 48.0, 72.0], # 4 (6h/18h 제외, 72h 추가)
     'pullback_rsi_long': [30, 35, 40],       # 3
     'pullback_rsi_short': [60, 65, 70],      # 3
 }

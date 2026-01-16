@@ -88,7 +88,7 @@ class HelpDialog(QDialog):
         layout = QVBoxLayout(widget)
         
         try:
-            from user_guide import get_quick_start
+            from tools.archive_20260116.diagnostics.user_guide import get_quick_start
             content = get_quick_start()
         except ImportError:
             content = "사용법 정보를 불러올 수 없습니다."
@@ -122,7 +122,7 @@ class HelpDialog(QDialog):
         self.method_browser = QTextBrowser()
         
         try:
-            from user_guide import get_trading_method
+            from tools.archive_20260116.diagnostics.user_guide import get_trading_method
             content = get_trading_method("futures").get("strategy", "")
         except ImportError:
             content = "매매법 정보를 불러올 수 없습니다."
@@ -135,7 +135,7 @@ class HelpDialog(QDialog):
     def _show_method(self, method_type: str):
         """매매법 표시"""
         try:
-            from user_guide import get_trading_method
+            from tools.archive_20260116.diagnostics.user_guide import get_trading_method
             content = get_trading_method(method_type).get("strategy", "")
             self.method_browser.setText(content)
         except Exception as e:
@@ -209,7 +209,7 @@ class HelpDialog(QDialog):
         layout = QVBoxLayout(widget)
         
         try:
-            from user_guide import get_faq
+            from tools.archive_20260116.diagnostics.user_guide import get_faq
             content = get_faq()
         except ImportError:
             content = "FAQ 정보를 불러올 수 없습니다."

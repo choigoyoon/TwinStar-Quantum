@@ -1725,3 +1725,72 @@ TwinStar Quantum - 작업 로그
 - v7.0 (2026-01-14): 타입 안전성 및 환경 무결성 섹션 추가
 - v6.0: Anti-Graffiti 원칙 도입
 - v5.0 이하: 초기 버전
+
+---
+
+## 📦 아카이브 참조 (Archive Reference)
+
+### 최근 아카이브 (2026-01-16)
+
+**아카이브 위치**: `tools/archive_20260116/`
+
+**배경**: v7.18 최적화 시스템 완료 후 프로덕션 준비를 위한 루트 디렉토리 정리
+
+**통계**:
+- 총 파일: 160+ (약 17MB)
+- 루트 감소: 95% (160+ → 12개)
+
+**내용**:
+- **diagnostics/** - 49개 진단 스크립트
+  - analyze_*.py, check_*.py, test_*.py, compare_*.py 등
+  - 프로젝트 개발 중 사용한 일회성 도구
+- **results/** - 11개 최적화 결과 CSV
+  - ATR, filter_tf, trail 최적화 실험 데이터
+- **docs/** - 44개 마크다운 리포트
+  - COMPREHENSIVE_OPTIMIZATION_REPORT.md 등
+  - 개발 과정 기록 및 분석 문서
+- **logs/** - 34개 텍스트 로그
+  - docs/WORK_LOG_*.txt (일별 작업 로그)
+  - 실행 로그 및 출력 기록
+- **legacy/** - 4개 레거시 디렉토리 (16.3MB)
+  - backups/ - v1 코드 백업
+  - refactor_backup/ - 리팩토링 전 코드
+  - for_local/ - 실험적 전략 (미사용)
+  - sandbox_optimization/ - 대안 프레임워크 (미사용)
+  - tools/archive_scripts/ - 90+ 진단 스크립트 (히스토리)
+  - tools/archive_temp/ - 임시 백업 파일
+
+**복원 방법**:
+```bash
+# 개별 파일 복원
+git mv tools/archive_20260116/{category}/{filename} ./
+
+# 전체 롤백
+git revert {commit_hash}
+```
+
+**프로덕션 필수 파일** (루트 디렉토리 유지):
+1. `run_gui.py` - GUI 진입점
+2. `CLAUDE.md` - 프로젝트 규칙 (v7.18)
+3. `README.md` - 프로젝트 개요
+4. `requirements.txt` - 의존성 목록
+5. `STRATEGY_GUIDE.md` - 사용자 문서
+6. `LICENSE.txt` - 라이선스
+7. `.gitignore` - Git 설정
+8. `.env.example` - 환경 변수 템플릿
+9. `pyrightconfig.json` - 타입 체커 설정
+10. `version.json` - 버전 정보
+11. `license_manager.py`, `license_tiers.py` - 라이선스 시스템
+12. `telegram_notifier.py`, `paths.py` - 지원 모듈
+
+**검증 완료** (2026-01-16):
+- 스크립트: `tools/verify_production_ready.py`
+- 결과: 6/6 항목 통과
+  1. ✓ Entry Points
+  2. ✓ Import Integrity (18개 모듈)
+  3. ✓ Config Files (10개)
+  4. ✓ Storage Init
+  5. ✓ SSOT Compliance (v7.15-v7.18)
+  6. ✓ GUI Launch (PyQt6)
+
+**상세 정보**: `tools/archive_20260116/ARCHIVE_MANIFEST.md`

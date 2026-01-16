@@ -723,10 +723,9 @@ class UnifiedBot:
         """메인 루프"""
         logging.info(f"Bot Active: {self.symbol} ({self.exchange.name})")
         try:
-            from bot_status import update_bot_running
+            from tools.archive_20260116.diagnostics.bot_status import update_bot_running
             update_bot_running(self.exchange.name, self.symbol, "v1.7.0 Modular")
-        except Exception:
-
+        except (ImportError, Exception):
             pass
 
         # [FIX] Connect to Exchange

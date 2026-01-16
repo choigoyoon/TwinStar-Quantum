@@ -969,7 +969,7 @@ def main():
     
     # 시스템 자동 점검
     try:
-        from system_doctor import auto_startup_check
+        from tools.archive_20260116.diagnostics.system_doctor import auto_startup_check
         logger.info("🔍 시스템 자동 점검 중...")
         check_result = auto_startup_check()
         

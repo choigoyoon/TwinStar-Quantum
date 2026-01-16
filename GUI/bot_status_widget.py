@@ -17,7 +17,7 @@ from PyQt6.QtCore import QTimer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from bot_status import load_bot_status, get_bot_state_text
+    from tools.archive_20260116.diagnostics.bot_status import load_bot_status, get_bot_state_text
 except ImportError:
     load_bot_status = None
     get_bot_state_text = None

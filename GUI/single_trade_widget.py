@@ -1,11 +1,11 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QScrollArea, QMessageBox, QGroupBox
+    QScrollArea, QMessageBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t
 from GUI.components.bot_control_card import BotControlCard
 
@@ -35,7 +35,7 @@ class SingleTradeWidget(QWidget):
         self.rows_layout = QVBoxLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_layout.setSpacing(3)
-        self.rows_layout.setAlignment(Qt.AlignTop)
+        self.rows_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         scroll = QScrollArea()
         scroll.setWidget(self.rows_container)

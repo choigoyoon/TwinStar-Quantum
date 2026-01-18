@@ -1,2 +1,5 @@
-"""TwinStar Quantum 검증 시스템"""
-__version__ = "3.0"
+"""
+tests/__init__.py
+
+TwinStar-Quantum 테스트 패키지
+"""

@@ -13,6 +13,32 @@ import requests
 from datetime import datetime
 from typing import Optional, Dict
 
+# 텔레그램 설정 가이드
+TELEGRAM_SETUP_GUIDE = """
+📱 텔레그램 봇 설정 가이드
+
+1️⃣ 봇 생성
+   - Telegram에서 @BotFather 검색
+   - /newbot 명령어 입력
+   - 봇 이름과 username 설정
+   - Bot Token 복사 (예: 123456789:ABCdefGHI...)
+
+2️⃣ Chat ID 확인
+   - 생성한 봇에게 아무 메시지 전송
+   - 브라우저에서 아래 URL 접속:
+     https://api.telegram.org/bot<TOKEN>/getUpdates
+   - "chat":{"id": 숫자} 에서 숫자가 Chat ID
+
+3️⃣ 설정 입력
+   - Bot Token과 Chat ID를 위 필드에 입력
+   - '테스트 전송' 버튼으로 연결 확인
+   - '저장' 버튼 클릭
+
+⚠️ 주의사항
+   - Bot Token은 절대 외부에 공유하지 마세요
+   - 봇에게 먼저 메시지를 보내야 알림 수신 가능
+"""
+
 # [FIX] Paths 모듈 사용 (경로 통일)
 try:
     from paths import Paths
@@ -164,7 +190,8 @@ class TelegramNotifier:
             )
             self._send_impl(text)
             return True
-        except:
+        except Exception:
+
             return False
 
     def notify_bot_status(self, action: str, exchange: str, symbol: str):

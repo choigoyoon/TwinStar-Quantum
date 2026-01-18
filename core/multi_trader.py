@@ -9,10 +9,12 @@ import threading
 import time
 import requests
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from paths import Paths
-PRESET_DIR = Paths.PRESETS
+from exchanges.base_exchange import BaseExchange
+
+PRESET_DIR: Path = Paths.PRESETS
 
 from core.strategy_core import AlphaX7Core
 from core.capital_manager import CapitalManager
@@ -23,9 +25,9 @@ logger = logging.getLogger("MultiTrader")
 
 
 class MultiTrader:
-    """멀티 매매 시스템"""
-    
-    def __init__(self, config: dict = None):
+    """멀티 매매 시스템 (v2.2 - Phase 4.2 상태 콜백 추가)"""
+
+    def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
         self.exchange_name = self.config.get('exchange', 'bybit')
         self.watch_count = self.config.get('watch_count', 50)
@@ -33,23 +35,45 @@ class MultiTrader:
         self.seed = self.config.get('seed', 100.0)
         self.leverage = self.config.get('leverage', 10)
         self.capital_mode = self.config.get('capital_mode', 'compound')
-        
+
         self.running = False
         self.monitoring_thread = None
         self._lock = threading.Lock()
-        
+
         self.watching_symbols = []
         self.pending_signals = []
         self.active_position = None
-        
+
         self.em = ExchangeManager()
         self.cm = CapitalManager(initial_capital=self.seed, fixed_amount=self.seed)
         self.core = AlphaX7Core()
-        
-        self.adapter = None
-        self.executor = None
-        
+
+        self.adapter: Optional[Any] = None  # BaseExchange 또는 ccxt 객체
+        self.executor: Optional[OrderExecutor] = None
+
         self.stats = {'watching': 0, 'pending': [], 'active': None}
+
+        # Phase 4.2: 상태 업데이트 콜백 (UI 연동)
+        self.status_callback: Optional[Any] = None  # callable(stats: dict)
+
+    # === Phase 4.2: 상태 업데이트 메서드 ===
+
+    def set_status_callback(self, callback):
+        """상태 업데이트 콜백 설정
+
+        Args:
+            callback: callable(stats: dict) - 상태 변경 시 호출될 함수
+        """
+        self.status_callback = callback
+        logger.info("[MultiTrader] 상태 콜백 설정됨")
+
+    def _notify_status_update(self):
+        """상태 업데이트 콜백 호출 (내부용)"""
+        if self.status_callback:
+            try:
+                self.status_callback(self.stats.copy())
+            except Exception as e:
+                logger.error(f"[MultiTrader] 상태 콜백 에러: {e}")
 
     # === 프리셋 관리 ===
     
@@ -67,7 +91,8 @@ class MultiTrader:
                     with open(path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     return {"timeframe": tf, "params": data.get("params", {})}
-                except:
+                except Exception:
+
                     pass
         return None
     
@@ -85,8 +110,36 @@ class MultiTrader:
             logger.error(f"[MultiTrader] 최적화 에러: {e}")
             return None
 
+    # === 간단한 패턴 감지 ===
+
+    def _detect_simple_pattern(self, df) -> Optional[Dict]:
+        """간단한 RSI 기반 패턴 감지"""
+        try:
+            if df is None or len(df) < 20:
+                return None
+
+            close = df['close'].astype(float)
+
+            # RSI 계산
+            delta = close.diff()
+            gain = delta.where(delta > 0, 0).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss.replace(0, 1e-10)
+            rsi = 100 - (100 / (1 + rs))
+            curr_rsi = float(rsi.iloc[-1])
+
+            # 과매수/과매도 감지
+            if curr_rsi < 30:
+                return {'detected': True, 'direction': 'Long', 'strength': 30 - curr_rsi}
+            elif curr_rsi > 70:
+                return {'detected': True, 'direction': 'Short', 'strength': curr_rsi - 70}
+
+            return None
+        except Exception:
+            return None
+
     # === 레버리지 ===
-    
+
     def _get_adaptive_leverage(self, symbol: str) -> int:
         """차등 레버리지 (BTC/ETH 기준, 알트 1.6배)"""
         base = self.leverage
@@ -98,7 +151,7 @@ class MultiTrader:
 
     # === 시작/정지 ===
     
-    def start(self, config: dict = None):
+    def start(self, config: Optional[Dict] = None):
         if self.running:
             return True
         
@@ -110,11 +163,11 @@ class MultiTrader:
             self.leverage = self.config.get('leverage', 10)
             self.capital_mode = self.config.get('capital_mode', 'compound')
         
-        self.adapter = self.em.get_adapter(self.exchange_name)
+        self.adapter = self.em.get_exchange(self.exchange_name)
         if not self.adapter:
             logger.error("[MultiTrader] Adapter 없음")
             return False
-        
+
         self.executor = OrderExecutor(self.adapter, dry_run=False)
         self.cm.switch_mode(self.capital_mode)
         
@@ -164,7 +217,8 @@ class MultiTrader:
                 usdt = [t for t in tickers if t["symbol"].endswith("USDT") and "1000" not in t["symbol"]]
                 sorted_t = sorted(usdt, key=lambda x: float(x.get("turnover24h", 0)), reverse=True)
                 return [t["symbol"] for t in sorted_t[:self.watch_count]]
-        except:
+        except Exception:
+
             pass
         
         return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"]
@@ -172,17 +226,20 @@ class MultiTrader:
     def _scan_signals(self):
         """시그널 스캔"""
         signals = []
-        
+
         for symbol in self.watching_symbols:
             if not self.running:
                 break
-            
+
             try:
+                if not self.adapter:
+                    continue
                 df = self.adapter.get_klines(symbol=symbol, interval='15m', limit=100)
                 if df is None or len(df) < 50:
                     continue
-                
-                result = self.core.detect_pattern(df)
+
+                # detect_signal 대신 간단한 패턴 감지 (RSI 기반)
+                result = self._detect_simple_pattern(df)
                 if result and result.get('detected'):
                     signals.append({
                         'symbol': symbol,
@@ -190,12 +247,15 @@ class MultiTrader:
                         'strength': result.get('strength', 0),
                         'price': float(df['close'].iloc[-1])
                     })
-            except:
+            except Exception:
                 continue
-        
+
         self.pending_signals = signals
         self.stats['watching'] = len(self.watching_symbols)
         self.stats['pending'] = signals
+
+        # Phase 4.2: 상태 업데이트 콜백 호출
+        self._notify_status_update()
     
     def _try_enter_best(self):
         """최고 시그널 진입"""
@@ -236,14 +296,18 @@ class MultiTrader:
         else:
             lev = self._get_adaptive_leverage(symbol)
             
+        if not self.executor:
+            logger.error("[MultiTrader] Executor 없음")
+            return
+
         self.executor.set_leverage(lev)
-        
+
         # 5. 주문
         size = self.cm.get_trade_size()
         sl = price * 0.98 if direction == 'Long' else price * 1.02
-        
+
         logger.info(f"🚀 [MultiTrader] {symbol} {direction} (Size: ${size:.1f}, Lev: {lev}x)")
-        
+
         result = self.executor.place_order_with_retry(side=direction, size=size, stop_loss=sl)
         
         if result:
@@ -256,6 +320,10 @@ class MultiTrader:
                 'pnl': 0.0
             }
             self.stats['active'] = self.active_position
+
+            # Phase 4.2: 상태 업데이트 콜백 호출 (포지션 진입 시)
+            self._notify_status_update()
+
             logger.info(f"✅ [MultiTrader] 진입 성공: {symbol}")
     
     def _check_position(self):
@@ -264,6 +332,8 @@ class MultiTrader:
             return
         
         try:
+            if not self.adapter:
+                return
             symbol = self.active_position['symbol']
             df = self.adapter.get_klines(symbol=symbol, interval='1m', limit=1)
             
@@ -281,18 +351,24 @@ class MultiTrader:
             
             self.active_position['pnl'] = pnl_pct
             self.stats['active'] = self.active_position
-            
+
+            # Phase 4.2: 상태 업데이트 콜백 호출 (PnL 변경 시)
+            self._notify_status_update()
+
             # 청산 조건: TP 1.5%, SL -1.0%
             if pnl_pct >= 1.5 or pnl_pct <= -1.0:
                 self._close_position(pnl_pct)
-                
+
         except Exception as e:
             logger.error(f"[MultiTrader] 포지션 체크 에러: {e}")
     
     def _close_position(self, pnl_pct: float):
         """청산"""
         logger.info(f"🚪 [MultiTrader] 청산 (PnL: {pnl_pct:.2f}%)")
-        
+
+        if not self.executor or not self.active_position:
+            return
+
         if self.executor.close_position_with_retry():
             lev = self.active_position.get('leverage', self.leverage)
             size = self.active_position['size']
@@ -300,10 +376,13 @@ class MultiTrader:
             
             self.cm.update_after_trade(pnl_usd)
             self.seed = self.cm.current_capital
-            
+
             self.active_position = None
             self.stats['active'] = None
-            
+
+            # Phase 4.2: 상태 업데이트 콜백 호출 (포지션 청산 시)
+            self._notify_status_update()
+
             logger.info(f"🔄 [MultiTrader] 청산 완료 → 시드: ${self.seed:.2f}")
     
     def get_stats(self) -> dict:

@@ -1,7 +1,8 @@
 import sys
 import inspect
 import os
-sys.path.insert(0, r'C:\매매전략')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 def check_features(source, features, title):
     print(f'=== {title} ===')

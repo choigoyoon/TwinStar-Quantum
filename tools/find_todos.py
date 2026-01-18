@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-BASE = Path(r'C:\매매전략')
+BASE = Path(__file__).parent
 DIRS = ['core', 'GUI', 'exchanges', 'utils', 'storage', 'config']
 PATTERNS = ['TODO', 'FIXME', 'XXX', 'HACK']
 
@@ -48,7 +48,8 @@ def search_file(filepath):
                         'content': content
                     })
                     break
-    except:
+    except Exception:
+
         pass
     
     return items

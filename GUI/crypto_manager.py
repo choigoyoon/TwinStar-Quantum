@@ -10,11 +10,16 @@ import json
 import hashlib
 import uuid
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
+
+# cryptography 타입 초기화
+AESGCM: Any = None
+hashes: Any = None
+PBKDF2HMAC: Any = None
 
 try:
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM

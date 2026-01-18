@@ -7,7 +7,7 @@ import logging
 # Suppress logging during verification
 logging.basicConfig(level=logging.CRITICAL)
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 results = {}
 
 print("=" * 70)

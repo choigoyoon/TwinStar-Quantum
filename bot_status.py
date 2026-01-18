@@ -58,7 +58,8 @@ def load_bot_status() -> BotStatus:
             with open(BOT_STATUS_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return BotStatus(**data)
-        except:
+        except Exception:
+
             pass
     return BotStatus()
 

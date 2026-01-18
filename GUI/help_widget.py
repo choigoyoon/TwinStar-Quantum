@@ -1,11 +1,10 @@
 # help_widget.py - GUI 내장 도움말 (한글 최적화)
 
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFrame, QTabWidget, QTextBrowser, QGroupBox,
-    QSizePolicy, QSpacerItem
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
+    QFrame
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 class HelpWidget(QWidget):
@@ -162,7 +161,7 @@ class HelpWidget(QWidget):
             text-align: center;
         """)
         num_label.setFixedSize(45, 45)
-        num_label.setAlignment(Qt.AlignCenter)
+        num_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(num_label)
         
         # 텍스트
@@ -275,11 +274,11 @@ class HelpWidget(QWidget):
 
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     w = HelpWidget()
     w.setStyleSheet("background: #0b0e14;")
     w.resize(900, 700)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

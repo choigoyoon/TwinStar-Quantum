@@ -6,18 +6,17 @@
 - 차트 마커 연동
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QTableWidget, QTableWidgetItem, QPushButton,
-    QGroupBox, QHeaderView, QFileDialog, QSplitter,
-    QAbstractItemView
+    QGroupBox, QHeaderView, QFileDialog, QAbstractItemView
 )
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QFont, QColor
 
 import csv
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Any
 import sys
 import os
 
@@ -80,15 +79,19 @@ class TradeTableWidget(QTableWidget):
         """)
         
         # 설정
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.verticalHeader().setVisible(False)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        
+        v_header = self.verticalHeader()
+        if v_header:
+            v_header.setVisible(False)
         
         # 컬럼 너비
         header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        if header:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.setColumnWidth(0, 50)
         
         # 클릭 이벤트
@@ -105,7 +108,7 @@ class TradeTableWidget(QTableWidget):
             self.setItem(row, 0, QTableWidgetItem(str(row + 1)))
             
             # 시간
-            time_str = datetime.fromtimestamp(trade.signal_time / 1000).strftime("%m-%d %H:%M")
+            time_str = (datetime.fromtimestamp(trade.signal_time / 1000) if isinstance(trade.signal_time, (int, float)) else trade.signal_time).strftime("%m-%d %H:%M")
             self.setItem(row, 1, QTableWidgetItem(time_str))
             
             # 방향
@@ -148,7 +151,7 @@ class TradeTableWidget(QTableWidget):
         if row < len(self._trades) and self._candles:
             trade = self._trades[row]
             dialog = TradeChartDialog(trade, self._candles, self)
-            dialog.exec_()
+            dialog.exec()
     
     def set_candles(self, candles: List[Candle]):
         """캔들 데이터 설정 (차트 표시용)"""
@@ -165,7 +168,8 @@ class BacktestResultWidget(QWidget):
     
     def __init__(self):
         super().__init__()
-        self._result: BacktestResult = None
+        self._result: Optional[BacktestResult] = None
+        self._candles: List[Candle] = []
         self._init_ui()
     
     def _init_ui(self):
@@ -176,7 +180,7 @@ class BacktestResultWidget(QWidget):
         header = QHBoxLayout()
         
         title = QLabel("📊 백테스트 결과")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
+        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         title.setStyleSheet("color: #ffffff;")
         header.addWidget(title)
         
@@ -256,11 +260,11 @@ class BacktestResultWidget(QWidget):
             vbox = QVBoxLayout()
             label = QLabel(name)
             label.setStyleSheet("color: #888888; font-size: 11px;")
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             
             value = QLabel("-")
             value.setStyleSheet("color: #ffffff; font-size: 16px; font-weight: bold;")
-            value.setAlignment(Qt.AlignCenter)
+            value.setAlignment(Qt.AlignmentFlag.AlignCenter)
             
             vbox.addWidget(label)
             vbox.addWidget(value)
@@ -326,7 +330,7 @@ class BacktestResultWidget(QWidget):
         
         layout.addWidget(trades_group, stretch=1)
     
-    def set_result(self, result: BacktestResult, candles: List[Candle] = None):
+    def set_result(self, result: BacktestResult, candles: Optional[List[Candle]] = None):
         """결과 설정"""
         self._result = result
         
@@ -378,7 +382,7 @@ class BacktestResultWidget(QWidget):
             self._equity_chart.plot(x, equity, pen=pen)
             
             # 0 기준선
-            self._equity_chart.addLine(y=0, pen=pg.mkPen('#555', width=1, style=pg.QtCore.Qt.DashLine))
+            self._equity_chart.addLine(y=0, pen=pg.mkPen('#555', width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
             
             # 드로우다운 영역 (빨간색 채우기)
             peak = 0
@@ -454,8 +458,19 @@ class BacktestResultWidget(QWidget):
             
             # 데이터
             for i, trade in enumerate(self._result.trades):
-                entry_time = datetime.fromtimestamp(trade.signal_time / 1000).strftime("%Y-%m-%d %H:%M")
-                exit_time = datetime.fromtimestamp(trade.exit_time / 1000).strftime("%Y-%m-%d %H:%M") if trade.exit_time else ""
+                s_time = trade.signal_time
+                if isinstance(s_time, (int, float)):
+                    entry_time = datetime.fromtimestamp(s_time / 1000).strftime("%Y-%m-%d %H:%M")
+                else:
+                    entry_time = str(s_time)
+
+                e_time = trade.exit_time
+                exit_time_str = ""
+                if e_time:
+                    if isinstance(e_time, (int, float)):
+                        exit_time_str = datetime.fromtimestamp(e_time / 1000).strftime("%Y-%m-%d %H:%M")
+                    else:
+                        exit_time_str = str(e_time)
                 
                 result_map = {
                     TradeStatus.TP_HIT: "TP",
@@ -471,7 +486,7 @@ class BacktestResultWidget(QWidget):
                     f"{trade.stop_loss:.2f}",
                     f"{trade.take_profit:.2f}",
                     f"{trade.exit_price:.2f}",
-                    exit_time,
+                    exit_time_str,
                     result_map.get(trade.status, ""),
                     f"{trade.pnl_percent:+.2f}%"
                 ])
@@ -486,7 +501,7 @@ class BacktestResultWidget(QWidget):
             
             # 현재 거래 데이터를 상세 형식으로 변환
             if not self._result or not self._result.trades:
-                from PyQt5.QtWidgets import QMessageBox
+                from PyQt6.QtWidgets import QMessageBox
                 QMessageBox.warning(self, "알림", "표시할 매매 데이터가 없습니다.")
                 return
             
@@ -507,7 +522,7 @@ class BacktestResultWidget(QWidget):
                 })
             
             # 15m 데이터 생성 (캔들 데이터에서)
-            if hasattr(self, '_candles') and self._candles:
+            if self._candles:
                 df_15m = pd.DataFrame([{
                     'timestamp': pd.Timestamp(c.timestamp, unit='ms'),
                     'open': c.open,
@@ -520,7 +535,7 @@ class BacktestResultWidget(QWidget):
                 df_15m = pd.DataFrame()
             
             popup = TradeDetailPopup(detailed_trades, df_15m, self)
-            popup.exec_()
+            popup.exec()
             
         except Exception as e:
             logger.info(f"상세 매매 표시 오류: {e}")
@@ -530,7 +545,7 @@ class BacktestResultWidget(QWidget):
 
 # ============== 테스트 ==============
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     from strategies.common.strategy_interface import SignalType
     
     app = QApplication(sys.argv)
@@ -546,11 +561,11 @@ if __name__ == "__main__":
             entry_price=42000 + i * 100,
             stop_loss=41000 + i * 100,
             take_profit=44000 + i * 100,
-            signal_time=1701388800000 + i * 3600000,
+            signal_time=datetime.fromtimestamp((1701388800000 + i * 3600000) / 1000),
             candle_index=50 + i * 10,
             status=TradeStatus.TP_HIT if i % 3 != 0 else TradeStatus.SL_HIT,
             exit_price=44000 + i * 100 if i % 3 != 0 else 41000 + i * 100,
-            exit_time=1701388800000 + i * 3600000 + 7200000,
+            exit_time=datetime.fromtimestamp((1701388800000 + i * 3600000 + 7200000) / 1000),
             pnl_percent=3.0 if i % 3 != 0 else -1.5
         ))
     
@@ -558,12 +573,10 @@ if __name__ == "__main__":
         strategy_id="high_octane",
         symbol="BTC/USDT",
         timeframe="15m",
-        start_time=1701388800000,
-        end_time=1704067200000,
+        start_date=datetime.fromtimestamp(1701388800000 / 1000),
+        end_date=datetime.fromtimestamp(1704067200000 / 1000),
         trades=trades,
         total_trades=20,
-        win_trades=14,
-        lose_trades=6,
         win_rate=70.0,
         total_pnl=33.0,
         profit_factor=2.8,
@@ -577,4 +590,4 @@ if __name__ == "__main__":
     widget.resize(800, 600)
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

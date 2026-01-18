@@ -4,49 +4,54 @@ import sys
 import logging
 import threading
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
+
+
+class _FallbackPaths:
+    """EXE 환경에서 paths 모듈 import 실패 시 사용하는 fallback 클래스"""
+
+    @staticmethod
+    def _get_base() -> str:
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        return os.path.dirname(os.path.abspath(__file__))
+
+    @classmethod
+    def history(cls, exchange: str, symbol: str) -> str:
+        base = cls._get_base()
+        return os.path.join(base, 'user', 'exchanges',
+                           exchange.lower(),
+                           symbol.upper().replace('/', '_'),
+                           'history.json')
+
+    @classmethod
+    def state(cls, exchange: str, symbol: str) -> str:
+        base = cls._get_base()
+        return os.path.join(base, 'user', 'exchanges',
+                           exchange.lower(),
+                           symbol.upper().replace('/', '_'),
+                           'state.json')
+
+    @classmethod
+    def ensure_dirs(cls, exchange: Optional[str] = None, symbol: Optional[str] = None) -> None:
+        base = cls._get_base()
+        dirs = [os.path.join(base, 'user'), os.path.join(base, 'user', 'exchanges')]
+        if exchange:
+            dirs.append(os.path.join(base, 'user', 'exchanges', exchange.lower()))
+        if exchange and symbol:
+            dirs.append(os.path.join(base, 'user', 'exchanges',
+                                    exchange.lower(), symbol.upper().replace('/', '_')))
+        for d in dirs:
+            os.makedirs(d, exist_ok=True)
+
 
 # [FIX] EXE 호환 import
+Paths: Any = _FallbackPaths
+
 try:
-    from paths import Paths
+    from paths import Paths  # type: ignore[no-redef]
 except ImportError:
-    try:
-        from .paths import Paths
-    except ImportError:
-        class Paths:
-            @staticmethod
-            def _get_base():
-                if getattr(sys, 'frozen', False):
-                    return os.path.dirname(sys.executable)
-                return os.path.dirname(os.path.abspath(__file__))
-            
-            @classmethod
-            def history(cls, exchange, symbol):
-                base = cls._get_base()
-                return os.path.join(base, 'user', 'exchanges', 
-                                   exchange.lower(), 
-                                   symbol.upper().replace('/', '_'), 
-                                   'history.json')
-            
-            @classmethod
-            def state(cls, exchange, symbol):
-                base = cls._get_base()
-                return os.path.join(base, 'user', 'exchanges',
-                                   exchange.lower(),
-                                   symbol.upper().replace('/', '_'),
-                                   'state.json')
-            
-            @classmethod
-            def ensure_dirs(cls, exchange=None, symbol=None):
-                base = cls._get_base()
-                dirs = [os.path.join(base, 'user'), os.path.join(base, 'user', 'exchanges')]
-                if exchange:
-                    dirs.append(os.path.join(base, 'user', 'exchanges', exchange.lower()))
-                if exchange and symbol:
-                    dirs.append(os.path.join(base, 'user', 'exchanges', 
-                                            exchange.lower(), symbol.upper().replace('/', '_')))
-                for d in dirs:
-                    os.makedirs(d, exist_ok=True)
+    pass
 
 
 class StateStorage:

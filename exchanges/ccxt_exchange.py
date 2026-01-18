@@ -7,20 +7,18 @@ CCXT 기반 범용 거래소 어댑터
 
 import logging
 import pandas as pd
+from typing import Any, cast
 import threading
 from datetime import datetime
-from typing import Optional, Callable
+from typing import Optional, Callable, Any, Dict, List
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
-# WebSocket 핸들러 import (선택적)
+# WebSocket 핸들러 (선택적)
 try:
     from .ws_handler import WebSocketHandler
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     WebSocketHandler = None
-    logging.info("WebSocket handler not available, using REST only")
-
-from .base_exchange import BaseExchange, Position
 
 try:
     import ccxt
@@ -131,8 +129,8 @@ class CCXTExchange(BaseExchange):
     # ========== WebSocket 지원 ==========
     
     def start_websocket(self, interval: str = '15m',
-                        on_candle_close: Callable = None,
-                        on_price_update: Callable = None):
+                        on_candle_close: Optional[Callable] = None,
+                        on_price_update: Optional[Callable] = None):
         """웹소켓 연결 시작"""
         if WebSocketHandler is None:
             logging.warning("[WS] WebSocketHandler not available")
@@ -181,7 +179,7 @@ class CCXTExchange(BaseExchange):
     def stop_websocket(self):
         """웹소켓 연결 중지"""
         if self.ws_handler:
-            self.ws_handler.stop()
+            self.ws_handler.disconnect()
             self.use_websocket = False
             self._ws_last_price = None
             logging.info("[WS] Stopped")
@@ -198,16 +196,20 @@ class CCXTExchange(BaseExchange):
     
     def connect(self) -> bool:
         """거래소 연결"""
+        if not self.exchange_info:
+            logging.error("Exchange info not configured")
+            return False
         try:
             exchange_class = self.exchange_info['class']
             
             # CCXT 거래소 객체 생성
+            exchange_info = self.exchange_info if self.exchange_info else {}
             exchange_config = {
                 'apiKey': self.api_key,
                 'secret': self.api_secret,
                 'enableRateLimit': True,
                 'options': {
-                    'defaultType': self.exchange_info['type'],
+                    'defaultType': exchange_info.get('type', 'future'),
                     'recvWindow': 60000, # 기본 60초 설정 (Bybit 등 지원)
                     'adjustForTimeDifference': True, # 시간 차이 자동 보정
                 }
@@ -246,6 +248,7 @@ class CCXTExchange(BaseExchange):
     
     def sync_time(self) -> bool:
         """서버 시간 동기화 (CCXT)"""
+        if self.ccxt_exchange is None: return False
         try:
             if hasattr(self.ccxt_exchange, 'load_time_difference'):
                 self.ccxt_exchange.load_time_difference()
@@ -268,10 +271,11 @@ class CCXTExchange(BaseExchange):
             # 심볼 형식 변환 (거래소마다 다름)
             symbol = self._convert_symbol(self.symbol)
             
+            if self.ccxt_exchange is None: return None
             ohlcv = self.ccxt_exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
             
             return df
             
@@ -287,56 +291,78 @@ class CCXTExchange(BaseExchange):
         base = symbol.replace('USDT', '').replace('USD', '')
         quote = 'USDT' if 'USDT' in symbol else 'USD'
         
-        if self.exchange_info['has_futures']:
+        has_futures = self.exchange_info.get('has_futures', False) if self.exchange_info else False
+        if has_futures:
             return f"{base}/{quote}:{quote}"
         else:
             return f"{base}/{quote}"
     
     def get_current_price(self) -> float:
         """현재 가격"""
+        if self.ccxt_exchange is None: return 0.0
         try:
             symbol = self._convert_symbol(self.symbol)
             ticker = self.ccxt_exchange.fetch_ticker(symbol)
             return float(ticker['last'])
         except Exception as e:
             logging.error(f"Price fetch error: {e}")
-            return 0
+            return 0.0
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """시장가 주문"""
         try:
+            if self.ccxt_exchange is None:
+                logging.error("CCXT exchange not initialized")
+                return OrderResult(success=False, order_id=None, price=None, qty=None, error="Exchange not initialized")
+
             symbol = self._convert_symbol(self.symbol)
             order_side = 'buy' if side == 'Long' else 'sell'
-            
+
+            # 파라미터 구성
+            params: Dict[str, Any] = {'recvWindow': 60000}
+            if client_order_id:
+                params['clientOrderId'] = client_order_id
+
             # 시장가 주문
             order = self.ccxt_exchange.create_order(
                 symbol=symbol,
                 type='market',
                 side=order_side,
                 amount=size,
-                params={'recvWindow': 60000}
+                params=params
             )
-            
+
             if order:
                 price = self.get_current_price()
-                
-                # 손절 주문 설정 (거래소 지원 여부에 따라)
+                order_id = str(order.get('id', ''))
+
+                # 손절 주문 (거래소 연동 시도, 실패해도 메인 주문은 유효)
                 try:
                     sl_side = 'sell' if side == 'Long' else 'buy'
-                    sl_order = self.ccxt_exchange.create_order(
+                    self.ccxt_exchange.create_order(
                         symbol=symbol,
                         type='stop_market',
                         side=sl_side,
                         amount=size,
-                        params={
-                            'stopPrice': stop_loss,
-                            'reduceOnly': True
-                        }
+                        params={'stopPrice': stop_loss, 'reduceOnly': True}
                     )
                 except Exception as sl_err:
-                    logging.warning(f"SL order not supported or failed: {sl_err}")
-                
-                order_id = str(order.get('id', ''))
+                    logging.warning(f"Stop loss order failed (handled locally): {sl_err}")
+
+                # 익절 주문
+                if take_profit > 0:
+                    try:
+                        tp_side = 'sell' if side == 'Long' else 'buy'
+                        self.ccxt_exchange.create_order(
+                            symbol=symbol,
+                            type='take_profit_market',
+                            side=tp_side,
+                            amount=size,
+                            params={'stopPrice': take_profit, 'reduceOnly': True}
+                        )
+                    except Exception as tp_err:
+                        logging.warning(f"Take profit order failed: {tp_err}")
+
                 self.position = Position(
                     symbol=self.symbol,
                     side=side,
@@ -349,35 +375,36 @@ class CCXTExchange(BaseExchange):
                     entry_time=datetime.now(),
                     order_id=order_id
                 )
-                
+
                 logging.info(f"Order placed: {side} {size} @ {price} (ID: {order_id})")
-                return order_id
-            
-            return False
-            
+                return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
+
+            return OrderResult(success=False, order_id=None, price=None, qty=None, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"Order error: {e}")
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=None, error=str(e))
     
-    def update_stop_loss(self, new_sl: float) -> bool:
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
         """손절가 수정"""
         try:
             symbol = self._convert_symbol(self.symbol)
-            
+
             # 기존 스탑 주문 취소
             try:
-                open_orders = self.ccxt_exchange.fetch_open_orders(symbol)
-                for order in open_orders:
-                    if order.get('type') in ['stop_market', 'stop']:
-                        if isinstance(order, dict) and order.get('id'):
-                            self.ccxt_exchange.cancel_order(order['id'], symbol)
+                if self.ccxt_exchange:
+                    open_orders = self.ccxt_exchange.fetch_open_orders(symbol)
+                    for order in open_orders:
+                        if isinstance(order, dict) and order.get('type') in ['stop_market', 'stop']:
+                            if order.get('id'):
+                                self.ccxt_exchange.cancel_order(order['id'], symbol)
             except Exception as e:
                 logging.debug(f"Order cancel ignored: {e}")
-            
+
             # 새 스탑 주문 생성
-            if self.position:
+            if self.position and self.ccxt_exchange:
                 sl_side = 'sell' if self.position.side == 'Long' else 'buy'
-                self.ccxt_exchange.create_order(
+                order = self.ccxt_exchange.create_order(
                     symbol=symbol,
                     type='stop_market',
                     side=sl_side,
@@ -389,23 +416,33 @@ class CCXTExchange(BaseExchange):
                 )
                 self.position.stop_loss = new_sl
                 logging.info(f"SL updated: {new_sl}")
-                return True
-            
-            return False
-            
+
+                order_id = order.get('id', None) if isinstance(order, dict) else None
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=new_sl,
+                    filled_qty=self.position.size
+                )
+
+            return OrderResult(success=False, error="Position or exchange is None")
+
         except Exception as e:
             logging.error(f"SL update error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
     
-    def close_position(self) -> bool:
+    def close_position(self) -> OrderResult:
         """포지션 청산"""
         try:
             if not self.position:
-                return True
-            
+                return OrderResult(success=True, error="No position to close")
+
             symbol = self._convert_symbol(self.symbol)
             close_side = 'sell' if self.position.side == 'Long' else 'buy'
-            
+
+            if self.ccxt_exchange is None:
+                return OrderResult(success=False, error="Exchange is None")
+
             order = self.ccxt_exchange.create_order(
                 symbol=symbol,
                 type='market',
@@ -413,26 +450,35 @@ class CCXTExchange(BaseExchange):
                 amount=self.position.size,
                 params={'reduceOnly': True}
             )
-            
+
             if order:
                 price = self.get_current_price()
                 if self.position.side == 'Long':
                     pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                 else:
                     pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
+
                 profit_usd = self.capital * self.leverage * (pnl / 100)
                 self.capital += profit_usd
-                
+
                 logging.info(f"Position closed: PnL {pnl:.2f}% (${profit_usd:.2f})")
+
+                order_id = order.get('id', None) if isinstance(order, dict) else None
+                qty = self.position.size
                 self.position = None
-                return True
-            
-            return False
-            
+
+                return OrderResult(
+                    success=True,
+                    order_id=str(order_id) if order_id else None,
+                    filled_price=price,
+                    filled_qty=qty
+                )
+
+            return OrderResult(success=False, error="Order creation failed")
+
         except Exception as e:
             logging.error(f"Close error: {e}")
-            return False
+            return OrderResult(success=False, error=str(e))
 
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (불타기)"""
@@ -447,6 +493,9 @@ class CCXTExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             order_side = 'buy' if side == 'Long' else 'sell'
             
+            if self.ccxt_exchange is None:
+                return False
+                
             # 시장가 주문
             order = self.ccxt_exchange.create_order(
                 symbol=symbol,
@@ -468,7 +517,7 @@ class CCXTExchange(BaseExchange):
                 self.position.order_id = order_id
                 
                 logging.info(f"Added position: {side} {size} @ {price} (ID: {order_id})")
-                return order_id
+                return True
             
             return False
             
@@ -482,7 +531,7 @@ class CCXTExchange(BaseExchange):
             symbol = self._convert_symbol(self.symbol)
             
             # CCXT의 set_leverage 사용 (거래소 지원 여부에 따라)
-            if hasattr(self.ccxt_exchange, 'set_leverage'):
+            if self.ccxt_exchange and hasattr(self.ccxt_exchange, 'set_leverage'):
                 self.ccxt_exchange.set_leverage(leverage, symbol)
                 self.leverage = leverage
                 logging.info(f"[{self.name}] Leverage set to {leverage}x")
@@ -503,6 +552,8 @@ class CCXTExchange(BaseExchange):
     def fetch_balance(self) -> dict:
         """전체 잔고 조회 (CCXT 원본)"""
         try:
+            if self.ccxt_exchange is None:
+                return {}
             return self.ccxt_exchange.fetch_balance()
         except Exception as e:
             logging.error(f"Fetch balance error: {e}")
@@ -511,6 +562,8 @@ class CCXTExchange(BaseExchange):
     def get_balance(self) -> float:
         """잔고 조회"""
         try:
+            if self.ccxt_exchange is None:
+                return 0.0
             balance = self.ccxt_exchange.fetch_balance()
             # USDT가 없으면 KRW 확인 (국내 거래소)
             usdt_bal = float(balance.get('USDT', {}).get('free', 0))
@@ -519,7 +572,7 @@ class CCXTExchange(BaseExchange):
             return usdt_bal
         except Exception as e:
             logging.error(f"Balance error: {e}")
-            return 0
+            return 0.0
     
     # ========== [NEW] API 기반 매매 히스토리 ==========
     

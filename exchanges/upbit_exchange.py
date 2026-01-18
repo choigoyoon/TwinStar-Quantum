@@ -10,8 +10,9 @@
 import time
 import logging
 from datetime import datetime
+from typing import Optional
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
 try:
     import pyupbit
@@ -21,22 +22,11 @@ except ImportError:
 
 class UpbitExchange(BaseExchange):
     """업비트 거래소 어댑터 (현물 전용)"""
-    
+
     @property
-
-    def fetchTime(self):
-        """Upbit는 시간 API 미지원 - 로컬 시간 반환"""
-        import time
-        return int(time.time() * 1000)
-    
-    def sync_time(self):
-        """시간 동기화 (Upbit는 스킵)"""
-        self.time_offset = 0
-        return True
-
     def name(self) -> str:
         return "Upbit"
-    
+
     def __init__(self, config: dict):
         super().__init__(config)
         
@@ -82,6 +72,9 @@ class UpbitExchange(BaseExchange):
         - 마스터 데이터 소스
         - 상장 이후 전체 데이터 수집 가능
         """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
         try:
             import pyupbit
             
@@ -134,22 +127,62 @@ class UpbitExchange(BaseExchange):
             return []
     
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
+        # ✅ P1-3: Rate limiter 토큰 획득
+        self._acquire_rate_limit()
+
+        if pyupbit is None:
+            raise RuntimeError("pyupbit not available")
+
         try:
-            return pyupbit.get_current_price(self.symbol)
+            price = pyupbit.get_current_price(self.symbol)
+
+            if price is None:
+                raise RuntimeError("Price is None")
+
+            # Type conversion
+            if isinstance(price, (int, float)):
+                price_float = float(price)
+            elif isinstance(price, str):
+                try:
+                    price_float = float(price)
+                except ValueError as e:
+                    raise RuntimeError(f"Invalid price string: {price}") from e
+            else:
+                raise RuntimeError(f"Invalid price type: {type(price)}")
+
+            # Validation
+            if price_float <= 0:
+                raise RuntimeError(f"Invalid price: {price_float}")
+
+            return price_float
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float) -> OrderResult:
         """시장가 주문 (현물: 매수/매도)"""
         try:
             if self.upbit is None:
                 logging.error("Upbit not authenticated")
-                return False
-            
-            price = self.get_current_price()
-            
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error="Upbit not authenticated")
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Upbit] Price fetch failed: {e}")
+                return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
+            # ✅ P1-3: Rate limiter 토큰 획득 (실제 API 호출 직전)
+            self._acquire_rate_limit()
+
             if side == 'Long':
                 # 매수: size는 KRW 금액
                 order_amount = size * price  # 코인 수량 * 가격 = KRW
@@ -157,8 +190,8 @@ class UpbitExchange(BaseExchange):
             else:
                 # 매도: size는 코인 수량
                 result = self.upbit.sell_market_order(self.symbol, size)
-            
-            if result and result.get('uuid'):
+
+            if isinstance(result, dict) and result.get('uuid'):
                 order_id = str(result.get('uuid'))
                 self.position = Position(
                     symbol=self.symbol,
@@ -172,59 +205,109 @@ class UpbitExchange(BaseExchange):
                     entry_time=datetime.now(),
                     order_id=order_id
                 )
-                
+
                 logging.info(f"[Upbit] Order placed: {side} @ {price:,.0f}원 (ID: {order_id})")
-                return order_id
+
+                # [NEW] 로컬 거래 DB 기록
+                self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+
+                return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
             else:
                 logging.error(f"[Upbit] Order failed: {result}")
-                return False
-                
+                return OrderResult(success=False, order_id=None, price=price, qty=size, error=f"Order failed: {result}")
+
         except Exception as e:
             logging.error(f"[Upbit] Order error: {e}")
-            return False
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
     
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정 (로컬 관리 - 업비트는 SL 미지원)"""
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정 (로컬 관리 - 업비트는 SL 미지원)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, filled_price, timestamp)
+        """
         if self.position:
             self.position.stop_loss = new_sl
             logging.info(f"[Upbit] SL updated (local): {new_sl:,.0f}원")
-            return True
-        return False
+            return OrderResult(
+                success=True,
+                filled_price=new_sl,
+                timestamp=datetime.now()
+            )
+        return OrderResult.from_bool(False, error="No position to update SL")
     
-    def close_position(self) -> bool:
-        """포지션 청산 (현물: 전량 매도)"""
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산 (현물: 전량 매도)
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
         try:
             if not self.position:
-                return True
-            
+                return OrderResult.from_bool(True)  # No position to close
+
             if self.upbit is None:
                 logging.error("Upbit not authenticated")
-                return False
-            
+                return OrderResult.from_bool(False, error="Upbit not authenticated")
+
             # 현재 보유 수량 확인
             coin = self.symbol.split('-')[1]
-            balance = self.upbit.get_balance(coin)
-            
-            if balance and balance > 0:
-                result = self.upbit.sell_market_order(self.symbol, balance)
-                
-                if result and result.get('uuid'):
-                    price = self.get_current_price()
+            balance_raw = self.upbit.get_balance(coin)
+
+            # pyupbit can return (balance, locked) or just balance
+            if isinstance(balance_raw, tuple):
+                balance = balance_raw[0]
+            else:
+                balance = balance_raw
+
+            if balance is not None and float(balance) > 0:
+                result = self.upbit.sell_market_order(self.symbol, float(balance))
+
+                if isinstance(result, dict) and result.get('uuid'):
+                    order_id = str(result.get('uuid'))
+
+                    try:
+                        price = self.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[Upbit] Price fetch failed: {e}")
+                        # 청산은 성공했지만 가격 조회 실패 - 포지션은 정리
+                        self.position = None
+                        return OrderResult(
+                            success=True,
+                            order_id=order_id,
+                            filled_price=None,
+                            timestamp=datetime.now()
+                        )
+
                     if self.position.side == 'Long':
                         pnl = (price - self.position.entry_price) / self.position.entry_price * 100
                     else:
                         pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                    
+
                     logging.info(f"[Upbit] Position closed: PnL {pnl:.2f}%")
+
+                    # [NEW] 로컬 거래 DB 기록 (FIFO PnL 계산)
+                    self._record_trade_close(exit_price=price, exit_amount=float(balance), exit_side=self.position.side)
+
                     self.position = None
-                    return True
-            
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        filled_price=price,
+                        timestamp=datetime.now()
+                    )
+                else:
+                    logging.error(f"[Upbit] Close failed: {result}")
+                    return OrderResult.from_bool(False, error=f"Close failed: {result}")
+
             self.position = None
-            return True
-            
+            return OrderResult.from_bool(True)  # No position to close
+
         except Exception as e:
             logging.error(f"[Upbit] Close error: {e}")
-            return False
+            return OrderResult.from_bool(False, error=str(e))
     
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (현물: 추가 매수)"""
@@ -234,16 +317,20 @@ class UpbitExchange(BaseExchange):
             
             if self.upbit is None:
                 return False
-            
-            price = self.get_current_price()
-            
+
+            try:
+                price = self.get_current_price()
+            except RuntimeError as e:
+                logging.error(f"[Upbit] Price fetch failed: {e}")
+                return False
+
             if side == 'Long':
                 order_amount = size * price
                 result = self.upbit.buy_market_order(self.symbol, order_amount)
             else:
                 result = self.upbit.sell_market_order(self.symbol, size)
             
-            if result and result.get('uuid'):
+            if isinstance(result, dict) and result.get('uuid'):
                 order_id = str(result.get('uuid'))
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
@@ -253,7 +340,11 @@ class UpbitExchange(BaseExchange):
                 self.position.order_id = order_id
                 
                 logging.info(f"[Upbit] Added: {size} @ {price:,.0f}원 (ID: {order_id})")
-                return order_id
+                
+                # [NEW] 로컬 거래 DB 기록 (추가 매수/매도)
+                self._record_execution(side=side, price=price, amount=size, order_id=order_id)
+                
+                return True
             
             return False
             
@@ -266,10 +357,18 @@ class UpbitExchange(BaseExchange):
         if self.upbit is None:
             return 0
         try:
-            return float(self.upbit.get_balance("KRW") or 0)
+            balance_raw = self.upbit.get_balance("KRW")
+            if isinstance(balance_raw, tuple):
+                balance = balance_raw[0]
+            else:
+                balance = balance_raw
+                
+            if balance is None:
+                return 0.0
+            return float(balance)
         except Exception as e:
             logging.error(f"Balance error: {e}")
-            return 0
+            return 0.0
             
     def fetch_balance(self) -> dict:
         """CCXT 호환 잔고 조회 (전체 통화)"""
@@ -307,17 +406,25 @@ class UpbitExchange(BaseExchange):
         self.leverage = 1  # 현물은 항상 1배
         return True
     
-    def get_coin_balance(self, coin: str = None) -> float:
+    def get_coin_balance(self, coin: Optional[str] = None) -> float:
         """특정 코인 잔고 조회"""
         try:
             if self.upbit is None:
                 return 0
             if coin is None:
                 coin = self.symbol.split('-')[1]
-            return float(self.upbit.get_balance(coin) or 0)
+            balance_raw = self.upbit.get_balance(coin)
+            if isinstance(balance_raw, tuple):
+                balance = balance_raw[0]
+            else:
+                balance = balance_raw
+                
+            if balance is None:
+                return 0.0
+            return float(balance)
         except Exception as e:
             logging.error(f"Coin balance error: {e}")
-            return 0
+            return 0.0
 
     def get_positions(self) -> list:
         """현물은 포지션 개념 없음 - 잔고 반환"""
@@ -337,10 +444,11 @@ class UpbitExchange(BaseExchange):
                         'leverage': 1
                     })
             return positions
-        except:
+        except Exception:
+
             return []
 
-    def get_realized_pnl(self, symbol: str = None) -> float:
+    def get_realized_pnl(self, symbol: Optional[str] = None) -> float:
         """현물은 API 미지원 - 0 반환"""
         return 0.0
 
@@ -366,12 +474,10 @@ class UpbitExchange(BaseExchange):
             import asyncio
             asyncio.create_task(self.ws_handler.connect())
             
-            import logging
-            logging.info(f"[Upbit] WebSocket connected: {{self.symbol}}")
+            logging.info(f"[Upbit] WebSocket connected: {self.symbol}")
             return True
         except Exception as e:
-            import logging
-            logging.error(f"[Upbit] WebSocket failed: {{e}}")
+            logging.error(f"[Upbit] WebSocket failed: {e}")
             return False
     
     def stop_websocket(self):
@@ -387,40 +493,11 @@ class UpbitExchange(BaseExchange):
         return await self.start_websocket()
     
     def _auto_sync_time(self):
-        """API 호출 전 자동 시간 동기화 (5분마다)"""
-        import time
-        if not hasattr(self, '_last_sync'):
-            self._last_sync = 0
-        
-        if time.time() - self._last_sync > 300:
-            self.sync_time()
-            self._last_sync = time.time()
-    
-    def sync_time(self):
-        """서버 시간 동기화"""
-        import time
-        import logging
-        try:
-            # ccxt 기반 거래소의 경우
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                server_time = self.exchange.fetch_time()
-                local_time = int(time.time() * 1000)
-                self.time_offset = local_time - server_time
-                logging.debug(f"[Upbit] Time synced: offset={{self.time_offset}}ms")
-                return True
-        except Exception as e:
-            logging.debug(f"[Upbit] Time sync failed: {{e}}")
-        self.time_offset = 0
-        return False
-    
-    def fetchTime(self):
-        """서버 시간 조회"""
-        import time
-        try:
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                return self.exchange.fetch_time()
-        except Exception as e:
-            logging.debug(f"WS close ignored: {e}")
+        """API 호출 전 자동 시간 동기화 (Upbit는 스킵)"""
+        pass  # Upbit는 시간 동기화 불필요
+
+    def fetchTime(self) -> int:
+        """서버 시간 조회 (Upbit는 로컬 시간 사용)"""
         return int(time.time() * 1000)
 
     # ========== [NEW] 매매 히스토리 API ==========
@@ -432,8 +509,10 @@ class UpbitExchange(BaseExchange):
                 return super().get_trade_history(limit)
             
             # Upbit: get_order 로 체결 내역 조회
-            import pyupbit
-            orders = pyupbit.get_order(self.symbol, state='done', limit=limit)
+            if pyupbit is None:
+                return super().get_trade_history(limit)
+                
+            orders = self.upbit.get_order(self.symbol, state='done', limit=limit)
             
             if not orders:
                 return super().get_trade_history(limit)

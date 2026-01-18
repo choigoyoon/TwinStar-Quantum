@@ -1,9 +1,47 @@
-"""
-TwinStar Quantum - 프리미엄 테마 시스템
-"""
+from ui.design_system.tokens import Colors, Spacing, Typography
+
+# [COMPAT] 레거시 코드 호환용 딕셔너리 (디자인 토큰과 연동)
+COLORS = {
+    'primary': Colors.accent_primary,
+    'secondary': Colors.accent_secondary,
+    'success': Colors.success,
+    'danger': Colors.danger,
+    'surface': Colors.bg_surface,
+    'background': Colors.bg_base,
+    'text_primary': Colors.text_primary,
+    'text_secondary': Colors.text_secondary,
+}
+
+def _to_int(px_str: str) -> int:
+    try:
+        return int(px_str.replace('px', ''))
+    except (ValueError, AttributeError):
+        return 0
+
+SPACING = {
+    'xs': _to_int(Spacing.space_1),  # 4
+    'sm': _to_int(Spacing.space_2),  # 8
+    'md': _to_int(Spacing.space_4),  # 16
+    'lg': _to_int(Spacing.space_6),  # 24
+    'xl': _to_int(Spacing.space_8),  # 32
+}
+
+FONTS = {
+    'hero': _to_int(Typography.text_4xl),    # 32
+    'title': _to_int(Typography.text_2xl),   # 24
+    'subtitle': _to_int(Typography.text_xl), # 18
+    'body': _to_int(Typography.text_base),   # 14
+    'caption': _to_int(Typography.text_sm),  # 12
+}
+
+
 
 class Theme:
-    """다크 프리미엄 테마"""
+    """
+    [DEPRECATED] 다크 프리미엄 테마
+    
+    ui.design_system.ThemeGenerator를 사용하세요.
+    """
     
     # === 배경색 ===
     BG_DARK = "#0d1117"      # 최상위 배경
@@ -307,3 +345,7 @@ class Theme:
             height: 2px;
         }}
         """
+        return base_style
+
+# 하위 호환용 글로벌 변수
+STYLESHEET = Theme.get_stylesheet()

@@ -154,7 +154,7 @@ def get_tier_comparison() -> str:
     text += "━" * 50 + "\n\n"
     
     for tier_key, tier in LICENSE_TIERS.items():
-        text += f"💎 {tier.name} (${tier.price_usd})\n"
+        text += f"💎 {tier.name} (라이선스: ${tier.license_fee}, 월: ${tier.price_monthly})\n"
         text += f"   {tier.description}\n"
         text += f"   📈 코인: {len(tier.coins) if '*' not in tier.coins else '무제한'}개\n"
         text += f"   🏦 거래소: {', '.join(tier.exchanges) if '*' not in tier.exchanges else '전체'}\n"
@@ -172,7 +172,7 @@ def get_user_tier() -> str:
         lm = get_license_manager()
         
         # 라이선스 정보에서 등급 확인
-        result = lm.check_pc_license(lm.hardware_id)
+        result = lm.check()
         
         if result.get('valid', False) or result.get('expired', False):
             # 만료되었어도 등급 정보는 반환 (만료 처리는 별도)

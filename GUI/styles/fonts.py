@@ -2,10 +2,9 @@
 프리미엄 폰트 시스템
 """
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont, QFontDatabase
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont, QFontDatabase
 from pathlib import Path
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -59,8 +58,7 @@ class FontSystem:
     @classmethod
     def get_best_font(cls) -> str:
         """사용 가능한 최적 폰트 반환"""
-        db = QFontDatabase()
-        available = db.families()
+        available = QFontDatabase.families()
         
         for font in cls.FONT_FAMILIES:
             if font in available:
@@ -71,8 +69,7 @@ class FontSystem:
     @classmethod
     def get_mono_font(cls) -> str:
         """모노스페이스 폰트 반환"""
-        db = QFontDatabase()
-        available = db.families()
+        available = QFontDatabase.families()
         
         for font in cls.MONO_FAMILIES:
             if font in available:
@@ -87,7 +84,7 @@ class FontSystem:
         
         best_font = cls.get_best_font()
         font = QFont(best_font, 10)
-        font.setStyleStrategy(QFont.PreferAntialias)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         
         app.setFont(font)
         logger.info(f"✅ 폰트 적용: {best_font}")

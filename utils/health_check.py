@@ -3,11 +3,10 @@ TwinStar Quantum - Health Check Daemon
 시스템 상태 모니터링 및 자동 복구 도구
 """
 import threading
-import time
 import logging
 import psutil
 import os
-from typing import Dict, List, Optional, Callable
+from typing import Dict, Optional, Callable
 from datetime import datetime
 
 logger = logging.getLogger(__name__)

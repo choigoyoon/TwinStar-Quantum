@@ -1,0 +1,22 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "strategy": "macd",
+        "version": "2.0.0",
+        "name": "balanced_preset",
+        "description": "균형형 프리셋 - Sharpe ≥15 + MDD ≤10% 목표",
+        "preset_type": "balanced"
+    },
+    "params": {
+        "atr_mult": 2.5,
+        "trail_start": 1.5,
+        "trail_dist": 0.03,
+        "tolerance": 0.1,
+        "adx_min": 15,
+        "stoch_long_max": 40,
+        "stoch_short_min": 60,
+        "use_downtrend_filter": true
+    }
+}

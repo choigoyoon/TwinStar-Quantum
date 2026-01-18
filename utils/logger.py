@@ -3,9 +3,7 @@ utils/logger.py - 공용 로거 유틸리티
 모든 모듈에서 일관된 로깅을 위한 중앙 관리
 """
 import logging
-import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 
@@ -57,7 +55,7 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     return logger
 
 
-def get_module_logger(module_name: str = None) -> logging.Logger:
+def get_module_logger(module_name: str | None = None) -> logging.Logger:
     """
     모듈별 로거 (간편 버전)
     

@@ -2,7 +2,8 @@
 import sys
 import unittest
 from unittest.mock import MagicMock
-sys.path.insert(0, r'C:\매매전략')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 from core.bot_state import BotStateManager
 from core.position_manager import PositionManager

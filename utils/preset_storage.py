@@ -26,7 +26,7 @@ class PresetStorage:
     STATUS_SUSPENDED = 'suspended'
     STATUS_NEEDS_REOPTIMIZE = 'needs_reoptimize'
     
-    def __init__(self, base_path: str = None):
+    def __init__(self, base_path: str | None = None):
         """
         Args:
             base_path: 프리셋 저장 기본 경로
@@ -59,33 +59,69 @@ class PresetStorage:
             json.dump(self.index, f, indent=2, ensure_ascii=False)
     
     def _get_preset_key(self, symbol: str, tf: str) -> str:
-        """프리셋 키 생성"""
+        """프리셋 키 생성 (레거시 호환용)"""
         return f"{symbol.upper()}_{tf.lower()}"
-    
-    def _get_preset_path(self, symbol: str, tf: str) -> Path:
-        """프리셋 파일 경로"""
-        key = self._get_preset_key(symbol, tf)
-        return self.base_path / f"{key}.json"
-    
-    def save_preset(self, symbol: str, tf: str, params: Dict,
-                   optimization_result: Dict = None,
-                   chart_profile: Dict = None) -> bool:
+
+    def _get_preset_path(
+        self,
+        symbol: str,
+        tf: str,
+        mode: str | None = None,
+        use_timestamp: bool = True,
+        exchange: str | None = None
+    ) -> Path:
         """
-        프리셋 저장
-        
+        프리셋 파일 경로 (v2.0 - 표준 네이밍 규칙)
+
+        Args:
+            symbol: 심볼
+            tf: 타임프레임
+            mode: 최적화 모드 (quick/standard/deep)
+            use_timestamp: 타임스탬프 포함 여부 (기본 True)
+            exchange: 거래소 (None이면 self.exchange 사용)
+        """
+        from config.constants import generate_preset_filename
+
+        # 거래소 정보 (None 방지)
+        exchange_name: str = exchange if exchange is not None else getattr(self, 'exchange', 'bybit')
+
+        filename = generate_preset_filename(
+            exchange=exchange_name,
+            symbol=symbol,
+            timeframe=tf,
+            mode=mode,
+            use_timestamp=use_timestamp
+        )
+        return self.base_path / filename
+    
+    def save_preset(
+        self,
+        symbol: str,
+        tf: str,
+        params: Dict,
+        optimization_result: Dict | None = None,
+        chart_profile: Dict | None = None,
+        mode: str | None = None,
+        exchange: str | None = None
+    ) -> bool:
+        """
+        프리셋 저장 (v2.0 - 타임스탬프 포함)
+
         Args:
             symbol: 심볼 (예: BTCUSDT)
             tf: 타임프레임 (예: 4h)
             params: 최적화 파라미터
             optimization_result: 최적화 결과 (승률, MDD 등)
             chart_profile: 차트 프로파일
-        
+            mode: 최적화 모드 (quick/standard/deep)
+            exchange: 거래소 (None이면 self.exchange 사용)
+
         Returns:
             성공 여부
         """
         try:
             key = self._get_preset_key(symbol, tf)
-            path = self._get_preset_path(symbol, tf)
+            path = self._get_preset_path(symbol, tf, mode=mode, use_timestamp=True, exchange=exchange)
             
             preset_data = {
                 'symbol': symbol.upper(),
@@ -141,19 +177,83 @@ class PresetStorage:
             return False
     
     def load_preset(self, symbol: str, tf: str) -> Optional[Dict]:
-        """프리셋 로드"""
-        path = self._get_preset_path(symbol, tf)
-        
-        if not path.exists():
+        """프리셋 로드 (최신 파일 자동 선택)
+
+        타임스탬프 포함 파일명을 glob 패턴으로 검색하여 가장 최신 파일 로드.
+
+        Args:
+            symbol: 심볼 (예: BTCUSDT)
+            tf: 타임프레임 (예: 4h)
+
+        Returns:
+            프리셋 데이터 dict 또는 None
+        """
+        exchange_name = getattr(self, 'exchange', 'bybit')
+
+        # 1. 타임스탬프 포함 패턴으로 검색
+        pattern = f"{exchange_name}_{symbol}_{tf}_*.json"
+        matches = list(self.base_path.glob(pattern))
+
+        # 2. 타임스탬프 없는 파일도 시도
+        if not matches:
+            fallback = self.base_path / f"{exchange_name}_{symbol}_{tf}.json"
+            if fallback.exists():
+                matches = [fallback]
+
+        if not matches:
             return None
-        
+
+        # 3. 가장 최신 파일 선택 (수정 시간 기준)
+        latest = max(matches, key=lambda p: p.stat().st_mtime)
+
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(latest, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
             logger.info(f"[PresetStorage] ❌ 로드 실패 ({symbol}_{tf}): {e}")
             return None
-    
+
+    def load_all_presets(self, symbol: str, tf: str) -> List[Dict]:
+        """같은 symbol/tf의 모든 프리셋 로드 (타입별 정렬)
+
+        동일한 심볼/타임프레임의 모든 프리셋 파일을 로드하고,
+        preset_type(aggressive/balanced/conservative) 순서로 정렬.
+
+        Args:
+            symbol: 심볼 (예: BTCUSDT)
+            tf: 타임프레임 (예: 4h)
+
+        Returns:
+            프리셋 데이터 리스트 (preset_type 순 정렬)
+        """
+        exchange_name = getattr(self, 'exchange', 'bybit')
+        pattern = f"{exchange_name}_{symbol}_{tf}_*.json"
+        matches = list(self.base_path.glob(pattern))
+
+        # 타임스탬프 없는 파일도 포함
+        fallback = self.base_path / f"{exchange_name}_{symbol}_{tf}.json"
+        if fallback.exists() and fallback not in matches:
+            matches.append(fallback)
+
+        presets = []
+        for file_path in matches:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    data['_file_path'] = str(file_path)
+                    presets.append(data)
+            except Exception as e:
+                logger.warning(f"[PresetStorage] 파일 로드 실패 ({file_path.name}): {e}")
+                continue
+
+        # preset_type 기준 정렬 (aggressive → balanced → conservative)
+        type_order = {'aggressive': 0, 'balanced': 1, 'conservative': 2}
+        presets.sort(key=lambda p: type_order.get(
+            p.get('optimization', {}).get('preset_type', ''), 999
+        ))
+
+        return presets
+
     def update_live_stats(self, symbol: str, tf: str, 
                          is_win: bool, pnl: float) -> bool:
         """

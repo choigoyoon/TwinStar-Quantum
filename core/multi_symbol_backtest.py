@@ -10,8 +10,18 @@ import pandas as pd
 import requests
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
+
+# SSOT Metrics & Result Structure
+from core.optimizer import OptimizationResult
+from utils.metrics import (
+    calculate_win_rate,
+    calculate_mdd,
+    calculate_sharpe_ratio,
+    calculate_profit_factor,
+    calculate_cagr
+)
 
 # Logging
 import logging
@@ -55,17 +65,17 @@ class MultiSymbolBacktest:
     def __init__(
         self,
         exchange: str = 'bybit',
-        symbols: List[str] = None,
-        timeframes: List[str] = ['4h', '1d'],
+        symbols: Optional[List[str]] = None,
+        timeframes: Optional[List[str]] = None,
         initial_capital: float = 100.0,
         max_positions: int = 1,
         leverage: int = 5,
-        preset_params: dict = None,
+        preset_params: Optional[dict] = None,
         capital_mode: str = "compound"
     ):
         self.exchange = exchange.lower()
         self.symbols = symbols or []
-        self.timeframes = timeframes
+        self.timeframes = timeframes or ['4h', '1d']
         self.initial_capital = initial_capital
         self.capital = initial_capital
         self.capital_mode = capital_mode.lower() # "compound" or "fixed"
@@ -96,7 +106,7 @@ class MultiSymbolBacktest:
         """상태 업데이트 콜백 설정"""
         self.status_callback = callback
     
-    def _update_status(self, message: str, progress: float = None):
+    def _update_status(self, message: str, progress: Optional[float] = None):
         """상태 업데이트"""
         if progress is not None:
             self.progress = progress
@@ -177,25 +187,25 @@ class MultiSymbolBacktest:
         
         try:
             from paths import Paths
-            symbol_clean = symbol.lower().replace('/', '')
-            cache_path = Path(Paths.CACHE) / f"{self.exchange}_{symbol_clean}_{timeframe}.parquet"
-            
+            # ✅ Task 3.1: Parquet 파일명 통합
+            from config.constants.parquet import get_parquet_filename
+            cache_path = Path(Paths.CACHE) / get_parquet_filename(self.exchange, symbol, timeframe)
+
             if cache_path.exists():
                 df = pd.read_parquet(cache_path)
                 if len(df) >= 500:
                     self.all_candles[cache_key] = df
                     return df
-        except:
-            pass
+        except Exception:
+            pass  # Error silenced
         
         try:
-            from GUI.data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             df = dm.download(
                 symbol=symbol,
                 timeframe=timeframe,
-                exchange=self.exchange,
-                limit=None
+                exchange=self.exchange
             )
             if df is not None and len(df) > 0:
                 self.all_candles[cache_key] = df
@@ -220,9 +230,12 @@ class MultiSymbolBacktest:
             strategy = AlphaX7Core()
             
             # 시그널 추출
+            tolerance = self.preset_params.get('pattern_tolerance', 0.03)
+            validity_hours = self.preset_params.get('validity_hours', 24.0)
             extracted = strategy._extract_all_signals(
-                df=df,
-                params=self.preset_params
+                df_1h=df,
+                tolerance=tolerance,
+                validity_hours=validity_hours
             )
             
             for sig in extracted:
@@ -233,7 +246,7 @@ class MultiSymbolBacktest:
                 if isinstance(timestamp, str):
                     timestamp = pd.to_datetime(timestamp)
                 elif isinstance(timestamp, (int, float)):
-                    timestamp = pd.to_datetime(timestamp, unit='ms')
+                    timestamp = pd.to_datetime(timestamp, unit='ms', utc=True)
                 
                 signals.append(Signal(
                     symbol=symbol,
@@ -302,7 +315,8 @@ class MultiSymbolBacktest:
                 'low': float(row['low']),
                 'close': float(row['close'])
             }
-        except:
+        except Exception:
+
             return {'open': 0, 'high': 0, 'low': 0, 'close': 0}
     
     def check_exit_conditions(self, signal_time: datetime) -> bool:
@@ -400,8 +414,9 @@ class MultiSymbolBacktest:
         trade.pnl_pct *= self.leverage
         trade.pnl_usd = self.capital * (trade.pnl_pct / 100)
         
-        # 수수료 차감 (왕복 0.12%)
-        fee = self.capital * 0.0012
+        # 수수료 차감 (왕복 슬리피지: 0.0006 × 2 = 0.0012)
+        # NOTE: 실제 거래 시 DEFAULT_PARAMS['slippage'] + DEFAULT_PARAMS['fee'] 사용 권장
+        fee = self.capital * 0.0012  # 슬리피지만 포함 (수수료 제외)
         trade.pnl_usd -= fee
         
         self.capital += trade.pnl_usd
@@ -417,7 +432,7 @@ class MultiSymbolBacktest:
         
         self.position = None
     
-    def run(self) -> dict:
+    def run(self) -> OptimizationResult:
         """백테스트 실행"""
         self.is_running = True
         self.capital = self.initial_capital
@@ -473,72 +488,63 @@ class MultiSymbolBacktest:
         """중지"""
         self.is_running = False
     
-    def get_result(self) -> dict:
-        """결과 반환"""
+    def get_result(self) -> OptimizationResult:
+        """결과를 OptimizationResult 객체로 반환"""
         if not self.trades:
-            return {
-                'total_trades': 0,
-                'win_rate': 0,
-                'profit_factor': 0,
-                'total_pnl_pct': 0,
-                'total_pnl_usd': 0,
-                'max_drawdown': 0,
-                'final_capital': self.capital,
-                'initial_capital': self.initial_capital,
-                'trades': [],
-                'equity_curve': self.equity_curve,
-                'symbols_traded': []
-            }
+            return OptimizationResult(
+                params=self.preset_params,
+                trades=0,
+                win_rate=0.0,
+                total_return=0.0,
+                symbol="Multi",
+                timeframe="/".join(self.timeframes),
+                final_capital=self.initial_capital
+            )
+
+        # 1. 메트릭 계산을 위한 준비 (pnl_pct는 이미 레버리지가 적용된 상태)
+        trade_dicts = []
+        for t in self.trades:
+            trade_dicts.append({
+                'pnl': t.pnl_pct,
+                'entry_time': t.entry_time,
+                'exit_time': t.exit_time
+            })
+
+        # 2. SSOT 메트릭 계산
+        win_rate = calculate_win_rate(trade_dicts)
+        mdd = calculate_mdd(trade_dicts)
+        sharpe = calculate_sharpe_ratio([d['pnl'] for d in trade_dicts])
+        pf = calculate_profit_factor(trade_dicts)
         
-        wins = [t for t in self.trades if t.pnl_usd > 0]
-        losses = [t for t in self.trades if t.pnl_usd <= 0]
+        # Compound Return
+        total_pnl_pct = ((self.capital - self.initial_capital) / self.initial_capital) * 100
         
-        total_profit = sum(t.pnl_usd for t in wins)
-        total_loss = abs(sum(t.pnl_usd for t in losses))
+        # CAGR
+        cagr = calculate_cagr(trade_dicts, self.capital, self.initial_capital)
+
+        # 3. OptimizationResult 생성
+        result = OptimizationResult(
+            params=self.preset_params,
+            trades=len(self.trades),
+            win_rate=win_rate,
+            total_return=total_pnl_pct,
+            simple_return=sum(d['pnl'] for d in trade_dicts),
+            compound_return=total_pnl_pct,
+            max_drawdown=mdd,
+            sharpe_ratio=sharpe,
+            profit_factor=pf,
+            final_capital=self.capital,
+            cagr=cagr,
+            symbol="Multi",
+            timeframe="/".join(self.timeframes)
+        )
         
-        peak = self.initial_capital
-        max_dd = 0
-        for eq in self.equity_curve:
-            cap = eq.get('capital', self.initial_capital)
-            if cap > peak:
-                peak = cap
-            dd = (peak - cap) / peak * 100 if peak > 0 else 0
-            if dd > max_dd:
-                max_dd = dd
+        # 필터 통과 여부 (멀티 백테스트도 동일 기준 적용)
+        result.passes_filter = (mdd <= 20.0 and win_rate >= 40.0 and len(self.trades) >= 3)
         
-        return {
-            'total_trades': len(self.trades),
-            'wins': len(wins),
-            'losses': len(losses),
-            'win_rate': len(wins) / len(self.trades) * 100 if self.trades else 0,
-            'profit_factor': total_profit / total_loss if total_loss > 0 else 999,
-            'total_pnl_pct': ((self.capital - self.initial_capital) / self.initial_capital) * 100,
-            'total_pnl_usd': self.capital - self.initial_capital,
-            'max_drawdown': max_dd,
-            'final_capital': self.capital,
-            'initial_capital': self.initial_capital,
-            'leverage': self.leverage,
-            'exchange': self.exchange,
-            'timeframes': self.timeframes,
-            'trades': [
-                {
-                    'symbol': t.symbol,
-                    'direction': t.direction,
-                    'entry_time': str(t.entry_time),
-                    'exit_time': str(t.exit_time),
-                    'entry_price': t.entry_price,
-                    'exit_price': t.exit_price,
-                    'pnl_pct': round(t.pnl_pct, 2),
-                    'pnl_usd': round(t.pnl_usd, 2),
-                    'exit_reason': t.exit_reason
-                }
-                for t in self.trades
-            ],
-            'equity_curve': self.equity_curve,
-            'symbols_traded': list(set(t.symbol for t in self.trades))
-        }
+        return result
     
-    def save_result(self, filepath: str = None) -> str:
+    def save_result(self, filepath: Optional[str] = None) -> str:
         """결과 저장"""
         import json
         

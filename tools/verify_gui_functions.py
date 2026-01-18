@@ -5,9 +5,10 @@ import inspect
 import json
 import logging
 from unittest.mock import MagicMock, patch
+from pathlib import Path
 
 # Add project root
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, str(Path(__file__).parent))
 
 # ---------------------------------------------------------
 # MOCK PyQt5 BEFORE IMPORTS
@@ -25,12 +26,14 @@ sys.modules['PyQt5.QtWidgets'].QMainWindow = MagicMock
 sys.modules['PyQt5.QtWidgets'].QDialog = MagicMock
 
 # Now we can safely import GUI modules
+TradingDashboard = None
+CoinRow = None
 try:
-    from GUI.trading_dashboard import TradingDashboard, CoinRow
+    from GUI import trading_dashboard as td_module
+    TradingDashboard = getattr(td_module, 'TradingDashboard', None)
+    CoinRow = getattr(td_module, 'CoinRow', None)
 except ImportError as e:
     print(f"Warning: Could not import TradingDashboard: {e}")
-    TradingDashboard = None
-    CoinRow = None
 
 try:
     from GUI.dashboard_widgets import EquityCurveWidget

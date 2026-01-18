@@ -1,13 +1,14 @@
 # notification_widget.py - 알림 설정 UI
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QLineEdit, QCheckBox,
     QGroupBox, QComboBox, QMessageBox, QTimeEdit
 )
-from PyQt5.QtCore import QTime
+from PyQt6.QtCore import QTime
+from typing import Any, cast
 
-from notification_manager import NotificationManager
+from GUI.notification_manager import NotificationManager
 
 
 class NotificationWidget(QWidget):
@@ -66,7 +67,7 @@ class NotificationWidget(QWidget):
         layout.addWidget(QLabel("Bot Token:"), 1, 0)
         self.txt_telegram_token = QLineEdit()
         self.txt_telegram_token.setPlaceholderText("123456789:ABCdefGHIjklMNOpqrsTUVwxyz")
-        self.txt_telegram_token.setEchoMode(QLineEdit.Password)
+        self.txt_telegram_token.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.txt_telegram_token, 1, 1)
         
         self.btn_show_token = QPushButton("👁️")
@@ -276,11 +277,11 @@ class NotificationWidget(QWidget):
     
     def _toggle_token_visibility(self):
         """토큰 표시/숨김"""
-        if self.txt_telegram_token.echoMode() == QLineEdit.Password:
-            self.txt_telegram_token.setEchoMode(QLineEdit.Normal)
+        if self.txt_telegram_token.echoMode() == QLineEdit.EchoMode.Password:
+            self.txt_telegram_token.setEchoMode(QLineEdit.EchoMode.Normal)
             self.btn_show_token.setText("🙈")
         else:
-            self.txt_telegram_token.setEchoMode(QLineEdit.Password)
+            self.txt_telegram_token.setEchoMode(QLineEdit.EchoMode.Password)
             self.btn_show_token.setText("👁️")
     
     def _test_telegram(self):
@@ -310,7 +311,7 @@ class NotificationWidget(QWidget):
     
     def _on_save(self):
         """설정 저장"""
-        self.notification_manager.update_settings(
+        cast(Any, self.notification_manager).update_settings(
             telegram_enabled=self.chk_telegram.isChecked(),
             telegram_token=self.txt_telegram_token.text(),
             telegram_chat_id=self.txt_telegram_chat.text(),
@@ -334,7 +335,7 @@ class NotificationWidget(QWidget):
 # 테스트
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -344,4 +345,4 @@ if __name__ == "__main__":
     widget.setStyleSheet("background-color: #0d1117; color: #c9d1d9;")
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

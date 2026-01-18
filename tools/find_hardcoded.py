@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from collections import defaultdict
 
-BASE = Path(r'C:\매매전략')
+BASE = Path(__file__).parent
 DIRS = ['core', 'GUI', 'exchanges', 'utils']
 
 # 관심 있는 패턴
@@ -59,7 +59,8 @@ def analyze_file(filepath):
                             'match': match.group(0)[:50],
                             'context': line.strip()[:60]
                         })
-    except:
+    except Exception:
+
         pass
     
     return items

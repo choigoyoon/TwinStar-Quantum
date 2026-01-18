@@ -1,19 +1,22 @@
 import os
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 def count_lines(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return len(f.readlines())
-    except:
+    except Exception:
         return 0
 
 dirs = [
-    'C:/매매전략/GUI', 
-    'C:/매매전략/core', 
-    'C:/매매전략/exchanges',
-    'C:/매매전략/utils',
-    'C:/매매전략/strategies',
-    'C:/매매전략'
+    str(PROJECT_ROOT / 'GUI'), 
+    str(PROJECT_ROOT / 'core'), 
+    str(PROJECT_ROOT / 'exchanges'),
+    str(PROJECT_ROOT / 'utils'),
+    str(PROJECT_ROOT / 'strategies'),
+    str(Path(__file__).parent)
 ]
 
 print("="*60)

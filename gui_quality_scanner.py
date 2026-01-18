@@ -16,7 +16,6 @@ if gui_dir.exists():
             code = f.read_text(encoding='utf-8', errors='ignore')
             compile(code, f.name, 'exec')
             
-            # except: pass
             p_matches = re.findall(r'except.*:\s*pass\s*$', code, re.MULTILINE)
             if p_matches:
                 report['summary']['pass'] += len(p_matches)

@@ -4,12 +4,11 @@ TwinStar Quantum 가입 다이얼로그
 - 7일 체험판 등록
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QLineEdit, QMessageBox, QFrame,
-    QApplication
+    QPushButton, QLineEdit, QMessageBox, QApplication
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 import re
 
 
@@ -59,13 +58,13 @@ class RegisterDialog(QDialog):
         # 타이틀
         title = QLabel("🚀 7일 무료 체험 시작")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
         # 설명
         desc = QLabel("가입 후 모든 기능을 7일간 무료로 체험하세요!")
         desc.setStyleSheet("font-size: 12px; color: #787b86;")
-        desc.setAlignment(Qt.AlignCenter)
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc)
         
         layout.addSpacing(10)

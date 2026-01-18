@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 files = [
     'GUI/trading_dashboard.py',
@@ -11,7 +12,7 @@ files = [
 print(f"{'File':<40} Lines")
 print('-'*50)
 for f in files:
-    path = os.path.join('C:/매매전략', f)
+    path = os.path.join(str(Path(__file__).parent), f)
     if os.path.exists(path):
         with open(path, 'r', encoding='utf-8', errors='ignore') as fp:
             print(f"{f:<40} {len(fp.readlines())}")

@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import py_compile
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🔍 전체 프로젝트 무결점 검사')
@@ -53,7 +53,8 @@ for f in all_py:
                         mod_path = base / (module.group(1).replace('.', '/') + '.py')
                         if not mod_path.exists():
                             import_issues.append(f'{fname} L{i+1}: {line.strip()[:50]}')
-    except:
+    except Exception:
+
         pass
 
 if import_issues:
@@ -91,7 +92,8 @@ for f in all_py:
                     if f'if {obj_name}' not in context and f'{obj_name} is not None' not in context:
                         if 'except' not in context and 'try' not in context:
                             none_issues.append(f'{fname} L{i+1}: {line.strip()[:50]}')
-    except:
+    except Exception:
+
         pass
 
 if none_issues:
@@ -104,9 +106,9 @@ else:
     print('  ✅ None 체크 문제 없음')
 
 #############################################
-# [4] except: pass 남용
+# [4] except Exception: pass 남용
 #############################################
-print('\n📊 [4] except: pass 남용')
+print('\n📊 [4] except Exception: pass 남용')
 
 pass_issues = []
 for f in all_py:
@@ -120,17 +122,18 @@ for f in all_py:
                 next_line = lines[i+1].strip() if i+1 < len(lines) else ''
                 if next_line == 'pass':
                     pass_issues.append(f'{fname} L{i+1}')
-    except:
+    except Exception:
+
         pass
 
 if pass_issues:
-    print(f'  ⚠️ except:pass: {len(pass_issues)}개')
+    print(f'  ⚠️ except Exception: pass: {len(pass_issues)}개')
     for issue in pass_issues[:10]:
         print(f'    {issue}')
     if len(pass_issues) > 10:
         print(f'    ... 외 {len(pass_issues)-10}개')
 else:
-    print('  ✅ except:pass 없음')
+    print('  ✅ except Exception: pass 없음')
 
 #############################################
 # [5] DataFrame 위험 패턴
@@ -148,7 +151,8 @@ for f in all_py:
             if re.search(r'if\s+\w*df\w*\s+(or|and)', line, re.I):
                 if 'is None' not in line and 'is not None' not in line:
                     df_issues.append(f'{fname} L{i+1}: {line.strip()[:50]}')
-    except:
+    except Exception:
+
         pass
 
 if df_issues:
@@ -174,7 +178,8 @@ for f in all_py:
         for i, line in enumerate(lines):
             if 'signal.get(' in line.lower() and 'isinstance' not in line and 'getattr' not in line:
                 signal_issues.append(f'{fname} L{i+1}: {line.strip()[:50]}')
-    except:
+    except Exception:
+
         pass
 
 if signal_issues:
@@ -200,7 +205,8 @@ for f in all_py:
             if re.search(r'["\']C:\\\\', line) or re.search(r'["\']C:/', line):
                 if '#' not in line.split('C:')[0]:
                     path_issues.append(f'{fname} L{i+1}: {line.strip()[:50]}')
-    except:
+    except Exception:
+
         pass
 
 if path_issues:
@@ -228,7 +234,8 @@ for f in all_py:
             if re.search(r'float\s*\(\s*\w+\.get_balance', line):
                 if 'safe_float' not in line:
                     float_issues.append(f'{fname} L{i+1}: {line.strip()[:50]}')
-    except:
+    except Exception:
+
         pass
 
 if float_issues:

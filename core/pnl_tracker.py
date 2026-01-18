@@ -1,7 +1,6 @@
 import logging
 import time
 from datetime import datetime
-from typing import Optional
 
 class PnLTracker:
     """거래소 API와 로컬 계산 PnL 동기화 및 정확도 관리"""

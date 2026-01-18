@@ -147,7 +147,6 @@ class BaseStrategy(ABC):
     @abstractmethod
     def _init_config(self) -> StrategyConfig:
         """전략 설정 초기화"""
-        pass
     
     @abstractmethod
     def check_signal(self, ohlcv: pd.DataFrame) -> Optional[TradeSignal]:
@@ -160,7 +159,6 @@ class BaseStrategy(ABC):
         Returns:
             TradeSignal or None
         """
-        pass
     
     def get_config(self) -> StrategyConfig:
         """설정 반환"""

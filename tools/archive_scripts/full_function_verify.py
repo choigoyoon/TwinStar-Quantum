@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🎯 5대 기능 실제 동작 + 대소문자 기준 검증')
@@ -288,7 +288,8 @@ for name, pattern in license_patterns:
         try:
             c = f.read_text(encoding='utf-8', errors='ignore')
             count += len(re.findall(pattern, c, re.I))
-        except:
+        except Exception:
+
             pass
     print(f'    {"✅" if count > 0 else "❌"} {name}: {count}곳')
 
@@ -317,7 +318,8 @@ for f in (base / 'exchanges').rglob('*.py'):
         api_normalize['symbol.upper()'] += len(re.findall(r'symbol\.upper\(\)', c))
         api_normalize['symbol.lower()'] += len(re.findall(r'symbol\.lower\(\)', c))
         api_normalize['exchange.lower()'] += len(re.findall(r'exchange\.lower\(\)', c))
-    except:
+    except Exception:
+
         pass
 
 for k, v in api_normalize.items():
@@ -341,7 +343,8 @@ for f in base.rglob('*.py'):
                     parquet_case['upper'] += 1
                 else:
                     parquet_case['mixed'] += 1
-    except:
+    except Exception:
+
         pass
 
 for k, v in parquet_case.items():
@@ -366,7 +369,8 @@ for f in base.rglob('*.py'):
                 compare_normalize['직접 비교 (위험)'] += 1
             elif '.lower() ==' in line or '.upper() ==' in line:
                 compare_normalize['정규화 후 비교'] += 1
-    except:
+    except Exception:
+
         pass
 
 for k, v in compare_normalize.items():

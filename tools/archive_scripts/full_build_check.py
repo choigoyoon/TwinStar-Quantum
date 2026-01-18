@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import ast
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('📦 TwinStar Quantum 빌드 전 전체 점검')
@@ -66,7 +66,8 @@ for f in base.rglob('*.py'):
                 internal_modules.add(m)
             else:
                 all_imports.add(root)
-    except:
+    except Exception:
+
         pass
 
 # 표준 라이브러리 제외

@@ -8,7 +8,7 @@ config/parameters.py
 
 import os
 import json
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
 
 # ============ 기본 파라미터 (전체 프로젝트 공용) ============
@@ -29,7 +29,12 @@ DEFAULT_PARAMS = {
     
     # RSI 파라미터 (최적화됨)
     'rsi_period': 14,          # [OPT] 14 (표준 유지)
-    
+
+    # ADX 파라미터 (Session 8 추가)
+    'adx_period': 14,          # ADX 계산 기간 (표준)
+    'adx_threshold': 25.0,     # 추세 강도 임계값 (>25: 강한 추세)
+    'enable_adx_filter': False, # ADX 필터 활성화 여부 (기본 비활성)
+
     # 트레일링 파라미터
     'trail_start_r': 0.8,
     'trail_dist_r': 0.1,       # [OPT] 0.5 → 0.1 (88.4% 프리셋 기준)
@@ -57,23 +62,15 @@ DEFAULT_PARAMS = {
 }
 
 # ============ 비용 상수 (프로젝트 공용) ============
-SLIPPAGE = 0.0006       # 슬리피지 (0.06%)
-FEE = 0.00055           # 수수료 (0.055%)
-TOTAL_COST = SLIPPAGE + FEE  # 총 비용 (0.115%)
+# ============ SSOT: config.constants에서 임포트 ============
+from config.constants.trading import (
+    SLIPPAGE, FEE, TOTAL_COST,
+    DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH,
+    to_api_direction, from_api_direction
+)
 
-# ============ 방향 상수 (프로젝트 공용) ============
-DIRECTION_LONG = 'Long'
-DIRECTION_SHORT = 'Short'
-DIRECTION_BOTH = 'Both'
-
-# 방향 변환 (내부 ↔ API)
-def to_api_direction(direction: str) -> str:
-    """내부 방향 → API 방향 변환 (Long → Buy, Short → Sell)"""
-    return 'Buy' if direction == DIRECTION_LONG else 'Sell'
-
-def from_api_direction(api_dir: str) -> str:
-    """API 방향 → 내부 방향 변환 (Buy → Long, Sell → Short)"""
-    return DIRECTION_LONG if api_dir.lower() in ('buy', 'long') else DIRECTION_SHORT
+# NOTE: 위 상수들은 config/constants/trading.py에서 관리됩니다 (SSOT)
+# to_api_direction, from_api_direction 함수도 config/constants/trading.py에서 제공됩니다.
 
 
 # ============ 최적화 범위 ============
@@ -94,7 +91,11 @@ PARAM_RANGES = {
     'rsi_period': (10, 21, 1),
     'pullback_rsi_long': (35, 50, 5),
     'pullback_rsi_short': (50, 65, 5),
-    
+
+    # ADX (Session 8 추가)
+    'adx_period': (10, 21, 1),
+    'adx_threshold': (20.0, 30.0, 5.0),
+
     # 트레일링
     'trail_start_r': (0.5, 1.5, 0.1),
     'trail_dist_r': (0.3, 0.8, 0.1),
@@ -111,7 +112,7 @@ REQUIRED_PARAMS = ['atr_mult', 'trail_start_r', 'trail_dist_r']
 
 # ============ 파라미터 접근 함수 ============
 
-def get_param(key: str, preset: dict = None, default: Any = None) -> Any:
+def get_param(key: str, preset: Optional[dict] = None, default: Any = None) -> Any:
     """
     파라미터 조회 (프리셋 > 기본값 > default)
     
@@ -130,7 +131,7 @@ def get_param(key: str, preset: dict = None, default: Any = None) -> Any:
     return default
 
 
-def get_all_params(preset: dict = None) -> dict:
+def get_all_params(preset: Optional[dict] = None) -> dict:
     """
     전체 파라미터 반환 (프리셋으로 오버라이드)
     
@@ -179,12 +180,12 @@ def _get_config_path() -> str:
     """설정 파일 경로"""
     try:
         from paths import Paths
-        return os.path.join(Paths.USER_CONFIG, 'strategy_params.json')
+        return os.path.join(str(Paths.USER_CONFIG), 'strategy_params.json')
     except ImportError:
         return os.path.join(os.path.dirname(__file__), 'strategy_params.json')
 
 
-def load_params_from_json(config_path: str = None) -> dict:
+def load_params_from_json(config_path: Optional[str] = None) -> dict:
     """
     JSON 파일에서 파라미터 로드 (없으면 DEFAULT_PARAMS 반환)
     
@@ -210,7 +211,7 @@ def load_params_from_json(config_path: str = None) -> dict:
     return DEFAULT_PARAMS.copy()
 
 
-def save_params_to_json(params: dict, config_path: str = None) -> bool:
+def save_params_to_json(params: dict, config_path: Optional[str] = None) -> bool:
     """
     파라미터를 JSON 파일로 저장
     
@@ -238,7 +239,7 @@ def save_params_to_json(params: dict, config_path: str = None) -> bool:
 
 # ============ 편의 함수 ============
 
-def get_indicator_params(preset: dict = None) -> dict:
+def get_indicator_params(preset: Optional[dict] = None) -> dict:
     """지표 관련 파라미터만 추출"""
     all_params = get_all_params(preset)
     keys = ['macd_fast', 'macd_slow', 'macd_signal', 'ema_period', 
@@ -246,7 +247,7 @@ def get_indicator_params(preset: dict = None) -> dict:
     return {k: all_params[k] for k in keys if k in all_params}
 
 
-def get_trading_params(preset: dict = None) -> dict:
+def get_trading_params(preset: Optional[dict] = None) -> dict:
     """거래 관련 파라미터만 추출"""
     all_params = get_all_params(preset)
     keys = ['leverage', 'slippage', 'fee', 'max_slippage', 
@@ -254,7 +255,7 @@ def get_trading_params(preset: dict = None) -> dict:
     return {k: all_params[k] for k in keys if k in all_params}
 
 
-def get_pattern_params(preset: dict = None) -> dict:
+def get_pattern_params(preset: Optional[dict] = None) -> dict:
     """패턴 관련 파라미터만 추출"""
     all_params = get_all_params(preset)
     keys = ['pattern_tolerance', 'entry_validity_hours', 'max_adds',

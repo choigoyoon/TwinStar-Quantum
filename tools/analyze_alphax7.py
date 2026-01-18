@@ -1,12 +1,17 @@
 import sys
+import os
 import re
-sys.path.insert(0, r'C:\매매전략')
+from pathlib import Path
+
+# Add project root to sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 print('=== Alpha-X7 매매 로직 분석 ===')
 print()
 
 # 1. strategy_core.py 직접 읽기
-filepath = r'C:\매매전략\core\strategy_core.py'
+filepath = PROJECT_ROOT / 'core' / 'strategy_core.py'
 with open(filepath, 'r', encoding='utf-8') as f:
     source = f.read()
 

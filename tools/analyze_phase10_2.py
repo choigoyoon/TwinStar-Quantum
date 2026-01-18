@@ -2,7 +2,8 @@ import os
 import re
 from collections import defaultdict
 
-BASE = r'C:\매매전략'
+from pathlib import Path
+BASE = Path(__file__).resolve().parent.parent
 
 def analyze_file(filepath):
     """Analyze a single file for cleanup opportunities"""

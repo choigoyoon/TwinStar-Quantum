@@ -12,6 +12,7 @@
         "data": "수집",
         "backtest": "백테스트",
         "optimization": "최적화",
+        "indicator_comparison": "지표 비교",
         "results": "결과",
         "betting": "배팅"
     },

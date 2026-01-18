@@ -14,17 +14,22 @@ import json
 import base64
 import hashlib
 import uuid
+from typing import Any, Optional
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
+
+# pycryptodome 타입 초기화
+AES: Any = None
+unpad: Any = None
+HAS_CRYPTO = False
 
 try:
     from Crypto.Cipher import AES
     from Crypto.Util.Padding import unpad
     HAS_CRYPTO = True
 except ImportError:
-    HAS_CRYPTO = False
     logger.info("⚠️ pycryptodome 없음 - pip install pycryptodome")
 
 # 설정 (난독화)
@@ -313,9 +318,9 @@ class LicenseGuard:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def _decrypt_params(self, encrypted: str) -> dict:
+    def _decrypt_params(self, encrypted: str) -> Optional[dict]:
         """암호화된 파라미터 복호화"""
-        if not HAS_CRYPTO:
+        if not HAS_CRYPTO or AES is None:
             logger.info("⚠️ 복호화 라이브러리 없음")
             return None
         
@@ -324,7 +329,10 @@ class LicenseGuard:
             iv = data[:16]
             encrypted_data = data[16:]
             
-            cipher = AES.new(DECRYPT_KEY, AES.MODE_CBC, iv)
+            # [Type Fix] Cast AES to Any to avoid pycryptodome type errors
+            from typing import cast, Any
+            cipher_engine = cast(Any, AES)
+            cipher = cipher_engine.new(DECRYPT_KEY, AES.MODE_CBC, iv)
             decrypted = unpad(cipher.decrypt(encrypted_data), AES.block_size)
             
             params = json.loads(decrypted.decode('utf-8'))
@@ -345,7 +353,7 @@ class LicenseGuard:
             logger.info(f"복호화 실패: {e}")
             return None
     
-    def get_params(self) -> dict:
+    def get_params(self) -> Optional[dict]:
         """현재 유효한 파라미터 반환"""
         # 1. 유효한 파라미터 있으면 반환
         if self.decrypted_params and time.time() < self.params_expires:
@@ -613,6 +621,20 @@ class LicenseGuard:
             return 0
         except Exception:
             return 0
+
+    def confirm_payment(self, payment_id: int) -> bool:
+        """관리자 결제 확인 요청 (서버)"""
+        try:
+            response = requests.post(_get_api_url(), data={
+                'action': 'confirm_payment',
+                'payment_id': payment_id,
+                'hw_id': self.hw_id
+            }, timeout=10)
+            
+            result = response.json()
+            return bool(result.get('success'))
+        except Exception:
+            return False
 
 
 # ==================== 싱글톤 ====================

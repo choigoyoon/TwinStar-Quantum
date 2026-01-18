@@ -4,7 +4,7 @@ utils/cache_manager.py - 캐시 관리 유틸리티
 """
 import time
 import logging
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Callable
 from functools import wraps
 from threading import Lock
 
@@ -34,7 +34,7 @@ class TTLCache:
         self._hits = 0
         self._misses = 0
     
-    def set(self, key: str, value: Any, ttl: int = None):
+    def set(self, key: str, value: Any, ttl: int | None = None):
         """값 저장"""
         with self._lock:
             # 캐시 크기 제한
@@ -107,7 +107,7 @@ class TTLCache:
         }
 
 
-def cached(ttl: int = 300, key_func: Callable = None):
+def cached(ttl: int = 300, key_func: Callable | None = None):
     """
     함수 결과 캐싱 decorator
     
@@ -143,9 +143,9 @@ def cached(ttl: int = 300, key_func: Callable = None):
             
             return result
         
-        # 캐시 제어 메서드 추가
-        wrapper.cache = cache
-        wrapper.cache_clear = cache.clear
+        # 캐시 제어 메서드 추가 (동적 속성)
+        wrapper.cache = cache  # type: ignore[attr-defined]
+        wrapper.cache_clear = cache.clear  # type: ignore[attr-defined]
         
         return wrapper
     return decorator
@@ -189,7 +189,7 @@ class DataFrameCache:
         
         return result
     
-    def invalidate(self, pattern: str = None):
+    def invalidate(self, pattern: str | None = None):
         """캐시 무효화"""
         with self._lock:
             if pattern:

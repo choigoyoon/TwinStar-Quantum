@@ -50,7 +50,8 @@ def analyze_project(root_dir):
                             elif isinstance(node, ast.ImportFrom):
                                 if node.module:
                                     imports.add(node.module.split('.')[0])
-                    except:
+                    except Exception:
+
                         pass
             else:
                 # Resource

@@ -3,7 +3,7 @@ TwinStar Quantum - 스나이퍼 세션 복원 팝업
 이전 매매 기록 발견 시 복리/리셋 선택
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QFrame
@@ -12,8 +12,10 @@ from PyQt5.QtWidgets import (
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
+from typing import Any, cast, Optional
+from PyQt6.QtWidgets import QAbstractItemView
 
 
 class SniperSessionPopup(QDialog):
@@ -22,7 +24,7 @@ class SniperSessionPopup(QDialog):
     def __init__(self, session_summary: dict, parent=None):
         super().__init__(parent)
         self.session_summary = session_summary
-        self.result = None  # "compound", "reset", "cancel"
+        self.result: Optional[str] = None  # "compound", "reset", "cancel"
         
         self.setWindowTitle("💰 이전 매매 기록 발견")
         self.setMinimumWidth(550)
@@ -65,7 +67,7 @@ class SniperSessionPopup(QDialog):
         # 1. 헤더
         header = QLabel("📊 이전 세션의 매매 기록이 있습니다")
         header.setStyleSheet("font-size: 18px; font-weight: bold; color: #e94560;")
-        header.setAlignment(Qt.AlignCenter)
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
         
         # 2. 코인별 테이블
@@ -74,10 +76,12 @@ class SniperSessionPopup(QDialog):
         self.table.setHorizontalHeaderLabels([
             "코인", "초기 시드", "현재 시드", "수익률", "거래"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionMode(QTableWidget.NoSelection)
-        self.table.verticalHeader().setVisible(False)
+        if header := self.table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        if v_header := self.table.verticalHeader():
+            v_header.setVisible(False)
         
         coins = self.session_summary.get("coins", [])
         self.table.setRowCount(len(coins))
@@ -85,22 +89,22 @@ class SniperSessionPopup(QDialog):
         for row, coin in enumerate(coins):
             # 코인명
             symbol_item = QTableWidgetItem(coin["symbol"])
-            symbol_item.setTextAlignment(Qt.AlignCenter)
+            symbol_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 0, symbol_item)
             
             # 초기 시드
             initial_item = QTableWidgetItem(f"${coin['initial_seed']:.2f}")
-            initial_item.setTextAlignment(Qt.AlignCenter)
+            initial_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 1, initial_item)
             
             # 현재 시드
             current_item = QTableWidgetItem(f"${coin['current_seed']:.2f}")
-            current_item.setTextAlignment(Qt.AlignCenter)
+            current_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 2, current_item)
             
             # 수익률 색상
             pnl_item = QTableWidgetItem(f"{coin['pnl_pct']:+.1f}%")
-            pnl_item.setTextAlignment(Qt.AlignCenter)
+            pnl_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             if coin['pnl_pct'] > 0:
                 pnl_item.setForeground(QColor("#51cf66"))
             elif coin['pnl_pct'] < 0:
@@ -112,7 +116,7 @@ class SniperSessionPopup(QDialog):
             # 거래 (승/총)
             win_rate = f"{coin['win_count']}/{coin['trade_count']}"
             trade_item = QTableWidgetItem(win_rate)
-            trade_item.setTextAlignment(Qt.AlignCenter)
+            trade_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 4, trade_item)
         
         layout.addWidget(self.table)
@@ -162,7 +166,7 @@ class SniperSessionPopup(QDialog):
         # 4. 질문
         question = QLabel("복리로 이어서 진행할까요?")
         question.setStyleSheet("font-size: 15px; font-weight: bold; margin-top: 10px;")
-        question.setAlignment(Qt.AlignCenter)
+        question.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(question)
         
         # 5. 버튼
@@ -237,14 +241,14 @@ class SniperSessionPopup(QDialog):
         self.result = "cancel"
         self.reject()
     
-    def get_result(self) -> str:
+    def get_result(self) -> Optional[str]:
         return self.result
 
 
 # 테스트용
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -265,5 +269,5 @@ if __name__ == "__main__":
     }
     
     popup = SniperSessionPopup(test_summary)
-    popup.exec_()
+    popup.exec()
     logger.info(f"Result: {popup.get_result()}")

@@ -4,7 +4,7 @@
 import os
 import sys
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from itertools import product
@@ -36,33 +36,18 @@ class OptimizationResult:
 @dataclass
 class ParameterRange:
     """파라미터 범위 정의"""
-    macd_fast: List[int] = None
-    macd_slow: List[int] = None
-    macd_signal: List[int] = None
-    swing_length: List[int] = None
-    atr_period: List[int] = None
-    atr_multiplier: List[float] = None
-    be_trigger_mult: List[float] = None
-    pattern_tolerance: List[float] = None
-    
-    def __post_init__(self):
-        # 기본 범위 설정
-        if self.macd_fast is None:
-            self.macd_fast = [10, 12, 14]
-        if self.macd_slow is None:
-            self.macd_slow = [24, 26, 28]
-        if self.macd_signal is None:
-            self.macd_signal = [8, 9, 10]
-        if self.swing_length is None:
-            self.swing_length = [2, 3, 4]
-        if self.atr_period is None:
-            self.atr_period = [12, 14, 16]
-        if self.atr_multiplier is None:
-            self.atr_multiplier = [1.5, 2.0, 2.5]
-        if self.be_trigger_mult is None:
-            self.be_trigger_mult = [1.0, 1.5, 2.0]
-        if self.pattern_tolerance is None:
-            self.pattern_tolerance = [0.02, 0.03, 0.04]
+    slippage: List[float] = field(default_factory=lambda: [0.04, 0.06, 0.08])
+    trigger_mult: List[float] = field(default_factory=lambda: [1.0, 1.5, 2.0])
+    leverage: List[float] = field(default_factory=lambda: [2.0, 3.0, 5.0])
+    # 추가 필드 (전략별 파라미터)
+    macd_fast: List[int] = field(default_factory=lambda: [12])
+    macd_slow: List[int] = field(default_factory=lambda: [26])
+    macd_signal: List[int] = field(default_factory=lambda: [9])
+    swing_length: List[int] = field(default_factory=lambda: [3])
+    atr_period: List[int] = field(default_factory=lambda: [14])
+    atr_multiplier: List[float] = field(default_factory=lambda: [2.0])
+    be_trigger_mult: List[float] = field(default_factory=lambda: [1.5])
+    pattern_tolerance: List[float] = field(default_factory=lambda: [0.03])
 
 
 class ParameterOptimizer:
@@ -83,7 +68,7 @@ class ParameterOptimizer:
         """데이터 로드"""
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'GUI'))
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             
             dm = DataManager()
             df = dm.load(symbol=symbol, timeframe=timeframe, exchange=exchange)
@@ -212,7 +197,7 @@ class ParameterOptimizer:
         
         return score
     
-    def grid_search(self, symbol: str, param_range: ParameterRange = None,
+    def grid_search(self, symbol: str, param_range: Optional[ParameterRange] = None,
                     callback=None) -> List[OptimizationResult]:
         """
         그리드 서치로 최적 파라미터 탐색
@@ -244,6 +229,9 @@ class ParameterOptimizer:
         
         # 파라미터 조합 생성
         param_combinations = list(product(
+            param_range.slippage,
+            param_range.trigger_mult,
+            param_range.leverage,
             param_range.macd_fast,
             param_range.macd_slow,
             param_range.macd_signal,
@@ -253,32 +241,32 @@ class ParameterOptimizer:
             param_range.be_trigger_mult,
             param_range.pattern_tolerance
         ))
-        
+
         total_combinations = len(param_combinations)
         print(f"Testing {total_combinations} parameter combinations...")
-        
+
         if callback:
             callback(15, f"Testing {total_combinations} combinations")
-        
+
         results = []
-        
+
         for idx, combo in enumerate(param_combinations):
-            macd_fast, macd_slow, macd_signal, swing_length, atr_period, \
-            atr_mult, be_trigger, pattern_tol = combo
-            
-            # MACD fast < slow 조건
-            if macd_fast >= macd_slow:
-                continue
-            
+            (slippage, trigger_mult, leverage, macd_fast, macd_slow, 
+             macd_signal, swing_length, atr_period, atr_multiplier, 
+             be_trigger_mult, pattern_tolerance) = combo
+
             params = WMStrategyParams(
-                macd_fast=macd_fast,
-                macd_slow=macd_slow,
-                macd_signal=macd_signal,
-                swing_length=swing_length,
-                atr_period=atr_period,
-                atr_multiplier=atr_mult,
-                be_trigger_mult=be_trigger,
-                pattern_tolerance=pattern_tol
+                macd_fast=int(macd_fast),
+                macd_slow=int(macd_slow),
+                macd_signal=int(macd_signal),
+                swing_length=int(swing_length),
+                atr_period=int(atr_period),
+                atr_multiplier=float(atr_multiplier),
+                be_trigger_mult=float(be_trigger_mult),
+                pattern_tolerance=float(pattern_tolerance),
+                slippage=float(slippage),
+                trigger_mult=float(trigger_mult),
+                leverage=float(leverage)
             )
             
             # 백테스트 실행
@@ -400,14 +388,9 @@ if __name__ == "__main__":
     
     # 간단한 범위로 테스트
     small_range = ParameterRange(
-        macd_fast=[12],
-        macd_slow=[26],
-        macd_signal=[9],
-        swing_length=[3],
-        atr_period=[14],
-        atr_multiplier=[1.5, 2.0, 2.5],
-        be_trigger_mult=[1.5],
-        pattern_tolerance=[0.03]
+        slippage=[0.04, 0.06],
+        trigger_mult=[1.0, 1.5, 2.0],
+        leverage=[2.0, 3.0]
     )
     
     results = optimizer.grid_search("BTCUSDT", param_range=small_range)

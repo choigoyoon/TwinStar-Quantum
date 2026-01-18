@@ -4,23 +4,23 @@ Alpha-X7 Final 핵심 전략 모듈
 - 모든 거래소에서 공통으로 사용
 - 이 파일만 수정하면 모든 봇에 자동 적용
 """
-import logging
-logger = logging.getLogger(__name__)
-
+from collections import deque
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, Dict, List, Union
+from typing import Optional, Tuple, Dict, List, Any, cast
 from dataclasses import dataclass
 
 # 통합 지표 모듈
-from utils.indicators import calculate_rsi as _calc_rsi, calculate_atr as _calc_atr
+from utils.indicators import calculate_rsi as _calc_rsi, calculate_atr as _calc_atr, calculate_adx as _calc_adx
+
+# 메트릭 계산 (SSOT)
+from utils.metrics import calculate_mdd
 
 # Logging
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
-# [Phase 3] config/parameters.py에서 파라미터 가져오기 (Single Source of Truth)
 # [Phase 3] config/parameters.py에서 파라미터 가져오기 (Single Source of Truth)
 try:
     from config.parameters import DEFAULT_PARAMS, get_all_params
@@ -30,51 +30,82 @@ except ImportError:
     raise ImportError("Critical: config/parameters.py not found. Phase 3 migration incomplete.")
 
 
-# ============ MDD 및 메트릭 계산 함수 ============
+# ============ 유틸리티 함수 ============
 
-def calculate_mdd(trades: List[Dict]) -> float:
+def _to_dt(ts: Any) -> Optional[pd.Timestamp]:
     """
-    최대 낙폭(MDD) 계산
-    
+    타임스탬프를 pd.Timestamp로 변환 (numpy, datetime, int 지원)
+
     Args:
-        trades: 거래 목록 [{'pnl': float, ...}, ...]
-    
-    Returns:
-        MDD (%) - 양수로 반환 (예: 15.3 = -15.3% 낙폭)
-    """
-    if not trades:
-        return 0.0
-    
-    equity = [100.0]  # 시작 자본 100%
-    for t in trades:
-        pnl = t.get('pnl', 0)
-        equity.append(equity[-1] * (1 + pnl / 100))
-    
-    # 최고점 대비 낙폭 계산
-    peak = equity[0]
-    max_dd = 0.0
-    for e in equity:
-        if e > peak:
-            peak = e
-        if peak > 0:
-            dd = (peak - e) / peak * 100
-            if dd > max_dd:
-                max_dd = dd
-    
-    return max_dd
+        ts: 변환할 타임스탬프 (다양한 타입 지원)
 
+    Returns:
+        pd.Timestamp 또는 None (NaT이거나 유효하지 않은 경우)
+    """
+    # NaT/None 체크
+    if ts is None or (isinstance(ts, float) and np.isnan(ts)):
+        return None
+    if pd.isna(ts):
+        return None
+
+    try:
+        if isinstance(ts, pd.Timestamp):
+            # 이미 Timestamp인 경우 UTC aware로 변환
+            if ts.tz is None:
+                return ts.tz_localize('UTC')  # type: ignore[return-value]
+            return ts  # type: ignore[return-value]
+        elif isinstance(ts, datetime):
+            result = pd.Timestamp(ts)
+            # UTC aware로 변환
+            if result.tz is None:
+                result = result.tz_localize('UTC')
+        elif isinstance(ts, (int, float, np.integer, np.floating)):
+            ts_int = int(ts)
+            unit = 'ms' if ts_int > 1e12 else 's'
+            result = pd.Timestamp(ts_int, unit=unit, tz='UTC')
+        else:
+            result = pd.Timestamp(ts)
+            # UTC aware로 변환
+            if result.tz is None:
+                result = result.tz_localize('UTC')
+
+        # NaT 체크 (isinstance로 명확히 체크)
+        if isinstance(result, type(pd.NaT)):
+            return None
+
+        return result  # type: ignore[return-value]
+    except Exception:
+        return None
+
+
+# ============ MDD 및 메트릭 계산 함수 ============
+# NOTE: calculate_mdd()는 utils.metrics로 이동 (SSOT)
+# NOTE: calculate_backtest_metrics()도 utils.metrics로 통합 (Phase 1-B)
 
 def calculate_backtest_metrics(trades: List[Dict], leverage: int = 1) -> Dict:
     """
-    백테스트 결과에서 전체 메트릭 계산
-    
+    백테스트 결과에서 전체 메트릭 계산 (Wrapper for utils.metrics.calculate_backtest_metrics)
+
     Args:
         trades: 거래 목록
         leverage: 레버리지 배수
-    
+
     Returns:
         Dict with: total_return, trade_count, win_rate, profit_factor, max_drawdown, sharpe_ratio
+        (키 이름이 utils.metrics와 다름 - 하위 호환성 유지)
+
+    Note:
+        이 함수는 utils.metrics.calculate_backtest_metrics를 호출하고,
+        키 이름을 변환하여 반환합니다 (하위 호환성).
+
+        utils.metrics          →  core.strategy_core
+        ───────────────────────────────────────────
+        total_pnl             →  total_return
+        total_trades          →  trade_count
+        mdd                   →  max_drawdown
     """
+    from utils.metrics import calculate_backtest_metrics as calc_metrics
+
     if not trades:
         return {
             'total_return': 0.0,
@@ -84,37 +115,21 @@ def calculate_backtest_metrics(trades: List[Dict], leverage: int = 1) -> Dict:
             'max_drawdown': 0.0,
             'sharpe_ratio': 0.0,
         }
-    
-    pnls = [t.get('pnl', 0) * leverage for t in trades]
-    wins = [p for p in pnls if p > 0]
-    losses = [p for p in pnls if p < 0]
-    
-    total_return = sum(pnls)
-    win_rate = len(wins) / len(trades) * 100 if trades else 0
-    
-    total_gains = sum(wins) if wins else 0
-    total_losses = abs(sum(losses)) if losses else 0
-    profit_factor = total_gains / total_losses if total_losses > 0 else (total_gains if total_gains > 0 else 0)
-    
-    # MDD 계산
-    mdd = calculate_mdd(trades)
-    
-    # Sharpe Ratio (연간화)
-    if len(pnls) > 1:
-        import numpy as np
-        mean_return = np.mean(pnls)
-        std_return = np.std(pnls)
-        sharpe = (mean_return / std_return * np.sqrt(252)) if std_return > 0 else 0
-    else:
-        sharpe = 0
-    
+
+    # leverage 적용된 거래 생성
+    leveraged_trades = [{'pnl': t.get('pnl', 0) * leverage} for t in trades]
+
+    # utils.metrics로 계산
+    metrics = calc_metrics(leveraged_trades, leverage=1, capital=100.0)
+
+    # 키 이름 변환 (하위 호환성)
     return {
-        'total_return': total_return,
-        'trade_count': len(trades),
-        'win_rate': win_rate,
-        'profit_factor': profit_factor,
-        'max_drawdown': mdd,
-        'sharpe_ratio': sharpe,
+        'total_return': metrics['total_pnl'],
+        'trade_count': metrics['total_trades'],
+        'win_rate': metrics['win_rate'],
+        'profit_factor': metrics['profit_factor'],
+        'max_drawdown': metrics['mdd'],
+        'sharpe_ratio': metrics['sharpe_ratio'],
         'trades': trades,  # 원본 거래 목록 포함
     }
 
@@ -139,13 +154,11 @@ class AlphaX7Core:
     """
     
     # 클래스 변수 (JSON/Constants 연동) - [FIX] 안전한 기본값 추가
-    PATTERN_TOLERANCE = ACTIVE_PARAMS.get('pattern_tolerance', 0.05)
-    ENTRY_VALIDITY_HOURS = ACTIVE_PARAMS.get('entry_validity_hours', 48.0)
-    TRAIL_DIST_R = ACTIVE_PARAMS.get('trail_dist_r', 0.5)
-    MAX_ADDS = ACTIVE_PARAMS.get('max_adds', 1)
+    PATTERN_TOLERANCE: float = ACTIVE_PARAMS.get('pattern_tolerance', 0.05) or 0.05
+    ENTRY_VALIDITY_HOURS: float = ACTIVE_PARAMS.get('entry_validity_hours', 48.0) or 48.0
+    TRAIL_DIST_R: float = ACTIVE_PARAMS.get('trail_dist_r', 0.5) or 0.5
+    MAX_ADDS: int = ACTIVE_PARAMS.get('max_adds', 1) or 1
 
-
-    
     # Entry TF -> MTF 매핑
     MTF_MAP = {
         '15m': '4h',
@@ -159,26 +172,40 @@ class AlphaX7Core:
     def __init__(self, use_mtf: bool = True):
         self.USE_MTF_FILTER = use_mtf
         self.adaptive_params = None
+
+        # 동적 속성 타입 힌트 (GUI에서 할당)
+        self.df_15m: Optional[pd.DataFrame] = None
+        self.df_1h: Optional[pd.DataFrame] = None
+        self.df_4h: Optional[pd.DataFrame] = None
+        self.df_1d: Optional[pd.DataFrame] = None
     
-    def calculate_adaptive_params(self, df_15m: pd.DataFrame, rsi_period: int = None) -> Optional[Dict]:
+    def calculate_adaptive_params(self, df_15m: pd.DataFrame, rsi_period: Optional[int] = None) -> Optional[Dict]:
         """코인 데이터에서 적응형 파라미터 자동 계산"""
         if df_15m is None or len(df_15m) < 100:
             return None
         
-        closes = df_15m['close'].values
-        
+        # Pyright: pandas stub 누락 대응
+        df_safe = cast(Any, df_15m)
+        closes = np.asarray(df_safe['close'].values, dtype=np.float64)
+
         # RSI 계산 (파라미터화)
         delta = np.diff(closes)
         gains = np.where(delta > 0, delta, 0)
         losses = np.where(-delta > 0, -delta, 0)
-        
+
         rsi_lookback = rsi_period or 14
-        avg_gain = pd.Series(gains).rolling(rsi_lookback).mean().dropna()
-        avg_loss = pd.Series(losses).rolling(rsi_lookback).mean().dropna()
-        
+        gains_series = pd.Series(gains)
+        losses_series = pd.Series(losses)
+        avg_gain_raw = gains_series.rolling(rsi_lookback).mean()
+        avg_loss_raw = losses_series.rolling(rsi_lookback).mean()
+
+        # Series로 캐스팅하여 dropna 사용
+        avg_gain = cast(pd.Series, avg_gain_raw).dropna()
+        avg_loss = cast(pd.Series, avg_loss_raw).dropna()
+
         rs = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + rs))
-        rsi = rsi.dropna()
+        rsi_calc = 100 - (100 / (1 + rs))
+        rsi = cast(pd.Series, rsi_calc).dropna()
 
 
         
@@ -186,30 +213,34 @@ class AlphaX7Core:
             return None
         
         # ATR 계산
-        highs = df_15m['high'].values
-        lows = df_15m['low'].values
-        
+        highs = np.asarray(df_safe['high'].values, dtype=np.float64)
+        lows = np.asarray(df_safe['low'].values, dtype=np.float64)
+        closes_arr = np.asarray(closes, dtype=np.float64)
+
         tr = np.maximum(
             highs[1:] - lows[1:],
             np.maximum(
-                np.abs(highs[1:] - closes[:-1]),
-                np.abs(lows[1:] - closes[:-1])
+                np.abs(highs[1:] - closes_arr[:-1]),
+                np.abs(lows[1:] - closes_arr[:-1])
             )
         )
         
         # ATR 계산 (파라미터화)
         atr_lookback = ACTIVE_PARAMS.get('atr_period', 14)
-        atr = pd.Series(tr).rolling(atr_lookback).mean().dropna()
+        atr_raw = pd.Series(tr).rolling(atr_lookback).mean()
+        atr = cast(pd.Series, atr_raw).dropna()
 
         
         if len(atr) < 50:
             return None
         
         # 적응형 파라미터 계산
-        rsi_low = float(np.percentile(rsi, 20))
-        rsi_high = float(np.percentile(rsi, 80))
-        atr_median = float(np.median(atr))
-        price_median = float(np.median(closes))
+        rsi_arr = np.asarray(rsi.values, dtype=np.float64)
+        atr_arr = np.asarray(atr.values, dtype=np.float64)
+        rsi_low = float(np.percentile(rsi_arr, 20))
+        rsi_high = float(np.percentile(rsi_arr, 80))
+        atr_median = float(np.median(atr_arr))
+        price_median = float(np.median(closes_arr))
         
         atr_pct = atr_median / price_median * 100
         
@@ -243,11 +274,11 @@ class AlphaX7Core:
         """4H 추세 판단 (레거시 호환)"""
         return self.get_mtf_trend(df_1h, mtf='4h')
     
-    def get_filter_trend(self, df_base: pd.DataFrame, filter_tf: str) -> Optional[str]:
+    def get_filter_trend(self, df_base: pd.DataFrame, filter_tf: Optional[str] = None) -> Optional[str]:
         """필터 TF 기반 추세 판단 (get_4h_trend 일반화)"""
         return self.get_mtf_trend(df_base, mtf=filter_tf)
     
-    def get_mtf_trend(self, df_base: pd.DataFrame, mtf: str = None, entry_tf: str = None, ema_period: int = 20) -> Optional[str]:
+    def get_mtf_trend(self, df_base: pd.DataFrame, mtf: Optional[str] = None, entry_tf: Optional[str] = None, ema_period: int = 20) -> Optional[str]:
         """동적 MTF 추세 판단
         
         Args:
@@ -286,14 +317,17 @@ class AlphaX7Core:
             'close': 'last'
         }).dropna()
         
-        if len(df_mtf) < ema_period:
+        # Pyright: pandas stub 누락 대응
+        df_final = cast(Any, df_mtf)
+        
+        if len(df_final) < ema_period:
             return None
         
         # EMA 계산 (파라미터화된 ema_period 사용)
         ema_val = ACTIVE_PARAMS.get('ema_period', 10)
-        ema = df_mtf['close'].ewm(span=ema_val, adjust=False).mean()
+        ema = df_final['close'].ewm(span=ema_val, adjust=False).mean()
         
-        last_close = df_mtf['close'].iloc[-1]
+        last_close = df_final['close'].iloc[-1]
         last_ema = ema.iloc[-1]
         
         return 'up' if last_close > last_ema else 'down'
@@ -301,26 +335,46 @@ class AlphaX7Core:
     
     def calculate_rsi(self, closes: np.ndarray, period: int = 14) -> float:
         """RSI 계산 (utils.indicators 모듈 위임)"""
-        return _calc_rsi(closes, period=period, return_series=False)
-    
+        result = _calc_rsi(closes, period=period, return_series=False)
+        return cast(float, result)
+
     def calculate_atr(self, df: pd.DataFrame, period: int = 14) -> float:
         """ATR 계산 (utils.indicators 모듈 위임)"""
-        return _calc_atr(df, period=period, return_series=False)
+        result = _calc_atr(df, period=period, return_series=False)
+        return cast(float, result)
+
+    def calculate_adx(self, df: pd.DataFrame, period: int = 14) -> float:
+        """
+        ADX 계산 (utils.indicators 모듈 위임)
+
+        Args:
+            df: OHLC 데이터 (high, low, close 필요)
+            period: ADX 기간 (기본값: 14)
+
+        Returns:
+            ADX 값 (0-100 범위)
+        """
+        result = _calc_adx(df, period=period, return_series=False)
+        return cast(float, result)
     
     def detect_signal(
         self,
         df_1h: pd.DataFrame,
         df_15m: pd.DataFrame,
-        filter_tf: str = None,
-        rsi_period: int = None,
-        atr_period: int = None,
-        pattern_tolerance: float = None,
-        entry_validity_hours: float = None,
+        filter_tf: Optional[str] = None,
+        rsi_period: Optional[int] = None,
+        atr_period: Optional[int] = None,
+        pattern_tolerance: Optional[float] = None,
+        entry_validity_hours: Optional[float] = None,
         # 신규 파라미터
-        macd_fast: int = None,
-        macd_slow: int = None,
-        macd_signal: int = None,
-        ema_period: int = None,
+        macd_fast: Optional[int] = None,
+        macd_slow: Optional[int] = None,
+        macd_signal: Optional[int] = None,
+        ema_period: Optional[int] = None,
+        # ADX 파라미터 (Session 8)
+        adx_period: Optional[int] = None,
+        adx_threshold: Optional[float] = None,
+        enable_adx_filter: Optional[bool] = None,
     ) -> Optional[TradeSignal]:
         """W/M 패턴 감지 + MTF 필터"""
         
@@ -329,24 +383,41 @@ class AlphaX7Core:
             return None
         if df_15m is None or len(df_15m) < 50:
             return None
+            
+        # Pyright: pandas stub 누락 대응
+        df_1h_safe = cast(Any, df_1h)
+        df_15m_safe = cast(Any, df_15m)
         
-        # 파라미터 기본값
+        # 파라미터 기본값 (None 방지 - 직접 재할당)
         if atr_period is None:
-            atr_period = ACTIVE_PARAMS.get('atr_period', 14)
+            atr_period = ACTIVE_PARAMS.get('atr_period', 14) or 14
         if pattern_tolerance is None:
             pattern_tolerance = self.PATTERN_TOLERANCE
         if entry_validity_hours is None:
             entry_validity_hours = self.ENTRY_VALIDITY_HOURS
         if macd_fast is None:
-            macd_fast = ACTIVE_PARAMS.get('macd_fast', 12)
+            macd_fast = ACTIVE_PARAMS.get('macd_fast', 12) or 12
         if macd_slow is None:
-            macd_slow = ACTIVE_PARAMS.get('macd_slow', 26)
+            macd_slow = ACTIVE_PARAMS.get('macd_slow', 26) or 26
         if macd_signal is None:
-            macd_signal = ACTIVE_PARAMS.get('macd_signal', 9)
-        if ema_period is None:
-            ema_period = ACTIVE_PARAMS.get('ema_period', 20)
-        
-        logger.debug(f"[SIGNAL] Using: tolerance={pattern_tolerance*100:.1f}%, validity={entry_validity_hours}h, MTF={self.USE_MTF_FILTER}")
+            macd_signal = ACTIVE_PARAMS.get('macd_signal', 9) or 9
+        # ADX 파라미터 (Session 8)
+        if adx_period is None:
+            adx_period = ACTIVE_PARAMS.get('adx_period', 14) or 14
+        if adx_threshold is None:
+            adx_threshold = ACTIVE_PARAMS.get('adx_threshold', 25.0) or 25.0
+        if enable_adx_filter is None:
+            enable_adx_filter = ACTIVE_PARAMS.get('enable_adx_filter', False)
+
+        logger.debug(f"[SIGNAL] Using: tolerance={pattern_tolerance*100:.1f}%, validity={entry_validity_hours}h, MTF={self.USE_MTF_FILTER}, ADX={enable_adx_filter}")
+
+        # ADX 필터 (Session 8) - 추세 강도 검증
+        if enable_adx_filter:
+            adx_value = self.calculate_adx(df_1h_safe, period=adx_period)
+            if adx_value < adx_threshold:
+                logger.debug(f"[SIGNAL] ❌ ADX filter: {adx_value:.1f} < {adx_threshold} (weak trend)")
+                return None
+            logger.debug(f"[SIGNAL] ✅ ADX filter passed: {adx_value:.1f} >= {adx_threshold} (strong trend)")
         
         # 적응형 파라미터 계산
         if self.adaptive_params is None:
@@ -356,8 +427,8 @@ class AlphaX7Core:
         trend_val = self.get_filter_trend(df_1h, filter_tf=filter_tf) if self.USE_MTF_FILTER else None
         
         # MACD 계산 (파라미터화)
-        exp1 = df_1h['close'].ewm(span=macd_fast, adjust=False).mean()
-        exp2 = df_1h['close'].ewm(span=macd_slow, adjust=False).mean()
+        exp1 = df_1h_safe['close'].ewm(span=macd_fast, adjust=False).mean()
+        exp2 = df_1h_safe['close'].ewm(span=macd_slow, adjust=False).mean()
         macd = exp1 - exp2
         signal_line = macd.ewm(span=macd_signal, adjust=False).mean()
         hist = macd - signal_line
@@ -373,28 +444,28 @@ class AlphaX7Core:
                 while i < n and hist.iloc[i] > 0:
                     i += 1
                 if i < n:
-                    seg = df_1h.iloc[start:i]
+                    seg = df_1h_safe.iloc[start:i]
                     if len(seg) > 0:
                         max_idx = seg['high'].idxmax()
                         points.append({
                             'type': 'H',
-                            'price': df_1h.loc[max_idx, 'high'],
-                            'time': df_1h.loc[max_idx, 'timestamp'],
-                            'confirmed_time': df_1h.iloc[i-1]['timestamp']
+                            'price': df_1h_safe.loc[max_idx, 'high'],
+                            'time': df_1h_safe.loc[max_idx, 'timestamp'],
+                            'confirmed_time': df_1h_safe.iloc[i-1]['timestamp']
                         })
             elif hist.iloc[i] < 0:
                 start = i
                 while i < n and hist.iloc[i] < 0:
                     i += 1
                 if i < n:
-                    seg = df_1h.iloc[start:i]
+                    seg = df_1h_safe.iloc[start:i]
                     if len(seg) > 0:
                         min_idx = seg['low'].idxmin()
                         points.append({
                             'type': 'L',
-                            'price': df_1h.loc[min_idx, 'low'],
-                            'time': df_1h.loc[min_idx, 'timestamp'],
-                            'confirmed_time': df_1h.iloc[i-1]['timestamp']
+                            'price': df_1h_safe.loc[min_idx, 'low'],
+                            'time': df_1h_safe.loc[min_idx, 'timestamp'],
+                            'confirmed_time': df_1h_safe.iloc[i-1]['timestamp']
                         })
             else:
                 i += 1
@@ -415,37 +486,35 @@ class AlphaX7Core:
                     continue
                 
                 # 유효시간 검사
-                # [FIX] Robust datetime conversion for numpy and other types
-                def _to_dt(ts):
-                    if isinstance(ts, (datetime, pd.Timestamp)): return ts
-                    if isinstance(ts, (int, float, np.integer, np.floating)):
-                        unit = 'ms' if ts > 1e12 else 's'
-                        return pd.to_datetime(ts, unit=unit)
-                    return pd.to_datetime(ts)
-                
                 confirmed_time = _to_dt(L2['confirmed_time'])
-                last_time = _to_dt(df_1h.iloc[-1]['timestamp'])
+                last_time = _to_dt(df_1h_safe.iloc[-1]['timestamp'])
+
+                # NaT 체크: 타임스탬프가 유효하지 않으면 건너뛰기
+                if confirmed_time is None or last_time is None:
+                    logger.warning("[SIGNAL] W Pattern skipped: invalid timestamp (NaT)")
+                    continue
+
                 hours_since = (last_time - confirmed_time).total_seconds() / 3600
-                
+
                 if hours_since > entry_validity_hours:
                     logger.error(f"[SIGNAL] ❌ W Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
                     continue
-                
+
                 # MTF 필터 검사 (Long은 상승 추세에서만)
                 if self.USE_MTF_FILTER and trend_val != 'up':
                     logger.error(f"[SIGNAL] ❌ W Pattern (Long) filtered: 4H trend={trend_val} (need 'up')")
                     continue
                 
                 # ATR 계산
-                atr = self.calculate_atr(df_15m, period=atr_period)
+                atr = self.calculate_atr(df_15m_safe, period=atr_period)
                 if atr is None or atr <= 0:
                     logger.error(f"[SIGNAL] ❌ W Pattern skipped: ATR is {atr}")
                     continue
                 
                 # 진입 가격 및 SL 계산
-                price = float(df_15m.iloc[-1]['close'])
-                atr_mult = (self.adaptive_params.get('atr_mult', DEFAULT_PARAMS.get('atr_mult', 1.25))
-                           if self.adaptive_params else DEFAULT_PARAMS.get('atr_mult', 1.25))
+                price = float(df_15m_safe.iloc[-1]['close'])
+                _default_atr_mult = float(DEFAULT_PARAMS.get('atr_mult') or 1.25)
+                atr_mult = float(self.adaptive_params.get('atr_mult', _default_atr_mult)) if self.adaptive_params else _default_atr_mult
                 sl = price - atr * atr_mult
                 
                 logger.info(f"[SIGNAL] ✅ Valid Long @ ${price:,.0f} (W pattern, {hours_since:.1f}h old)")
@@ -471,39 +540,37 @@ class AlphaX7Core:
                     continue
                 
                 # 유효시간 검사
-                # [FIX] Robust datetime conversion for numpy and other types
-                def _to_dt_m(ts):
-                    if isinstance(ts, (datetime, pd.Timestamp)): return ts
-                    if isinstance(ts, (int, float, np.integer, np.floating)):
-                        unit = 'ms' if ts > 1e12 else 's'
-                        return pd.to_datetime(ts, unit=unit)
-                    return pd.to_datetime(ts)
-                
-                confirmed_time = _to_dt_m(H2['confirmed_time'])
-                last_time = _to_dt_m(df_1h.iloc[-1]['timestamp'])
+                confirmed_time = _to_dt(H2['confirmed_time'])
+                last_time = _to_dt(df_1h_safe.iloc[-1]['timestamp'])
+
+                # NaT 체크: 타임스탬프가 유효하지 않으면 건너뛰기
+                if confirmed_time is None or last_time is None:
+                    logger.warning("[SIGNAL] M Pattern skipped: invalid timestamp (NaT)")
+                    continue
+
                 hours_since = (last_time - confirmed_time).total_seconds() / 3600
-                
+
                 if hours_since > entry_validity_hours:
                     logger.error(f"[SIGNAL] ❌ M Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
                     continue
-                
+
                 # MTF 필터 검사 (Short은 하락 추세에서만)
                 if self.USE_MTF_FILTER and trend_val != 'down':
                     logger.error(f"[SIGNAL] ❌ M Pattern (Short) filtered: 4H trend={trend_val} (need 'down')")
                     continue
                 
                 # ATR 계산
-                atr = self.calculate_atr(df_15m, period=atr_period)
+                atr = self.calculate_atr(df_15m_safe, period=atr_period)
                 if atr is None or atr <= 0:
                     logger.error(f"[SIGNAL] ❌ M Pattern skipped: ATR is {atr}")
                     continue
                 
                 # 진입 가격 및 SL 계산
-                price = float(df_15m.iloc[-1]['close'])
-                atr_mult = (self.adaptive_params.get('atr_mult', DEFAULT_PARAMS.get('atr_mult', 1.25))
-                           if self.adaptive_params else DEFAULT_PARAMS.get('atr_mult', 1.25))
+                price = float(df_15m_safe.iloc[-1]['close'])
+                _default_atr_mult = float(DEFAULT_PARAMS.get('atr_mult') or 1.25)
+                atr_mult = float(self.adaptive_params.get('atr_mult', _default_atr_mult)) if self.adaptive_params else _default_atr_mult
                 sl = price + atr * atr_mult
-                
+
                 logger.info(f"[SIGNAL] ✅ Valid Short @ ${price:,.0f} (M pattern, {hours_since:.1f}h old)")
                 return TradeSignal(
                     signal_type='Short',
@@ -597,49 +664,66 @@ class AlphaX7Core:
         df_pattern: pd.DataFrame,
         df_entry: pd.DataFrame,
         slippage: float = 0,
-        atr_mult: float = None,
-        trail_start_r: float = None,
-        trail_dist_r: float = None,
-        pattern_tolerance: float = None,
-        entry_validity_hours: float = None,
-        pullback_rsi_long: float = None,
-        pullback_rsi_short: float = None,
-        max_adds: int = None,
-        filter_tf: str = None,
-        rsi_period: int = None,
-        atr_period: int = None,
-        enable_pullback: bool = False,
+        atr_mult: Optional[float] = None,            # → MDD↑, 승률↑ (ATR 배수)
+        trail_start_r: Optional[float] = None,       # → 수익률↑ (트레일링 시작점)
+        trail_dist_r: Optional[float] = None,        # → MDD↑, 수익률 (트레일링 거리)
+        pattern_tolerance: Optional[float] = None,   # → 거래수 (패턴 허용 오차)
+        entry_validity_hours: Optional[float] = None,# → 거래수 (신호 유효 시간)
+        pullback_rsi_long: Optional[float] = None,   # → 승률, 거래수 (롱 풀백 RSI)
+        pullback_rsi_short: Optional[float] = None,  # → 승률, 거래수 (숏 풀백 RSI)
+        max_adds: Optional[int] = None,              # → 거래수, 수익률 (최대 추가 진입)
+        filter_tf: Optional[str] = None,             # → 승률↑, 거래수↓ (필터 타임프레임)
+        rsi_period: Optional[int] = None,            # → 신호 품질 (RSI 기간)
+        atr_period: Optional[int] = None,            # → SL/TP 정확도 (ATR 기간)
+        enable_pullback: bool = False,     # → 거래수↑ (풀백 진입 활성화)
         return_state: bool = False,
-        allowed_direction: str = None,
+        allowed_direction: Optional[str] = None,     # → 거래수, 승률 (Long/Short/Both)
         collect_audit: bool = False,
-        macd_fast: int = None,
-        macd_slow: int = None,
-        macd_signal: int = None,
-        ema_period: int = None,
+        macd_fast: Optional[int] = None,             # → 신호 민감도 (MACD fast)
+        macd_slow: Optional[int] = None,             # → 신호 안정성 (MACD slow)
+        macd_signal: Optional[int] = None,           # → 신호 타이밍 (MACD signal)
+        ema_period: Optional[int] = None,            # → 추세 판단 (EMA 기간)
         **kwargs
-    ) -> Union[List[Dict], Tuple[List[Dict], Dict], Tuple[List[Dict], List[Dict]]]:
-
+    ) -> Any:
         """
         백테스트 실행 (통합 로직)
-        - detect_signal과 동일한 W/M 패턴 감지
-        - RSI 적응형 트레일링
-        - 풀백 추가 진입
+        
+        ═══════════════════════════════════════════════════════════════
+        📊 파라미터별 지표 영향 관계 (PARAMETER-METRIC IMPACT)
+        ═══════════════════════════════════════════════════════════════
+        
+        [손익 관련]
+        • atr_mult ↑      → MDD ↑, 승률 ↑ (넓은 SL = 조기청산 방지)
+        • trail_start_r ↑ → 수익률 ↑ (더 많이 수익 확보 후 트레일링)
+        • trail_dist_r ↑  → MDD ↑, 수익률 ± (청산 늦음)
+        
+        [거래 빈도]
+        • filter_tf (상위) → 승률 ↑, 거래수 ↓ (엄격한 필터)
+        • entry_validity_hours ↑ → 거래수 ↑ (신호 유효기간 연장)
+        • enable_pullback  → 거래수 ↑ (추가 진입 기회)
+        
+        [방향성]
+        • allowed_direction = 'Both' → 거래수 ↑↑
+        • allowed_direction = 'Long' → 상승장에서 승률 ↑
+        
+        ═══════════════════════════════════════════════════════════════
         """
-        # 파라미터 기본값 설정 (ACTIVE_PARAMS 연동)
-        if atr_mult is None: atr_mult = ACTIVE_PARAMS.get('atr_mult')
-        if trail_start_r is None: trail_start_r = ACTIVE_PARAMS.get('trail_start_r')
-        if trail_dist_r is None: trail_dist_r = ACTIVE_PARAMS.get('trail_dist_r')
-        if pattern_tolerance is None: pattern_tolerance = ACTIVE_PARAMS.get('pattern_tolerance')
-        if entry_validity_hours is None: entry_validity_hours = ACTIVE_PARAMS.get('entry_validity_hours')
-        if pullback_rsi_long is None: pullback_rsi_long = ACTIVE_PARAMS.get('pullback_rsi_long')
-        if pullback_rsi_short is None: pullback_rsi_short = ACTIVE_PARAMS.get('pullback_rsi_short')
-        if max_adds is None: max_adds = ACTIVE_PARAMS.get('max_adds')
-        if rsi_period is None: rsi_period = ACTIVE_PARAMS.get('rsi_period')
-        if atr_period is None: atr_period = ACTIVE_PARAMS.get('atr_period')
-        if macd_fast is None: macd_fast = ACTIVE_PARAMS.get('macd_fast', 12)
-        if macd_slow is None: macd_slow = ACTIVE_PARAMS.get('macd_slow', 26)
-        if macd_signal is None: macd_signal = ACTIVE_PARAMS.get('macd_signal', 9)
-        if ema_period is None: ema_period = ACTIVE_PARAMS.get('ema_period', 20)
+        # 파라미터 기본값 설정 (ACTIVE_PARAMS 연동, None 방지)
+        atr_mult = float(atr_mult if atr_mult is not None else ACTIVE_PARAMS.get('atr_mult') or 1.25)
+        trail_start_r = float(trail_start_r if trail_start_r is not None else ACTIVE_PARAMS.get('trail_start_r') or 0.8)
+        trail_dist_r = float(trail_dist_r if trail_dist_r is not None else ACTIVE_PARAMS.get('trail_dist_r') or 0.5)
+        pattern_tolerance = float(pattern_tolerance if pattern_tolerance is not None else ACTIVE_PARAMS.get('pattern_tolerance') or 0.05)
+        entry_validity_hours = float(entry_validity_hours if entry_validity_hours is not None else ACTIVE_PARAMS.get('entry_validity_hours') or 48.0)
+        pullback_rsi_long = float(pullback_rsi_long if pullback_rsi_long is not None else ACTIVE_PARAMS.get('pullback_rsi_long') or 35.0)
+        pullback_rsi_short = float(pullback_rsi_short if pullback_rsi_short is not None else ACTIVE_PARAMS.get('pullback_rsi_short') or 65.0)
+        max_adds = int(max_adds if max_adds is not None else ACTIVE_PARAMS.get('max_adds') or 1)
+        filter_tf = str(filter_tf if filter_tf is not None else ACTIVE_PARAMS.get('filter_tf') or '4h')
+        rsi_period = int(rsi_period if rsi_period is not None else ACTIVE_PARAMS.get('rsi_period') or 14)
+        atr_period = int(atr_period if atr_period is not None else ACTIVE_PARAMS.get('atr_period') or 14)
+        macd_fast = int(macd_fast if macd_fast is not None else ACTIVE_PARAMS.get('macd_fast') or 12)
+        macd_slow = int(macd_slow if macd_slow is not None else ACTIVE_PARAMS.get('macd_slow') or 26)
+        macd_signal = int(macd_signal if macd_signal is not None else ACTIVE_PARAMS.get('macd_signal') or 9)
+        ema_period = int(ema_period if ema_period is not None else ACTIVE_PARAMS.get('ema_period') or 20)
 
         # 적응형 파라미터 계산
         self.calculate_adaptive_params(df_entry, rsi_period=rsi_period)
@@ -655,10 +739,14 @@ class AlphaX7Core:
             df_pattern_sorted = df_pattern_sorted.set_index('timestamp', drop=False)
             
             resample_rule = filter_tf.replace('w', 'W') if isinstance(filter_tf, str) else filter_tf
+            dt_index = pd.DatetimeIndex(df_pattern_sorted.index)
             if 'W' in str(resample_rule):
-                df_pattern_sorted['filter_period'] = df_pattern_sorted.index.to_period('W').start_time
+                # PeriodIndex.start_time은 실제로 존재하지만 타입 스텁에 없음
+                period_idx = dt_index.to_period('W')
+                df_pattern_sorted['filter_period'] = period_idx.to_timestamp()  # type: ignore[attr-defined]
             else:
-                df_pattern_sorted['filter_period'] = df_pattern_sorted.index.floor(resample_rule)
+                # DatetimeIndex.floor는 타입 스텁에 정의되어 있음
+                df_pattern_sorted['filter_period'] = cast(pd.DatetimeIndex, dt_index).floor(resample_rule)  # type: ignore[arg-type]
             
             entry_times = pd.to_datetime(df_entry['timestamp'], unit='ms') if 'timestamp' in df_entry.columns else df_entry.index
 
@@ -667,9 +755,16 @@ class AlphaX7Core:
             }).dropna()
             
             if len(df_filter) > ema_period:
-                df_filter['ema'] = df_filter['close'].ewm(span=ema_period, adjust=False).mean()
-                entry_close = df_filter['close'].reindex(entry_times, method='ffill').values
-                ema_at_entry = df_filter['ema'].reindex(entry_times, method='ffill').values
+                close_series = cast(pd.Series, df_filter['close'])
+                ema_calc = close_series.ewm(span=ema_period, adjust=False).mean()
+                df_filter['ema'] = ema_calc
+
+                close_reindexed = close_series.reindex(entry_times, method='ffill')  # type: ignore[arg-type]
+                ema_series = cast(pd.Series, df_filter['ema'])
+                ema_reindexed = ema_series.reindex(entry_times, method='ffill')  # type: ignore[arg-type]
+
+                entry_close = np.asarray(close_reindexed.values, dtype=np.float64)
+                ema_at_entry = np.asarray(ema_reindexed.values, dtype=np.float64)
                 trend_map = pd.Series(np.where(entry_close > ema_at_entry, 'up', 'down'), index=entry_times)
 
         # 거래 결과 저장
@@ -677,31 +772,40 @@ class AlphaX7Core:
         positions = []
         current_direction = None
         add_count = 0
-        shared_sl = None
-        shared_trail_start = None
-        shared_trail_dist = None
-        extreme_price = None
+        shared_sl: float = 0.0
+        shared_trail_start: float = 0.0
+        shared_trail_dist: float = 0.0
+        extreme_price: float = 0.0
         
         times = pd.to_datetime(df_entry['timestamp'], unit='ms').values if 'timestamp' in df_entry.columns else pd.to_datetime(df_entry.index).values
-        opens = df_entry['open'].values
-        highs = df_entry['high'].values
-        lows = df_entry['low'].values
-        closes = df_entry['close'].values
-        
-        # RSI/ATR 계산
-        delta = pd.Series(closes).diff()
-        gain = delta.where(delta > 0, 0).rolling(rsi_period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
-        
-        # 0 나누기 방지
-        rs = gain / loss.replace(0, np.nan)
-        rsis = (100 - (100 / (1 + rs.fillna(100)))).fillna(50).values
+        opens = np.asarray(df_entry['open'].values, dtype=np.float64)
+        highs = np.asarray(df_entry['high'].values, dtype=np.float64)
+        lows = np.asarray(df_entry['low'].values, dtype=np.float64)
+        closes = np.asarray(df_entry['close'].values, dtype=np.float64)
 
-        
+        # RSI/ATR 계산
+        closes_series = pd.Series(closes)
+        delta = closes_series.diff()
+        gain_raw = delta.where(delta > 0, 0).rolling(rsi_period).mean()
+        loss_raw = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
+
+        gain = cast(pd.Series, gain_raw)
+        loss = cast(pd.Series, loss_raw)
+
+        # 0 나누기 방지
+        loss_safe = loss.replace(0, np.nan)
+        rs = gain / loss_safe
+        rs_filled = rs.fillna(100)
+        rsi_calc = 100 - (100 / (1 + rs_filled))
+        rsi_final = rsi_calc.fillna(50)
+        rsis = np.asarray(rsi_final.values, dtype=np.float64)
+
         prev_closes = np.roll(closes, 1)
         prev_closes[0] = closes[0]
         tr = np.maximum(np.maximum(highs - lows, np.abs(highs - prev_closes)), np.abs(lows - prev_closes))
-        atrs = pd.Series(tr).rolling(atr_period).mean().fillna(0).values
+        atr_series_raw = pd.Series(tr).rolling(atr_period).mean()
+        atr_series = cast(pd.Series, atr_series_raw)
+        atrs = np.asarray(atr_series.fillna(0).values, dtype=np.float64)
         
         from collections import deque
         pending = deque()
@@ -710,17 +814,28 @@ class AlphaX7Core:
         
         for i in range(len(df_entry)):
             t = times[i]
+            t_ts = _to_dt(t)  # UTC aware 타임스탬프로 변환
+            if t_ts is None:
+                continue
+
             while sig_idx < len(signals):
-                st = pd.Timestamp(signals[sig_idx]['time'])
-                if st <= pd.Timestamp(t):
+                st = _to_dt(signals[sig_idx]['time'])
+                if st is None:
+                    sig_idx += 1
+                    continue
+                if st <= t_ts:
                     order = signals[sig_idx].copy()
                     order['expire_time'] = st + timedelta(hours=entry_validity_hours)
                     pending.append(order)
                     sig_idx += 1
                 else: break
-            
-            while pending and pending[0]['expire_time'] <= pd.Timestamp(t):
-                pending.popleft()
+
+            while pending:
+                expire_ts = _to_dt(pending[0]['expire_time'])
+                if expire_ts is not None and expire_ts <= t_ts:
+                    pending.popleft()
+                else:
+                    break
             
             if positions:
                 if current_direction == 'Long':
@@ -820,7 +935,7 @@ class AlphaX7Core:
         
         if not return_state:
             if collect_audit:
-                return trades, audit_logs
+                return trades, (audit_logs if audit_logs is not None else [])
             return trades
         
         final_state = {
@@ -829,7 +944,7 @@ class AlphaX7Core:
             'pending': list(pending), 'add_count': add_count, 'last_idx': len(df_entry) - 1, 'last_time': times[-1] if len(times) > 0 else None,
         }
         if collect_audit:
-            return trades, audit_logs, final_state
+            return trades, (audit_logs if audit_logs is not None else []), final_state
         return trades, final_state
 
     def _extract_all_signals(
@@ -889,25 +1004,28 @@ class AlphaX7Core:
         since: Optional[datetime],
         tolerance: float,
         validity_hours: float,
-        macd_fast: int = None,
-        macd_slow: int = None,
-        macd_signal: int = None
+        macd_fast: Optional[int] = None,
+        macd_slow: Optional[int] = None,
+        macd_signal: Optional[int] = None
     ) -> List[Dict]:
         """[LIVE] 실시간 새 시그널 추출 (특정 시점 이후)"""
-        if macd_fast is None: macd_fast = ACTIVE_PARAMS.get('macd_fast', 12)
-        if macd_slow is None: macd_slow = ACTIVE_PARAMS.get('macd_slow', 26)
-        if macd_signal is None: macd_signal = ACTIVE_PARAMS.get('macd_signal', 9)
+        _macd_fast = int(macd_fast if macd_fast is not None else ACTIVE_PARAMS.get('macd_fast') or 12)
+        _macd_slow = int(macd_slow if macd_slow is not None else ACTIVE_PARAMS.get('macd_slow') or 26)
+        _macd_signal = int(macd_signal if macd_signal is not None else ACTIVE_PARAMS.get('macd_signal') or 9)
 
-        all_signals = self._extract_all_signals(df_1h, tolerance, validity_hours, macd_fast, macd_slow, macd_signal)
+        all_signals = self._extract_all_signals(df_1h, tolerance, validity_hours, _macd_fast, _macd_slow, _macd_signal)
         
         if since is None:
             return all_signals
             
         # since 이후의 시그널만 필터링
-        new_signals = [s for s in all_signals if pd.Timestamp(s['time']) > pd.Timestamp(since)]
+        since_ts = _to_dt(since)
+        if since_ts is None:
+            return all_signals
+        new_signals = [s for s in all_signals if (st := _to_dt(s['time'])) is not None and st > since_ts]
         return new_signals
 
-    def manage_position_realtime(self, position: dict = None, current_high: float = 0, current_low: float = 0, current_rsi: float = 50, **kwargs) -> dict:
+    def manage_position_realtime(self, position: Optional[Dict] = None, current_high: float = 0, current_low: float = 0, current_rsi: float = 50, **kwargs) -> dict:
         """실시간 포지션 관리"""
         if position is None:
             position = {
@@ -938,6 +1056,6 @@ class AlphaX7Core:
             if current_high >= (result['new_sl'] or sl): result['sl_hit'] = True
         return result
 
-    def should_add_position_realtime(self, direction: str, current_rsi: float, add_count: int, max_adds: int = None) -> bool:
+    def should_add_position_realtime(self, direction: str, current_rsi: float, add_count: int, max_adds: Optional[int] = None) -> bool:
         if add_count >= (max_adds if max_adds is not None else self.MAX_ADDS): return False
         return self.should_add_position(direction, current_rsi)

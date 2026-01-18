@@ -4,8 +4,9 @@ import unittest
 import time
 from unittest.mock import MagicMock
 from datetime import datetime
+from pathlib import Path
 
-sys.path.insert(0, r'C:\매매전략')
+sys.path.insert(0, str(Path(__file__).parent))
 from core.order_executor import OrderExecutor
 from core.bot_state import BotStateManager
 
@@ -55,6 +56,7 @@ class TestProfitTracking(unittest.TestCase):
         
         # Verify
         self.assertIsNotNone(result)
+        assert result is not None  # Type assertion for Pyright
         self.assertTrue(result['real_history'])
         self.assertEqual(result['pnl_usd'], 1000.0)
         self.assertEqual(result['fee'], 5.0)
@@ -62,7 +64,9 @@ class TestProfitTracking(unittest.TestCase):
         
         # Verify save_trade called
         self.state_mgr.save_trade.assert_called_once()
-        saved_trade = self.state_mgr.save_trade.call_args[0][0]
+        call_args = self.state_mgr.save_trade.call_args
+        assert call_args is not None  # Type assertion for Pyright
+        saved_trade = call_args[0][0]
         self.assertEqual(saved_trade['pnl_usd'], 1000.0)
         
         # Verify managed position removed
@@ -79,6 +83,7 @@ class TestProfitTracking(unittest.TestCase):
         
         result = self.executor.execute_close(position, exit_price=51000.0, reason="Fallback")
         
+        assert result is not None  # Type assertion for Pyright
         self.assertFalse(result['real_history'])
         # Calculated PnL: (51000 - 50000) - fee
         # Fee = 1*50000*0.0006 + 1*51000*0.0006 ~= 30 + 30.6 = 60.6

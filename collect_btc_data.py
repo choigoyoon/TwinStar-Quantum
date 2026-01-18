@@ -5,7 +5,7 @@ Bybit BTCUSDT 5분봉 데이터 수집 (20만+ 행)
 import sys
 sys.path.insert(0, 'c:/매매전략')
 
-from GUI.data_manager import DataManager
+from GUI.data_cache import DataManager
 from datetime import datetime, timedelta
 
 def main():

@@ -12,9 +12,11 @@ import tempfile
 
 import json
 import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from pathlib import Path
+import pandas as pd
 
 
 class BotStateManager:
@@ -30,10 +32,10 @@ class BotStateManager:
         self, 
         exchange_name: str, 
         symbol: str, 
-        storage_dir: str = None,
+        storage_dir: Optional[str] = None,
         use_new_storage: bool = False,
-        state_storage = None,
-        trade_storage = None
+        state_storage: Optional[Any] = None,
+        trade_storage: Optional[Any] = None
     ):
         """
         Args:
@@ -50,12 +52,8 @@ class BotStateManager:
         if storage_dir:
             self.storage_dir = Path(storage_dir)
         else:
-            try:
-                from paths import Paths
-                self.storage_dir = Path(Paths.USER_DATA) / 'storage'
-            except ImportError:
-                # Fallback
-                self.storage_dir = Path(__file__).parent.parent / 'storage'
+            from config.constants.paths import DATA_DIR
+            self.storage_dir = Path(DATA_DIR) / 'storage'
         
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         
@@ -174,8 +172,9 @@ class BotStateManager:
                 try:
                     with open(self.default_state_file, 'w', encoding='utf-8') as f:
                          json.dump(state, f, indent=2, ensure_ascii=False, default=str)
-                except:
-                     pass
+                except Exception:
+
+                    pass
             
             logging.debug(f"[STATE] Saved: {self.state_file.name}")
             return True
@@ -227,7 +226,7 @@ class BotStateManager:
             성공 여부
         """
         try:
-            data['last_update'] = datetime.utcnow().isoformat()
+            data['last_update'] = pd.Timestamp.utcnow().isoformat()
             
             self.storage_dir.mkdir(parents=True, exist_ok=True)
             with open(self.cache_file, 'w', encoding='utf-8') as f:

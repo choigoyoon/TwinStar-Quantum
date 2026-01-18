@@ -1,25 +1,28 @@
 # history_widget.py - 거래 히스토리 위젯 (확장 버전 v2)
 
 from locales.lang_manager import t
+from typing import Dict, Any, Optional
 import sys
 import os
 import json
 import csv
 import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
-    QComboBox, QDateEdit, QSplitter, QGroupBox, QGridLayout,
-    QFileDialog, QMessageBox, QTabWidget, QDialog
+    QComboBox, QDateEdit, QFileDialog, QMessageBox, QTabWidget,
+    QDialog
 )
-from PyQt5.QtCore import Qt, QDate, QTimer
-from PyQt5.QtGui import QFont, QColor, QDragEnterEvent, QDropEvent
+from PyQt6.QtCore import Qt, QDate, QTimer
+from PyQt6.QtGui import QFont, QColor, QDragEnterEvent, QDropEvent
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import glob
+from storage.local_trade_db import get_local_db
 
 # 레거시 히스토리 파일 경로
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "trade_history.json")
@@ -119,8 +122,15 @@ class TradeChartPopup(QDialog):
         # 차트 영역 (matplotlib 사용)
         try:
             import matplotlib
-            matplotlib.use('Qt5Agg')
-            from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+            # PyQt6 호환
+            try:
+                matplotlib.use('QtAgg')
+            except Exception:
+                matplotlib.use('Qt5Agg')
+            try:
+                from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas # type: ignore
+            except ImportError:
+                from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas # type: ignore
             from matplotlib.figure import Figure
             
             fig = Figure(figsize=(10, 5), facecolor='#131722')
@@ -181,7 +191,7 @@ class TradeChartPopup(QDialog):
                     <span style="color:{pnl_color}; font-size:24px;">PnL: {pnl_pct:+.2f}%</span>
                 </div>
             """)
-            chart_label.setAlignment(Qt.AlignCenter)
+            chart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(chart_label)
         
         # 닫기 버튼
@@ -198,7 +208,7 @@ class TradeChartPopup(QDialog):
             QPushButton:hover { background: #1e4bd8; }
         """)
         close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
 
 class HistoryWidget(QWidget):
@@ -208,6 +218,7 @@ class HistoryWidget(QWidget):
         super().__init__()
         self._trades = []
         self._filtered_trades = []
+        self._backtest_trades = [] # Keep backtest results here
         self.setAcceptDrops(True)  # 드래그앤드롭 활성화
         self._init_ui()
         
@@ -227,7 +238,7 @@ class HistoryWidget(QWidget):
         # 헤더
         header_layout = QHBoxLayout()
         header = QLabel("📜 " + t("history.title"))
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         header_layout.addWidget(header)
         
@@ -267,7 +278,7 @@ class HistoryWidget(QWidget):
         # 드래그앤드롭 안내
         drop_hint = QLabel("💡 Drag & Drop CSV file here to import")
         drop_hint.setStyleSheet("color: #787b86; font-size: 11px; padding: 5px;")
-        drop_hint.setAlignment(Qt.AlignCenter)
+        drop_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(drop_hint)
         
         # 통계 카드 (확장)
@@ -387,14 +398,15 @@ class HistoryWidget(QWidget):
         table_layout.addWidget(hint_label)
         
         self.table = QTableWidget()
-        self.table.setColumnCount(10)
+        self.table.setColumnCount(11)
         self.table.setHorizontalHeaderLabels([
             t("common.num_header"), t("common.date_time"), t("trade.coin"), t("common.category"), 
+            "Source", # New column
             t("trade.entry"), t("trade.exit"), t("common.amount"), t("common.profit_usd"), t("common.profit_pct"), t("common.be")
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setColumnWidth(0, 50)  # # 컬럼 좁게
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        if header := self.table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setStyleSheet("""
             QTableWidget {
                 background: #131722;
@@ -421,7 +433,7 @@ class HistoryWidget(QWidget):
         chart_layout = QVBoxLayout(chart_widget)
         
         self.equity_label = QLabel("📈 Equity Curve")
-        self.equity_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.equity_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         self.equity_label.setStyleSheet("color: white;")
         chart_layout.addWidget(self.equity_label)
         
@@ -467,19 +479,22 @@ class HistoryWidget(QWidget):
     
     # ========== 드래그앤드롭 ==========
     def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
+        mime = event.mimeData()
+        if mime and mime.hasUrls():
+            for url in mime.urls():
                 if url.toLocalFile().lower().endswith('.csv'):
                     event.acceptProposedAction()
                     return
         event.ignore()
     
     def dropEvent(self, event: QDropEvent):
-        for url in event.mimeData().urls():
-            filepath = url.toLocalFile()
-            if filepath.lower().endswith('.csv'):
-                self._load_csv_file(filepath)
-                return
+        mime = event.mimeData()
+        if mime:
+            for url in mime.urls():
+                filepath = url.toLocalFile()
+                if filepath.lower().endswith('.csv'):
+                    self._load_csv_file(filepath)
+                    return
     
     # ========== CSV 임포트 ==========
     def _import_csv(self):
@@ -502,7 +517,7 @@ class HistoryWidget(QWidget):
                 col_map = self._detect_columns(headers)
                 
                 for i, row in enumerate(reader, 1):
-                    trade = {'id': i}
+                    trade: Dict[str, Any] = {'id': i}
                     
                     # 시간
                     if col_map.get('time'):
@@ -685,19 +700,50 @@ class HistoryWidget(QWidget):
                                     for t in trades:
                                         t.setdefault('exchange', exchange)
                                         t.setdefault('symbol', symbol)
+                                        t.setdefault('source', 'Direct') # Tag source
                                 all_trades.extend(trades)
                         except Exception as e:
                             logging.error(f"Error loading {history_file}: {e}")
             
-            # 2. 레거시 파일도 로드 (통합)
+            # 2. 로컬 SQLite DB에서 체결 완료된 거래 로드 (Tier 1 & 한국 거래소)
+            try:
+                db = get_local_db()
+                db_trades = db.get_all_closed_trades(limit=500)
+                for t in db_trades:
+                    # 데이터 규격 정규화 (entry_time -> time, entry_price -> entry 등)
+                    normalized = {
+                        'id': t.get('id'),
+                        'time': t.get('exit_time', t.get('entry_time', '')),
+                        'symbol': t.get('symbol', ''),
+                        'side': t.get('side', '').capitalize(),
+                        'entry': t.get('entry_price', 0),
+                        'exit': t.get('exit_price', 0),
+                        'size': t.get('amount', 0),
+                        'pnl': t.get('pnl', 0),
+                        'pnl_pct': t.get('pnl_pct', 0),
+                        'exchange': t.get('exchange', ''),
+                        'source': 'SQLite', # Tag source
+                        'be_triggered': False 
+                    }
+                    all_trades.append(normalized)
+            except Exception as e:
+                logging.error(f"Error loading from SQLite: {e}")
+
+            # 3. 레거시 파일도 로드 (통합)
             if os.path.exists(HISTORY_FILE):
                 with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
                     legacy_trades = json.load(f)
                     for t in legacy_trades:
                         t.setdefault('exchange', 'legacy')
+                        t.setdefault('source', 'Legacy') # Tag source
                     all_trades.extend(legacy_trades)
             
-            # 3. 시간순 정렬
+            # 4. 백테스트 결과 병합 (메모리 상주)
+            for t in self._backtest_trades:
+                t.setdefault('source', 'Backtest')
+                all_trades.append(t)
+            
+            # 5. 시간순 정렬
             all_trades.sort(key=lambda x: x.get('time', x.get('entry_time', '')), reverse=False)
             
             # 4. ID 부여
@@ -723,6 +769,28 @@ class HistoryWidget(QWidget):
     
     def refresh_trades(self):
         """외부 호출 호환용 별칭"""
+        self.load_history()
+        
+    def add_backtest_results(self, trades):
+        """백테스트 결과를 통합 리스트에 추가"""
+        for t in trades:
+            t['source'] = 'Backtest'
+            # 백테스트 데이터 규격 정규화
+            if 'entry_price' in t and 'entry' not in t:
+                t['entry'] = t['entry_price']
+            if 'exit_price' in t and 'exit' not in t:
+                t['exit'] = t['exit_price']
+            if 'amount' in t and 'size' not in t:
+                t['size'] = t['amount']
+            if 'exit_time' in t and 'time' not in t:
+                t['time'] = t['exit_time']
+                
+        self._backtest_trades = trades # 일단 교체 (필요시 append)
+        self.load_history()
+        
+    def clear_backtest_results(self):
+        """백테스트 결과만 제거"""
+        self._backtest_trades = []
         self.load_history()
     
     def _apply_filter(self):
@@ -774,8 +842,8 @@ class HistoryWidget(QWidget):
             # # (매매 번호)
             id_item = QTableWidgetItem(f"#{trade.get('id', i+1)}")
             id_item.setForeground(QColor('#2962FF'))
-            id_item.setFont(QFont("Arial", 10, QFont.Bold))
-            id_item.setData(Qt.UserRole, trade)  # 거래 데이터 저장
+            id_item.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+            id_item.setData(Qt.ItemDataRole.UserRole, trade)  # 거래 데이터 저장
             self.table.setItem(i, 0, id_item)
             
             # 시간
@@ -800,31 +868,44 @@ class HistoryWidget(QWidget):
             self.table.setItem(i, 4, QTableWidgetItem(f"${trade.get('entry', 0):,.2f}"))
             self.table.setItem(i, 5, QTableWidgetItem(f"${trade.get('exit', 0):,.2f}"))
             
-            # Size
-            self.table.setItem(i, 6, QTableWidgetItem(str(trade.get('size', ''))))
+            # Source
+            source = trade.get('source', 'Unknown')
+            source_item = QTableWidgetItem(source)
+            if source == 'Direct': 
+                source_item.setForeground(QColor('#00d4ff')) # Electric Blue
+            elif source == 'Backtest':
+                source_item.setForeground(QColor('#ff9800')) # Orange
+            elif source == 'SQLite':
+                source_item.setForeground(QColor('#4caf50')) # Green
+            self.table.setItem(i, 4, source_item) # Column 4 is Source (0-indexed)
+
+            # Move others 1 index right
+            self.table.setItem(i, 5, QTableWidgetItem(f"${trade.get('entry', 0):,.2f}"))
+            self.table.setItem(i, 6, QTableWidgetItem(f"${trade.get('exit', 0):,.2f}"))
+            self.table.setItem(i, 7, QTableWidgetItem(str(trade.get('size', ''))))
             
             # PnL ($)
             pnl = trade.get('pnl', 0)
             pnl_item = QTableWidgetItem(f"${pnl:+,.2f}")
             pnl_item.setForeground(QColor('#26a69a' if pnl >= 0 else '#ef5350'))
-            self.table.setItem(i, 7, pnl_item)
+            self.table.setItem(i, 8, pnl_item)
             
             # PnL (%)
             pnl_pct = trade.get('pnl_pct', 0)
             pct_item = QTableWidgetItem(f"{pnl_pct:+.2f}%")
             pct_item.setForeground(QColor('#26a69a' if pnl_pct >= 0 else '#ef5350'))
-            self.table.setItem(i, 8, pct_item)
+            self.table.setItem(i, 9, pct_item)
             
             # BE Triggered
             be = "✅" if trade.get('be_triggered', False) else "❌"
-            self.table.setItem(i, 9, QTableWidgetItem(be))
+            self.table.setItem(i, 10, QTableWidgetItem(be))
     
     def _on_cell_double_clicked(self, row, col):
         """셀 더블클릭 이벤트"""
         if col == 0:  # # 컬럼
             item = self.table.item(row, 0)
             if item:
-                trade = item.data(Qt.UserRole)
+                trade = item.data(Qt.ItemDataRole.UserRole)
                 if trade:
                     dialog = TradeChartPopup(trade, self)
                     dialog.show()
@@ -985,7 +1066,7 @@ class HistoryWidget(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     # 다크 테마
@@ -996,4 +1077,4 @@ if __name__ == "__main__":
     w = HistoryWidget()
     w.resize(1200, 800)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -192,7 +192,7 @@ class LicenseManager:
     
     # ========== API 호출 ==========
     
-    def check(self, email: str = None, password: str = None) -> Dict:
+    def check(self, email: Optional[str] = None, password: Optional[str] = None) -> Dict:
         """라이선스 확인"""
         check_email = email or self.email
         
@@ -371,7 +371,7 @@ class LicenseManager:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def fetch_limits(self, tier: str = None) -> Dict:
+    def fetch_limits(self, tier: Optional[str] = None) -> Dict:
         """등급별 제한 정책 조회"""
         try:
             params = {'action': 'limits'}

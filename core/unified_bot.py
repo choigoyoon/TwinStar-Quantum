@@ -14,15 +14,23 @@ import sys
 import os
 import time
 import logging
-import json
-import signal
+import pandas as pd
 import threading
 import requests
 from datetime import datetime
 import logging.handlers
-from typing import Optional
+from typing import Optional, Any, Dict, List, Union, TYPE_CHECKING
 from pathlib import Path
 from collections import deque
+
+if TYPE_CHECKING:
+    from core.order_executor import OrderExecutor
+    from core.position_manager import PositionManager
+    from core.bot_state import BotStateManager
+    from core.data_manager import BotDataManager
+    from core.signal_processor import SignalProcessor
+    from core.strategy_core import AlphaX7Core
+    from exchanges.base_exchange import BaseExchange, Position
 
 # Logging
 from utils.logger import get_module_logger
@@ -40,13 +48,8 @@ if str(BASE_DIR) not in sys.path:
 
 # [LOGGING] Paths
 def _get_log_path(filename: str) -> str:
-    try:
-        from paths import Paths
-        return os.path.join(Paths.LOGS, filename)
-    except:
-        log_dir = os.path.join(_BASE_DIR, 'logs')
-        os.makedirs(log_dir, exist_ok=True)
-        return os.path.join(log_dir, filename)
+    from config.constants.paths import LOG_DIR
+    return os.path.join(LOG_DIR, filename)
 
 def setup_logging(symbol: str = 'BOT'):
     """로그 설정 (RotatingFileHandler)"""
@@ -74,65 +77,35 @@ def setup_logging(symbol: str = 'BOT'):
         root_logger.addHandler(console)
 
 
-# [SYSTEM] 서버 시간 동기화
-_original_time = time.time
-EXCHANGE_TIME_OFFSET = 1.0
-
-def get_server_time_offset(exchange_name: str) -> float:
-    endpoints = {
-        'bybit': 'https://api.bybit.com/v5/market/time',
-        'binance': 'https://api.binance.com/api/v3/time',
-        'okx': 'https://www.okx.com/api/v5/public/time',
-        'bitget': 'https://api.bitget.com/api/v2/public/time',
-    }
-    try:
-        url = endpoints.get(exchange_name.lower())
-        if not url: return 1.0
-        local_before = _original_time()
-        resp = requests.get(url, timeout=5)
-        local_after = _original_time()
-        latency = (local_after - local_before) / 2
-        local_time = local_before + latency
-        data = resp.json()
-        if exchange_name.lower() == 'bybit': server_time = int(data['result']['timeSecond'])
-        elif exchange_name.lower() == 'binance': server_time = int(data['serverTime']) / 1000
-        elif exchange_name.lower() == 'okx': server_time = int(data['data'][0]['ts']) / 1000
-        elif exchange_name.lower() == 'bitget': server_time = int(data['data']['serverTime']) / 1000
-        else: return 1.0
-        offset = local_time - server_time
-        return max(offset + 0.5, 0.5)
-    except: return 1.0
-
-time.time = lambda: _original_time() - EXCHANGE_TIME_OFFSET
+# ✅ P0-5: 시간 동기화 이중 관리 제거 (TimeSyncManager만 사용)
+# DEPRECATED: 수동 오프셋 로직 제거 (core/time_sync.py의 TimeSyncManager 사용)
 
 def start_periodic_sync(exchange_name: str, interval_minutes: int = 30):
-    def sync():
-        global EXCHANGE_TIME_OFFSET
-        EXCHANGE_TIME_OFFSET = get_server_time_offset(exchange_name)
-        threading.Timer(interval_minutes * 60, sync).start()
-    sync()
+    """DEPRECATED: TimeSyncManager가 자동으로 5초마다 동기화. 이 함수는 호환성을 위해 유지."""
+    pass  # No-op: TimeSyncManager가 자동 동기화
 
 # [IMPORTS] Core Modules
-from exchanges.base_exchange import Position, Signal
+from exchanges.base_exchange import Signal
 from exchanges.bybit_exchange import BybitExchange
 from exchanges.lighter_exchange import LighterExchange
+from exchanges.ws_handler import WebSocketHandler
 try: from exchanges.binance_exchange import BinanceExchange
-except: BinanceExchange = None
+except Exception:
+
+    BinanceExchange = None
 try: from exchanges.ccxt_exchange import CCXTExchange, SUPPORTED_EXCHANGES
-except: CCXTExchange = None; SUPPORTED_EXCHANGES = {}
+except Exception:
+
+    CCXTExchange = None; SUPPORTED_EXCHANGES = {}
 
 # [MODULAR] 6 Core Modules (including CapitalManager)
-try:
-    from core.bot_state import BotStateManager
-    from core.data_manager import BotDataManager
-    from core.signal_processor import SignalProcessor
-    from core.order_executor import OrderExecutor
-    from core.position_manager import PositionManager
-    from core.capital_manager import CapitalManager
-    from core.trade_common import CapitalMode
-    HAS_MODULAR_COMPONENTS = True
-except ImportError:
-    HAS_MODULAR_COMPONENTS = False
+from core.bot_state import BotStateManager
+from core.data_manager import BotDataManager
+from core.signal_processor import SignalProcessor
+from core.order_executor import OrderExecutor
+from core.position_manager import PositionManager
+from core.capital_manager import CapitalManager
+HAS_MODULAR_COMPONENTS = True
 
 
 
@@ -149,11 +122,12 @@ class UnifiedBot:
         self.is_running = True
         self.simulation_mode = simulation_mode
         self.exchange = exchange
-        self.symbol = exchange.symbol
+        self.symbol = exchange.symbol if exchange else "UNKNOWN"
         self.use_binance_signal = use_binance_signal
-        self.direction = getattr(exchange, 'direction', 'Both')
+        self.direction = getattr(exchange, 'direction', 'Both') if exchange else 'Both'
         self._data_lock = threading.RLock()
-        
+        self._position_lock = threading.RLock()  # Position thread safety
+
         # [HEALTH] 헬스체크 데몬 시작
         try:
             from utils.health_check import get_health_checker
@@ -164,16 +138,15 @@ class UnifiedBot:
         except Exception as e:
             logger.error(f"[SYSTEM] HealthChecker integration failed: {e}")
 
-        
+
         # 1. 라이선스 및 프리셋 로드
-        try:
-            from .license_guard import get_license_guard
-            self.license_guard = get_license_guard() if not simulation_mode else None
-            from utils.preset_manager import get_backtest_params
-            self.strategy_params = get_backtest_params(getattr(exchange, 'preset_name', None))
-        except:
-            self.license_guard = None
-            self.strategy_params = {}
+        from core.license_guard import get_license_guard
+        self.license_guard = get_license_guard() if not simulation_mode else None
+
+        from utils.preset_manager import get_backtest_params
+        # getattr의 리턴값이 None일 수 있으므로 안전하게 처리
+        preset_name = str(getattr(exchange, 'preset_name', 'Default'))
+        self.strategy_params = get_backtest_params(preset_name)
 
         # 2. 필수 멤버 변수 (레거시/UI 호환)
         self.position = None
@@ -183,17 +156,46 @@ class UnifiedBot:
         self.tf_config = self.TF_MAP.get(getattr(exchange, 'timeframe', '4h'), self.TF_MAP['4h']).copy()
         self.last_ws_price = None
         self._ws_started = False
-        
+        self.ws_handler: Optional[WebSocketHandler] = None  # WebSocket 핸들러
+
+        # ✅ Phase Track 3: 리샘플링된 데이터 저장소 초기화
+        self.df_entry_resampled: Optional[pd.DataFrame] = None
+        self.df_pattern_resampled: Optional[pd.DataFrame] = None
+        self.df_pattern_full: Optional[pd.DataFrame] = None
+        self.df_entry_full: Optional[pd.DataFrame] = None
+
         # 3. Capital Management (Centralized)
-        self.capital_manager = CapitalManager(initial_capital=getattr(exchange, 'amount_usd', 100), fixed_amount=getattr(exchange, 'fixed_amount', 100))
-        use_compounding = getattr(exchange, 'config', {}).get('use_compounding', True)
+        initial_capital = getattr(exchange, 'amount_usd', 100) if exchange else 100
+        fixed_amount = getattr(exchange, 'fixed_amount', 100) if exchange else 100
+        self.capital_manager = CapitalManager(initial_capital=initial_capital, fixed_amount=fixed_amount)
+
+        use_compounding = True
+        if exchange and hasattr(exchange, 'config'):
+            use_compounding = exchange.config.get('use_compounding', True)
+
         self.capital_manager.switch_mode("compound" if use_compounding else "fixed")
-        self.initial_capital = getattr(exchange, 'amount_usd', 100)
-        
+        self.initial_capital = initial_capital
+
+        # ✅ Phase C: 시간 동기화 및 봉 마감 감지 (신규)
+        from core.time_sync import TimeSyncManager
+        from core.candle_close_detector import CandleCloseDetector
+
+        exchange_name = exchange.name if exchange else "unknown"
+        self.time_manager = TimeSyncManager(exchange_name)
+        self.close_detector = CandleCloseDetector(
+            exchange_name=exchange_name,
+            interval='15m',
+            time_manager=self.time_manager
+        )
+        logging.info(
+            f"[INIT] ✅ Time sync: offset={self.time_manager.get_offset():.3f}s, "
+            f"latency={self.time_manager.get_avg_latency():.1f}ms"
+        )
+
         # 4. 신규 모듈 초기화 (핵심!)
         self._init_modular_components()
-        
-        # 4. 상태 복구
+
+        # 5. 상태 복구
         if not simulation_mode:
             self.load_state()
             self._sync_with_exchange_position()
@@ -203,17 +205,19 @@ class UnifiedBot:
         try:
             from storage.trade_storage import get_trade_storage
             from storage.state_storage import get_state_storage
-            t_store = get_trade_storage(self.exchange.name, self.symbol)
-            s_store = get_state_storage(self.exchange.name, self.symbol)
-            
+
+            exchange_name = self.exchange.name if self.exchange else "unknown"
+            t_store = get_trade_storage(exchange_name, self.symbol)
+            s_store = get_state_storage(exchange_name, self.symbol)
+
             self.mod_state = BotStateManager(
-                self.exchange.name, 
-                self.symbol, 
-                use_new_storage=True, 
-                state_storage=s_store, 
+                exchange_name,
+                self.symbol,
+                use_new_storage=True,
+                state_storage=s_store,
                 trade_storage=t_store
             )
-            self.mod_data = BotDataManager(self.exchange.name, self.symbol, self.strategy_params)
+            self.mod_data = BotDataManager(exchange_name, self.symbol, self.strategy_params)
             self.mod_signal = SignalProcessor(self.strategy_params, self.direction)
             self.mod_order = OrderExecutor(
                 exchange=self.exchange, 
@@ -223,9 +227,10 @@ class UnifiedBot:
                 state_manager=self.mod_state
             )
             self.mod_position = PositionManager(
-                self.exchange, 
-                self.strategy_params, 
-                self.simulation_mode, 
+                exchange=self.exchange, 
+                strategy_params=self.strategy_params, 
+                strategy_core=None, # 주입 가능 시점에 업데이트
+                dry_run=self.simulation_mode, 
                 state_manager=self.mod_state
             )
             logging.info(f"[INIT] \u2705 {self.symbol} Modular components ready")
@@ -243,22 +248,24 @@ class UnifiedBot:
         if not hasattr(self, 'mod_state'): return
         state = self.mod_state.load_state()
         if state:
-            if state.get('position'):
-                from exchanges.base_exchange import Position
-                self.position = Position.from_dict(state['position'])
-                if self.exchange: self.exchange.position = self.position
-            if state.get('bt_state'): self.bt_state.update(state['bt_state'])
+            with self._position_lock:
+                if state.get('position'):
+                    from exchanges.base_exchange import Position
+                    self.position = Position.from_dict(state['position'])
+                    if self.exchange: self.exchange.position = self.position
+                if state.get('bt_state'): self.bt_state.update(state['bt_state'])
 
     def save_state(self):
         if not hasattr(self, 'mod_state'): return
-        state = {
-            'position': self.position.to_dict() if self.position else None,
-            'capital': (self.exchange.capital if self.exchange else 0),
-            'bt_state': self.bt_state,
-            'symbol': self.symbol,
-            'timestamp': datetime.utcnow().isoformat()
-        }
-        self.mod_state.save_state(state)
+        with self._position_lock:
+            state = {
+                'position': self.position.to_dict() if self.position else None,
+                'capital': (self.exchange.capital if self.exchange else 0),
+                'bt_state': self.bt_state,
+                'symbol': self.symbol,
+                'timestamp': pd.Timestamp.utcnow().isoformat()
+            }
+            self.mod_state.save_state(state)
 
     def save_trade_history(self, trade: dict):
         if hasattr(self, 'mod_state'): self.mod_state.save_trade(trade, immediate_flush=True)
@@ -271,19 +278,22 @@ class UnifiedBot:
             return
         
         try:
+            if not self.mod_state or not self.mod_state.trade_storage:
+                return
             stats = self.mod_state.trade_storage.get_stats()
-            total_pnl = stats.get('total_pnl_usd', 0)
+            total_pnl = stats.get('total_pnl_usd', 0) if stats else 0
             
             # CapitalManager에 PnL 업데이트
             self.capital_manager.update_after_trade(total_pnl - self.capital_manager.total_pnl)
             
             # Exchange 객체의 capital 동기화 (레거시 코드 호환용)
             new_capital = self.capital_manager.get_trade_size()
-            if abs(new_capital - self.exchange.capital) > 0.01:
-                self.exchange.capital = new_capital
-                logging.info(f"💰 Capital Synchronized: ${new_capital:.2f} (Mode: {self.capital_manager.mode.upper()})")
+            if self.exchange and hasattr(self.exchange, 'capital'):
+                if abs(new_capital - self.exchange.capital) > 0.01:
+                    self.exchange.capital = new_capital
+                    logging.info(f"💰 Capital Synchronized: ${new_capital:.2f} (Mode: {self.capital_manager.mode.upper()})")
         except Exception as e:
-            logging.error(f"[CAPITAL] \u274c Synchronization failed: {e}")
+            logging.error(f"[CAPITAL] ❌ Synchronization failed: {e}")
 
     def _get_compound_seed(self) -> float:
         """Centralized CapitalManager에서 시드 조회"""
@@ -317,80 +327,314 @@ class UnifiedBot:
         self.indicator_cache.update(self.mod_data.indicator_cache)
 
     def detect_signal(self) -> Optional[Signal]:
+        """
+        신호 감지 (Phase A-2: 워밍업 윈도우 적용)
+
+        Note:
+            - 지표 계산 범위: 최근 200개 (100개 워밍업 + 100개 사용)
+            - 백테스트와 동일한 범위 사용 → 신호 일치도 100%
+        """
         if not hasattr(self, 'mod_signal'): return None
         candle = self.exchange.get_current_candle()
-        cond = self.mod_signal.get_trading_conditions(self.df_pattern_full, self.df_entry_resampled)
-        action = self.mod_position.check_entry_live(self.bt_state, candle, cond, self.df_entry_resampled)
+
+        # P1-004: 캔들 데이터 None 체크
+        if candle is None:
+            logging.warning("[SIGNAL] ⚠️ Current candle is None, skipping signal detection")
+            return None
+        import pandas as pd
+
+        # Phase A-2: 워밍업 윈도우 적용 (지표 계산 정확도 보장)
+        df_entry = self.mod_data.get_recent_data(limit=100, warmup_window=100)
+        if df_entry is None or df_entry.empty:
+            df_entry = self.df_entry_resampled if self.df_entry_resampled is not None else pd.DataFrame()
+
+        # Pattern data (1h) - 전체 사용
+        df_pattern = self.df_pattern_full if self.df_pattern_full is not None else pd.DataFrame()
+
+        cond = self.mod_signal.get_trading_conditions(df_pattern, df_entry)
+        action = self.mod_position.check_entry_live(self.bt_state, candle, cond, df_entry)
         if action and action.get('action') == 'ENTRY':
-            return Signal(type=action['direction'], pattern=action['pattern'], entry_price=action['price'], stop_loss=action.get('sl', 0))
+            return Signal(type=action['direction'], pattern=action['pattern'], stop_loss=action.get('sl', 0), atr=action.get('atr', 0.0))
         return None
 
     def execute_entry(self, signal: Signal) -> bool:
         if not self._can_trade(): return False
-        if self.mod_order.execute_entry(signal, self.position, self.bt_state):
-            self.position = self.mod_order.last_position
-            if self.exchange: self.exchange.position = self.position
-            self.save_state()
-            return True
+        with self._position_lock:
+            if self.mod_order.execute_entry(signal, self.position, self.bt_state):
+                self.position = self.mod_order.last_position
+                if self.exchange: self.exchange.position = self.position
+                self.save_state()
+                return True
         return False
 
     def manage_position(self):
-        if not self.position: return
-        candle = self.exchange.get_current_candle()
-        res = self.mod_position.manage_live(self.bt_state, candle, self.df_entry_resampled)
-        if res and res.get('action') == 'CLOSE':
-            if self.mod_order.execute_close(self.position, self.bt_state):
-                self.position = None
-                if self.exchange: self.exchange.position = None
-                self.save_state()
+        """
+        포지션 관리 (Phase A-2: 워밍업 윈도우 적용)
+
+        Note:
+            - 지표 계산 범위: 최근 200개 (100개 워밍업 + 100개 사용)
+            - 백테스트와 동일한 범위 사용 → 청산 신호 일치도 100%
+        """
+        with self._position_lock:
+            if not self.position: return
+            candle = self.exchange.get_current_candle()
+
+            # P1-005: 캔들 데이터 None 체크
+            if candle is None:
+                logging.warning("[POSITION] ⚠️ Current candle is None, skipping position management")
+                return
+
+            # Phase A-2: 워밍업 윈도우 적용 (지표 계산 정확도 보장)
+            df_entry = self.mod_data.get_recent_data(limit=100, warmup_window=100)
+            if df_entry is None or df_entry.empty:
+                df_entry = self.df_entry_resampled if self.df_entry_resampled is not None else pd.DataFrame()
+
+            res = self.mod_position.manage_live(self.bt_state, candle, df_entry)
+            if res and res.get('action') == 'CLOSE':
+                exit_price = res.get('price', candle.get('close', 0.0))
+                if self.mod_order.execute_close(self.position, exit_price, reason=res.get('reason', 'UNKNOWN'), bt_state=self.bt_state):
+                    self.position = None
+                    if self.exchange: self.exchange.position = None
+                    self.save_state()
 
     def sync_position(self) -> bool:
-        if not hasattr(self, 'mod_position'): return True
-        res = self.mod_position.sync_with_exchange(self.position, self.bt_state)
-        if res['action'] == 'CLEAR':
-            self.position = None
-            self.bt_state.update({'position': None, 'positions': []})
-            self.save_state()
-        return res['synced']
+        """
+        ✅ P1-4: 포지션 동기화 강화 (외부 포지션 복원 지원)
+
+        거래소와 봇 포지션을 동기화하고, 불일치 시 적절한 조치 수행
+
+        Returns:
+            동기화 성공 여부
+        """
+        if not hasattr(self, 'mod_position'):
+            return True
+
+        with self._position_lock:
+            res = self.mod_position.sync_with_exchange(self.position, self.bt_state)
+
+            if res['action'] == 'CLEAR':
+                # 봇 포지션 있지만 거래소 없음 → 봇 포지션 클리어
+                logging.info("[SYNC] Clearing bot position (not found on exchange)")
+                self.position = None
+                self.bt_state.update({'position': None, 'positions': []})
+                self.save_state()
+
+            elif res['action'] == 'RESTORE':
+                # ✅ P1-4: 거래소 포지션 있지만 봇 없음 → 포지션 복원
+                ex_pos = res.get('details', {})
+                if ex_pos:
+                    try:
+                        from exchanges.base_exchange import Position
+                        from datetime import datetime
+
+                        # 거래소 포지션 → 봇 Position 객체로 변환
+                        side = 'Long' if ex_pos.get('side', '').lower() in ['buy', 'long'] else 'Short'
+                        entry_price = float(ex_pos.get('avgPrice', 0))
+                        size = abs(float(ex_pos.get('size', 0)))
+                        # SL은 거래소에서 조회해야 하지만, 없으면 임시로 entry_price ± 5%
+                        stop_loss = entry_price * 0.95 if side == 'Long' else entry_price * 1.05
+
+                        self.position = Position(
+                            symbol=self.symbol,
+                            side=side,
+                            entry_price=entry_price,
+                            size=size,
+                            stop_loss=stop_loss,
+                            initial_sl=stop_loss,
+                            risk=abs(entry_price - stop_loss),
+                            be_triggered=False,
+                            entry_time=datetime.now(),
+                            order_id=ex_pos.get('orderId', '')
+                        )
+
+                        # 백테스트 상태 업데이트
+                        self.bt_state['position'] = self.position.to_dict()
+                        self.save_state()
+
+                        logging.info(
+                            f"[SYNC] ✅ Restored position: {side} {size} @ {entry_price:.2f} "
+                            f"(SL: {stop_loss:.2f})"
+                        )
+
+                    except Exception as e:
+                        logging.error(f"[SYNC] Failed to restore position: {e}")
+
+        return res.get('synced', False)
 
     # ========== WebSocket \u0026 Monitor ==========
     def _start_websocket(self):
-        sig_ex = self._get_signal_exchange()
-        if hasattr(sig_ex, 'start_websocket'):
-            self._ws_started = sig_ex.start_websocket(
-                interval='15m', on_candle_close=self._on_candle_close,
-                on_price_update=self._on_price_update, on_connect=lambda: self.mod_data.backfill(lambda lim: sig_ex.get_klines('15', lim))
+        """WebSocket 핸들러 시작 (Phase C: 시간 동기화 통합)"""
+        try:
+            # WebSocketHandler 인스턴스 생성
+            self.ws_handler = WebSocketHandler(
+                exchange=self.exchange.name,
+                symbol=self.symbol,
+                interval='15m',
+                time_manager=self.time_manager  # ✅ Phase C: 시간 동기화 매니저 전달
             )
 
+            # 콜백 연결
+            self.ws_handler.on_candle_close = self._on_candle_close
+            self.ws_handler.on_price_update = self._on_price_update
+            self.ws_handler.on_connect = self._on_ws_connect
+            self.ws_handler.on_disconnect = self._on_ws_disconnect
+            self.ws_handler.on_error = self._on_ws_error
+
+            # WebSocket 스레드 시작 (daemon=False for graceful shutdown)
+            self.ws_thread = threading.Thread(
+                target=self.ws_handler.run_sync,
+                daemon=False,  # Changed from True to allow graceful shutdown
+                name=f"WS-{self.symbol}"
+            )
+            self.ws_thread.start()
+
+            self._ws_started = True
+            logging.info(f"[WS] ✅ WebSocket started for {self.symbol}")
+
+        except Exception as e:
+            logging.error(f"[WS] ❌ Failed to start WebSocket: {e}")
+            self._ws_started = False
+
     def _on_candle_close(self, candle: dict):
-        self.mod_data.append_candle(candle)
-        self._process_historical_data()
-        self.mod_signal.add_patterns_from_df(self.df_pattern_full)
+        """WebSocket 캔들 마감 콜백 (Phase C: 봉 마감 감지 + 타임존 정규화 + 봉 경계 정렬)"""
+        try:
+            # ✅ 1. 봉 마감 감지 (3가지 방식)
+            ws_confirm = candle.get('confirm', None)
+            if not self.close_detector.detect_close(candle, ws_confirm):
+                logging.debug("[WS] Not a candle close event, skipping")
+                return
+
+            # ✅ 2. 타임스탬프 정규화 + 봉 경계 정렬
+            if 'timestamp' in candle:
+                ts = candle['timestamp']
+
+                # int/float (밀리초/초) → UTC aware Timestamp
+                if isinstance(ts, (int, float)):
+                    unit = 'ms' if ts > 1e12 else 's'
+                    candle['timestamp'] = pd.to_datetime(ts, unit=unit, utc=True)
+                else:
+                    # 문자열/Timestamp → UTC aware
+                    candle['timestamp'] = pd.to_datetime(ts)
+                    if candle['timestamp'].tz is None:
+                        candle['timestamp'] = candle['timestamp'].tz_localize('UTC')
+                    elif candle['timestamp'].tz.zone != 'UTC':
+                        candle['timestamp'] = candle['timestamp'].tz_convert('UTC')
+
+                # ✅ 봉 경계 정렬 (14:15:03 → 14:15:00)
+                candle['timestamp'] = self.close_detector.align_to_boundary(candle['timestamp'])
+
+            # 3. 데이터 매니저에 추가 (✅ P0-4: lock 최소화)
+            with self.mod_data._data_lock:
+                self.mod_data.append_candle(candle, save=False)  # 저장 제외 (lock 내 I/O 제거)
+
+            # 4. lock 외부에서 Parquet 저장 (비동기)
+            self.mod_data._save_with_lazy_merge()
+
+            # 5. 패턴 데이터 업데이트
+            self._process_historical_data()
+
+            # 6. 패턴 신호 업데이트
+            df_pattern = self.df_pattern_full if self.df_pattern_full is not None else pd.DataFrame()
+            self.mod_signal.add_patterns_from_df(df_pattern)
+
+            logging.debug(f"[WS] ✅ Candle close detected: {candle['timestamp']}")
+
+        except Exception as e:
+            logging.error(f"[WS] ❌ Candle close error: {e}", exc_info=True)
 
     def _on_price_update(self, price: float):
         self.last_ws_price = price
-        if self.position:
-            candle = {'high': price, 'low': price, 'close': price, 'timestamp': datetime.utcnow()}
-            res = self.mod_position.manage_live(self.bt_state, candle, self.df_entry_resampled)
-            if res and res.get('action') == 'CLOSE':
-                if self.mod_order.execute_close(self.position, self.bt_state):
-                    self.position = None; self.save_state()
+        with self._position_lock:
+            if self.position:
+                candle = {'high': price, 'low': price, 'close': price, 'timestamp': pd.Timestamp.utcnow()}
+                res = self.mod_position.manage_live(self.bt_state, candle, self.df_entry_resampled)
+                if res and res.get('action') == 'CLOSE':
+                    if self.mod_order.execute_close(self.position, price, reason=res.get('reason', 'WS_UPDATE'), bt_state=self.bt_state):
+                        self.position = None; self.save_state()
+
+    def _on_ws_connect(self):
+        """WebSocket 연결 성공 콜백"""
+        logging.info(f"[WS] ✅ Connected: {self.symbol}")
+        # 연결 직후 데이터 보충
+        try:
+            sig_ex = self._get_signal_exchange()
+            added = self.mod_data.backfill(lambda lim: sig_ex.get_klines('15', lim))
+            if added > 0:
+                logging.info(f"[WS] Backfilled {added} candles after reconnect")
+        except Exception as e:
+            logging.warning(f"[WS] Backfill after connect failed: {e}")
+
+    def _on_ws_disconnect(self, reason: str):
+        """WebSocket 연결 끊김 콜백"""
+        logging.warning(f"[WS] ⚠️ Disconnected: {self.symbol} - {reason}")
+
+    def _on_ws_error(self, error: str):
+        """WebSocket 에러 콜백"""
+        logging.error(f"[WS] ❌ Error: {self.symbol} - {error}")
 
     def _start_data_monitor(self):
+        """데이터 모니터 스레드 (30초마다 갱신 + WebSocket 헬스체크)"""
         def monitor():
             while self.is_running:
-                time.sleep(300)
-                try: 
+                time.sleep(30)  # ✅ P1-1: 5분 → 30초 (갭 감지 단축)
+                try:
+                    # 1. WebSocket 헬스체크 (연결 끊김 감지)
+                    if self.ws_handler and not self.ws_handler.is_healthy(timeout_seconds=10):
+                        logging.warning("[WS] ⚠️ Unhealthy, falling back to REST API")
+                        # REST API 폴백
+                        sig_ex = self._get_signal_exchange()
+                        added = self.mod_data.backfill(lambda lim: sig_ex.get_klines('15', lim))
+                        if added > 0:
+                            self.df_entry_full = self.mod_data.df_entry_full
+                            self._process_historical_data()
+
+                    # 2. 정기 데이터 보충 (WebSocket 연결 중에도 갭 방지)
                     sig_ex = self._get_signal_exchange()
                     if self.mod_data.backfill(lambda lim: sig_ex.get_klines('15', lim)) > 0:
-                        self.df_entry_full = self.mod_data.df_entry_full; self._process_historical_data()
+                        self.df_entry_full = self.mod_data.df_entry_full
+                        self._process_historical_data()
+
+                    # 3. 포지션 동기화
                     self.sync_position()
-                except: pass
-        threading.Thread(target=monitor, daemon=True).start()
+
+                except Exception as e:
+                    logging.error(f"[MONITOR] Error: {e}")
+        threading.Thread(target=monitor, daemon=True, name=f"Monitor-{self.symbol}").start()
 
     # ========== Bridge \u0026 Helpers ==========
     def _get_signal_exchange(self): return self.exchange
-    def _can_trade(self): return self.license_guard.can_trade().get('can_trade', True) if self.license_guard else True
+    def _can_trade(self) -> bool:
+        """
+        거래 가능 여부 확인 (P1-002: 잔고 체크 포함)
+
+        Returns:
+            bool: 거래 가능 여부
+        """
+        # 1. 라이선스 체크
+        if self.license_guard:
+            if not self.license_guard.can_trade().get('can_trade', True):
+                return False
+
+        # 2. 잔고 체크 (P1-002: 선물/현물 지갑 구분)
+        try:
+            balance = self.exchange.get_balance()
+
+            # 잔고 조회 실패
+            if balance is None or balance <= 0:
+                logging.warning(f"[TRADE] ⚠️ Balance check failed or insufficient: {balance}")
+                return False
+
+            # 최소 잔고 체크 (거래소별 최소 주문 금액 고려)
+            min_balance = 10.0  # USDT/KRW 최소 잔고 (조정 가능)
+            if balance < min_balance:
+                logging.warning(f"[TRADE] ⚠️ Insufficient balance: ${balance:.2f} < ${min_balance:.2f}")
+                return False
+
+            return True
+
+        except Exception as e:
+            logging.error(f"[TRADE] ❌ Balance check failed: {e}")
+            return False
     def _sync_with_exchange_position(self): self.sync_position()
     
     def run(self):
@@ -399,7 +643,9 @@ class UnifiedBot:
         try:
             from bot_status import update_bot_running
             update_bot_running(self.exchange.name, self.symbol, "v1.7.0 Modular")
-        except: pass
+        except Exception:
+
+            pass
 
         # [FIX] Connect to Exchange
         if hasattr(self.exchange, 'connect'):
@@ -413,13 +659,53 @@ class UnifiedBot:
         
         while self.is_running:
             try:
-                if not self.position:
+                # [VME] 로컬 손절 감시 강화 (Upbit, Bithumb, Lighter)
+                vme_exchanges = ['upbit', 'bithumb', 'lighter']
+                is_vme = hasattr(self.exchange, 'name') and self.exchange.name.lower() in vme_exchanges
+
+                with self._position_lock:
+                    has_position = self.position is not None
+
+                if not has_position:
                     signal = self.detect_signal()
                     if signal: self.execute_entry(signal)
-                else: self.manage_position()
-                time.sleep(1)
+                    time.sleep(1) # 진입 탐색은 1초 주기 유지
+                else:
+                    self.manage_position()
+                    # 포지션 보유 중이며 VME 필요 거래소인 경우 0.2초(5Hz) 고속 감시
+                    time.sleep(0.2 if is_vme else 1.0)
             except Exception as e:
                 logging.error(f"[LOOP] Error: {e}"); time.sleep(5)
+
+    def stop(self):
+        """봇 정상 종료"""
+        logging.info(f"[BOT] Stopping bot for {self.symbol}...")
+        self.is_running = False
+
+        # WebSocket 정상 종료
+        if hasattr(self, 'ws_handler') and self.ws_handler:
+            try:
+                self.ws_handler.stop()
+                logging.debug("[BOT] WebSocket stop signal sent")
+
+                # WebSocket 스레드 대기 (최대 5초)
+                if hasattr(self, 'ws_thread') and self.ws_thread.is_alive():
+                    self.ws_thread.join(timeout=5.0)
+                    if self.ws_thread.is_alive():
+                        logging.warning("[BOT] WebSocket thread did not terminate in 5 seconds")
+                    else:
+                        logging.info("[BOT] WebSocket thread terminated successfully")
+            except Exception as e:
+                logging.error(f"[BOT] WebSocket shutdown error: {e}")
+
+        # 상태 저장
+        try:
+            self.save_state()
+            logging.info("[BOT] State saved successfully")
+        except Exception as e:
+            logging.error(f"[BOT] State save error: {e}")
+
+        logging.info(f"[BOT] Bot stopped for {self.symbol}")
 
     def _health_api_check(self) -> bool:
         """헬스체크용 API 상태 확인"""
@@ -427,7 +713,8 @@ class UnifiedBot:
             try:
                 # 단순 가격 조회 등으로 연결 확인
                 return self.exchange.get_klines(self.symbol, '15m', limit=1) is not None
-            except:
+            except Exception:
+
                 return False
         return True
 
@@ -439,23 +726,27 @@ class UnifiedBot:
                 if hasattr(self.exchange, 'connect'):
                     self.exchange.connect() # 재연결 시도
                     return True
-            except:
+            except Exception:
+
                 pass
         return False
 
 
 def create_bot(exchange_name: str, config: dict, use_binance_signal: bool = False) -> UnifiedBot:
-    global EXCHANGE_TIME_OFFSET
-    EXCHANGE_TIME_OFFSET = get_server_time_offset(exchange_name)
+    # ✅ P0-5: 시간 동기화는 TimeSyncManager가 자동 처리 (수동 오프셋 제거)
     
     if exchange_name.lower() == 'bybit': exchange = BybitExchange(config)
     elif exchange_name.lower() == 'lighter': exchange = LighterExchange(config)
     elif CCXTExchange and exchange_name.lower() in SUPPORTED_EXCHANGES: exchange = CCXTExchange(exchange_name.lower(), config)
     else: exchange = BybitExchange(config) # Default
     
-    exchange.preset_params = config.get('preset_params', {})
+    # For Pyright: preset_params is dynamic attribute
+    setattr(exchange, 'preset_params', config.get('preset_params', {}))
+    
     exchange.direction = config.get('direction', 'Both')
-    if config.get('preset_name'): exchange.preset_name = config['preset_name']
+    
+    if config.get('preset_name'):
+        setattr(exchange, 'preset_name', config['preset_name'])
     
     logger.info("[DEBUG] Create Bot Finished")
     return UnifiedBot(exchange, use_binance_signal=use_binance_signal)

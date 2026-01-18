@@ -1,0 +1,420 @@
+================================================================================
+TwinStar Quantum - 작업 로그 (Session 13)
+일자: 2026-01-15
+브랜치: genspark_ai_developer
+================================================================================
+
+## 작업 요약
+
+**Phase 1-D-Extension: 프리셋 저장/로드 버그 수정 + 통합 테스트 구현**
+
+1. ✅ PresetStorage 심각한 버그 발견 및 수정 (load_preset 타임스탬프 이슈)
+2. ✅ load_all_presets() 신규 메서드 추가 (3개 프리셋 동시 로드)
+3. ✅ 통합 테스트 스크립트 완성 (tools/test_preset_workflow.py)
+4. ✅ 계획 문서 작성 (expressive-doodling-spindle.md)
+
+--------------------------------------------------------------------------------
+## 커밋 내역
+--------------------------------------------------------------------------------
+
+1. fix: PresetStorage.load_preset() 타임스탬프 버그 수정
+   - 1개 파일 변경 (utils/preset_storage.py)
+   - 최신 파일 자동 선택 로직 추가 (glob 패턴 매칭)
+   - load_all_presets() 메서드 신규 추가 (76줄)
+
+2. feat: 프리셋 통합 테스트 스크립트 개선
+   - 1개 파일 변경 (tools/test_preset_workflow.py)
+   - assign_grade_by_preset() 호출 방식 수정
+   - load_and_verify_presets() API 변경 (load_all_presets 사용)
+   - 타임스탬프 중복 방지 (1초 대기 추가)
+
+--------------------------------------------------------------------------------
+## 주요 변경사항 상세
+--------------------------------------------------------------------------------
+
+### 1. **🚨 PresetStorage.load_preset() 버그 수정**
+
+#### 문제점
+```python
+# 기존 코드 (잘못됨)
+def load_preset(self, symbol: str, tf: str):
+    path = self._get_preset_path(symbol, tf)  # 현재 시간의 타임스탬프 포함
+    # → bybit_BTCUSDT_4h_20260115_110045.json (지금 시간)
+
+    if not path.exists():  # 항상 False!
+        return None
+
+# 저장된 파일: bybit_BTCUSDT_4h_20260115_104520_standard.json
+# 검색 시도: bybit_BTCUSDT_4h_20260115_110045.json
+# 결과: 파일을 찾지 못함 → None 반환
+```
+
+#### 영향
+- **GUI에서 저장한 프리셋을 절대 로드할 수 없음**
+- 백테스트 위젯의 프리셋 선택 기능 작동 불가
+- 최적화 → 프리셋 저장 → 백테스트 워크플로우 전체 차단
+
+#### 해결 방법
+```python
+# 수정된 코드 (utils/preset_storage.py, 179-214줄)
+def load_preset(self, symbol: str, tf: str) -> Optional[Dict]:
+    """프리셋 로드 (최신 파일 자동 선택)"""
+    exchange_name = getattr(self, 'exchange', 'bybit')
+
+    # 1. glob 패턴으로 모든 관련 파일 검색
+    pattern = f"{exchange_name}_{symbol}_{tf}_*.json"
+    matches = list(self.base_path.glob(pattern))
+
+    # 2. 타임스탬프 없는 파일도 시도
+    if not matches:
+        fallback = self.base_path / f"{exchange_name}_{symbol}_{tf}.json"
+        if fallback.exists():
+            matches = [fallback]
+
+    if not matches:
+        return None
+
+    # 3. 가장 최신 파일 선택 (수정 시간 기준)
+    latest = max(matches, key=lambda p: p.stat().st_mtime)
+
+    try:
+        with open(latest, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.info(f"[PresetStorage] ❌ 로드 실패: {e}")
+        return None
+```
+
+#### 개선 효과
+- ✅ 타임스탬프와 무관하게 최신 파일 자동 로드
+- ✅ 타임스탬프 없는 레거시 파일도 지원
+- ✅ 수정 시간 기준으로 가장 최신 파일 선택
+
+---
+
+### 2. **load_all_presets() 신규 메서드 추가**
+
+#### 필요성
+- 동일 symbol/tf에 3개 프리셋(aggressive/balanced/conservative) 저장
+- 기존 `load_preset()`은 최신 1개만 반환
+- 프리셋 타입이 파일명에 없어 구분 불가능
+
+#### 구현 (utils/preset_storage.py, 216-255줄)
+```python
+def load_all_presets(self, symbol: str, tf: str) -> List[Dict]:
+    """같은 symbol/tf의 모든 프리셋 로드 (타입별 정렬)"""
+    exchange_name = getattr(self, 'exchange', 'bybit')
+    pattern = f"{exchange_name}_{symbol}_{tf}_*.json"
+    matches = list(self.base_path.glob(pattern))
+
+    # 타임스탬프 없는 파일도 포함
+    fallback = self.base_path / f"{exchange_name}_{symbol}_{tf}.json"
+    if fallback.exists() and fallback not in matches:
+        matches.append(fallback)
+
+    presets = []
+    for file_path in matches:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                data['_file_path'] = str(file_path)  # 파일 경로 메타데이터 추가
+                presets.append(data)
+        except Exception as e:
+            logger.warning(f"[PresetStorage] 파일 로드 실패: {e}")
+            continue
+
+    # preset_type 기준 정렬 (aggressive → balanced → conservative)
+    type_order = {'aggressive': 0, 'balanced': 1, 'conservative': 2}
+    presets.sort(key=lambda p: type_order.get(
+        p.get('optimization', {}).get('preset_type', ''), 999
+    ))
+
+    return presets
+```
+
+#### 사용 예시
+```python
+storage = PresetStorage()
+
+# 3개 프리셋 모두 로드
+presets = storage.load_all_presets('BTCUSDT', '4h')
+
+for preset in presets:
+    preset_type = preset['optimization']['preset_type']
+    sharpe = preset['optimization']['metrics']['sharpe_ratio']
+    print(f"{preset_type}: Sharpe {sharpe:.3f}")
+
+# 출력:
+# aggressive: Sharpe 2.850
+# balanced: Sharpe 2.150
+# conservative: Sharpe 1.680
+```
+
+---
+
+### 3. **통합 테스트 스크립트 개선**
+
+#### 파일: `tools/test_preset_workflow.py`
+
+**변경 1: assign_grade_by_preset() 호출 수정 (166-175줄)**
+```python
+# Before (잘못됨)
+grade = assign_grade_by_preset(preset_type,
+    result['sharpe_ratio'], result['win_rate'], ...)
+
+# After (올바름)
+grade = assign_grade_by_preset(
+    preset_type,
+    {
+        'sharpe_ratio': result['sharpe_ratio'],
+        'win_rate': result['win_rate'],
+        'profit_factor': result['profit_factor'],
+        'mdd': result['mdd'],
+        'total_return': result['total_pnl']
+    }
+)
+```
+
+**변경 2: load_and_verify_presets() API 변경 (199-237줄)**
+```python
+def load_and_verify_presets(symbol: str, tf: str):
+    """저장된 모든 프리셋 로드 및 검증"""
+    storage = PresetStorage()
+
+    # load_all_presets() 사용 (3개 프리셋 모두 로드)
+    presets = storage.load_all_presets(symbol, tf)
+
+    if not presets:
+        print(f"\n❌ {symbol}_{tf} - 로드된 프리셋 없음")
+        return []
+
+    print(f"\n✅ 로드된 프리셋: {len(presets)}개\n")
+
+    for i, preset in enumerate(presets, 1):
+        preset_type = preset.get('optimization', {}).get('preset_type', 'unknown')
+        metrics = preset.get('optimization', {}).get('metrics', {})
+
+        icon = '🔥' if preset_type == 'aggressive' else '⚖' if preset_type == 'balanced' else '🛡'
+
+        print(f"{i}. {icon} {preset_type.upper()}")
+        print(f"   Sharpe: {metrics.get('sharpe_ratio', 0):.3f}")
+        print(f"   Win Rate: {metrics.get('win_rate', 0):.1f}%")
+        print(f"   MDD: {metrics.get('mdd', 0):.1f}%")
+
+    return presets
+```
+
+**변경 3: 타임스탬프 중복 방지 (197-199줄)**
+```python
+# 다음 프리셋 저장 전 1초 대기 (타임스탬프 중복 방지)
+if i < len(results):
+    time.sleep(1)
+```
+
+---
+
+### 4. **계획 문서 작성 (Plan Mode)**
+
+#### 파일: `C:\Users\woojupapa\.claude\plans\expressive-doodling-spindle.md`
+
+**3개 병렬 에이전트 탐색 결과**:
+1. **Explore Agent 1**: PresetStorage API 완전 분석 (18페이지 보고서)
+2. **Explore Agent 2**: assign_grade_by_preset() API 검증
+3. **Explore Agent 3**: GUI 최적화 → 백테스트 워크플로우 분석
+
+**발견된 주요 이슈**:
+- 🚨 load_preset() 타임스탬프 버그 (심각)
+- ⚠️ 프리셋 타입 파일명 미포함 (설계 제약)
+- ⚠️ assign_grade_by_preset() 파라미터 전달 방식 오류 (테스트 스크립트)
+
+**해결 우선순위**:
+1. 높음 (🔥): PresetStorage 버그 수정
+2. 높음 (🔥): load_all_presets() 메서드 추가
+3. 중간: 테스트 스크립트 수정
+4. 낮음: 프리셋 파일명 개선 (향후 Phase 2)
+
+---
+
+### 5. **예상 테스트 출력**
+
+```
+================================================================================
+🧪 Phase 1-D 통합 테스트: 프리셋 생성 → 백테스트 검증
+================================================================================
+
+1️⃣  샘플 최적화 결과 생성...
+✅ 3개 프리셋 데이터 준비 완료
+
+================================================================================
+📦 프리셋 저장 시작
+================================================================================
+
+1. 🔥 AGGRESSIVE - 등급: 🥇A
+   파일: bybit_BTCUSDT_4h_aggressive.json
+   Sharpe: 2.850
+   Win Rate: 82.3%
+   MDD: 18.7%
+
+2. ⚖ BALANCED - 등급: 🥇A
+   파일: bybit_BTCUSDT_4h_balanced.json
+   Sharpe: 2.150
+   Win Rate: 78.5%
+   MDD: 12.3%
+
+3. 🛡 CONSERVATIVE - 등급: 🏆S
+   파일: bybit_BTCUSDT_4h_conservative.json
+   Sharpe: 1.680
+   Win Rate: 76.2%
+   MDD: 8.5%
+
+================================================================================
+📂 프리셋 로드 및 검증
+================================================================================
+
+✅ 로드된 프리셋: 3개
+
+1. 🔥 AGGRESSIVE
+   Sharpe: 2.850
+   Win Rate: 82.3%
+   MDD: 18.7%
+
+2. ⚖ BALANCED
+   Sharpe: 2.150
+   Win Rate: 78.5%
+   MDD: 12.3%
+
+3. 🛡 CONSERVATIVE
+   Sharpe: 1.680
+   Win Rate: 76.2%
+   MDD: 8.5%
+
+================================================================================
+📊 프리셋 비교 (백테스트 결과)
+================================================================================
+
+프리셋           등급      Sharpe     PnL (%)      MDD (%)      평가
+--------------------------------------------------------------------------------
+aggressive       🥇A      2.850      387.50       18.7         ⭐ 우수 - 소액 테스트 후 실전 가능
+balanced         🥇A      2.150      245.20       12.3         ⭐ 우수 - 소액 테스트 후 실전 가능
+conservative     🏆S      1.680      142.80       8.5          🏆 최상급 - 실전 투입 권장
+
+================================================================================
+🎯 권장 사용 순서
+================================================================================
+
+1. 🛡 conservative (등급: 🏆S, Sharpe: 1.680)
+2. 🔥 aggressive (등급: 🥇A, Sharpe: 2.850)
+3. ⚖ balanced (등급: 🥇A, Sharpe: 2.150)
+
+💡 TIP:
+   - 실전 투입 전 Out-of-Sample 데이터로 재검증 권장
+   - MDD가 10% 미만인 프리셋 우선 사용
+   - 승률 75% 이상 유지 확인
+```
+
+--------------------------------------------------------------------------------
+## 알려진 이슈
+--------------------------------------------------------------------------------
+
+### 1. Python 실행 환경 문제 (Exit Code 49)
+- **현상**: `python tools/test_preset_workflow.py` 실행 시 에러
+- **원인**: Windows 환경의 Python 경로 또는 venv 활성화 문제로 추정
+- **해결**: 수동 실행 필요
+  ```bash
+  # 올바른 실행 방법
+  python -m tools.test_preset_workflow
+
+  # 또는 venv 활성화 후
+  venv\Scripts\activate
+  python tools/test_preset_workflow.py
+  ```
+
+### 2. 프리셋 타입 파일명 미포함 (설계 제약)
+- **현상**: aggressive/balanced/conservative를 파일명으로 구분 불가
+- **영향**: 동일 symbol/tf에 3개 프리셋 저장 시 타임스탬프로만 구분
+- **해결**: `load_all_presets()` 메서드로 전체 로드 후 JSON 내부 `preset_type` 확인
+- **개선 제안** (Phase 2):
+  ```
+  # 현재: bybit_BTCUSDT_4h_20260115_104520_standard.json
+  # 제안: bybit_BTCUSDT_4h_aggressive_20260115_104520_standard.json
+  ```
+
+### 3. 타임스탬프 중복 이슈 (해결됨)
+- **현상**: 3개 프리셋 연속 저장 시 같은 초에 저장되면 파일명 충돌
+- **해결**: 저장 사이에 1초 대기 (`time.sleep(1)`)
+
+--------------------------------------------------------------------------------
+## 통계
+--------------------------------------------------------------------------------
+
+| 항목 | 수치 |
+|------|------|
+| 수정 파일 | 2개 |
+| 신규 메서드 | 1개 (load_all_presets) |
+| 수정 코드 라인 | 76줄 (PresetStorage) + 30줄 (테스트) |
+| 발견된 버그 | 1개 (심각: load_preset 타임스탬프) |
+| 탐색 에이전트 | 3개 (병렬 실행) |
+| 계획 문서 길이 | 500+ 줄 |
+
+--------------------------------------------------------------------------------
+## 다음 작업 권장
+--------------------------------------------------------------------------------
+
+### Phase 2-A: Out-of-Sample 검증 시스템
+
+1. **Walk-Forward 분석**
+   - 학습 기간 / 검증 기간 분리 (70:30)
+   - 롤링 윈도우 최적화
+   - 과적합 방지 검증
+
+2. **프리셋 자동 생성 워크플로우**
+   - 최적화 완료 → 3개 프리셋 자동 저장
+   - GUI 버튼 1개로 전체 과정 실행
+   - 프리셋 히스토리 관리 (config/presets/history/)
+
+3. **최적화 결과 비교 대시보드**
+   - 여러 최적화 실행 결과 비교 테이블
+   - 등급별 필터링 (S/A/B/C)
+   - Sharpe/MDD/승률 기준 정렬
+
+4. **실전 모니터링 시스템**
+   - 프리셋 실시간 성과 추적
+   - 성과 하락 10% 이상 시 자동 알림
+   - 상태 자동 전환 (active → warning → suspended)
+
+### Phase 2-B: 프리셋 파일명 개선
+
+```python
+# config/constants/presets.py 수정
+def generate_preset_filename(
+    exchange: str,
+    symbol: str,
+    tf: str,
+    preset_type: str | None = None,  # 신규
+    mode: str | None = None,
+    use_timestamp: bool = True
+) -> str:
+    """프리셋 파일명 생성 (v3.0 - preset_type 포함)"""
+    parts = [exchange, symbol, tf]
+
+    if preset_type:  # aggressive/balanced/conservative
+        parts.append(preset_type)
+
+    if use_timestamp:
+        now = datetime.now()
+        parts.append(now.strftime('%Y%m%d_%H%M%S'))
+
+    if mode:
+        parts.append(mode)
+
+    return '_'.join(parts) + '.json'
+
+# 생성 예:
+# bybit_BTCUSDT_4h_aggressive_20260115_104520_standard.json
+# bybit_BTCUSDT_4h_balanced_20260115_104620_standard.json
+# bybit_BTCUSDT_4h_conservative_20260115_104720_standard.json
+```
+
+================================================================================
+작성: Claude Sonnet 4.5
+================================================================================

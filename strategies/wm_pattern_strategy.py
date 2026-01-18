@@ -6,7 +6,7 @@ import os
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Any, cast
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -26,6 +26,16 @@ class WMStrategyParams:
     trigger_mult: float = 1.5
     leverage: float = 3.0
     
+    # Missing fields expected by developer_mode_widget.py
+    macd_fast: int = 12
+    macd_slow: int = 26
+    macd_signal: int = 9
+    swing_length: int = 3
+    atr_period: int = 14
+    atr_multiplier: float = 1.5
+    be_trigger_mult: float = 1.5
+    pattern_tolerance: float = 0.03
+    
     def to_dict(self) -> dict:
         return vars(self)
 
@@ -39,7 +49,7 @@ class WMPatternStrategy(BaseStrategy):
     - 3x 레버리지 복리
     """
     
-    def __init__(self, params: WMStrategyParams = None):
+    def __init__(self, params: Optional[WMStrategyParams] = None):
         self.params = params or WMStrategyParams()
         super().__init__()
     
@@ -88,7 +98,7 @@ class WMPatternStrategy(BaseStrategy):
         
         # 2. BreakevenStrategy 실행 (Direct DataFrame)
         try:
-            from strategy_breakeven import BreakevenStrategy
+            from strategy_breakeven import BreakevenStrategy # type: ignore
             # CSV 경로 대신 df 직접 전달
             strategy = BreakevenStrategy(df=df)
             
@@ -172,7 +182,7 @@ class WMPatternStrategy(BaseStrategy):
                 setattr(self.params, key, value)
 
 
-def create_strategy(params: dict = None) -> WMPatternStrategy:
+def create_strategy(params: Optional[dict] = None) -> WMPatternStrategy:
     if params:
         p = WMStrategyParams(**params)
         return WMPatternStrategy(p)

@@ -71,7 +71,7 @@ def cleanup_old_presets(preset_dir: Path, max_count: int = 30) -> int:
     return deleted
 
 
-def run_cleanup(cache_dir: Path = None, preset_dir: Path = None, 
+def run_cleanup(cache_dir: Path | None = None, preset_dir: Path | None = None,
                 cache_days: int = 90, preset_max: int = 30) -> tuple:
     """전체 정리 실행
     

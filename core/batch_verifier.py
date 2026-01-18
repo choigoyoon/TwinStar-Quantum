@@ -4,7 +4,6 @@ Batch Verifier Logic
 - Returns verification results for UI display
 """
 import json
-import os
 from pathlib import Path
 
 class BatchVerifier:
@@ -60,4 +59,3 @@ class BatchVerifier:
 
     def save_verification_status(self, results):
         """Mark passed presets as verified in metadata (future implementation)"""
-        pass

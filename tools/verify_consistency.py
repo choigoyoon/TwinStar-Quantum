@@ -4,8 +4,11 @@
 import sys
 import os
 import re
-sys.path.insert(0, r'C:\매매전략')
-os.chdir(r'C:\매매전략')
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+os.chdir(PROJECT_ROOT)
 
 print('=' * 70)
 print('=== 계산식 일치 검증 결과 ===')
@@ -34,7 +37,7 @@ for file_path, desc in files:
                 found.append(p.upper())
         if found:
             print(f'  → {", ".join(found)} 사용')
-    except:
+    except Exception:
         print(f'  → 파일 없음')
 print()
 
@@ -110,7 +113,7 @@ try:
         opt_content = f.read()
     if 'param' in opt_content.lower():
         print('  → param_ranges/param_grid 사용')
-except:
+except Exception:
     print('  → optimizer.py 없음')
 
 print('백테스트:')

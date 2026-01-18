@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('🔬 TwinStar Quantum 추가 심화 검증')
@@ -219,7 +219,8 @@ for f in base.rglob('*.py'):
                 if 'LIMITS' in line and '=' in line:
                     print(f'       L{i+1}: {line.strip()[:50]}')
                     break
-    except:
+    except Exception:
+
         pass
 
 #############################################

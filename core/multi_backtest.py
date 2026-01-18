@@ -8,11 +8,12 @@ Multi Time-Series Backtester
 import json
 import logging
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 from pathlib import Path
 
 # Logging
 from utils.logger import get_module_logger
+from utils.data_utils import resample_data
 logger = get_module_logger(__name__)
 
 try:
@@ -75,21 +76,16 @@ class MultiBacktester:
             # 타임스탬프 처리
             if 'timestamp' in df_15m.columns:
                 if pd.api.types.is_numeric_dtype(df_15m['timestamp']):
-                    df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'], unit='ms')
+                    df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'], unit='ms', utc=True)
                 else:
                     df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
             
-            # 1H 패턴용 리샘플링
-            df_temp = df_15m.set_index('timestamp')
-            df_pattern = df_temp.resample('1h').agg({
-                'open': 'first', 'high': 'max', 'low': 'min',
-                'close': 'last', 'volume': 'sum'
-            }).dropna().reset_index()
-            
-            # 지표 추가
-            from indicator_generator import IndicatorGenerator
+            # 1H 패턴용 리샘플링 (SSOT: utils.data_utils)
+            df_pattern = resample_data(df_15m, '1h', add_indicators=True)
+
+            # 15m 지표 추가
+            from utils.indicators import IndicatorGenerator
             df_15m = IndicatorGenerator.add_all_indicators(df_15m)
-            df_pattern = IndicatorGenerator.add_all_indicators(df_pattern)
             
             return df_pattern, df_15m
         except Exception as e:
@@ -129,13 +125,17 @@ class MultiBacktester:
             params = {k: v for k, v in params.items() if k in allowed_keys and k != 'filter_tf'}
             
             # 개별 백테스트 실행
-            trades = self.core.run_backtest(
+            if df_entry is None: continue
+            
+            result = self.core.run_backtest(
                 df_pattern=df_pattern,
                 df_entry=df_entry,
                 **params,
                 filter_tf=tf
             )
-            
+            # run_backtest는 List[Dict] 또는 Tuple[List[Dict], Dict]를 반환할 수 있음
+            trades: List[Dict[Any, Any]] = result[0] if isinstance(result, tuple) else result
+
             for t in trades:
                 t['symbol'] = symbol
                 # 간단 판별: BTCUSDT 이거나, BTC가 포함되고 USDT 페어인 경우 (ETHBTC 등 제외)
@@ -157,7 +157,7 @@ class MultiBacktester:
         alt_capital = self.initial_alt_capital
         btc_capital = 0.0 # BTC 총 수익 추적
         
-        active_positions = {
+        active_positions: Dict[str, Optional[Dict[str, Any]]] = {
             'btc': None,
             'alt': None
         }

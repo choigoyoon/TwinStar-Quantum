@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 
 print('=' * 70)
 print('💱 KRW / USDT 통화 처리 전수 스캔')
@@ -46,7 +46,9 @@ for f in base.rglob('*.py'):
             if re.search(r'["\']USDT["\']|["\']KRW["\']|["\']USD["\']', line):
                 results['hardcoded_currency'].append((fname, ln, line.strip()[:60]))
                 
-    except:
+    except Exception:
+
+                
         pass
 
 # 결과 출력

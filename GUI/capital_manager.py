@@ -1,6 +1,7 @@
 # capital_manager.py - 자금 관리자 스텁 모듈
 
 from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
 
 @dataclass
@@ -28,7 +29,7 @@ class PositionSizing:
 class CapitalManager:
     """자금 관리자 (스텁)"""
     
-    def __init__(self, config: CapitalConfig = None):
+    def __init__(self, config: Optional[CapitalConfig] = None):
         self.config = config or CapitalConfig()
         self.current_capital = self.config.initial_capital
         self.peak_capital = self.config.initial_capital
@@ -97,7 +98,7 @@ class CapitalManager:
         """거래 가능 여부"""
         return self.get_drawdown() < self.config.drawdown_limit
     
-    def get_status(self) -> dict:
+    def get_status(self) -> Dict[str, Any]:
         """현재 상태"""
         return {
             "current_capital": self.current_capital,

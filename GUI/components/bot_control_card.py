@@ -1,14 +1,18 @@
 import json
+import os
 from pathlib import Path
-from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton, QMessageBox
+from datetime import datetime
+from PyQt6.QtWidgets import (
+    QWidget, QHBoxLayout, QLabel, QComboBox, QSpinBox, QPushButton, QSizePolicy, QMessageBox
 )
+from typing import Dict, Any
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t
+from ui.design_system.tokens import Colors
 
 # [FALLBACK] Constants
 try:
@@ -23,7 +27,7 @@ except ImportError:
 
 # [FALLBACK] Paths
 try:
-    from paths import Paths
+    from paths import Paths # type: ignore
 except ImportError:
     class Paths:
         PRESETS = "config/presets"
@@ -32,7 +36,7 @@ except ImportError:
 try:
     from license_manager import get_license_manager
 except ImportError:
-    def get_license_manager(): return None
+    def get_license_manager() -> Any: return None
 
 
 class BotControlCard(QWidget):
@@ -60,7 +64,9 @@ class BotControlCard(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(1, 0, 1, 0)
         layout.setSpacing(2)
-        self.setFixedHeight(35)
+        # 동적 높이 설정 (최소 40px, 내용에 맞게 조정)
+        self.setMinimumHeight(40)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         
         # #번호
         self.num_label = QLabel(f"#{self.row_id}")
@@ -80,7 +86,7 @@ class BotControlCard(QWidget):
         # 심볼
         self.symbol_combo = QComboBox()
         self.symbol_combo.setEditable(True)
-        self.symbol_combo.setInsertPolicy(QComboBox.NoInsert)
+        self.symbol_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.symbol_combo.setFixedWidth(100)
         self.symbol_combo.setToolTip(t("dashboard.symbol_tip", "거래 코인 선택 (검색 가능)"))
         self.symbol_combo.setStyleSheet("""
@@ -88,8 +94,10 @@ class BotControlCard(QWidget):
                 color: white; padding: 3px;
             }
         """) # Removed hardcoded background
-        self.symbol_combo.completer().setFilterMode(Qt.MatchContains)
-        self.symbol_combo.completer().setCaseSensitivity(Qt.CaseInsensitive)
+        completer = self.symbol_combo.completer()
+        if completer:
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.symbol_combo.currentTextChanged.connect(self._on_symbol_changed)
         layout.addWidget(self.symbol_combo)
         
@@ -113,7 +121,7 @@ class BotControlCard(QWidget):
         # 현재 잔액 (읽기 전용)
         self.current_label = QLabel("$100.00")
         self.current_label.setFixedWidth(75)
-        self.current_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
+        self.current_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold; font-family: 'Consolas', monospace;")
         self.current_label.setToolTip(t("dashboard.current_balance_tip", "현재 가용 자산 (초기시드 + 누적수익)"))
         layout.addWidget(self.current_label)
         
@@ -129,7 +137,8 @@ class BotControlCard(QWidget):
         self.mode_combo.addItems(["C", "F"]) # C=Compound, F=Fixed
         self.mode_combo.setFixedWidth(40)
         self.mode_combo.setToolTip("Capital Mode: C(Compound), F(Fixed)")
-        self.mode_combo.setStyleSheet("color: #FF9800; font-weight: bold;")
+        self.mode_combo.setStyleSheet(f"color: {Colors.warning}; font-weight: bold;")
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         layout.addWidget(self.mode_combo)
         
         # 잠금 버튼
@@ -155,7 +164,7 @@ class BotControlCard(QWidget):
         self.reset_btn = QPushButton("↺")
         self.reset_btn.setFixedWidth(20)
         self.reset_btn.setToolTip(t("dashboard.reset_tip", "PnL 초기화 (거래 기록 리셋)"))
-        self.reset_btn.setStyleSheet("color: #FF9800; font-weight: bold; border-radius: 2px;") # background removed
+        self.reset_btn.setStyleSheet(f"color: {Colors.warning}; font-weight: bold; border-radius: 2px;") # background removed
         self.reset_btn.clicked.connect(lambda: self.reset_clicked.emit(self.get_config()))
         
         # 레버리지
@@ -188,8 +197,8 @@ class BotControlCard(QWidget):
         self.start_btn = QPushButton("▶")
         self.start_btn.setFixedWidth(30)
         self.start_btn.setStyleSheet("""
-            QPushButton { background: #4CAF50; color: white; border-radius: 3px; font-weight: bold; }
-            QPushButton:hover { background: #45a049; }
+            QPushButton {{ background: {Colors.success}; color: white; border-radius: 3px; font-weight: bold; }}
+            QPushButton:hover {{ background: #388e3c; }}
             QPushButton:disabled { background: #555; }
         """) # keep green for start
         self.start_btn.setToolTip(t("dashboard.start_bot_tip", "봇 시작"))
@@ -201,7 +210,7 @@ class BotControlCard(QWidget):
         self.stop_btn.setFixedWidth(30)
         self.stop_btn.setStyleSheet("""
             QPushButton { background: #666; color: white; border-radius: 3px; }
-            QPushButton:hover { background: #f44336; }
+            QPushButton:hover {{ background: {Colors.danger}; }}
         """)
         self.stop_btn.setToolTip(t("dashboard.stop_remove_tip", "실행 중: 정지 / 대기 중: 행 삭제"))
         self.stop_btn.clicked.connect(self._on_stop)
@@ -216,14 +225,14 @@ class BotControlCard(QWidget):
         # 잔액 (복리)
         self.balance_label = QLabel("$100.0")
         self.balance_label.setFixedWidth(75)
-        self.balance_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.balance_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.balance_label.setToolTip(t("dashboard.balance_tip", "현재 잔액 (초기 시드 + 누적 익절)"))
-        self.balance_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
+        self.balance_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold; font-family: 'Consolas', monospace;")
         layout.addWidget(self.balance_label)
         
         # 로그/상태 메세지
         self.message_label = QLabel("-")
-        self.message_label.setStyleSheet("color: #a0a0a0; font-size: 11px;")
+        self.message_label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 11px;")
         self.message_label.setFixedWidth(150)
         self.message_label.setToolTip(t("dashboard.last_message_tip", "최근 봇 로그/상태"))
         layout.addWidget(self.message_label)
@@ -336,27 +345,58 @@ class BotControlCard(QWidget):
 
     def _on_preset_changed(self, index: int):
         """프리셋 변경 시 UI(레버리지 등) 연동 업데이트"""
+        if index <= 0:
+            return
+
         preset_file = self.preset_combo.currentData()
         if not preset_file:
             return
-            
+
         try:
             with open(preset_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                params = data.get('params', data)
-                
-                # 레버리지 연동
-                if 'leverage' in params:
-                    self.leverage_spin.setValue(int(params['leverage']))
-                
-                # 방향 연동 (있는 경우)
-                if 'direction' in params:
-                    direction = params['direction'].capitalize()
-                    if direction in ["Both", "Long", "Short"]:
-                        self.direction_combo.setCurrentText(direction)
-                        
+
+                # v2 형식 지원
+                if 'version' in data and data['version'] == 2:
+                    trading = data.get('trading', {})
+
+                    # 레버리지
+                    if 'leverage' in trading:
+                        self.leverage_spin.setValue(int(trading['leverage']))
+
+                    # 방향
+                    if 'direction' in trading:
+                        direction = str(trading['direction']).capitalize()
+                        if direction in ["Both", "Long", "Short"]:
+                            self.direction_combo.setCurrentText(direction)
+
+                    # 시드 자금 (잠금 해제된 경우만)
+                    if 'seed_capital' in trading and not self.lock_btn.isChecked():
+                        self.seed_spin.setValue(int(trading['seed_capital']))
+
+                # 레거시 flat 형식 지원
+                else:
+                    params = data.get('params', data)
+
+                    # 레버리지
+                    if 'leverage' in params:
+                        self.leverage_spin.setValue(int(params['leverage']))
+
+                    # 방향
+                    if 'direction' in params:
+                        direction = str(params['direction']).capitalize()
+                        if direction in ["Both", "Long", "Short"]:
+                            self.direction_combo.setCurrentText(direction)
+
+                preset_name = self.preset_combo.itemText(index)
+                logger.info(f"✅ 프리셋 '{preset_name}' 적용 완료")
+
+        except FileNotFoundError:
+            logger.error(f"❌ 프리셋 파일을 찾을 수 없습니다: {preset_file}")
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ 프리셋 JSON 파싱 오류: {e}")
         except Exception as e:
-            logger.info(f"[PRESET] UI Sync Error: {e}")
+            logger.error(f"❌ 프리셋 로드 실패: {e}")
     
     def _on_start(self):
         if self.is_running:
@@ -380,8 +420,8 @@ class BotControlCard(QWidget):
             self.start_btn.setEnabled(False)
             self.stop_btn.setText("⏹")
             self.stop_btn.setStyleSheet("""
-                QPushButton { background: #f44336; color: white; border-radius: 3px; }
-                QPushButton:hover { background: #d32f2f; }
+                QPushButton {{ background: {Colors.danger}; color: white; border-radius: 3px; }}
+                QPushButton:hover {{ background: #c62828; }}
             """)
             self.exchange_combo.setEnabled(False)
             self.symbol_combo.setEnabled(False)
@@ -392,13 +432,13 @@ class BotControlCard(QWidget):
             self.stop_btn.setText("✕")
             self.stop_btn.setStyleSheet("""
                 QPushButton { background: #666; color: white; border-radius: 3px; }
-                QPushButton:hover { background: #f44336; }
+                QPushButton:hover {{ background: {Colors.danger}; }}
             """)
             self.exchange_combo.setEnabled(True)
             self.symbol_combo.setEnabled(True)
             self.preset_combo.setEnabled(True)
     
-    def get_config(self) -> dict:
+    def get_config(self) -> Dict[str, Any]:
         return {
             'exchange': self.exchange_combo.currentText(),
             'symbol': self.symbol_combo.currentText(),
@@ -410,8 +450,33 @@ class BotControlCard(QWidget):
             'capital_mode': 'compound' if self.mode_combo.currentText() == 'C' else 'fixed'
         }
     
+    def _on_mode_changed(self, index: int):
+        """복리/단리 모드 변경 시 처리"""
+        mode = 'compound' if index == 0 else 'fixed'
+        mode_text = '복리(Compound)' if index == 0 else '단리(Fixed)'
+        logger.info(f"💰 [{self.symbol_combo.currentText()}] 자본 모드 변경: {mode_text}")
+
+        # 모드 변경 시 시드 자금 색상 업데이트
+        if mode == 'compound':
+            self.mode_combo.setStyleSheet(f"color: {Colors.success}; font-weight: bold;")  # 녹색
+        else:
+            self.mode_combo.setStyleSheet(f"color: {Colors.warning}; font-weight: bold;")  # 주황색
+
     def _toggle_lock(self):
         is_locked = self.lock_btn.isChecked()
+
+        # 잠금 해제 시 확인 대화상자 (선택사항)
+        if not is_locked:
+            reply = QMessageBox.question(
+                self, "자금 잠금 해제",
+                "시드 자금을 수정하시겠습니까?\n(변경 사항은 즉시 저장됩니다)",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                self.lock_btn.setChecked(True)
+                return
+
+        # UI 업데이트
         if is_locked:
             self.lock_btn.setText("🔒")
             self.seed_spin.setEnabled(False)
@@ -423,7 +488,47 @@ class BotControlCard(QWidget):
             self.seed_spin.setEnabled(True)
             self.seed_spin.setStyleSheet("color: white; padding: 3px;")
             self.adj_btn.setEnabled(True)
-            self.adj_btn.setStyleSheet("color: #4CAF50; font-weight: bold; border-radius: 2px;")
+            self.adj_btn.setStyleSheet(f"color: {Colors.success}; font-weight: bold; border-radius: 2px;")
+
+        # 잠금 상태 저장
+        self._save_lock_state(is_locked)
+
+        logger.info(f"{'🔒 잠금' if is_locked else '🔓 해제'}: 시드 자금 편집")
+
+    def _save_lock_state(self, is_locked: bool):
+        """잠금 상태 및 시드 값 저장"""
+        config_path = "data/capital_config.json"
+
+        try:
+            # 기존 설정 로드
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            else:
+                config = {}
+
+            # 현재 행의 설정 업데이트
+            symbol = self.symbol_combo.currentText()
+            exchange = self.exchange_combo.currentText()
+            key = f"{exchange}_{symbol}"
+
+            config[key] = {
+                'locked': is_locked,
+                'seed_capital': self.seed_spin.value(),
+                'capital_mode': 'compound' if self.mode_combo.currentIndex() == 0 else 'fixed',
+                'last_updated': datetime.now().isoformat()
+            }
+
+            # data 디렉토리 생성
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+
+            # 저장
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"💾 자금 설정 저장: {key}")
+        except Exception as e:
+            logger.error(f"❌ 설정 저장 실패: {e}")
     
     def update_balance(self, current_capital: float):
         initial = self.seed_spin.value()
@@ -438,9 +543,9 @@ class BotControlCard(QWidget):
         
         if pnl_pct >= 0:
             self.pnl_label.setText(f"(+{pnl_pct:.2f}%)")
-            self.pnl_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
-            self.current_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-family: 'Consolas', monospace;")
+            self.pnl_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold;")
+            self.current_label.setStyleSheet(f"color: {Colors.success}; font-weight: bold; font-family: 'Consolas', monospace;")
         else:
             self.pnl_label.setText(f"({pnl_pct:.2f}%)")
-            self.pnl_label.setStyleSheet("color: #FF5252; font-weight: bold;")
-            self.current_label.setStyleSheet("color: #FF5252; font-weight: bold; font-family: 'Consolas', monospace;")
+            self.pnl_label.setStyleSheet(f"color: {Colors.danger}; font-weight: bold;")
+            self.current_label.setStyleSheet(f"color: {Colors.danger}; font-weight: bold; font-family: 'Consolas', monospace;")

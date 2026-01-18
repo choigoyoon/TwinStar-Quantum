@@ -22,7 +22,7 @@ def check_file_exists(path, desc):
 def test_data_manager():
     print_header("1. DataManager Test")
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         logger.info(f"Cache Directory: {dm.cache_dir}")
         

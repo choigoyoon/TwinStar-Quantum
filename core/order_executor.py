@@ -13,6 +13,9 @@ import time
 from datetime import datetime
 from typing import Optional, Dict, Any, Callable, Union
 
+# Configuration
+from config.parameters import DEFAULT_PARAMS
+
 # Logging
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
@@ -33,11 +36,11 @@ class OrderExecutor:
     
     def __init__(
         self, 
-        exchange,
-        strategy_params: dict = None,
-        notifier = None,
+        exchange: Any,
+        strategy_params: Optional[Dict[str, Any]] = None,
+        notifier: Optional[Any] = None,
         dry_run: bool = False,
-        state_manager = None
+        state_manager: Optional[Any] = None
     ):
         """
         Args:
@@ -60,9 +63,9 @@ class OrderExecutor:
         self.trade_storage = None
         
         # 콜백 함수
-        self.on_entry_success: Callable = None
-        self.on_close_success: Callable = None
-        self.on_trade_recorded: Callable = None
+        self.on_entry_success: Optional[Callable] = None
+        self.on_close_success: Optional[Callable] = None
+        self.on_trade_recorded: Optional[Callable] = None
         
         # 설정
         self.max_retries = 3
@@ -88,7 +91,7 @@ class OrderExecutor:
         exit_price: float, 
         side: str,
         size: float = 1.0,
-        leverage: int = None
+        leverage: Optional[int] = None
     ) -> tuple:
         """
         PnL 계산
@@ -103,19 +106,19 @@ class OrderExecutor:
         Returns:
             (pnl_pct, pnl_usd)
         """
-        if leverage is None:
-            leverage = getattr(self.exchange, 'leverage', 1)
+        # leverage 타입 가드 (None 방지)
+        safe_leverage = int(leverage) if leverage is not None else 1
         
         # ROE 계산
         if side == 'Long':
-            pnl_pct = (exit_price - entry_price) / entry_price * leverage * 100
+            pnl_pct = (exit_price - entry_price) / entry_price * safe_leverage * 100
             pnl_usd_raw = size * (exit_price - entry_price)
         else:
-            pnl_pct = (entry_price - exit_price) / entry_price * leverage * 100
+            pnl_pct = (entry_price - exit_price) / entry_price * safe_leverage * 100
             pnl_usd_raw = size * (entry_price - exit_price)
         
         # 수수료 차감
-        fee_rate = self.strategy_params.get('slippage', 0.0006)
+        fee_rate = self.strategy_params.get('slippage', DEFAULT_PARAMS['slippage'])
         total_fee = size * entry_price * fee_rate + size * exit_price * fee_rate
         pnl_usd = pnl_usd_raw - total_fee
         
@@ -158,8 +161,8 @@ class OrderExecutor:
         size: float, 
         stop_loss: float,
         take_profit: float = 0,
-        max_retries: int = None,
-        client_order_id: str = None
+        max_retries: Optional[int] = None,
+        client_order_id: Optional[str] = None
     ) -> Optional[Dict]:
         """
         재시도 로직 포함 시장가 주문
@@ -191,20 +194,40 @@ class OrderExecutor:
                     client_order_id=client_order_id
                 )
                 if order:
+                    # Phase B Track 1: Hotfix 제거 완료 - 모든 거래소가 OrderResult 반환
                     logging.info(f"[ORDER] ✅ Order placed: {order}")
                     return order
                 else:
                     logging.warning(f"[ORDER] Order returned None (Attempt {attempt+1}/{max_retries})")
             except Exception as e:
                 logging.warning(f"[ORDER] Attempt {attempt+1}/{max_retries} failed: {e}")
-            
+
+            # ✅ P0-6: 에러 분류 기반 재시도 전략
             if attempt < max_retries - 1:
-                time.sleep(self.retry_delay)
+                # OrderResult 에러 메시지 확인
+                error_msg = ''
+                if order and hasattr(order, 'error'):
+                    error_msg = str(order.error).lower()
+
+                # 에러 분류
+                if 'rate limit' in error_msg or 'too many requests' in error_msg:
+                    delay = 5.0 * (attempt + 1)  # Rate Limit: 백오프 증가
+                    logging.warning(f"[ORDER] Rate limit detected, waiting {delay:.1f}s")
+                elif 'insufficient' in error_msg or 'balance' in error_msg:
+                    logging.error(f"[ORDER] Insufficient balance, aborting retry")
+                    return None  # 잔고 부족: 재시도 불필요
+                elif 'invalid' in error_msg or 'rejected' in error_msg:
+                    logging.error(f"[ORDER] Order rejected, aborting retry")
+                    return None  # 주문 거부: 재시도 불필요
+                else:
+                    delay = self.retry_delay  # 기타 에러: 기본 대기
+
+                time.sleep(delay)
         
         logging.error(f"[ORDER] ❌ All {max_retries} attempts failed")
         return None
     
-    def close_position_with_retry(self, max_retries: int = None) -> bool:
+    def close_position_with_retry(self, max_retries: Optional[int] = None) -> bool:
         """
         재시도 로직 포함 청산
         
@@ -238,7 +261,7 @@ class OrderExecutor:
         logging.error(f"[ORDER] ❌ Close failed after {max_retries} attempts")
         return False
     
-    def update_stop_loss_with_retry(self, new_sl: float, max_retries: int = None) -> bool:
+    def update_stop_loss_with_retry(self, new_sl: float, max_retries: Optional[int] = None) -> bool:
         """
         재시도 로직 포함 SL 수정
         
@@ -276,10 +299,10 @@ class OrderExecutor:
         self,
         signal: Union[Dict, Any],
         position: Any = None,
-        bt_state: dict = None,
-        can_trade_check: Callable = None,
-        current_price: float = None,
-        balance: float = None
+        bt_state: Optional[dict] = None,
+        can_trade_check: Optional[Callable] = None,
+        current_price: Optional[float] = None,
+        balance: Optional[float] = None
     ) -> Optional[Dict]:
         """
         진입 주문 실행 (UnifiedBot 위임용)
@@ -299,7 +322,11 @@ class OrderExecutor:
             # 1. 초기화 및 가격 정보
             if current_price is None:
                 if hasattr(self.exchange, 'get_current_price'):
-                    current_price = self.exchange.get_current_price()
+                    try:
+                        current_price = self.exchange.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[ENTRY] ❌ Price fetch failed: {e}")
+                        return None
                 else:
                     current_price = 0
             
@@ -336,15 +363,22 @@ class OrderExecutor:
                     balance = getattr(self.exchange, 'capital', 1000)
                     if hasattr(self.exchange, 'get_balance'):
                         try: balance = self.exchange.get_balance()
-                        except: pass
+                        except Exception:
+
+                            pass
             # 5. 레버리지 및 수량 계산
             # [FIX] 프리셋(strategy_params)에 레버리지가 있으면 최우선 적용 (Auto-Adjustment 지원)
             # 만약 프리셋에 없으면 UI에서 설정한 값(exchange.leverage)을 사용함
             leverage = self.strategy_params.get('leverage', getattr(self.exchange, 'leverage', 1))
+            
+            if balance is None or current_price is None or current_price <= 0:
+                logging.warning(f"[ENTRY] Missing balance or invalid price: ${balance} @ ${current_price}")
+                return None
+                
             order_value = balance * 0.98 * leverage
             
-            if order_value < 10 or current_price <= 0:
-                logging.warning(f"[ENTRY] Invalid order value or price: ${order_value:.2f} @ ${current_price:.2f}")
+            if order_value < 10:
+                logging.warning(f"[ENTRY] Invalid order value: ${order_value:.2f} @ ${current_price:.2f}")
                 return None
             
             qty = order_value / current_price
@@ -360,7 +394,7 @@ class OrderExecutor:
             size = amount / current_price
             
             # 최소 주문 수량 체크 (거래소별 상이)
-            if size < 0.001: # TODO: 거래소별 최소 주문 수량 동적으로 가져오기
+            if size < 0.001:  # 최소 주문 수량 (거래소별 동적 조회는 exchange.get_min_order_size() 참조)
                 logging.warning(f"[ENTRY] Size too small: {size}")
                 return None
             
@@ -391,21 +425,42 @@ class OrderExecutor:
             
             if not order:
                 return None
-            
+
+            # ✅ P0-7: 부분 체결 검증 (실제 체결량 확인)
+            filled_qty = size  # 기본값: 요청 수량
+
+            # OrderResult 객체 또는 dict에서 filled_qty 추출
+            if hasattr(order, 'filled_qty') and order.filled_qty is not None:  # type: ignore
+                filled_qty = order.filled_qty  # type: ignore
+            elif isinstance(order, dict) and 'filled_qty' in order:
+                filled_qty = order.get('filled_qty', size)
+
+            if filled_qty < size * 0.9:  # 90% 미만 체결
+                logging.warning(f"[ENTRY] ⚠️ Partial fill: {filled_qty:.4f}/{size:.4f} ({filled_qty/size*100:.1f}%)")
+
             # [Phase 8.1.2] 성공 시 봇 상태에 포지션 등록
             if not self.dry_run and bt_state and hasattr(bt_state, 'add_managed_position'):
                 # Real run registration (if not unified via state_manager inside place_order)
-                pass 
+                pass
 
-            # TODO: 
+            # 추가 로직 필요시 구현
             # position registration logic integration
-                    
-            logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f}")
+
+            logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f} (Filled: {filled_qty:.4f})")
+
+            # order_id 추출 (dict 이거나 bool 일 수 있음)
+            extracted_order_id = 'UNKNOWN'
+            if isinstance(order, dict):
+                extracted_order_id = str(order.get('id', order.get('orderId', order.get('order_id', 'UNKNOWN'))))
+            elif order is True:
+                extracted_order_id = client_order_id or 'UNKNOWN'
+
             return {
-                'action': 'ENTRY', 
-                'price': current_price, 
+                'action': 'ENTRY',
+                'price': current_price,
                 'side': direction,
-                'order_id': order.get('orderId', 'UNKNOWN')
+                'size': filled_qty,  # ✅ 실제 체결량 반환
+                'order_id': extracted_order_id
             }
             
             # 성공 콜백
@@ -434,7 +489,7 @@ class OrderExecutor:
                 bt_state['positions'] = [{
                     'entry': current_price,
                     'initial_sl': stop_loss,
-                    'size': qty,
+                    'size': size, # qty -> size 로 통일
                     'time': datetime.now().isoformat()
                 }]
                 bt_state['current_sl'] = stop_loss
@@ -444,11 +499,13 @@ class OrderExecutor:
             if self.notifier:
                 try:
                     self.notifier.notify_entry(
-                        getattr(self.exchange, 'name', 'Unknown'),
-                        getattr(self.exchange, 'symbol', 'Unknown'),
-                        direction, current_price, qty, stop_loss, pattern
+                        str(getattr(self.exchange, 'name', 'Unknown')),
+                        str(getattr(self.exchange, 'symbol', 'Unknown')),
+                        direction, float(current_price), float(size), float(stop_loss), str(pattern)
                     )
-                except: pass
+                except Exception:
+
+                    pass
                 
             logging.info(f"[ENTRY] ✅ Success: {direction} @ {current_price:.2f}")
             return {'action': 'ENTRY', 'price': current_price, 'side': direction}
@@ -462,7 +519,7 @@ class OrderExecutor:
         position,
         exit_price: float,
         reason: str = 'UNKNOWN',
-        bt_state: dict = None
+        bt_state: Optional[dict] = None
     ) -> Optional[Dict]:
         """
         청산 주문 실행 (UnifiedBot 위임용)
@@ -536,8 +593,8 @@ class OrderExecutor:
                 # 만약 realized_pnl이 0이거나 없으면 직접 계산 (fee 포함)
                 if pnl_usd == 0:
                      calc_pct, calc_usd = self.calculate_pnl(entry_price, price, side, size)
-                     pnl_usd = calc_usd # fee is deducted in calculate_pnl
-                     pnl_pct = calc_pct
+                     pnl_usd = float(calc_usd) # fee is deducted in calculate_pnl
+                     pnl_pct = float(calc_pct)
                 else:
                      # PnL Pct 역산
                      margin = float(real_pnl_data.get('cost', entry_price * size / getattr(self.exchange, 'leverage', 1)))
@@ -580,7 +637,9 @@ class OrderExecutor:
             elif self.trade_storage:
                  # Legacy fallback
                 try: self.trade_storage.add_trade(trade_data, immediate_flush=True)
-                except: pass
+                except Exception:
+
+                    pass
             
             # 5. bt_state 정리
             if bt_state:
@@ -594,7 +653,9 @@ class OrderExecutor:
                     msg = (f"{emoji} 청산 완료 ({reason})\n"
                            f"PnL: {pnl_pct:.2f}% (${pnl_usd:.2f})")
                     self.notifier.send_message(msg)
-                except: pass
+                except Exception:
+
+                    pass
             
             logging.info(f"[CLOSE] ✅ Success: PnL {pnl_pct:.2f}%")
             return trade_data
@@ -670,7 +731,7 @@ if __name__ == '__main__':
     
     executor = OrderExecutor(
         exchange=MockExchange(),
-        strategy_params={'slippage': 0.0006, 'leverage': 10},
+        strategy_params={'slippage': DEFAULT_PARAMS['slippage'], 'leverage': 10},
         dry_run=True
     )
     

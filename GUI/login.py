@@ -4,18 +4,19 @@ from locales.lang_manager import t
 import sys
 import os
 import logging
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QCheckBox, QMessageBox,
                              QStackedWidget, QFrame, QApplication)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from trc20_payment import TRC20PaymentChecker, DEPOSIT_WALLET
+    from trc20_payment import TRC20PaymentChecker, DEPOSIT_WALLET # type: ignore
 except ImportError:
     TRC20PaymentChecker = None
     DEPOSIT_WALLET = "TPEzvE85juFiQLhmBACbFNJgUWTtv7TCk3"
@@ -68,8 +69,8 @@ class AuthDialog(QDialog):
         
         # Title
         title = QLabel("🌟 TwinStar Quantum")
-        title.setFont(QFont("Arial", 22, QFont.Bold))
-        title.setAlignment(Qt.AlignCenter)
+        title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("color: #2962FF; margin-bottom: 10px;")
         layout.addWidget(title)
         
@@ -98,7 +99,7 @@ class AuthDialog(QDialog):
         layout.addWidget(QLabel("Password"))
         self.login_password = QLineEdit()
         self.login_password.setPlaceholderText("Enter your password")
-        self.login_password.setEchoMode(QLineEdit.Password)
+        self.login_password.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.login_password)
         
         # Remember
@@ -145,7 +146,9 @@ class AuthDialog(QDialog):
         back_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         layout.addWidget(back_btn)
         
-        layout.addWidget(QLabel("Create Account", styleSheet="font-size: 18px; font-weight: bold; color: white;"))
+        title_lbl = QLabel("Create Account")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        layout.addWidget(title_lbl)
         
         # Email
         layout.addWidget(QLabel("Email"))
@@ -157,14 +160,14 @@ class AuthDialog(QDialog):
         layout.addWidget(QLabel("Password"))
         self.reg_password = QLineEdit()
         self.reg_password.setPlaceholderText("Create a password")
-        self.reg_password.setEchoMode(QLineEdit.Password)
+        self.reg_password.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.reg_password)
         
         # Confirm Password
         layout.addWidget(QLabel("Confirm Password"))
         self.reg_password2 = QLineEdit()
         self.reg_password2.setPlaceholderText("Confirm your password")
-        self.reg_password2.setEchoMode(QLineEdit.Password)
+        self.reg_password2.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.reg_password2)
         
         layout.addSpacing(10)
@@ -188,7 +191,9 @@ class AuthDialog(QDialog):
         back_btn.clicked.connect(self._cancel_payment)
         layout.addWidget(back_btn)
         
-        layout.addWidget(QLabel("💳 Payment", styleSheet="font-size: 18px; font-weight: bold; color: white;"))
+        pay_title = QLabel("💳 Payment")
+        pay_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        layout.addWidget(pay_title)
         
         # Instructions
         info = QLabel("Send USDT (TRC-20) to the address below:")
@@ -206,7 +211,7 @@ class AuthDialog(QDialog):
         
         self.addr_display = QLabel(DEPOSIT_WALLET)
         self.addr_display.setStyleSheet("color: #26a69a; font-size: 13px; font-family: monospace;")
-        self.addr_display.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.addr_display.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         addr_layout.addWidget(self.addr_display)
         
         copy_btn = QPushButton("📋 Copy Address")
@@ -231,7 +236,7 @@ class AuthDialog(QDialog):
         # Status
         self.payment_status = QLabel("⏳ Waiting for payment...")
         self.payment_status.setStyleSheet("color: #f0b90b; font-size: 14px;")
-        self.payment_status.setAlignment(Qt.AlignCenter)
+        self.payment_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.payment_status)
         
         # Manual Check Button
@@ -331,7 +336,8 @@ class AuthDialog(QDialog):
         status = self.payment_checker.check_user_status(self.current_email)
         
         if status['paid']:
-            self.payment_timer.stop()
+            if hasattr(self, 'payment_timer') and self.payment_timer:
+                cast(Any, self.payment_timer).stop()
             self.payment_status.setText(f"✅ Payment confirmed! Tier: {status['tier'].upper()}")
             self.payment_status.setStyleSheet("color: #26a69a; font-size: 14px; font-weight: bold;")
             
@@ -357,7 +363,8 @@ class AuthDialog(QDialog):
     def _copy_address(self):
         """주소 복사"""
         clipboard = QApplication.clipboard()
-        clipboard.setText(DEPOSIT_WALLET)
+        if clipboard:
+            cast(Any, clipboard).setText(DEPOSIT_WALLET)
         QMessageBox.information(self, "Copied", "Address copied to clipboard!")
     
     def _cancel_payment(self):
@@ -388,7 +395,7 @@ LoginDialog = AuthDialog
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     dialog = AuthDialog()
-    if dialog.exec_() == QDialog.Accepted:
+    if dialog.exec() == QDialog.DialogCode.Accepted:
         logger.info(f"Logged in: {dialog.user_info}")
     else:
         logger.info("Login cancelled")

@@ -6,23 +6,15 @@
 
 import pandas as pd
 
+# 메트릭 계산 (SSOT)
+from utils.metrics import calculate_profit_factor, calculate_sharpe_ratio
+
 # Logging
 import logging
 logger = logging.getLogger(__name__)
 
-# TF_RESAMPLE_MAP: constants.py에서 import (Single Source)
-try:
-    from GUI.constants import TF_RESAMPLE_MAP
-except ImportError:
-    # Fallback for EXE or path issues
-    TF_RESAMPLE_MAP = {
-        '15min': '15min', '15m': '15min',
-        '30min': '30min', '30m': '30min',
-        '1h': '1h', '1H': '1h',
-        '4h': '4h', '4H': '4h',
-        '1d': '1D', '1D': '1D',
-        '1w': '1W', '1W': '1W',
-    }
+# TF_RESAMPLE_MAP: SSOT (config/constants/timeframes.py)
+from config.constants.timeframes import TF_RESAMPLE_MAP
 
 
 def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True) -> pd.DataFrame:
@@ -59,7 +51,7 @@ def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True)
             df['datetime'] = pd.to_datetime(df['timestamp'])
     
     df = df.set_index('datetime')
-    
+
     # 리샘플링
     agg_dict = {
         'open': 'first',
@@ -68,11 +60,12 @@ def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True)
         'close': 'last',
         'volume': 'sum'
     }
-    
+
     if 'timestamp' in df.columns:
         agg_dict['timestamp'] = 'first'
-    
-    resampled = df.resample(rule).agg(agg_dict).dropna().reset_index()
+
+    # pandas의 Resampler.agg는 dict[str, str]를 허용하지만 타입 스텁이 엄격함
+    resampled = df.resample(rule).agg(agg_dict).dropna().reset_index()  # type: ignore[arg-type]
     
     # 지표 추가
     if add_indicators:
@@ -84,7 +77,7 @@ def resample_data(df: pd.DataFrame, target_tf: str, add_indicators: bool = True)
 def _add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """지표 추가 (IndicatorGenerator 사용)"""
     try:
-        from indicator_generator import IndicatorGenerator
+        from utils.indicators import IndicatorGenerator
         df = IndicatorGenerator.add_all_indicators(df)
         
         # 별칭 생성
@@ -129,8 +122,6 @@ def calculate_pnl_metrics(pnls: list) -> dict:
             'is_bankrupt': 파산 여부(bool)
         }
     """
-    import numpy as np
-    
     if not pnls:
         return {
             'win_rate': 0, 'simple_return': 0, 'compound_return': 0,
@@ -167,17 +158,12 @@ def calculate_pnl_metrics(pnls: list) -> dict:
             
     compound_return = (equity - 1) * 100 if not is_bankrupt else -100.0
     
-    # 2. Sharpe Ratio (연간화, 15분봉 기준 가공)
-    if pnl_series.std() > 0:
-        # 하루 4개 세션(15m 기준이 아니라 1h/4h 데이터가 혼재되어 있으므로 대략적 보정)
-        sharpe = (pnl_series.mean() / pnl_series.std()) * np.sqrt(252 * 4) 
-    else:
-        sharpe = 0
-        
-    # 3. Profit Factor
-    gains = pnl_series[pnl_series > 0].sum()
-    losses = abs(pnl_series[pnl_series < 0].sum())
-    pf = gains / losses if losses > 0 else float('inf')
+    # 2. Sharpe Ratio - SSOT (252 × 4 통일)
+    sharpe = calculate_sharpe_ratio(pnl_series.tolist(), periods_per_year=252 * 4)
+
+    # 3. Profit Factor - SSOT
+    trades_for_pf = [{'pnl': p} for p in pnl_series.tolist()]
+    pf = calculate_profit_factor(trades_for_pf)
     
     return {
         'win_rate': round(float(win_rate), 2),

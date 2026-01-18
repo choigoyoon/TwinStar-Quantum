@@ -7,7 +7,7 @@
 
 import os
 import json
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, cast
 from datetime import datetime
 
 # Logging
@@ -175,10 +175,11 @@ class CryptoPayment:
             if hasattr(lg, 'confirm_payment'):
                 return lg.confirm_payment(payment_id)
             return False
-        except:
+        except Exception:
+
             return False
         
-    def check_transaction(self, tx_hash: str, crypto_type: str, my_address: str, expected_memo: str = None) -> Dict:
+    def check_transaction(self, tx_hash: str, crypto_type: str, my_address: str, expected_memo: Optional[str] = None) -> Dict:
         """
         블록체인 거래 조회 (공개 API 활용)
         - 실제로는 BlockCypher, Etherscan 등의 API를 사용해야 합니다.
@@ -211,7 +212,7 @@ class CryptoPayment:
 
 
 # QR 코드 생성 (선택)
-def generate_payment_qr(address: str, amount: float = None, 
+def generate_payment_qr(address: str, amount: Optional[float] = None, 
                         crypto: str = 'BTC') -> Optional[str]:
     """결제용 QR 코드 생성 (PNG 파일 경로 반환)"""
     try:
@@ -236,7 +237,8 @@ def generate_payment_qr(address: str, amount: float = None,
         
         # 저장
         qr_path = os.path.join(os.path.dirname(__file__), 'data', 'payment_qr.png')
-        img.save(qr_path)
+        if hasattr(img, 'save'):
+            cast(Any, img).save(qr_path)
         
         return qr_path
     except ImportError:

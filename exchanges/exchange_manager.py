@@ -4,33 +4,19 @@
 
 import ccxt
 import logging
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any, Union, cast
 from dataclasses import dataclass
 
-# [FIX] crypto_manager import (다중 경로 시도)
+# crypto_manager import
 CRYPTO_MANAGER_AVAILABLE = False
 try:
     from GUI.crypto_manager import load_api_keys, save_api_keys
     CRYPTO_MANAGER_AVAILABLE = True
-except ImportError:
-    try:
-        from crypto_manager import load_api_keys, save_api_keys
-        CRYPTO_MANAGER_AVAILABLE = True
-    except ImportError as e:
-        logging.warning(f"[ExchangeManager] crypto_manager 없음: {e}")
+except ImportError as e:
+    logging.warning(f"[ExchangeManager] crypto_manager 없음: {e}")
 
-# [FIX] constants import (다중 경로 시도)
-CONSTANTS_AVAILABLE = False
-try:
-    from GUI.constants import EXCHANGE_INFO, SPOT_EXCHANGES
-    CONSTANTS_AVAILABLE = True
-except ImportError:
-    try:
-        from constants import EXCHANGE_INFO, SPOT_EXCHANGES
-        CONSTANTS_AVAILABLE = True
-    except ImportError:
-        EXCHANGE_INFO = {}
-        SPOT_EXCHANGES = {'upbit', 'bithumb'}
+# constants import (SSOT)
+from config.constants.exchanges import EXCHANGE_INFO, SPOT_EXCHANGES
 
 
 # 지원 거래소 목록
@@ -65,7 +51,7 @@ class ExchangeManager:
     """통합 거래소 관리자 (싱글톤)"""
     
     def __init__(self):
-        self.exchanges: Dict[str, object] = {}  # 연결된 거래소 캐시
+        self.exchanges: Dict[str, Any] = {}  # 연결된 거래소 캐시
         self.configs: Dict[str, ExchangeConfig] = {}
         self._load_keys()
     
@@ -195,9 +181,8 @@ class ExchangeManager:
                 exchange = BingXExchange(adapter_config)
                 
             else:
-                 # Fallback to ccxt (should not happen for supported futures)
-                exchange = exchange_class(options)
-                exchange.load_markets()
+                # Unsupported exchange
+                raise ValueError(f"Unsupported exchange: {exchange_name}")
 
             # Connect (Adapter classes usually connect in __init__ or have connect method)
             if hasattr(exchange, 'connect') and not getattr(exchange, 'is_connected', False):
@@ -205,7 +190,7 @@ class ExchangeManager:
 
             self.exchanges[exchange_name] = exchange
             
-            print(f"✅ {info.get('name', exchange_name)} 연결 성공 (Adapter)")
+            logging.info(f"✅ {info.get('name', exchange_name)} 연결 성공 (Adapter)")
             return (True, "")
             
         except Exception as e:
@@ -256,7 +241,7 @@ class ExchangeManager:
             print(f"❌ {exchange_name} 연결 실패: {error_msg}")
             return (False, error_msg)
     
-    def get_exchange(self, exchange_name: str) -> Optional[object]:
+    def get_exchange(self, exchange_name: str) -> Optional[Any]:
         """거래소 인스턴스 반환 (캐싱된 연결)"""
         exchange_name = exchange_name.lower()
         
@@ -284,18 +269,18 @@ class ExchangeManager:
             # 한국 거래소는 네이티브 메서드 사용
             if exchange_name.lower() in ('upbit', 'bithumb'):
                 if exchange_name.lower() == 'upbit':
-                    balance = exchange.get_balance("KRW")
+                    balance = cast(Any, exchange).get_balance("KRW")
                 else:
-                    balance = exchange.get_balance("BTC")  # pybithumb
+                    balance = cast(Any, exchange).get_balance("BTC")  # pybithumb
             else:
-                balance = exchange.fetch_balance()
+                balance = cast(Any, exchange).fetch_balance()
             print(f"✅ {exchange_name} 연결 확인됨")
             return True
         except Exception as e:
             print(f"❌ {exchange_name} 연결 테스트 실패: {e}")
             return False
 
-    def get_positions(self, exchange_name: str) -> list:
+    def get_positions(self, exchange_name: str) -> List[Dict[str, Any]]:
         """거래소의 열린 포지션 목록 조회 (모든 어댑터 공통 규격)"""
         try:
             ex = self.get_exchange(exchange_name)
@@ -303,13 +288,15 @@ class ExchangeManager:
             
             # 1. 어댑터 자체 get_positions가 있으면 우선 사용
             if hasattr(ex, 'get_positions'):
+                # exchange-specific adaptor call
                 pos_list = ex.get_positions()
                 if pos_list:
                     normalized = []
                     for p in pos_list:
+                        if not isinstance(p, dict): continue
                         normalized.append({
-                            'symbol': p.get('symbol', ''),
-                            'side': p.get('side', 'Unknown'),
+                            'symbol': str(p.get('symbol', '')),
+                            'side': str(p.get('side', 'Unknown')),
                             'size': float(p.get('size', 0)),
                             'entry': float(p.get('entry_price', p.get('entry', 0))),
                             'exchange': exchange_name
@@ -319,18 +306,20 @@ class ExchangeManager:
             # 2. CCXT 기반 포지션 조회 (범용)
             if hasattr(ex, 'fetch_positions'):
                 try:
-                    raw_pos = ex.fetch_positions()
+                    # ex is likely a ccxt instance or an adapter with fetch_positions
+                    raw_pos = ex.fetch_positions() # type: ignore
                     normalized = []
-                    for p in raw_pos:
-                        size = float(p.get('contracts', 0) or p.get('size', 0))
-                        if size > 0:
-                            normalized.append({
-                                'symbol': p.get('symbol', ''),
-                                'side': p.get('side', 'Unknown'),
-                                'size': size,
-                                'entry': float(p.get('entryPrice', 0)),
-                                'exchange': exchange_name
-                            })
+                    if raw_pos:
+                        for p in raw_pos:
+                            size = float(p.get('contracts', 0) or p.get('size', 0))
+                            if size > 0:
+                                normalized.append({
+                                    'symbol': str(p.get('symbol', '')),
+                                    'side': str(p.get('side', 'Unknown')),
+                                    'size': size,
+                                    'entry': float(p.get('entryPrice', 0)),
+                                    'exchange': exchange_name
+                                })
                     return normalized
                 except Exception as e:
                     logging.debug(f"[{exchange_name}] fetch_positions failed: {e}")
@@ -340,7 +329,7 @@ class ExchangeManager:
             logging.error(f"[{exchange_name}] get_positions error: {e}")
             return []
     
-    def get_balance(self, exchange_name: str, currency: str = None) -> float:
+    def get_balance(self, exchange_name: str, currency: Optional[str] = None) -> float:
         """
         거래소 잔고 조회
         
@@ -373,22 +362,27 @@ class ExchangeManager:
                     # pybithumb에서 KRW 잔고 조회 (KRW는 float로 반환될 수 있음)
                     try:
                         bal = ex.get_balance("KRW")
-                        if isinstance(bal, tuple):
+                        if isinstance(bal, (list, tuple)):
                             return float(bal[1]) if len(bal) >= 2 else 0.0
-                        return float(bal or 0.0)
-                    except:
+                        if bal is None:
+                            return 0.0
+                        return float(bal)
+                    except Exception:
+
                         return 0.0
                 else:
                     bal = ex.get_balance(currency)
-                    if isinstance(bal, tuple) and len(bal) >= 2:
+                    if isinstance(bal, (list, tuple)) and len(bal) >= 2:
                         return float(bal[1])  # 사용가능
-                    return float(bal) if bal else 0.0
+                    if bal is None or isinstance(bal, (list, tuple)):
+                        return 0.0
+                    return float(bal)
             
             # [NEW] 어댑터별 잔고 데이터 확보
             if hasattr(ex, 'fetch_balance'):
-                balance_data = ex.fetch_balance()
+                balance_data = cast(Any, ex).fetch_balance()
             elif hasattr(ex, 'get_balance'):
-                balance_data = ex.get_balance()
+                balance_data = cast(Any, ex).get_balance()
             else:
                 return 0.0
 
@@ -431,7 +425,8 @@ class ExchangeManager:
                     result['usdt'] += bal
                     if name not in result['details']: result['details'][name] = {}
                     result['details'][name]['USDT'] = bal
-            except:
+            except Exception:
+
                 pass
         
         # 국내 현물 (KRW)
@@ -442,29 +437,11 @@ class ExchangeManager:
                     result['krw'] += bal
                     if name not in result['details']: result['details'][name] = {}
                     result['details'][name]['KRW'] = bal
-            except:
+            except Exception:
+
                 pass
         
         return result
-    
-    def get_positions(self, exchange_name: str) -> List[dict]:
-        """거래소 모든 포지션 조회"""
-        try:
-            ex = self.exchanges.get(exchange_name.lower())
-            if not ex:
-                # 연결 시도
-                success, _ = self._connect(exchange_name)
-                if success:
-                    ex = self.exchanges.get(exchange_name.lower())
-                else:
-                    return []
-            
-            if hasattr(ex, 'get_positions'):
-                return ex.get_positions()
-            return []
-        except Exception as e:
-            logging.error(f"[ExchangeManager] {exchange_name} 포지션 조회 실패: {e}")
-            return []
 
     def disconnect(self, exchange_name: str):
         """연결 해제"""
@@ -474,6 +451,43 @@ class ExchangeManager:
     def disconnect_all(self):
         """모든 연결 해제"""
         self.exchanges.clear()
+
+    @staticmethod
+    def get_supported_exchanges() -> Dict[str, Any]:
+        """지원하는 모든 거래소 정보 반환 (정적 메서드)"""
+        # config 속성 접근 호환성을 위해 dict 대신 객체 형태로 반환하거나 
+        # 호출 측에서 dict 접근으로 수정해야 함. 여기서는 proxy 객체 사용.
+        class Config:
+            def __init__(self, d):
+                self.spot = d.get('type') == 'spot'
+                self.futures = d.get('type') == 'futures'
+        return {k: Config(v) for k, v in SUPPORTED_EXCHANGES.items()}
+
+    def get_overseas_exchanges(self) -> List[Any]:
+        """해외 거래소 목록 반환"""
+        from dataclasses import make_dataclass
+        ExInfo = make_dataclass("ExInfo", [("id", str), ("name", str)])
+        return [ExInfo(id=k, name=v['name']) for k, v in SUPPORTED_EXCHANGES.items() if not v.get('native')]
+
+    def get_domestic_exchanges(self) -> List[Any]:
+        """국내 거래소 목록 반환"""
+        from dataclasses import make_dataclass
+        ExInfo = make_dataclass("ExInfo", [("id", str), ("name", str)])
+        return [ExInfo(id=k, name=v['name']) for k, v in SUPPORTED_EXCHANGES.items() if v.get('native')]
+
+    def get_symbols(self, exchange_id: str, market_type: str) -> List[Dict[str, str]]:
+        """특정 거래소/마켓의 심볼 목록 반환"""
+        # TODO: 실제 거래소 인스턴스에서 load_markets() 후 가져와야 함
+        # 현재는 GUI placeholder 용으로 기본값 반환
+        if "bit" in exchange_id.lower(): # Upbit, Bithumb, Bitget
+            if "spot" in market_type.lower() or exchange_id.lower() in ('upbit', 'bithumb'):
+                return [{'symbol': 'KRW-BTC'}, {'symbol': 'KRW-ETH'}] if exchange_id.lower() in ('upbit', 'bithumb') else [{'symbol': 'BTC/USDT'}]
+        return [{'symbol': 'BTC/USDT:USDT'}, {'symbol': 'ETH/USDT:USDT'}]
+
+    def get_ticker(self, exchange_id: str, symbol: str) -> Dict[str, Any]:
+        """현재가 정보 반환"""
+        # TODO: 실제 fetch_ticker() 호출 연동
+        return {'price': 0.0, 'change_24h': 0.0}
 
 
 # ============ 싱글톤 ============
@@ -501,7 +515,7 @@ def get_exchange(exchange_name: str):
     return em.get_exchange(exchange_name)
 
 
-def test_connection(exchange_name: str, api_key: str = None, api_secret: str = None,
+def test_connection(exchange_name: str, api_key: Optional[str] = None, api_secret: Optional[str] = None,
                     testnet: bool = False) -> bool:
     """연결 테스트 (단축)"""
     em = get_exchange_manager()
@@ -519,8 +533,8 @@ def test_connection(exchange_name: str, api_key: str = None, api_secret: str = N
 if __name__ == "__main__":
     print("=== Exchange Manager v2 ===")
     print(f"Crypto Manager: {CRYPTO_MANAGER_AVAILABLE}")
-    print(f"Constants: {CONSTANTS_AVAILABLE}")
-    
+    print(f"Constants Loaded: {bool(EXCHANGE_INFO)}")
+
     em = get_exchange_manager()
     
     print(f"\n로드된 거래소: {list(em.configs.keys())}")

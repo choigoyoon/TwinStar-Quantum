@@ -61,7 +61,7 @@ def get_kst_now() -> datetime:
     return datetime.now(KST)
 
 
-def to_utc(dt: datetime, exchange: str = None) -> datetime:
+def to_utc(dt: datetime, exchange: str | None = None) -> datetime:
     """
     datetime을 UTC로 변환
     
@@ -86,7 +86,7 @@ def to_utc(dt: datetime, exchange: str = None) -> datetime:
     return dt.replace(tzinfo=UTC)
 
 
-def to_kst(dt: datetime, exchange: str = None) -> datetime:
+def to_kst(dt: datetime, exchange: str | None = None) -> datetime:
     """
     datetime을 KST로 변환
     
@@ -108,7 +108,7 @@ def to_kst(dt: datetime, exchange: str = None) -> datetime:
     return dt.replace(tzinfo=UTC).astimezone(KST)
 
 
-def hours_since(dt: datetime, exchange: str = None) -> float:
+def hours_since(dt: datetime, exchange: str | None = None) -> float:
     """
     주어진 시간부터 현재까지 경과 시간 (시간 단위)
     
@@ -130,7 +130,7 @@ def hours_since(dt: datetime, exchange: str = None) -> float:
     return (now_utc - dt_tz).total_seconds() / 3600
 
 
-def is_signal_valid(signal_time: datetime, validity_hours: float, exchange: str = None) -> bool:
+def is_signal_valid(signal_time: datetime, validity_hours: float, exchange: str | None = None) -> bool:
     """
     시그널 유효성 검사
     
@@ -146,7 +146,7 @@ def is_signal_valid(signal_time: datetime, validity_hours: float, exchange: str 
     return elapsed <= validity_hours
 
 
-def format_for_log(dt: datetime = None, tz: timezone = None) -> str:
+def format_for_log(dt: datetime | None = None, tz: timezone | None = None) -> str:
     """
     로그용 시간 문자열 포맷
     
@@ -168,7 +168,7 @@ def format_for_log(dt: datetime = None, tz: timezone = None) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
-def format_iso(dt: datetime = None) -> str:
+def format_iso(dt: datetime | None = None) -> str:
     """
     ISO 8601 형식 문자열
     

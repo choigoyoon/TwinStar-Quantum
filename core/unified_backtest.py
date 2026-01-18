@@ -7,15 +7,14 @@ Unified Backtest Engine (v2.1)
 import logging
 logger = logging.getLogger(__name__)
 
-import pandas as pd
 import numpy as np
 import traceback
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from datetime import datetime
+from typing import List, Optional
 from dataclasses import dataclass
 
 from core.strategy_core import AlphaX7Core
-from core.multi_symbol_backtest import MultiSymbolBacktest, Signal
+from core.multi_symbol_backtest import MultiSymbolBacktest
 from utils.preset_manager import get_preset_manager
 
 # Logging
@@ -44,14 +43,15 @@ class UnifiedBacktest:
         self.max_positions = max_positions
         self.capital_mode = capital_mode.lower() # "compound" or "fixed"
         
-        self.equity = 1000.0 # Initial Equity
+        self.initial_capital = 1000.0  # Fixed mode 기준 자본
+        self.equity = 1000.0  # Initial Equity
         self.max_equity = 1000.0
-        self.equity_history = []
-        self.trade_history = []
-        
-        self.active_position = None # {symbol, entry_price, size, direction, sl, tp}
+        self.equity_history: List[float] = []
+        self.trade_history: List[dict] = []
+
+        self.active_position: Optional[dict] = None  # {symbol, entry_price, size, direction, sl, tp}
     
-    def run(self, progress_callback=None) -> UnifiedResult:
+    def run(self, progress_callback=None) -> Optional[UnifiedResult]:
         """Run unified backtest simulation"""
         try:
             # 1. Load Verified Presets
@@ -97,18 +97,18 @@ class UnifiedBacktest:
                 symbol_data_map[symbol] = df_15m
                 
                 # Detect Signals
-                signals = self.strategy.detect_signal(
+                signal = self.strategy.detect_signal(
                     df_1h, df_15m,
                     rsi_period=params.get('rsi_period', 14),
                     atr_period=params.get('atr_period', 14)
                 )
-                
-                # Append to global list
-                for sig in signals:
+
+                # Append to global list (single signal)
+                if signal is not None:
                     all_signals.append({
-                        'timestamp': sig.timestamp,
+                        'timestamp': signal.timestamp,
                         'symbol': symbol,
-                        'signal': sig,
+                        'signal': signal,
                         'params': params
                     })
             

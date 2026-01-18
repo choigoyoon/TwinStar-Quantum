@@ -2,18 +2,17 @@
 StarU 나우캐스트 설정 위젯
 - 기준 TF 선택
 - 나우캐스트 TF 체크박스 (1m ~ 1w)
-
-# Logging
+"""
 import logging
 logger = logging.getLogger(__name__)
-"""
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QCheckBox, QComboBox, QLabel, QPushButton,
-    QGridLayout, QFrame
+    QFrame
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
+from typing import Any, cast
 
 
 class NowcastWidget(QWidget):
@@ -74,7 +73,7 @@ class NowcastWidget(QWidget):
         
         # 구분선
         line1 = QFrame()
-        line1.setFrameShape(QFrame.HLine)
+        line1.setFrameShape(QFrame.Shape.HLine)
         line1.setStyleSheet("background-color: #30363d;")
         main_layout.addWidget(line1)
         
@@ -128,7 +127,7 @@ class NowcastWidget(QWidget):
         
         # 구분선
         line2 = QFrame()
-        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShape(QFrame.Shape.HLine)
         line2.setStyleSheet("background-color: #30363d;")
         main_layout.addWidget(line2)
         
@@ -253,7 +252,7 @@ class NowcastWidget(QWidget):
         for tf, cb in self.tf_checkboxes.items():
             cb.setChecked(tf in tfs)
     
-    def set_connection_status(self, connected: bool, status_text: str = None):
+    def set_connection_status(self, connected: bool, status_text: str | None = None):
         """연결 상태 업데이트"""
         self._is_connected = connected
         
@@ -270,8 +269,9 @@ class NowcastWidget(QWidget):
             self.connect_btn.setObjectName("startBtn")
         
         # 스타일 새로고침
-        self.connect_btn.style().unpolish(self.connect_btn)
-        self.connect_btn.style().polish(self.connect_btn)
+        if self.connect_btn.style():
+            cast(Any, self.connect_btn.style()).unpolish(self.connect_btn)
+            cast(Any, self.connect_btn.style()).polish(self.connect_btn)
     
     def set_connecting(self):
         """연결 중 상태"""
@@ -288,11 +288,11 @@ class NowcastWidget(QWidget):
 # ===== 테스트 =====
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     # 스타일 적용
     try:
-        from styles import StarUTheme
+        from GUI.styles.theme import Theme as StarUTheme
         style = StarUTheme.get_stylesheet()
     except ImportError:
         style = """
@@ -320,4 +320,4 @@ if __name__ == "__main__":
     widget.disconnect_requested.connect(lambda: logger.info("연결 해제 요청"))
     
     widget.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

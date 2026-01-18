@@ -1,0 +1,31 @@
+{
+  "name": "bybit_btcusdt_1h_optimized",
+  "symbol": "BTCUSDT",
+  "exchange": "bybit",
+  "timeframe": "1h",
+  "method": "macd",
+  "created": "2026-01-13",
+  "data_period": "2020-01-01 ~ 2026-01-13",
+  "performance": {
+    "trades": 2245,
+    "win_rate": 74.4,
+    "pnl_pct": 2539.7,
+    "mdd_pct": 17.4,
+    "grade": "B"
+  },
+  "cost": {
+    "slippage_pct": 0.06,
+    "fee_pct": 0.055,
+    "total_round_trip_pct": 0.23
+  },
+  "params": {
+    "atr_mult": 1.75,
+    "trail_start": 1.5,
+    "trail_dist": 0.08,
+    "tolerance": 0.12,
+    "adx_min": 5,
+    "stoch_long_max": 50,
+    "stoch_short_min": 50,
+    "use_downtrend_filter": true
+  }
+}

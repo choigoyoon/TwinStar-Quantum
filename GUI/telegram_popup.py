@@ -1,19 +1,17 @@
 """
 텔레그램 알림 설정 팝업 (개선 버전)
-
-# Logging
-import logging
-logger = logging.getLogger(__name__)
 - 접이식 설정 가이드
 - 알림 종류별 체크박스
 - 토큰 표시/숨김 토글
 """
-from PyQt5.QtWidgets import (
+import logging
+logger = logging.getLogger(__name__)
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QPushButton, QGroupBox, QCheckBox,
     QGridLayout
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 import json
 import os
 
@@ -77,7 +75,7 @@ class TelegramPopup(QDialog):
         self.guide_label = QLabel(guide_text.strip())
         self.guide_label.setWordWrap(True)
         self.guide_label.setStyleSheet("color: #bbb; font-size: 12px; line-height: 1.6;")
-        self.guide_label.setTextFormat(Qt.RichText)
+        self.guide_label.setTextFormat(Qt.TextFormat.RichText)
         guide_layout.addWidget(self.guide_label)
         self.guide_group.setLayout(guide_layout)
         layout.addWidget(self.guide_group)
@@ -87,7 +85,7 @@ class TelegramPopup(QDialog):
         token_layout = QHBoxLayout()
         self.token_input = QLineEdit()
         self.token_input.setPlaceholderText("123456789:ABCdefGHIjklMNOpqrsTUVwxyz")
-        self.token_input.setEchoMode(QLineEdit.Password)
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.show_token_btn = QPushButton("👁")
         self.show_token_btn.setFixedWidth(35)
         self.show_token_btn.setToolTip("토큰 표시/숨김")
@@ -136,7 +134,7 @@ class TelegramPopup(QDialog):
         
         # 5. 상태 표시
         self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("font-size: 13px; padding: 5px;")
         layout.addWidget(self.status_label)
         
@@ -170,11 +168,11 @@ class TelegramPopup(QDialog):
     
     def _toggle_token_visibility(self):
         """토큰 표시/숨김 토글"""
-        if self.token_input.echoMode() == QLineEdit.Password:
-            self.token_input.setEchoMode(QLineEdit.Normal)
+        if self.token_input.echoMode() == QLineEdit.EchoMode.Password:
+            self.token_input.setEchoMode(QLineEdit.EchoMode.Normal)
             self.show_token_btn.setText("🙈")
         else:
-            self.token_input.setEchoMode(QLineEdit.Password)
+            self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.show_token_btn.setText("👁")
     
     def _send_test(self):
@@ -303,9 +301,9 @@ class TelegramPopup(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
     app = QApplication(sys.argv)
     popup = TelegramPopup()
     popup.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

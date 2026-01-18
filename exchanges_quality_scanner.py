@@ -2,18 +2,19 @@ from pathlib import Path
 import re
 import json
 import sys
-
+from typing import Any, cast
 if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8')
+    if hasattr(sys.stdout, 'reconfigure'):
+        cast(Any, sys.stdout).reconfigure(encoding='utf-8')
 
-base = Path(r'C:\매매전략')
+base = Path(__file__).parent
 issues = {'except_pass': [], 'hardcoded': [], 'unsafe': []}
 
 for f in (base / 'exchanges').glob('*.py'):
     code = f.read_text(encoding='utf-8', errors='ignore')
     lines = code.split('\n')
     for i, l in enumerate(lines):
-        # 1. except: pass
+        # 1. except Exception: pass
         if re.search(r'except.*:\s*pass', l) or (re.search(r'except.*:\s*$', l) and i+1 < len(lines) and 'pass' in lines[i+1]):
             issues['except_pass'].append({'file': f.name, 'line': i+1, 'code': l.strip()})
         
@@ -27,7 +28,7 @@ for f in (base / 'exchanges').glob('*.py'):
             if 'try' not in surrounding:
                 issues['unsafe'].append({'file': f.name, 'line': i+1, 'code': l.strip()})
 
-with open(r'C:\매매전략\exchanges_quality_report.json', 'w', encoding='utf-8') as f:
+with open(base / 'exchanges_quality_report.json', 'w', encoding='utf-8') as f:
     json.dump(issues, f, ensure_ascii=False, indent=2)
 
-print(f"Exchanges Scan Complete. Found {len(issues['except_pass'])} except:pass, {len(issues['hardcoded'])} hardcoded, {len(issues['unsafe'])} unsafe.")
+print(f"Exchanges Scan Complete. Found {len(issues['except_pass'])} except Exception: pass, {len(issues['hardcoded'])} hardcoded, {len(issues['unsafe'])} unsafe.")

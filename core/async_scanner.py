@@ -4,11 +4,9 @@ aiohttp를 이용한 대량 심볼 동시 데이터 수집 및 스캔
 """
 import asyncio
 import aiohttp
-import pandas as pd
 import time
 import logging
 from typing import List, Dict, Optional
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +33,7 @@ class AsyncScanner:
         """단일 심볼 캔들 데이터 비동기 수집"""
         params = self._get_params(symbol, timeframe, limit)
         try:
-            async with session.get(self.base_url, params=params, timeout=10) as response:
+            async with session.get(self.base_url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     data = await response.json()
                     return {'symbol': symbol, 'data': data}

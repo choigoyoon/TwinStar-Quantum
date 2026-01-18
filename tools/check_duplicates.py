@@ -4,8 +4,9 @@
 import os
 import re
 from collections import defaultdict
+from pathlib import Path
 
-BASE = r'C:\매매전략'
+BASE = str(Path(__file__).parent)
 os.chdir(BASE)
 
 print('=' * 60)
@@ -50,7 +51,8 @@ for root, dirs, files in os.walk('.'):
                         match = re.match(r'^class\s+(\w+)', line)
                         if match:
                             classes[match.group(1)].append(f'{path}:{i}')
-            except:
+            except Exception:
+
                 pass
 
 # Filter: only actual duplicates (exclude Paths fallback etc)

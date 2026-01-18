@@ -14,6 +14,7 @@ try:
     HAS_CRYPTO = True
 except ImportError:
     HAS_CRYPTO = False
+    Fernet = None  # type: ignore
 
 # ========== EXE 호환 경로 처리 ==========
 def get_base_path():
@@ -90,9 +91,9 @@ class SecureKeyStorage:
     
     def __init__(self):
         self.machine_key = _get_machine_key()
-        self.fernet = None
-        
-        if HAS_CRYPTO:
+        self.fernet: Optional["Fernet"] = None  # type: ignore[name-defined]
+
+        if HAS_CRYPTO and Fernet is not None:
             self.fernet = Fernet(self.machine_key)
     
     def encrypt(self, data: str) -> str:
@@ -171,8 +172,8 @@ class SecureKeyStorage:
         keys = self.load_api_keys()
         return keys.get(exchange.lower())
     
-    def set_exchange_keys(self, exchange: str, api_key: str, api_secret: str, 
-                          passphrase: str = None):
+    def set_exchange_keys(self, exchange: str, api_key: str, api_secret: str,
+                          passphrase: Optional[str] = None):
         """특정 거래소 키 저장"""
         keys = self.load_api_keys()
         

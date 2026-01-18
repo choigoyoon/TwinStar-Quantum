@@ -1,11 +1,13 @@
 
 import os
 import sys
+from pathlib import Path
 
 # Windows console encoding fix
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[union-attr]
 
-root = r'C:\매매전략'
+root = str(Path(__file__).parent)
 large_files = []
 
 scan_folders = ['core', 'GUI', 'exchanges', 'utils', 'storage', 'config']

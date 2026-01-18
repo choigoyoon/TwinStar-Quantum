@@ -18,7 +18,7 @@ class StateManager:
     주기적 상태 저장 및 크래시 복구 지원
     """
     
-    def __init__(self, state_dir: str = None, bot_id: str = "default"):
+    def __init__(self, state_dir: str | None = None, bot_id: str = "default"):
         """
         Args:
             state_dir: 상태 파일 저장 디렉토리
@@ -27,11 +27,11 @@ class StateManager:
         if state_dir is None:
             try:
                 from paths import Paths
-                state_dir = Paths.DATA
+                state_dir = str(Paths.DATA)
             except ImportError:
                 state_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        
-        self.state_dir = Path(state_dir)
+
+        self.state_dir = Path(state_dir) if state_dir else Path.cwd()
         self.state_dir.mkdir(parents=True, exist_ok=True)
         
         self.bot_id = bot_id
@@ -41,7 +41,7 @@ class StateManager:
         self._state: Dict[str, Any] = {}
         self._last_save = None
     
-    def save(self, state: Dict[str, Any] = None) -> bool:
+    def save(self, state: Dict[str, Any] | None = None) -> bool:
         """
         상태 저장
         

@@ -232,7 +232,7 @@ def calculate_sortino_ratio(
 
 def calculate_calmar_ratio(
     trades: List[Dict[str, Any]],
-    periods_per_year: int = 252 * 4  # 1,008 (15분봉 기준, Sharpe/Sortino와 통일)
+    periods_per_year: int = 252 * 24  # 6,048 (1시간봉 기준, Sharpe/Sortino와 통일)
 ) -> float:
     """
     Calmar Ratio (칼마 비율) 계산
@@ -241,7 +241,7 @@ def calculate_calmar_ratio(
 
     Args:
         trades: 거래 리스트
-        periods_per_year: 연간 거래 주기 수 (기본값: 1,008 = 252일 × 4시간/일, 15분봉 기준)
+        periods_per_year: 연간 거래 주기 수 (기본값: 6,048 = 252일 × 24시간/일, 1시간봉 기준)
 
     Returns:
         float: Calmar Ratio

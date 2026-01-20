@@ -287,7 +287,7 @@ class MultiOptimizer:
 
                     # 추가 메트릭 계산
                     pnl_list = [t.get('pnl', 0) for t in result]
-                    sharpe = calculate_sharpe_ratio(pnl_list, periods_per_year=252 * 4)  # 15분봉 기준
+                    sharpe = calculate_sharpe_ratio(pnl_list, periods_per_year=252 * 24)  # 1시간봉 기준 (실제 백테스트)
                     stability = calculate_stability(pnl_list)
 
                     # 점수 계산 (승률 + PF)

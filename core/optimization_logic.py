@@ -324,7 +324,7 @@ def _worker_run_backtest(args):
         elif total_pnl_value > 100 or leverage > 10: strategy_type = "🔥 공격"
         
         # Sharpe Ratio - SSOT (252 × 4 통일)
-        sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 4)
+        sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 24)
 
         # Profit Factor - SSOT
         trades_for_pf = [{'pnl': p} for p in pnls]
@@ -498,7 +498,7 @@ class OptimizationEngine:
             elif total_pnl_value > 100 or leverage > 10: strategy_type = "🔥 공격"
             
             # Sharpe Ratio - SSOT (252 × 4 통일)
-            sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 4)
+            sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 24)
 
             # Profit Factor - SSOT
             trades_for_pf = [{'pnl': p} for p in pnls]

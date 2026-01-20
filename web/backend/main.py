@@ -70,7 +70,16 @@ if CORE_AVAILABLE:
         print(f"Warning: PresetStorage initialization failed: {e}")
 
 # ============= Phase 3-2: JWT Authentication =============
-JWT_SECRET = os.getenv("JWT_SECRET_KEY", "dev_secret_key_change_in_production")
+# v7.29: 보안 강화 - JWT_SECRET_KEY 환경 변수 필수화
+_jwt_secret_temp = os.getenv("JWT_SECRET_KEY")
+if _jwt_secret_temp is None:
+    raise ValueError(
+        "JWT_SECRET_KEY 환경 변수가 설정되지 않았습니다. "
+        "프로덕션 환경에서는 반드시 안전한 랜덤 키를 설정하세요. "
+        "예시: export JWT_SECRET_KEY=$(openssl rand -hex 32)"
+    )
+
+JWT_SECRET: str = _jwt_secret_temp  # 타입 체크: None이 아님을 보장
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 

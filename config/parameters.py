@@ -134,7 +134,7 @@ PARAM_RANGES_BY_MODE = {
     # 필터 타임프레임 (문자열 리스트)
     'filter_tf': {
         'quick': ['12h', '1d'],              # 문서 권장: 긴 TF로 필터 강화
-        'standard': ['4h', '6h', '12h'],      # 12h 추가
+        'standard': ['4h', '6h', '12h', '1d'],  # Quick ⊂ Standard 관계 유지
         'deep': ['2h', '4h', '6h', '12h', '1d']  # 전체 범위 탐색
     },
 

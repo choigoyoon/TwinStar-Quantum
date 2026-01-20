@@ -80,7 +80,7 @@ def main():
 
     # 3. MetaOptimizer 생성
     print("3. MetaOptimizer 생성 중...")
-    from core.meta_optimizer import MetaOptimizer
+    from dev_future.optimization_modes.meta_optimizer import MetaOptimizer
 
     meta_optimizer = MetaOptimizer(
         base_optimizer=base_optimizer,

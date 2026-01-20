@@ -247,11 +247,16 @@ class UnifiedBot:
         fixed_amount = getattr(exchange, 'fixed_amount', 100) if exchange else 100
         self.capital_manager = CapitalManager(initial_capital=initial_capital, fixed_amount=fixed_amount)
 
-        use_compounding = True
+        # v7.29: capital_mode 키 지원 (GUI/components/bot_control_card.py Line 450)
+        capital_mode = 'compound'  # 기본값
         if exchange and hasattr(exchange, 'config'):
-            use_compounding = exchange.config.get('use_compounding', True)
+            # 우선순위: capital_mode > use_compounding (하위 호환성)
+            capital_mode = exchange.config.get('capital_mode', None)
+            if capital_mode is None:
+                use_compounding = exchange.config.get('use_compounding', True)
+                capital_mode = 'compound' if use_compounding else 'fixed'
 
-        self.capital_manager.switch_mode("compound" if use_compounding else "fixed")
+        self.capital_manager.switch_mode(capital_mode)
         self.initial_capital = initial_capital
 
         # ✅ Phase C: 시간 동기화 및 봉 마감 감지 (신규)
@@ -1025,6 +1030,39 @@ class UnifiedBot:
                     time.sleep(0.2 if is_vme else 1.0)
             except Exception as e:
                 logging.error(f"[LOOP] Error: {e}"); time.sleep(5)
+
+    def set_capital_mode(self, mode: str) -> bool:
+        """
+        자본 관리 모드 변경 (실시간 봇 실행 중에도 가능)
+
+        Args:
+            mode: 'compound' (복리) 또는 'fixed' (고정)
+
+        Returns:
+            bool: 변경 성공 여부
+
+        Example:
+            >>> bot.set_capital_mode('compound')  # 복리 모드로 전환
+            >>> bot.set_capital_mode('fixed')     # 고정 금액 모드로 전환
+        """
+        if mode not in ['compound', 'fixed']:
+            logger.error(f"[CAPITAL] 잘못된 모드: {mode} (compound 또는 fixed만 가능)")
+            return False
+
+        try:
+            self.capital_manager.switch_mode(mode)
+            mode_text = '복리(Compound)' if mode == 'compound' else '고정(Fixed)'
+            logger.info(f"💰 [{self.symbol}] 자본 모드 변경: {mode_text}")
+
+            # 현재 자본 상태 로그
+            current_capital = self.capital_manager.current_capital
+            trade_size = self.capital_manager.get_trade_size()
+            logger.info(f"   현재 자본: ${current_capital:.2f}, 다음 매매 크기: ${trade_size:.2f}")
+
+            return True
+        except Exception as e:
+            logger.error(f"[CAPITAL] 모드 변경 실패: {e}")
+            return False
 
     def stop(self):
         """봇 정상 종료"""

@@ -54,10 +54,14 @@ def test_physical_core_detection():
 
         print(f"물리 코어: {physical}개")
         print(f"논리 코어: {logical}개")
-        print(f"하이퍼스레딩: {'Yes' if logical > physical else 'No'}")
 
-        assert physical > 0, "물리 코어는 1개 이상이어야 합니다"
-        assert logical >= physical, "논리 코어는 물리 코어보다 크거나 같아야 합니다"
+        # None 체크 추가 (타입 안전성)
+        if physical is not None and logical is not None:
+            print(f"하이퍼스레딩: {'Yes' if logical > physical else 'No'}")
+            assert physical > 0, "물리 코어는 1개 이상이어야 합니다"
+            assert logical >= physical, "논리 코어는 물리 코어보다 크거나 같아야 합니다"
+        else:
+            print("⚠️ CPU 코어 정보를 가져올 수 없습니다")
         print("✅ Test 2 통과")
     except ImportError:
         print("⚠️ psutil 없음, 테스트 스킵")

@@ -248,10 +248,10 @@ class SingleOptimizationWidget(
             self._run_fine_tuning(exchange, symbol, timeframe, max_workers)
             return
 
-        # Meta 모드는 별도 실행 (v7.20)
-        if mode == 'meta':
-            self._run_meta_optimization(exchange, symbol, timeframe)
-            return
+        # Meta 모드 제거 (v7.28: dev_future/optimization_modes/로 이동)
+        # if mode == 'meta':
+        #     self._run_meta_optimization(exchange, symbol, timeframe)
+        #     return
 
         # Issue #6: Deep 모드 확인 다이얼로그 (v7.27)
         if mode == 'deep':

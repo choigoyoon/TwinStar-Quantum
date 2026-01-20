@@ -159,7 +159,7 @@ def calculate_pnl_metrics(pnls: list) -> dict:
     compound_return = (equity - 1) * 100 if not is_bankrupt else -100.0
     
     # 2. Sharpe Ratio - SSOT (252 × 4 통일)
-    sharpe = calculate_sharpe_ratio(pnl_series.tolist(), periods_per_year=252 * 4)
+    sharpe = calculate_sharpe_ratio(pnl_series.tolist(), periods_per_year=252 * 24)
 
     # 3. Profit Factor - SSOT
     trades_for_pf = [{'pnl': p} for p in pnl_series.tolist()]

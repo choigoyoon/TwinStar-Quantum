@@ -22,6 +22,71 @@ from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
 
+# ============================================================================
+# 헬퍼 함수: 타임프레임 변환
+# ============================================================================
+
+def get_periods_per_year(timeframe: str) -> int:
+    """
+    타임프레임에 따른 연간 거래 주기 수 반환
+
+    Args:
+        timeframe: 타임프레임 문자열 ('5m', '15m', '1h', '4h', '1d' 등)
+
+    Returns:
+        int: 연간 거래 주기 수
+
+    Example:
+        >>> periods = get_periods_per_year('1h')
+        >>> print(periods)  # 6,048 (252 * 24)
+
+    Note:
+        - 1년 = 252 거래일 (주말 제외)
+        - 암호화폐는 24/7 거래이므로 365일 사용 가능하지만,
+          전통 금융 표준(252일)을 따름
+    """
+    timeframe_lower = timeframe.lower()
+
+    # 분봉 (minutes)
+    if timeframe_lower.endswith('m'):
+        minutes = int(timeframe_lower[:-1])
+        candles_per_day = (24 * 60) // minutes
+        return 252 * candles_per_day
+
+    # 시간봉 (hours)
+    elif timeframe_lower.endswith('h'):
+        hours = int(timeframe_lower[:-1])
+        candles_per_day = 24 // hours
+        return 252 * candles_per_day
+
+    # 일봉 (days)
+    elif timeframe_lower.endswith('d'):
+        days = int(timeframe_lower[:-1])
+        candles_per_year = 252 // days
+        return candles_per_year
+
+    # 주봉 (weeks)
+    elif timeframe_lower.endswith('w'):
+        weeks = int(timeframe_lower[:-1])
+        candles_per_year = 52 // weeks
+        return candles_per_year
+
+    # 월봉 (months)
+    elif timeframe_lower.endswith('M'):
+        months = int(timeframe_lower[:-1])
+        candles_per_year = 12 // months
+        return candles_per_year
+
+    # 알 수 없는 형식 → 기본값 1시간 (6,048)
+    else:
+        logger.warning(f"알 수 없는 타임프레임: {timeframe}, 기본값 1h (6,048) 사용")
+        return 252 * 24
+
+
+# ============================================================================
+# 백테스트 메트릭 계산
+# ============================================================================
+
 def calculate_mdd(trades: List[Dict[str, Any]]) -> float:
     """
     Maximum Drawdown (최대 낙폭) 계산
@@ -177,6 +242,34 @@ def calculate_sharpe_ratio(
     sharpe = (excess_return / std_return) * np.sqrt(periods_per_year)
 
     return sharpe
+
+
+def calculate_sharpe_ratio_with_timeframe(
+    returns: List[float] | Any,
+    timeframe: str = '1h',
+    risk_free_rate: float = 0.0
+) -> float:
+    """
+    Sharpe Ratio 계산 (타임프레임 자동 변환)
+
+    Args:
+        returns: 수익률 리스트 또는 pandas Series
+        timeframe: 타임프레임 문자열 ('5m', '15m', '1h', '4h', '1d' 등)
+        risk_free_rate: 무위험 수익률 (기본 0)
+
+    Returns:
+        float: Sharpe Ratio
+
+    Example:
+        >>> returns = [0.05, -0.02, 0.03, 0.01]
+        >>> sharpe = calculate_sharpe_ratio_with_timeframe(returns, '1h')
+        >>> print(f"Sharpe Ratio (1h): {sharpe:.2f}")
+
+    Note:
+        v7.29 신규 추가: 타임프레임을 직접 받아서 periods_per_year 자동 계산
+    """
+    periods_per_year = get_periods_per_year(timeframe)
+    return calculate_sharpe_ratio(returns, periods_per_year, risk_free_rate)
 
 
 def calculate_sortino_ratio(

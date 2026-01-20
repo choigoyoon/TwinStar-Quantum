@@ -3,7 +3,7 @@
 from typing import Optional
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QGraphicsDropShadowEffect
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QSequentialAnimationGroup
-from ui.design_system.tokens import Colors, Radius, Shadow, Typography
+from ui.design_system.tokens import Colors, Radius, Shadow, Typography, Spacing
 
 class StatusCard(QFrame):
     """상태 표시 카드 - 글래스모피즘 스타일 및 박동 애니메이션 지원"""
@@ -13,8 +13,13 @@ class StatusCard(QFrame):
         self.setObjectName("statusCard")
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 14, 18, 14)
-        layout.setSpacing(6)
+        layout.setContentsMargins(
+            Spacing.i_space_4,  # 16px left
+            Spacing.i_space_3,  # 12px top
+            Spacing.i_space_4,  # 16px right
+            Spacing.i_space_3   # 12px bottom
+        )
+        layout.setSpacing(Spacing.i_space_2)  # 8px
         
         # 타이틀
         self.title_label = QLabel(f"{icon} {title}" if icon else title)
@@ -36,19 +41,19 @@ class StatusCard(QFrame):
         """글래스모피즘 스타일 적용"""
         self.setStyleSheet(f"""
             QFrame#statusCard {{
-                background-color: rgba(33, 38, 45, 0.6);
-                border: 1px solid rgba(48, 54, 61, 0.8);
+                background-color: {Colors.bg_surface};
+                border: 1px solid {Colors.border_default};
                 border-radius: {Radius.radius_lg};
             }}
             QFrame#statusCard:hover {{
-                background-color: rgba(48, 54, 61, 0.7);
+                background-color: {Colors.bg_elevated};
                 border: 1px solid {Colors.accent_primary};
             }}
         """)
         
         # 그림자 효과 (글로우 느낌)
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(15)
+        shadow.setBlurRadius(15)  # Shadow.shadow_lg 블러 반경과 유사 (16)
         shadow.setColor(Qt.GlobalColor.black)
         shadow.setOffset(0, 4)
         self.setGraphicsEffect(shadow)

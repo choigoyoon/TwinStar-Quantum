@@ -179,15 +179,25 @@ AutoPipelineWidget_Pkg = load_widget('auto_pipeline_widget', 'AutoPipelineWidget
 IndicatorComparisonWidget_Pkg = load_widget('GUI.optimization.indicator_comparison', 'IndicatorComparisonWidget')
 
 
-from GUI.styles.fonts import FontSystem
+# MEDIUM #2 FIX (v7.27): GUI.styles → ui.design_system 마이그레이션
+try:
+    from GUI.styles.fonts import FontSystem
+except ImportError:
+    FontSystem = None  # Fallback if fonts module is removed
 
-# 새 디자인 시스템 우선 사용, 실패 시 레거시 폴백
+# 디자인 시스템 (v7.27: deprecated GUI.styles 제거)
 try:
     from ui.design_system import ThemeGenerator
     _USE_NEW_THEME = True
 except ImportError:
-    from GUI.styles.premium_theme import PremiumTheme
-    _USE_NEW_THEME = False
+    # Legacy fallback (하위 호환성)
+    try:
+        from GUI.styles.premium_theme import PremiumTheme
+        _USE_NEW_THEME = False
+    except ImportError:
+        _USE_NEW_THEME = False
+        ThemeGenerator = None
+        PremiumTheme = None
 
 class StarUWindow(QMainWindow):
     """StarU 메인 윈도우 - Lazy Loading 제거"""
@@ -205,26 +215,30 @@ class StarUWindow(QMainWindow):
         
         # 폰트 시스템 초기화 및 적용
         app = QApplication.instance()
-        if app:
+        if app and FontSystem:
             FontSystem.apply_to_app(cast(Any, app))
-        
+
         # EXE/개발 환경 전환 경로 처리
         if getattr(sys, 'frozen', False):
             base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
-        
+
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-        
-        # [v5.0] 새 디자인 시스템 적용 (Phase 1)
-        if _USE_NEW_THEME:
+
+        # MEDIUM #2 FIX (v7.27): 새 디자인 시스템 적용 (None 체크 추가)
+        if _USE_NEW_THEME and ThemeGenerator:
             self.setStyleSheet(ThemeGenerator.generate())
             logger.info("🎨 새 디자인 시스템 (ThemeGenerator) 적용됨")
-        else:
+        elif PremiumTheme:
             self.setStyleSheet(PremiumTheme.get_stylesheet())
             logger.info("🎨 레거시 테마 (PremiumTheme) 적용됨")
+        else:
+            # 최종 fallback (디자인 시스템 없음)
+            logger.warning("⚠️ 디자인 시스템 없음 - 기본 스타일 적용")
+            self.setStyleSheet("QMainWindow { background-color: #0d1117; color: #c9d1d9; }")
         
         # 화면 해상도 처리 (85% - 작업표시줄 고려)
         primary_screen = QApplication.primaryScreen()
@@ -726,11 +740,22 @@ class StarUWindow(QMainWindow):
             cast(Any, self.optimization_widget)._load_data_sources()
         
     def apply_styles(self):
-        """스타일 적용"""
+        """
+        스타일 적용
+
+        MEDIUM #2 FIX (v7.27): GUI.legacy_styles → ui.design_system 마이그레이션
+        """
+        # 새 디자인 시스템 우선 사용
+        if _USE_NEW_THEME and ThemeGenerator:
+            self.setStyleSheet(ThemeGenerator.generate())
+            logger.info("  ✅ 디자인 시스템 (ThemeGenerator) 적용 완료")
+            return
+
+        # Legacy fallback
         try:
             from GUI.legacy_styles import MAIN_STYLE
             self.setStyleSheet(MAIN_STYLE)
-            logger.info("  ✅ TradingView 스타일 적용 완료")
+            logger.info("  ✅ TradingView 스타일 (레거시) 적용 완료")
         except ImportError:
             logger.info("  ⚠️ legacy_styles.py 없음 - 기본 스타일 적용")
             self.setStyleSheet("""
@@ -1063,15 +1088,20 @@ def main():
 
     # 메인 윈도우 실행
     window = StarUWindow(user_tier=user_tier)
-    
-    # 세련된 스타일 적용
-    try:
-        from GUI.legacy_styles import apply_style
-        apply_style(app)
-        logger.info("  ✅ legacy_styles 적용 완료")
-    except ImportError:
-        logger.info("  ⚠️ legacy_styles.py 없음 - 기본 스타일 적용")
-    
+
+    # MEDIUM #2 FIX (v7.27): 세련된 스타일 적용 (ui.design_system 우선)
+    if _USE_NEW_THEME and ThemeGenerator:
+        app.setStyleSheet(ThemeGenerator.generate())
+        logger.info("  ✅ 디자인 시스템 (ThemeGenerator) 적용 완료")
+    else:
+        # Legacy fallback
+        try:
+            from GUI.legacy_styles import apply_style
+            apply_style(app)
+            logger.info("  ✅ legacy_styles (레거시) 적용 완료")
+        except ImportError:
+            logger.info("  ⚠️ legacy_styles.py 없음 - 기본 스타일 적용")
+
     window.show()
     
     sys.exit(app.exec())

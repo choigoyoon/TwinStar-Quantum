@@ -801,7 +801,9 @@ class OKXExchange(BaseExchange):
     
     def get_balance(self) -> float:
         """잔고 조회 (OKX SDK 직접 호출)"""
-        
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
+
         if USE_DIRECT_API and self.account_api is not None:
             return self._get_balance_direct()
         else:

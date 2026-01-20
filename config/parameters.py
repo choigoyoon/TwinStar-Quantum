@@ -49,13 +49,20 @@ DEFAULT_PARAMS = {
     'entry_validity_hours': 6.0,  # [OPT] 48 → 6 (88.4% 프리셋 기준)
     'max_adds': 1,
     'filter_tf': '4h',
-    'entry_tf': '15m',
+    'entry_tf': '1h',  # [FIX v7.26] 15m → 1h (백테스트 기본값, 15m은 실시간용)
     'direction': 'Both',
     
-    # 비용 파라미터
-    'slippage': 0.0006,
-    'fee': 0.00055,
-    
+    # 비용 파라미터 (v7.26.1: 진입/청산 분리)
+    # 진입 (지정가 주문 - Limit/Maker)
+    'entry_slippage': 0.0,      # 지정가 주문은 슬리피지 없음
+    'entry_fee': 0.0002,        # Maker 수수료 0.02%
+    # 청산 (시장가 주문 - Market/Taker, 손절/익절)
+    'exit_slippage': 0.0006,    # 시장가 슬리피지 0.06%
+    'exit_fee': 0.00055,        # Taker 수수료 0.055%
+    # 레거시 필드 (하위 호환성, entry_* 값 사용)
+    'slippage': 0.0,
+    'fee': 0.0002,
+
     # 거래 파라미터
     'leverage': 10,
     'max_slippage': 0.01,  # 1%
@@ -156,8 +163,39 @@ PARAM_RANGES_BY_MODE = {
     'trail_dist_r': {
         'quick': [0.2],
         'standard': [0.2, 0.3],
-        'deep': [0.15, 0.2, 0.25, 0.3]
+        'deep': [0.15, 0.2, 0.25, 0.3],
+        'fine': [0.015, 0.018, 0.02, 0.022, 0.025, 0.03, 0.04, 0.05]  # Phase 1 영향도 분석 기준
     },
+}
+
+
+# ============ Fine-Tuning 범위 (영향도 기반 탐색) ============
+# 배경: bybit_BTCUSDT_1h_optimal_phase1.json (Sharpe 29.81, 승률 86.7%, MDD 3.7%)
+#
+# 영향도 순위 (Phase 1 분석):
+# 1. filter_tf: 4.01 (최고) → 넓게 탐색
+# 2. trail_start_r: 3.51 → 넓게 탐색
+# 3. trail_dist_r: 2.47 → 넓게 탐색
+# 4. atr_mult: 1.15 (낮음) → 최적값만 고정
+#
+# 목표 필터:
+# - MDD ≤ 20%
+# - 승률 ≥ 85%
+# - 거래당 평균 ≥ 0.5%
+#
+# 조합 수: 5 × 8 × 8 × 1 = 320개 (~2분, 8워커 기준)
+FINE_TUNING_RANGES = {
+    # Top 1: filter_tf (영향도 4.01, 최고)
+    'filter_tf': ['2h', '3h', '4h', '6h', '12h'],  # 5개 (넓은 범위)
+
+    # Top 2: trail_start_r (영향도 3.51)
+    'trail_start_r': [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.2],  # 8개 (넓은 범위)
+
+    # Top 3: trail_dist_r (영향도 2.47)
+    'trail_dist_r': [0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.07, 0.1],  # 8개 (넓은 범위)
+
+    # Top 4: atr_mult (영향도 1.15, 낮음) → 최적값만
+    'atr_mult': [0.5]  # 1개 (프리셋 최적값 고정)
 }
 
 
@@ -187,6 +225,116 @@ def get_param_range_by_mode(key: str, mode: str = 'standard') -> list | None:
         return PARAM_RANGES_BY_MODE[key].get('standard')  # 기본값
 
     return PARAM_RANGES_BY_MODE[key][mode_lower]
+
+
+# ============ 거래소별 파라미터 범위 (v7.23 - 수수료 기반) ============
+
+def get_atr_range_by_exchange(exchange: str, mode: str = 'standard') -> list[float]:
+    """
+    거래소별 ATR 범위 반환 (수수료 기반 자동 조정)
+
+    원칙:
+    - 수수료 높음 → ATR 넓게 (손절 여유) → 거래 빈도 ↓
+    - 수수료 낮음 → ATR 좁게 (빠른 손절) → 거래 빈도 ↑
+
+    Args:
+        exchange: 거래소명 ('bybit', 'binance', 'lighter', etc.)
+        mode: 최적화 모드 ('quick', 'standard', 'deep', 'coarse')
+
+    Returns:
+        ATR 배수 리스트
+
+    Examples:
+        >>> get_atr_range_by_exchange('bybit', 'standard')
+        [1.5, 2.0, 2.5, 3.0]  # 높은 수수료 → 넓은 ATR
+
+        >>> get_atr_range_by_exchange('binance', 'standard')
+        [1.0, 1.25, 1.5, 2.0]  # 낮은 수수료 → 좁은 ATR
+
+        >>> get_atr_range_by_exchange('lighter', 'standard')
+        [0.5, 1.0, 1.25, 1.5]  # 매우 낮은 수수료 → 매우 좁은 ATR
+
+    Note:
+        - 수수료 임계값: 0.001 (0.1%)
+        - Bybit (0.115%) → 높은 수수료 범위
+        - Binance (0.1%) → 경계선 (낮은 수수료 범위)
+        - Lighter (0.07%) → 낮은 수수료 범위
+    """
+    from config.constants.trading import get_total_cost
+
+    total_cost = get_total_cost(exchange)
+
+    # 수수료 임계값: 0.001 (0.1%)
+    if total_cost > 0.001:  # 높은 수수료 (Bybit, Bitget)
+        base_ranges = {
+            'quick': [1.5, 2.5],
+            'standard': [1.5, 2.0, 2.5, 3.0],
+            'deep': [1.5, 2.0, 2.5, 3.0, 4.0, 5.0],
+            'coarse': [1.5, 2.5, 3.5]  # Coarse Grid용
+        }
+    else:  # 낮은 수수료 (Binance, Lighter, OKX)
+        base_ranges = {
+            'quick': [1.0, 2.0],
+            'standard': [1.0, 1.25, 1.5, 2.0],
+            'deep': [0.5, 1.0, 1.25, 1.5, 2.0, 2.5],
+            'coarse': [1.0, 2.0, 3.0]  # Coarse Grid용
+        }
+
+    return base_ranges.get(mode, base_ranges['standard'])
+
+
+def get_filter_tf_range_by_exchange(exchange: str, mode: str = 'standard') -> list[str]:
+    """
+    거래소별 필터 타임프레임 범위 반환 (수수료 기반 자동 조정)
+
+    원칙:
+    - 수수료 높음 → 필터 강화 (긴 TF) → 거래 빈도 ↓ (0.3~0.5회/일)
+    - 수수료 낮음 → 필터 완화 (짧은 TF) → 거래 빈도 ↑ (0.8~1.5회/일)
+
+    Args:
+        exchange: 거래소명
+        mode: 최적화 모드 ('quick', 'standard', 'deep', 'coarse')
+
+    Returns:
+        필터 타임프레임 리스트
+
+    Examples:
+        >>> get_filter_tf_range_by_exchange('bybit', 'standard')
+        ['12h', '1d']  # 높은 수수료 → 강한 필터 → 거래 적게
+
+        >>> get_filter_tf_range_by_exchange('binance', 'standard')
+        ['4h', '6h', '12h']  # 낮은 수수료 → 약한 필터 → 거래 많이
+
+        >>> get_filter_tf_range_by_exchange('lighter', 'deep')
+        ['2h', '4h', '6h', '12h']  # 매우 낮은 수수료 → 매우 약한 필터
+
+    Note:
+        - filter_tf가 길수록 필터가 강함 (상위 타임프레임 추세 확인)
+        - 수수료 높으면 거래를 적게 해야 손익분기점 돌파 가능
+        - 수수료 낮으면 거래를 많이 해도 수익성 유지 가능
+    """
+    from config.constants.trading import get_total_cost
+
+    total_cost = get_total_cost(exchange)
+
+    if total_cost > 0.001:  # 높은 수수료
+        # 강한 필터 → 거래 적게 (0.3~0.5회/일)
+        base_ranges = {
+            'quick': ['12h', '1d'],
+            'standard': ['12h', '1d'],
+            'deep': ['6h', '12h', '1d'],
+            'coarse': ['12h', '1d']  # Coarse Grid용
+        }
+    else:  # 낮은 수수료
+        # 약한 필터 → 거래 많이 (0.8~1.5회/일)
+        base_ranges = {
+            'quick': ['4h', '6h'],
+            'standard': ['4h', '6h', '12h'],
+            'deep': ['2h', '4h', '6h', '12h'],
+            'coarse': ['4h', '12h']  # Coarse Grid용
+        }
+
+    return base_ranges.get(mode, base_ranges['standard'])
 
 
 # ============ 최적화 필터 기준 (SSOT) ============
@@ -244,16 +392,39 @@ STRATEGY_INDICATOR_PARAMS = {
 }
 
 
-# ============ 최적화 모드 정의 (v7.21 - Meta 기본) ============
+# ============ 최적화 모드 정의 (v7.25 - Fine-Tuning 추가) ============
 # Standard 모드 제거 (v7.21): Quick/Deep으로 충분, Meta가 가장 효율적
 OPTIMIZATION_MODES = {
+    'fine': {
+        'name': '🎯 Fine-Tuning (영향도 기반 탐색)',
+        'description': '영향도 높은 3개 파라미터 넓게 탐색 + 목표 필터 (MDD≤20%, 승률≥85%, 거래당≥0.5%)',
+        'method': 'fine_tuning',
+        'combinations': 320,
+        'time_estimate': '~2분',
+        'use_case': '목표 지표 달성 조합 탐색',
+        'output': 'best_params.json',
+        'target_filters': {
+            'mdd': {'max': 20.0},
+            'win_rate': {'min': 85.0},
+            'avg_pnl': {'min': 0.5}
+        },
+        'baseline': {
+            'atr_mult': 0.5,
+            'filter_tf': '2h',
+            'trail_start_r': 0.4,
+            'trail_dist_r': 0.02,
+            'sharpe': 29.81,
+            'win_rate': 86.7,
+            'mdd': 3.7
+        }
+    },
     'meta': {
-        'name': '🎯 Meta (자동 범위 탐색)',
-        'description': '3,000개 조합을 20초에 실행하여 최적 범위 자동 추출 (권장)',
+        'name': '🔍 Meta (자동 범위 탐색)',
+        'description': '3,000개 조합을 20초에 실행하여 최적 범위 자동 추출',
         'method': 'meta_optimization',
         'sample_size': 3000,
-        'time_estimate': '20초',
-        'use_case': '초보자 + 일반 사용자',
+        'time_estimate': '~20초',
+        'use_case': '심볼별 자동 파라미터 범위 추출',
         'output': 'extracted_ranges.json + best_params.json'
     },
     'quick': {
@@ -261,7 +432,7 @@ OPTIMIZATION_MODES = {
         'description': 'Meta 추출 범위의 양 끝만 테스트 (검증용)',
         'method': 'use_extracted_ranges',
         'density': 'endpoints',
-        'time_estimate': '2분',
+        'time_estimate': '~2분',
         'use_case': 'Meta 결과 빠른 검증',
         'requires': 'meta_results'
     },
@@ -270,7 +441,7 @@ OPTIMIZATION_MODES = {
         'description': 'Meta 추출 범위 전체 탐색 (최종 파라미터)',
         'method': 'use_extracted_ranges',
         'density': 'full',
-        'time_estimate': '2분',
+        'time_estimate': '~2분',
         'use_case': '정밀 최적화 필요 시',
         'requires': 'meta_results'
     }
@@ -431,6 +602,134 @@ def get_pattern_params(preset: Optional[dict] = None) -> dict:
     keys = ['pattern_tolerance', 'entry_validity_hours', 'max_adds',
             'filter_tf', 'entry_tf']
     return {k: all_params[k] for k in keys if k in all_params}
+
+
+# ============ 타임프레임 계층 검증 (v7.25) ============
+
+# 타임프레임 순서 (SSOT)
+TIMEFRAME_ORDER = ['15m', '30m', '1h', '2h', '3h', '4h', '6h', '8h', '12h', '1d', '1w']
+
+# 타임프레임 계층 (entry_tf → 유효한 filter_tf)
+TIMEFRAME_HIERARCHY = {
+    '15m': ['30m', '1h', '2h', '4h', '6h', '12h', '1d'],
+    '1h': ['2h', '4h', '6h', '12h', '1d'],
+    '4h': ['12h', '1d', '1w'],
+}
+
+
+def get_valid_filter_tfs(entry_tf: str) -> list[str]:
+    """진입 TF보다 큰 필터 TF 목록 반환
+
+    Args:
+        entry_tf: 진입 타임프레임 (예: '1h')
+
+    Returns:
+        유효한 필터 TF 리스트
+
+    Examples:
+        >>> get_valid_filter_tfs('1h')
+        ['2h', '4h', '6h', '12h', '1d']
+
+        >>> get_valid_filter_tfs('15m')
+        ['30m', '1h', '2h', '4h', '6h', '12h', '1d']
+    """
+    return TIMEFRAME_HIERARCHY.get(entry_tf, ['4h', '6h'])
+
+
+def validate_tf_hierarchy(entry_tf: str, filter_tf: str) -> bool:
+    """filter_tf > entry_tf 검증
+
+    Args:
+        entry_tf: 진입 타임프레임
+        filter_tf: 필터 타임프레임
+
+    Returns:
+        유효 여부 (True: filter_tf > entry_tf)
+
+    Examples:
+        >>> validate_tf_hierarchy('1h', '4h')
+        True
+
+        >>> validate_tf_hierarchy('1h', '15m')
+        False
+    """
+    if entry_tf not in TIMEFRAME_ORDER or filter_tf not in TIMEFRAME_ORDER:
+        return False
+
+    entry_idx = TIMEFRAME_ORDER.index(entry_tf)
+    filter_idx = TIMEFRAME_ORDER.index(filter_tf)
+
+    return filter_idx > entry_idx
+
+
+# ============ 민감도 기반 Fine-Tuning 가중치 (v7.26) ============
+PARAMETER_SENSITIVITY_WEIGHTS = {
+    'filter_tf': {
+        'type': 'categorical',
+        'expand_steps': 2,              # 전후 2단계 (총 5개)
+        'correlation': 4.01,
+        'timeframe_order': ['1h', '2h', '3h', '4h', '6h', '8h', '12h', '1d', '2d']
+    },
+    'trail_start_r': {
+        'type': 'numeric',
+        'expand_pct': 0.30,             # ±30% (기존 ±15%)
+        'n_points': 9,                   # 7 → 9개
+        'min_value': 0.2,
+        'max_value': 1.5,
+        'correlation': 3.51
+    },
+    'trail_dist_r': {
+        'type': 'numeric',
+        'expand_pct': 0.25,             # ±25% (기존 ±20%)
+        'n_points': 7,
+        'min_value': 0.01,
+        'max_value': 0.12,
+        'correlation': 2.47
+    },
+    'atr_mult': {
+        'type': 'numeric',
+        'expand_pct': 0.15,             # ±15% (기존 ±20%)
+        'n_points': 5,                   # 7 → 5개 (축소)
+        'min_value': 0.3,
+        'max_value': 3.0,
+        'correlation': 1.15
+    },
+    'entry_validity_hours': {
+        'type': 'numeric',
+        'fixed': True,
+        'correlation': 0.80
+    }
+}
+
+
+# ============ 파라미터 상호작용 규칙 (v7.26) ============
+PARAMETER_INTERACTION_RULES = {
+    # Rule 1: 손절-익절 조화
+    'atr_trail_harmony': {
+        'params': ['atr_mult', 'trail_start_r'],
+        'min': 0.5,
+        'max': 2.5,
+        'description': 'atr_mult × trail_start_r ∈ [0.5, 2.5]'
+    },
+
+    # Rule 2: 필터-진입 균형
+    'filter_entry_balance': {
+        'params': ['filter_tf', 'entry_validity_hours'],
+        'mapping': {
+            '12h': {'max_hours': 24},
+            '1d': {'max_hours': 48}
+        },
+        'description': '긴 필터는 짧은 진입 유효시간'
+    },
+
+    # Rule 3: 익절 시작-간격 균형
+    'trail_ratio_balance': {
+        'params': ['trail_start_r', 'trail_dist_r'],
+        'min_ratio': 3.0,
+        'max_ratio': 20.0,
+        'description': 'trail_start_r / trail_dist_r ∈ [3, 20]'
+    }
+}
 
 
 if __name__ == '__main__':

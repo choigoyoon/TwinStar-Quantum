@@ -561,6 +561,9 @@ class CCXTExchange(BaseExchange):
 
     def get_balance(self) -> float:
         """잔고 조회"""
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
+
         try:
             if self.ccxt_exchange is None:
                 return 0.0

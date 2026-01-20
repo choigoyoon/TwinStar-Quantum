@@ -7,13 +7,14 @@ Version: 1.0.0
 Date: 2026-01-17
 """
 
-import logging
 from typing import Optional, Dict, Callable, Any
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QWidget
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+from utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class MetaOptimizationWorker(QThread):
@@ -103,11 +104,12 @@ class MetaOptimizationWorker(QThread):
             base_optimizer = BacktestOptimizer(
                 strategy_class=AlphaX7Core,
                 df=df,
-                strategy_type='macd'  # 메타 최적화는 MACD 전략 기준
+                strategy_type='macd',  # 메타 최적화는 MACD 전략 기준
+                exchange=self.exchange  # v7.23: 거래소별 최적화
             )
 
             # 3. MetaOptimizer 생성
-            from core.meta_optimizer import MetaOptimizer
+            from .meta_optimizer import MetaOptimizer
 
             meta_optimizer = MetaOptimizer(
                 base_optimizer=base_optimizer,
@@ -136,6 +138,11 @@ class MetaOptimizationWorker(QThread):
         except Exception as e:
             logger.error(f"❌ 메타 최적화 에러: {e}", exc_info=True)
             self.error.emit(str(e))
+
+        finally:
+            # CRITICAL #1: 워커 종료 시 리소스 정리 (v7.27)
+            self._cleanup_resources()
+            logger.info("[MetaOptimizationWorker] 리소스 정리 완료")
 
     def _load_data(self) -> pd.DataFrame:
         """데이터 로드
@@ -206,6 +213,28 @@ class MetaOptimizationWorker(QThread):
 
         except Exception as e:
             logger.warning(f"백테스트 진행도 시그널 에러: {e}")
+
+    def _cleanup_resources(self):
+        """
+        CRITICAL #1: 워커 종료 시 리소스 정리 (v7.27)
+
+        메타 최적화는 대용량 데이터를 다루므로 정리가 중요합니다.
+        """
+        try:
+            # 1. MetaOptimizer 엔진 정리 (순환 참조 방지)
+            if hasattr(self, 'meta_optimizer'):
+                self.meta_optimizer = None
+
+            # 2. BaseOptimizer 정리
+            if hasattr(self, 'base_optimizer'):
+                self.base_optimizer = None
+
+            # 3. 콜백 함수 정리
+            if hasattr(self, 'callback'):
+                self.callback = None
+
+        except Exception as e:
+            logger.warning(f"[MetaOptimizationWorker] 리소스 정리 중 경고: {e}")
 
 
 if __name__ == '__main__':

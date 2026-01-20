@@ -22,7 +22,7 @@ except ImportError:
 
 class WebSocketHandler:
     """통합 거래소 웹소켓 핸들러"""
-    
+
     # 거래소별 엔드포인트
     WS_ENDPOINTS = {
         'bybit': 'wss://stream.bybit.com/v5/public/linear',
@@ -32,6 +32,18 @@ class WebSocketHandler:
         'okx': 'wss://ws.okx.com:8443/ws/v5/public',
         'bitget': 'wss://ws.bitget.com/mix/v1/stream',
         'bingx': 'wss://open-api-swap.bingx.com/swap-market',
+    }
+
+    # MEDIUM #2 FIX (v7.27): 거래소별 Heartbeat 타임아웃 (초)
+    HEARTBEAT_TIMEOUTS = {
+        'bybit': 30,    # 빠른 업데이트
+        'binance': 20,  # 매우 빠른 업데이트
+        'upbit': 60,    # 느린 업데이트 (현물 중심)
+        'bithumb': 60,  # 느린 업데이트 (KRW 거래소)
+        'okx': 30,      # 표준
+        'bitget': 30,   # 표준
+        'bingx': 30,    # 표준
+        'default': 30   # 기본값
     }
     
     # Interval 변환 맵 (거래소별 포맷)
@@ -97,11 +109,30 @@ class WebSocketHandler:
         delay = self.reconnect_delay * (self.backoff_factor ** self.reconnect_attempts)
         return min(delay, self.max_reconnect_delay)
     
-    def is_healthy(self, timeout_seconds: int = 30) -> bool:
+    def is_healthy(self, timeout_seconds: int | None = None) -> bool:
+        """
+        WebSocket 연결 상태 확인
+
+        MEDIUM #2 FIX (v7.27): 거래소별 타임아웃 자동 적용
+
+        Args:
+            timeout_seconds: 타임아웃 (초). None이면 거래소별 기본값 사용
+
+        Returns:
+            True: 정상 연결, False: 타임아웃 또는 연결 끊김
+        """
         if not self.is_connected:
             return False
         if self.last_message_time is None:
             return False
+
+        # MEDIUM #2: 거래소별 타임아웃 적용
+        if timeout_seconds is None:
+            timeout_seconds = self.HEARTBEAT_TIMEOUTS.get(
+                self.exchange,
+                self.HEARTBEAT_TIMEOUTS['default']
+            )
+
         elapsed = (datetime.now() - self.last_message_time).total_seconds()
         return elapsed < timeout_seconds
         

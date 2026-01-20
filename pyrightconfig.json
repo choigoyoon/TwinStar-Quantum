@@ -15,7 +15,9 @@
     "refactor_backup/**",
     "tools/archive_diagnostic/**",
     "tools/archive_scripts/**",
-    "tools/archive_20260116/**"
+    "tools/archive_20260116/**",
+    "tools/archive_20260119/**",
+    "TwinStar-Quantum/**"
   ],
   "extraPaths": [
     "."

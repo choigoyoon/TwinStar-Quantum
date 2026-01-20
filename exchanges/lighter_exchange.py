@@ -368,6 +368,9 @@ class LighterExchange(BaseExchange):
     
     def get_balance(self) -> float:
         """DEX 계정의 USDC 잔고 조회"""
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
+
         try:
             if not self.api_client:
                 return self.capital

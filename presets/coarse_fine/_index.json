@@ -1,0 +1,12 @@
+{
+  "presets": {
+    "BTC/USDT_1h": {
+      "symbol": "BTC/USDT",
+      "timeframe": "1h",
+      "win_rate": 98.83,
+      "status": "active",
+      "created_at": "2026-01-19 14:43:46"
+    }
+  },
+  "last_updated": "2026-01-19 14:43:46"
+}

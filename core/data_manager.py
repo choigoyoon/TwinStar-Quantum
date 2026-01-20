@@ -228,6 +228,8 @@ class BotDataManager:
     def process_data(self):
         """
         원본 데이터(df_entry_full)로부터 리샘플링 및 지표 생성
+
+        CRITICAL #1 FIX (v7.27): 임시 DataFrame 명시적 해제로 메모리 누수 방지
         """
         with self._data_lock:
             if self.df_entry_full is None or self.df_entry_full.empty:
@@ -260,6 +262,7 @@ class BotDataManager:
                 if resample_rule_pattern and resample_rule_pattern.endswith('m') and not resample_rule_pattern.endswith('min'):
                     resample_rule_pattern = resample_rule_pattern.replace('m', 'min')
 
+                # CRITICAL #1: 임시 DataFrame 생성 (명시적 해제 필요)
                 df_temp = self.df_entry_full.copy()
                 if 'timestamp' in df_temp.columns:
                     df_temp = df_temp.set_index('timestamp')
@@ -273,6 +276,10 @@ class BotDataManager:
                     pattern_tf,
                     add_indicators=True
                 )
+
+                # CRITICAL #1: 임시 DataFrame 명시적 해제 (메모리 절약)
+                del df_temp
+                df_temp = None
 
                 if 'timestamp' not in self.df_pattern_full.columns:
                     self.df_pattern_full = self.df_pattern_full.reset_index()
@@ -738,7 +745,7 @@ class BotDataManager:
                     logging.warning(f"[DATA] Parquet not found: {entry_file}")
                     return None
 
-                # Parquet 로드 (전체 히스토리)
+                # Parquet 로드 (15분봉 원본)
                 df = pd.read_parquet(entry_file)
 
                 # Timestamp 변환
@@ -747,6 +754,13 @@ class BotDataManager:
                         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
                     else:
                         df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+                # [FIX v7.26] entry_tf에 맞게 리샘플링 (15m → 1h 등)
+                entry_tf = self.strategy_params.get('entry_tf', '15m')
+                if entry_tf not in ['15m', '15min']:
+                    from utils.data_utils import resample_data
+                    df = resample_data(df, entry_tf, add_indicators=False)
+                    logging.info(f"[DATA] Resampled to {entry_tf}: {len(df)} candles")
 
                 # ✅ Task 3.2: Fallback Imports 제거
                 # 지표 추가 (옵션)

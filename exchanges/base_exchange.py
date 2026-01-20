@@ -337,6 +337,41 @@ class BaseExchange(ABC):
             return self.rate_limiter.acquire(tokens=tokens, blocking=True)
         return True  # Rate limiter 없으면 즉시 통과
 
+    def _validate_api_keys(self, api_key: str | None, api_secret: str | None) -> bool:
+        """
+        MEDIUM #1 FIX (v7.27): API 키 검증 강화
+
+        빈 문자열, None, 공백만 있는 키를 검증합니다.
+
+        Args:
+            api_key: API 키
+            api_secret: API 시크릿
+
+        Returns:
+            True: 유효한 키
+            False: 무효한 키 (None, 빈 문자열, 공백)
+
+        Raises:
+            ValueError: API 키가 무효할 때
+
+        Example:
+            >>> if not self._validate_api_keys(api_key, api_secret):
+            ...     raise ValueError("Invalid API credentials")
+        """
+        # None 체크
+        if api_key is None or api_secret is None:
+            return False
+
+        # 빈 문자열 체크
+        if not api_key or not api_secret:
+            return False
+
+        # 공백만 있는지 체크
+        if not api_key.strip() or not api_secret.strip():
+            return False
+
+        return True
+
     def is_krw_exchange(self) -> bool:
         """KRW 거래소 여부"""
         return self.quote_currency == 'KRW'

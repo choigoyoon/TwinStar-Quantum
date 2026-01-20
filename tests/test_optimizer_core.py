@@ -224,14 +224,34 @@ def test_backtest_optimizer_grid_search(sample_data, mock_strategy):
 # ==================== Test 4: 메트릭 계산 (SSOT) ====================
 
 def test_optimizer_uses_ssot_metrics():
-    """SSOT 메트릭 함수 사용 확인"""
-    from core.optimizer import calculate_win_rate, calculate_profit_factor
+    """
+    SSOT 메트릭 함수 사용 확인 (v7.24 업데이트)
 
-    # SSOT 함수가 utils.metrics에서 import 되었는지 확인
-    from utils import metrics
+    v7.24부터 BacktestOptimizer.calculate_metrics()는
+    utils.metrics.calculate_backtest_metrics()를 직접 호출합니다.
+    개별 함수(calculate_win_rate 등)는 더 이상 export하지 않습니다.
+    """
+    # v7.24: calculate_metrics()가 SSOT를 사용하는지 확인
+    from core.optimizer import BacktestOptimizer
+    from utils.metrics import calculate_backtest_metrics
 
-    assert calculate_win_rate == metrics.calculate_win_rate
-    assert calculate_profit_factor == metrics.calculate_profit_factor
+    # 샘플 거래 데이터
+    trades = [
+        {'pnl': 5.0, 'entry_time': pd.Timestamp('2024-01-01')},
+        {'pnl': -3.0, 'entry_time': pd.Timestamp('2024-01-02')},
+        {'pnl': 8.0, 'entry_time': pd.Timestamp('2024-01-03')},
+    ]
+
+    # Optimizer 메트릭 계산
+    opt_metrics = BacktestOptimizer.calculate_metrics(trades)
+
+    # SSOT 메트릭 계산
+    ssot_metrics = calculate_backtest_metrics(trades, leverage=1, capital=100.0)
+
+    # 주요 메트릭 일치 확인 (허용 오차 ±1%)
+    assert abs(opt_metrics['win_rate'] - ssot_metrics['win_rate']) < 1.0
+    assert abs(opt_metrics['max_drawdown'] - ssot_metrics['mdd']) < 1.0
+    assert abs(opt_metrics['profit_factor'] - ssot_metrics['profit_factor']) < 0.1
 
 
 # ==================== Test 5: 결과 정렬 ====================

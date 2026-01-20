@@ -1,0 +1,106 @@
+{
+  "timestamp": "2026-01-18T20:54:55.656645",
+  "version": "v7.25_adx",
+  "cost": {
+    "slippage": 0.0,
+    "fee": 0.0002,
+    "total": 0.0002
+  },
+  "baseline": {
+    "params": {
+      "atr_mult": 1.25,
+      "filter_tf": "4h",
+      "trail_start_r": 0.4,
+      "trail_dist_r": 0.05,
+      "use_adx_filter": false
+    },
+    "sharpe": 27.32427423128371,
+    "win_rate": 95.71167883211679,
+    "mdd": 0.8420036437599112,
+    "pnl": 826.7874701532071,
+    "trades": 2192,
+    "pf": 26.675371521938242,
+    "grade": "S"
+  },
+  "best": {
+    "params": {
+      "atr_mult": 1.25,
+      "filter_tf": "4h",
+      "trail_start_r": 0.4,
+      "trail_dist_r": 0.05,
+      "use_adx_filter": false
+    },
+    "sharpe": 27.32427423128371,
+    "win_rate": 95.71167883211679,
+    "mdd": 0.8420036437599112,
+    "pnl": 826.7874701532071,
+    "trades": 2192,
+    "pf": 26.675371521938242,
+    "grade": "S"
+  },
+  "all_results": [
+    {
+      "adx_enabled": 0.0,
+      "adx_threshold": null,
+      "adx_period": null,
+      "sharpe": 27.32427423128371,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599112,
+      "pnl": 826.7874701532071,
+      "trades": 2192.0,
+      "pf": 26.675371521938242,
+      "grade": "S"
+    },
+    {
+      "adx_enabled": 1.0,
+      "adx_threshold": 20.0,
+      "adx_period": 14.0,
+      "sharpe": 27.32427423128371,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599112,
+      "pnl": 826.7874701532071,
+      "trades": 2192.0,
+      "pf": 26.675371521938242,
+      "grade": "S"
+    },
+    {
+      "adx_enabled": 1.0,
+      "adx_threshold": 25.0,
+      "adx_period": 14.0,
+      "sharpe": 27.32427423128371,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599112,
+      "pnl": 826.7874701532071,
+      "trades": 2192.0,
+      "pf": 26.675371521938242,
+      "grade": "S"
+    },
+    {
+      "adx_enabled": 1.0,
+      "adx_threshold": 30.0,
+      "adx_period": 14.0,
+      "sharpe": 27.32427423128371,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599112,
+      "pnl": 826.7874701532071,
+      "trades": 2192.0,
+      "pf": 26.675371521938242,
+      "grade": "S"
+    },
+    {
+      "adx_enabled": 1.0,
+      "adx_threshold": 35.0,
+      "adx_period": 14.0,
+      "sharpe": 27.32427423128371,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599112,
+      "pnl": 826.7874701532071,
+      "trades": 2192.0,
+      "pf": 26.675371521938242,
+      "grade": "S"
+    }
+  ],
+  "sharpe_diff_pct": 0.0,
+  "trades_diff_pct": 0.0,
+  "elapsed_seconds": 3.569006
+}

@@ -64,7 +64,22 @@ class OptimizationWidget(QWidget):
         except ImportError as e:
             logger.warning(f"BatchOptimizationWidget 로드 실패: {e}")
             self._add_placeholder_tab("배치 (전체)", "⚡")
-        
+
+        # 범용 최적화 탭 (Phase 1-3 완료)
+        try:
+            from .universal import UniversalOptimizationTab
+            self.universal_widget = UniversalOptimizationTab()
+            self.sub_tabs.addTab(self.universal_widget, "🌐 범용 (전체 심볼)")
+
+            # 시그널 연결
+            if hasattr(self.universal_widget, 'optimization_finished'):
+                self.universal_widget.optimization_finished.connect(
+                    lambda result: self.settings_applied.emit(result.get('best_params', {}))
+                )
+        except ImportError as e:
+            logger.warning(f"UniversalOptimizationTab 로드 실패: {e}")
+            self._add_placeholder_tab("범용 (전체 심볼)", "🌐")
+
         layout.addWidget(self.sub_tabs)
     
     def _add_placeholder_tab(self, name: str, icon: str):

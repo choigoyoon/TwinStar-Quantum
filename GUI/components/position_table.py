@@ -97,7 +97,7 @@ class PositionTable(QTableWidget):
                     border-radius: {Radius.radius_sm};
                     padding: {Spacing.space_1} {Spacing.space_2};
                 }}
-                QPushButton:hover {{ background-color: #d32f2f; }}
+                QPushButton:hover {{ background-color: {Colors.danger_hover}; }}
             """)
             close_btn.clicked.connect(lambda: self.close_requested.emit(symbol))
             layout.addWidget(close_btn)

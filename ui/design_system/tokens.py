@@ -270,6 +270,8 @@ class SizeTokens:
     control_min_width: int = 120   # 콤보박스, 작은 입력
     input_min_width: int = 200     # 일반 입력 필드
     button_min_width: int = 80     # 버튼 최소 너비
+    slider_min_width: int = 200    # 슬라이더 최소 너비 (Issue #3, v7.27)
+    label_min_width: int = 100     # 파라미터 라벨 최소 너비 (Issue #3, v7.27)
 
     # === Component Specific ===
     refresh_button_size: int = 36  # 새로고침 버튼 (정사각형)

@@ -863,15 +863,11 @@ class HistoryWidget(QWidget):
             side_item = QTableWidgetItem(side)
             side_item.setForeground(QColor('#26a69a' if side == 'Long' else '#ef5350'))
             self.table.setItem(i, 3, side_item)
-            
-            # Entry/Exit
-            self.table.setItem(i, 4, QTableWidgetItem(f"${trade.get('entry', 0):,.2f}"))
-            self.table.setItem(i, 5, QTableWidgetItem(f"${trade.get('exit', 0):,.2f}"))
-            
+
             # Source
             source = trade.get('source', 'Unknown')
             source_item = QTableWidgetItem(source)
-            if source == 'Direct': 
+            if source == 'Direct':
                 source_item.setForeground(QColor('#00d4ff')) # Electric Blue
             elif source == 'Backtest':
                 source_item.setForeground(QColor('#ff9800')) # Orange
@@ -879,7 +875,7 @@ class HistoryWidget(QWidget):
                 source_item.setForeground(QColor('#4caf50')) # Green
             self.table.setItem(i, 4, source_item) # Column 4 is Source (0-indexed)
 
-            # Move others 1 index right
+            # Entry/Exit/Size
             self.table.setItem(i, 5, QTableWidgetItem(f"${trade.get('entry', 0):,.2f}"))
             self.table.setItem(i, 6, QTableWidgetItem(f"${trade.get('exit', 0):,.2f}"))
             self.table.setItem(i, 7, QTableWidgetItem(str(trade.get('size', ''))))

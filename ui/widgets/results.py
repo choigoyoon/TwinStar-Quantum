@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 
 from ..styles import COLORS, GRADE_COLORS, get_grade_style, get_pnl_color
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius  # ✅ v7.27
 
 
 class GradeLabel(QLabel):
@@ -65,26 +66,36 @@ class StatCard(QFrame):
         """)
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(4)
-        
+        layout.setContentsMargins(
+            Spacing.i_space_3,  # 12px left
+            Spacing.i_space_2,  # 8px top
+            Spacing.i_space_3,  # 12px right
+            Spacing.i_space_2   # 8px bottom
+        )
+        layout.setSpacing(Spacing.i_space_1)  # 4px
+
         # 라벨
         self.label = QLabel(label)
-        self.label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 11px;")
+        self.label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: {Typography.text_xs};")  # 11px
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label)
-        
+
         # 값
         self.value_label = QLabel(value)
-        self.value_label.setStyleSheet(f"color: {COLORS['text']}; font-size: 16px; font-weight: bold;")
+        self.value_label.setStyleSheet(f"color: {COLORS['text']}; font-size: {Typography.text_lg}; font-weight: {Typography.font_bold};")  # 16px
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label)
-    
+
+        # ✅ Issue #7 수정: 색상 지속성을 위한 저장
+        self._current_color = COLORS['text']
+
     def set_value(self, value: str, color: str | None = None):
-        """값 설정"""
+        """값 설정 (v7.27: 색상 지속성 개선)"""
         self.value_label.setText(value)
         if color:
-            self.value_label.setStyleSheet(f"color: {color}; font-size: 16px; font-weight: bold;")
+            self._current_color = color
+        # ✅ 항상 저장된 색상 사용
+        self.value_label.setStyleSheet(f"color: {self._current_color}; font-size: {Typography.text_lg}; font-weight: {Typography.font_bold};")
 
 
 class ResultsWidget(QWidget):

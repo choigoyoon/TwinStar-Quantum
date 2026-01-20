@@ -1,0 +1,267 @@
+{
+  "timestamp": "2026-01-19T12:55:38.082709",
+  "version": "v7.25_quick",
+  "cost": {
+    "slippage": 0.0,
+    "fee": 0.0002,
+    "total": 0.0002
+  },
+  "best": {
+    "params": {
+      "atr_mult": 1.25,
+      "filter_tf": "4h",
+      "trail_start_r": 0.4,
+      "trail_dist_r": 0.05
+    },
+    "sharpe": 27.32427423128371,
+    "win_rate": 95.71167883211679,
+    "mdd": 0.8420036437599112,
+    "pnl": 826.7874701532071,
+    "trades": 2192,
+    "pf": 26.675371521938242,
+    "grade": "S"
+  },
+  "top_15": [
+    {
+      "rank": 1,
+      "params": {
+        "atr_mult": 1.25,
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 27.32427423128371,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599112,
+      "pnl": 826.7874701532071,
+      "trades": 2192.0,
+      "pf": 26.675371521938242,
+      "grade": "S"
+    },
+    {
+      "rank": 2,
+      "params": {
+        "atr_mult": 1.25,
+        "filter_tf": "8h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 27.05904660134092,
+      "win_rate": 95.64384873145045,
+      "mdd": 1.4887546386229162,
+      "pnl": 764.7831122675167,
+      "trades": 2089.0,
+      "pf": 23.948654019363065,
+      "grade": "S"
+    },
+    {
+      "rank": 3,
+      "params": {
+        "atr_mult": 1.1,
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 27.026330360048565,
+      "win_rate": 95.2576379388965,
+      "mdd": 0.7727886187067469,
+      "pnl": 821.0868206700771,
+      "trades": 2193.0,
+      "pf": 26.497580212412977,
+      "grade": "S"
+    },
+    {
+      "rank": 4,
+      "params": {
+        "atr_mult": 1.0,
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.9153719499767,
+      "win_rate": 94.93844049247606,
+      "mdd": 0.7061714715515952,
+      "pnl": 818.5451779406233,
+      "trades": 2193.0,
+      "pf": 27.05683608694818,
+      "grade": "S"
+    },
+    {
+      "rank": 5,
+      "params": {
+        "atr_mult": 1.25,
+        "filter_tf": "4h",
+        "trail_start_r": 0.6,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.860187716683196,
+      "win_rate": 93.32418838591678,
+      "mdd": 1.2047273903706435,
+      "pnl": 835.5676800368767,
+      "trades": 2187.0,
+      "pf": 16.461284298538107,
+      "grade": "S"
+    },
+    {
+      "rank": 6,
+      "params": {
+        "atr_mult": 1.1,
+        "filter_tf": "6h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.850779992115292,
+      "win_rate": 95.39257169722613,
+      "mdd": 0.9249873968053873,
+      "pnl": 790.158938517188,
+      "trades": 2127.0,
+      "pf": 25.96093275434305,
+      "grade": "S"
+    },
+    {
+      "rank": 7,
+      "params": {
+        "atr_mult": 1.25,
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.08
+      },
+      "sharpe": 26.836361447737875,
+      "win_rate": 95.71167883211679,
+      "mdd": 0.8420036437599149,
+      "pnl": 800.4657679492924,
+      "trades": 2192.0,
+      "pf": 25.85492841440739,
+      "grade": "S"
+    },
+    {
+      "rank": 8,
+      "params": {
+        "atr_mult": 1.1,
+        "filter_tf": "8h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.834266424229337,
+      "win_rate": 95.31100478468899,
+      "mdd": 1.265682929853398,
+      "pnl": 760.514205958917,
+      "trades": 2090.0,
+      "pf": 24.334092681569686,
+      "grade": "S"
+    },
+    {
+      "rank": 9,
+      "params": {
+        "atr_mult": 1.25,
+        "filter_tf": "6h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.816594959846356,
+      "win_rate": 95.53151458137347,
+      "mdd": 0.864311531490583,
+      "pnl": 789.844390138728,
+      "trades": 2126.0,
+      "pf": 23.519336481032152,
+      "grade": "S"
+    },
+    {
+      "rank": 10,
+      "params": {
+        "atr_mult": 0.9,
+        "filter_tf": "6h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.808169537316786,
+      "win_rate": 94.92242595204513,
+      "mdd": 0.73365621876496,
+      "pnl": 787.1434790032628,
+      "trades": 2127.0,
+      "pf": 29.052688348737558,
+      "grade": "S"
+    },
+    {
+      "rank": 11,
+      "params": {
+        "atr_mult": 0.9,
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.80206483983016,
+      "win_rate": 94.66484268125855,
+      "mdd": 1.0385986571539745,
+      "pnl": 814.6326020917123,
+      "trades": 2193.0,
+      "pf": 27.843168091563978,
+      "grade": "S"
+    },
+    {
+      "rank": 12,
+      "params": {
+        "atr_mult": 1.0,
+        "filter_tf": "8h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.796571222717976,
+      "win_rate": 95.31100478468899,
+      "mdd": 1.434541308183038,
+      "pnl": 759.2753591751763,
+      "trades": 2090.0,
+      "pf": 25.470311319683027,
+      "grade": "S"
+    },
+    {
+      "rank": 13,
+      "params": {
+        "atr_mult": 1.0,
+        "filter_tf": "6h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.76736691310163,
+      "win_rate": 95.11048425011754,
+      "mdd": 0.8293446688121294,
+      "pnl": 788.5804622102327,
+      "trades": 2127.0,
+      "pf": 26.651424366589993,
+      "grade": "S"
+    },
+    {
+      "rank": 14,
+      "params": {
+        "atr_mult": 1.1,
+        "filter_tf": "8h",
+        "trail_start_r": 0.6,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.73897512700285,
+      "win_rate": 93.2503590234562,
+      "mdd": 1.2656829298533958,
+      "pnl": 769.2566961788289,
+      "trades": 2089.0,
+      "pf": 17.647540887543222,
+      "grade": "S"
+    },
+    {
+      "rank": 15,
+      "params": {
+        "atr_mult": 1.25,
+        "filter_tf": "4h",
+        "trail_start_r": 0.8,
+        "trail_dist_r": 0.05
+      },
+      "sharpe": 26.706358904401863,
+      "win_rate": 90.87155963302752,
+      "mdd": 1.8408341844374077,
+      "pnl": 869.7259120313885,
+      "trades": 2180.0,
+      "pf": 12.488731820210825,
+      "grade": "S"
+    }
+  ],
+  "elapsed_seconds": 73.370371
+}

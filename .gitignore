@@ -22,6 +22,12 @@ refactor_backup/
 *.bak
 
 # Temp
+*.txt
+!requirements.txt
+!LICENSE.txt
+*.csv
+*.bat
+*_result*.txt
 
 # Data & Cache
 *.db

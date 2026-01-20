@@ -28,8 +28,13 @@ class BotCard(QFrame):
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(
+            Spacing.i_space_4,  # 16px
+            Spacing.i_space_4,
+            Spacing.i_space_4,
+            Spacing.i_space_4
+        )
+        layout.setSpacing(Spacing.i_space_3)  # 12px
         
         # 1. Header: Symbol & Exchange
         header = QHBoxLayout()
@@ -44,7 +49,7 @@ class BotCard(QFrame):
         self.exchange_badge.setStyleSheet(f"""
             background-color: {Colors.bg_overlay};
             color: {Colors.accent_secondary};
-            padding: 2px 8px;
+            padding: {Spacing.space_0} {Spacing.space_2};
             border-radius: {Radius.radius_sm};
             font-size: {Typography.text_xs};
             font-weight: 600;
@@ -117,7 +122,7 @@ class BotCard(QFrame):
                 color: {Colors.danger};
                 border: 1px solid {Colors.danger};
                 border-radius: {Radius.radius_sm};
-                padding: 6px 12px;
+                padding: {Spacing.space_1} {Spacing.space_3};
                 font-weight: 600;
                 font-size: {Typography.text_sm};
             }}
@@ -137,18 +142,18 @@ class BotCard(QFrame):
         """글래스모피즘 카드 스타일"""
         self.setStyleSheet(f"""
             QFrame#botCard {{
-                background-color: rgba(22, 27, 34, 0.7);
+                background-color: {Colors.bg_base};
                 border: 1px solid {Colors.border_muted};
                 border-radius: {Radius.radius_lg};
             }}
             QFrame#botCard:hover {{
-                background-color: rgba(33, 38, 45, 0.8);
+                background-color: {Colors.bg_surface};
                 border: 1px solid {Colors.accent_secondary};
             }}
         """)
-        
+
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
+        shadow.setBlurRadius(20)  # Shadow.shadow_xl 블러 반경과 유사 (24)
         shadow.setColor(Qt.GlobalColor.black)
         shadow.setOffset(0, 5)
         self.setGraphicsEffect(shadow)

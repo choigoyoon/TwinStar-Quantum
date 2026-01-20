@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 # 디자인 시스템 import (SSOT)
-from ui.design_system.tokens import Colors, Typography, Spacing, Radius
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius, Size
 
 
 class ParamRangeWidget(QWidget):
@@ -54,7 +54,7 @@ class ParamRangeWidget(QWidget):
 
         # 라벨
         label = QLabel(f"{self.name}:")
-        label.setMinimumWidth(100)
+        label.setMinimumWidth(Size.label_min_width)  # Issue #3: Size 토큰 사용 (v7.27)
         label.setStyleSheet(f"""
             color: {Colors.text_secondary};
             font-size: {Typography.text_sm};
@@ -117,8 +117,25 @@ class ParamRangeWidget(QWidget):
         self.step_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.step_spin)
 
+        # HIGH #6: 입력 검증 추가 (v7.27)
+        # min <= max 보장
+        self.min_spin.valueChanged.connect(self._validate_min_max)
+        self.max_spin.valueChanged.connect(self._validate_min_max)
+
         layout.addStretch()
-    
+
+    def _validate_min_max(self):
+        """HIGH #6: min <= max 검증 (v7.27)
+
+        최소값이 최대값보다 크면 자동으로 최대값을 최소값으로 조정합니다.
+        """
+        min_val = self.min_spin.value()
+        max_val = self.max_spin.value()
+
+        if min_val > max_val:
+            # 최대값을 최소값으로 자동 조정
+            self.max_spin.setValue(min_val)
+
     def get_values(self) -> list:
         """범위에서 값 리스트 생성"""
         min_v = self.min_spin.value()
@@ -173,7 +190,7 @@ class ParamChoiceWidget(QWidget):
 
         # 라벨
         label = QLabel(f"{self.name}:")
-        label.setMinimumWidth(100)
+        label.setMinimumWidth(Size.label_min_width)  # Issue #3: Size 토큰 사용 (v7.27)
         label.setStyleSheet(f"""
             color: {Colors.text_secondary};
             font-size: {Typography.text_sm};
@@ -257,7 +274,7 @@ class ParamIntRangeWidget(QWidget):
 
         # 라벨
         label = QLabel(f"{self.name}:")
-        label.setMinimumWidth(100)
+        label.setMinimumWidth(Size.label_min_width)  # Issue #3: Size 토큰 사용 (v7.27)
         label.setStyleSheet(f"""
             color: {Colors.text_secondary};
             font-size: {Typography.text_sm};
@@ -317,8 +334,25 @@ class ParamIntRangeWidget(QWidget):
         self.step_spin.setStyleSheet(spinbox_style)
         layout.addWidget(self.step_spin)
 
+        # HIGH #6: 입력 검증 추가 (v7.27)
+        # min <= max 보장
+        self.min_spin.valueChanged.connect(self._validate_min_max)
+        self.max_spin.valueChanged.connect(self._validate_min_max)
+
         layout.addStretch()
-    
+
+    def _validate_min_max(self):
+        """HIGH #6: min <= max 검증 (v7.27)
+
+        최소값이 최대값보다 크면 자동으로 최대값을 최소값으로 조정합니다.
+        """
+        min_val = self.min_spin.value()
+        max_val = self.max_spin.value()
+
+        if min_val > max_val:
+            # 최대값을 최소값으로 자동 조정
+            self.max_spin.setValue(min_val)
+
     def get_values(self) -> list:
         """범위에서 정수 값 리스트 생성"""
         min_v = self.min_spin.value()

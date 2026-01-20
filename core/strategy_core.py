@@ -3,6 +3,9 @@ strategy_core.py
 Alpha-X7 Final 핵심 전략 모듈
 - 모든 거래소에서 공통으로 사용
 - 이 파일만 수정하면 모든 봇에 자동 적용
+
+Version: 7.22.1
+Date: 2026-01-17
 """
 from collections import deque
 import numpy as np
@@ -142,6 +145,8 @@ class TradeSignal:
     stop_loss: float
     atr: float
     timestamp: datetime
+    entry_price: Optional[float] = None  # 진입 가격 (옵션)
+    entry_time: Optional[datetime] = None  # 진입 시각 (옵션)
 
 
 
@@ -169,8 +174,9 @@ class AlphaX7Core:
         'D': 'W',
     }
     
-    def __init__(self, use_mtf: bool = True):
+    def __init__(self, use_mtf: bool = True, strategy_type: str = 'macd'):
         self.USE_MTF_FILTER = use_mtf
+        self.strategy_type = strategy_type.lower()  # 'macd' or 'adx'
         self.adaptive_params = None
 
         # 동적 속성 타입 힌트 (GUI에서 할당)
@@ -415,9 +421,9 @@ class AlphaX7Core:
         if enable_adx_filter:
             adx_value = self.calculate_adx(df_1h_safe, period=adx_period)
             if adx_value < adx_threshold:
-                logger.debug(f"[SIGNAL] ❌ ADX filter: {adx_value:.1f} < {adx_threshold} (weak trend)")
+                logger.debug(f"[SIGNAL] [FAIL] ADX filter: {adx_value:.1f} < {adx_threshold} (weak trend)")
                 return None
-            logger.debug(f"[SIGNAL] ✅ ADX filter passed: {adx_value:.1f} >= {adx_threshold} (strong trend)")
+            logger.debug(f"[SIGNAL] [OK] ADX filter passed: {adx_value:.1f} >= {adx_threshold} (strong trend)")
         
         # 적응형 파라미터 계산
         if self.adaptive_params is None:
@@ -482,7 +488,7 @@ class AlphaX7Core:
                 # 톨러런스 검사
                 diff = abs(L2['price'] - L1['price']) / L1['price']
                 if diff >= pattern_tolerance:
-                    logger.error(f"[SIGNAL] ❌ W Pattern filtered: tolerance {diff*100:.2f}% > {pattern_tolerance*100:.0f}%")
+                    logger.error(f"[SIGNAL] [FAIL] W Pattern filtered: tolerance {diff*100:.2f}% > {pattern_tolerance*100:.0f}%")
                     continue
                 
                 # 유효시간 검사
@@ -497,18 +503,18 @@ class AlphaX7Core:
                 hours_since = (last_time - confirmed_time).total_seconds() / 3600
 
                 if hours_since > entry_validity_hours:
-                    logger.error(f"[SIGNAL] ❌ W Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
+                    logger.error(f"[SIGNAL] [FAIL] W Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
                     continue
 
                 # MTF 필터 검사 (Long은 상승 추세에서만)
                 if self.USE_MTF_FILTER and trend_val != 'up':
-                    logger.error(f"[SIGNAL] ❌ W Pattern (Long) filtered: 4H trend={trend_val} (need 'up')")
+                    logger.error(f"[SIGNAL] [FAIL] W Pattern (Long) filtered: 4H trend={trend_val} (need 'up')")
                     continue
                 
                 # ATR 계산
                 atr = self.calculate_atr(df_15m_safe, period=atr_period)
                 if atr is None or atr <= 0:
-                    logger.error(f"[SIGNAL] ❌ W Pattern skipped: ATR is {atr}")
+                    logger.error(f"[SIGNAL] [FAIL] W Pattern skipped: ATR is {atr}")
                     continue
                 
                 # 진입 가격 및 SL 계산
@@ -517,7 +523,7 @@ class AlphaX7Core:
                 atr_mult = float(self.adaptive_params.get('atr_mult', _default_atr_mult)) if self.adaptive_params else _default_atr_mult
                 sl = price - atr * atr_mult
                 
-                logger.info(f"[SIGNAL] ✅ Valid Long @ ${price:,.0f} (W pattern, {hours_since:.1f}h old)")
+                logger.info(f"[SIGNAL] [OK] Valid Long @ ${price:,.0f} (W pattern, {hours_since:.1f}h old)")
                 return TradeSignal(
                     signal_type='Long',
                     pattern='W',
@@ -536,7 +542,7 @@ class AlphaX7Core:
                 # 톨러런스 검사
                 diff = abs(H2['price'] - H1['price']) / H1['price']
                 if diff >= pattern_tolerance:
-                    logger.error(f"[SIGNAL] ❌ M Pattern filtered: tolerance {diff*100:.2f}% > {pattern_tolerance*100:.0f}%")
+                    logger.error(f"[SIGNAL] [FAIL] M Pattern filtered: tolerance {diff*100:.2f}% > {pattern_tolerance*100:.0f}%")
                     continue
                 
                 # 유효시간 검사
@@ -551,18 +557,18 @@ class AlphaX7Core:
                 hours_since = (last_time - confirmed_time).total_seconds() / 3600
 
                 if hours_since > entry_validity_hours:
-                    logger.error(f"[SIGNAL] ❌ M Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
+                    logger.error(f"[SIGNAL] [FAIL] M Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
                     continue
 
                 # MTF 필터 검사 (Short은 하락 추세에서만)
                 if self.USE_MTF_FILTER and trend_val != 'down':
-                    logger.error(f"[SIGNAL] ❌ M Pattern (Short) filtered: 4H trend={trend_val} (need 'down')")
+                    logger.error(f"[SIGNAL] [FAIL] M Pattern (Short) filtered: 4H trend={trend_val} (need 'down')")
                     continue
                 
                 # ATR 계산
                 atr = self.calculate_atr(df_15m_safe, period=atr_period)
                 if atr is None or atr <= 0:
-                    logger.error(f"[SIGNAL] ❌ M Pattern skipped: ATR is {atr}")
+                    logger.error(f"[SIGNAL] [FAIL] M Pattern skipped: ATR is {atr}")
                     continue
                 
                 # 진입 가격 및 SL 계산
@@ -571,7 +577,7 @@ class AlphaX7Core:
                 atr_mult = float(self.adaptive_params.get('atr_mult', _default_atr_mult)) if self.adaptive_params else _default_atr_mult
                 sl = price + atr * atr_mult
 
-                logger.info(f"[SIGNAL] ✅ Valid Short @ ${price:,.0f} (M pattern, {hours_since:.1f}h old)")
+                logger.info(f"[SIGNAL] [OK] Valid Short @ ${price:,.0f} (M pattern, {hours_since:.1f}h old)")
                 return TradeSignal(
                     signal_type='Short',
                     pattern='M',
@@ -582,7 +588,210 @@ class AlphaX7Core:
         
         logger.debug(f"[SIGNAL] ⏳ No valid W/M pattern (H/L points: {len(points)})")
         return None
-    
+
+    def detect_wm_pattern_realtime(
+        self,
+        macd_histogram_buffer: deque,
+        price_buffer: deque,
+        timestamp_buffer: deque,
+        pattern_tolerance: float = 0.05,
+        entry_validity_hours: float = 48.0,
+        filter_trend: Optional[str] = None
+    ) -> Optional[TradeSignal]:
+        """
+        실시간 W/M 패턴 감지 (deque 버퍼 기반, v7.27)
+
+        Args:
+            macd_histogram_buffer: MACD histogram 버퍼 (deque, 최소 50개 권장)
+            price_buffer: {'high': float, 'low': float, 'close': float} 딕셔너리 deque
+            timestamp_buffer: 타임스탬프 deque
+            pattern_tolerance: 패턴 톨러런스 (기본값: 0.05 = 5%)
+            entry_validity_hours: 진입 유효시간 (기본값: 48h)
+            filter_trend: MTF 필터 추세 ('up', 'down', None)
+
+        Returns:
+            TradeSignal 또는 None
+
+        Note:
+            - check_signal()의 W/M 패턴 감지 로직을 실시간용으로 변환
+            - deque 기반으로 O(n) 복잡도 (n = 버퍼 크기, 일반적으로 50-100)
+            - 증분 MACD 업데이트 후 호출
+
+        Example:
+            >>> macd_buffer = deque(maxlen=100)
+            >>> price_buffer = deque(maxlen=100)
+            >>> timestamp_buffer = deque(maxlen=100)
+            >>>
+            >>> # WebSocket에서 새 데이터가 올 때마다
+            >>> macd_result = incremental_macd.update(close)
+            >>> macd_buffer.append(macd_result['histogram'])
+            >>> price_buffer.append({'high': high, 'low': low, 'close': close})
+            >>> timestamp_buffer.append(timestamp)
+            >>>
+            >>> # 패턴 감지
+            >>> signal = strategy.detect_wm_pattern_realtime(
+            ...     macd_buffer, price_buffer, timestamp_buffer,
+            ...     pattern_tolerance=0.05, entry_validity_hours=48.0,
+            ...     filter_trend='up'
+            ... )
+        """
+        # 최소 데이터 확인 (H/L 포인트 최소 3개 필요 → 최소 6개 히스토그램)
+        if len(macd_histogram_buffer) < 10:
+            logger.debug(f"[REALTIME] ⏳ Not enough data: {len(macd_histogram_buffer)} < 10")
+            return None
+
+        # H/L 포인트 추출 (check_signal()과 동일 로직)
+        points = []
+        hist = list(macd_histogram_buffer)  # deque → list
+        n = len(hist)
+        i = 0
+
+        while i < n:
+            if hist[i] > 0:
+                # 양수 구간 → High 포인트
+                start = i
+                while i < n and hist[i] > 0:
+                    i += 1
+                if i < n:
+                    seg_prices = [price_buffer[j] for j in range(start, i)]
+                    if len(seg_prices) > 0:
+                        max_price_idx = start + max(range(len(seg_prices)), key=lambda j: seg_prices[j]['high'])
+                        points.append({
+                            'type': 'H',
+                            'price': price_buffer[max_price_idx]['high'],
+                            'time': timestamp_buffer[max_price_idx],
+                            'confirmed_time': timestamp_buffer[i-1]
+                        })
+            elif hist[i] < 0:
+                # 음수 구간 → Low 포인트
+                start = i
+                while i < n and hist[i] < 0:
+                    i += 1
+                if i < n:
+                    seg_prices = [price_buffer[j] for j in range(start, i)]
+                    if len(seg_prices) > 0:
+                        min_price_idx = start + min(range(len(seg_prices)), key=lambda j: seg_prices[j]['low'])
+                        points.append({
+                            'type': 'L',
+                            'price': price_buffer[min_price_idx]['low'],
+                            'time': timestamp_buffer[min_price_idx],
+                            'confirmed_time': timestamp_buffer[i-1]
+                        })
+            else:
+                i += 1
+
+        # W/M 패턴 탐지 (최신 것부터, check_signal()과 동일 로직)
+        for i in range(len(points) - 3, -1, -1):
+            # W 패턴 (Long): L-H-L
+            if (points[i]['type'] == 'L' and
+                points[i+1]['type'] == 'H' and
+                points[i+2]['type'] == 'L'):
+
+                L1, H, L2 = points[i], points[i+1], points[i+2]
+
+                # 톨러런스 검사
+                diff = abs(L2['price'] - L1['price']) / L1['price']
+                if diff >= pattern_tolerance:
+                    logger.debug(f"[REALTIME] [FAIL] W Pattern filtered: tolerance {diff*100:.2f}% > {pattern_tolerance*100:.0f}%")
+                    continue
+
+                # 유효시간 검사
+                confirmed_time = _to_dt(L2['confirmed_time'])
+                last_time = _to_dt(timestamp_buffer[-1])
+
+                if confirmed_time is None or last_time is None:
+                    logger.warning("[REALTIME] W Pattern skipped: invalid timestamp")
+                    continue
+
+                hours_since = (last_time - confirmed_time).total_seconds() / 3600
+
+                if hours_since > entry_validity_hours:
+                    logger.debug(f"[REALTIME] [FAIL] W Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
+                    continue
+
+                # MTF 필터 검사 (Long은 상승 추세에서만)
+                if self.USE_MTF_FILTER and filter_trend != 'up':
+                    logger.debug(f"[REALTIME] [FAIL] W Pattern (Long) filtered: trend={filter_trend} (need 'up')")
+                    continue
+
+                # ATR 계산 (실시간에서는 incremental_atr 사용)
+                # 여기서는 adaptive_params에서 가져옴
+                atr = self.adaptive_params.get('atr', None) if self.adaptive_params else None
+                if atr is None or atr <= 0:
+                    logger.warning(f"[REALTIME] [FAIL] W Pattern skipped: ATR is {atr}")
+                    continue
+
+                # 진입 가격 및 SL 계산
+                price = float(price_buffer[-1]['close'])
+                _default_atr_mult = float(DEFAULT_PARAMS.get('atr_mult') or 1.25)
+                atr_mult = float(self.adaptive_params.get('atr_mult', _default_atr_mult)) if self.adaptive_params else _default_atr_mult
+                sl = price - atr * atr_mult
+
+                logger.info(f"[REALTIME] [OK] Valid Long @ ${price:,.0f} (W pattern, {hours_since:.1f}h old)")
+                return TradeSignal(
+                    signal_type='Long',
+                    pattern='W',
+                    stop_loss=sl,
+                    atr=atr,
+                    timestamp=datetime.now()
+                )
+
+            # M 패턴 (Short): H-L-H
+            if (points[i]['type'] == 'H' and
+                points[i+1]['type'] == 'L' and
+                points[i+2]['type'] == 'H'):
+
+                H1, L, H2 = points[i], points[i+1], points[i+2]
+
+                # 톨러런스 검사
+                diff = abs(H2['price'] - H1['price']) / H1['price']
+                if diff >= pattern_tolerance:
+                    logger.debug(f"[REALTIME] [FAIL] M Pattern filtered: tolerance {diff*100:.2f}% > {pattern_tolerance*100:.0f}%")
+                    continue
+
+                # 유효시간 검사
+                confirmed_time = _to_dt(H2['confirmed_time'])
+                last_time = _to_dt(timestamp_buffer[-1])
+
+                if confirmed_time is None or last_time is None:
+                    logger.warning("[REALTIME] M Pattern skipped: invalid timestamp")
+                    continue
+
+                hours_since = (last_time - confirmed_time).total_seconds() / 3600
+
+                if hours_since > entry_validity_hours:
+                    logger.debug(f"[REALTIME] [FAIL] M Pattern filtered: expired {hours_since:.1f}h > {entry_validity_hours}h")
+                    continue
+
+                # MTF 필터 검사 (Short은 하락 추세에서만)
+                if self.USE_MTF_FILTER and filter_trend != 'down':
+                    logger.debug(f"[REALTIME] [FAIL] M Pattern (Short) filtered: trend={filter_trend} (need 'down')")
+                    continue
+
+                # ATR 계산 (실시간에서는 incremental_atr 사용)
+                atr = self.adaptive_params.get('atr', None) if self.adaptive_params else None
+                if atr is None or atr <= 0:
+                    logger.warning(f"[REALTIME] [FAIL] M Pattern skipped: ATR is {atr}")
+                    continue
+
+                # 진입 가격 및 SL 계산
+                price = float(price_buffer[-1]['close'])
+                _default_atr_mult = float(DEFAULT_PARAMS.get('atr_mult') or 1.25)
+                atr_mult = float(self.adaptive_params.get('atr_mult', _default_atr_mult)) if self.adaptive_params else _default_atr_mult
+                sl = price + atr * atr_mult
+
+                logger.info(f"[REALTIME] [OK] Valid Short @ ${price:,.0f} (M pattern, {hours_since:.1f}h old)")
+                return TradeSignal(
+                    signal_type='Short',
+                    pattern='M',
+                    stop_loss=sl,
+                    atr=atr,
+                    timestamp=datetime.now()
+                )
+
+        logger.debug(f"[REALTIME] ⏳ No valid W/M pattern (H/L points: {len(points)})")
+        return None
+
     def should_add_position(self, direction: str, current_rsi: float) -> bool:
         """풀백 추가 진입 여부"""
         if self.adaptive_params is None:
@@ -663,7 +872,7 @@ class AlphaX7Core:
         self,
         df_pattern: pd.DataFrame,
         df_entry: pd.DataFrame,
-        slippage: float = 0,
+        slippage: float = 0,  # DEPRECATED: v7.26부터 BACKTEST_EXIT_COST 사용
         atr_mult: Optional[float] = None,            # → MDD↑, 승률↑ (ATR 배수)
         trail_start_r: Optional[float] = None,       # → 수익률↑ (트레일링 시작점)
         trail_dist_r: Optional[float] = None,        # → MDD↑, 수익률 (트레일링 거리)
@@ -683,29 +892,36 @@ class AlphaX7Core:
         macd_slow: Optional[int] = None,             # → 신호 안정성 (MACD slow)
         macd_signal: Optional[int] = None,           # → 신호 타이밍 (MACD signal)
         ema_period: Optional[int] = None,            # → 추세 판단 (EMA 기간)
+        adx_period: Optional[int] = None,            # → ADX 반응 속도 (ADX 기간, v7.22)
+        adx_threshold: Optional[float] = None,       # → 추세 강도 필터 (ADX 임계값, v7.22)
         **kwargs
     ) -> Any:
         """
         백테스트 실행 (통합 로직)
-        
+
         ═══════════════════════════════════════════════════════════════
         📊 파라미터별 지표 영향 관계 (PARAMETER-METRIC IMPACT)
         ═══════════════════════════════════════════════════════════════
-        
+
         [손익 관련]
         • atr_mult ↑      → MDD ↑, 승률 ↑ (넓은 SL = 조기청산 방지)
         • trail_start_r ↑ → 수익률 ↑ (더 많이 수익 확보 후 트레일링)
         • trail_dist_r ↑  → MDD ↑, 수익률 ± (청산 늦음)
-        
+
         [거래 빈도]
         • filter_tf (상위) → 승률 ↑, 거래수 ↓ (엄격한 필터)
         • entry_validity_hours ↑ → 거래수 ↑ (신호 유효기간 연장)
         • enable_pullback  → 거래수 ↑ (추가 진입 기회)
-        
+
         [방향성]
         • allowed_direction = 'Both' → 거래수 ↑↑
         • allowed_direction = 'Long' → 상승장에서 승률 ↑
-        
+
+        [비용 (v7.26)]
+        • slippage: DEPRECATED - BACKTEST_EXIT_COST 사용 (0.065%)
+        • 진입: 0.02% (Limit/Maker)
+        • 청산: 0.065% (Market/Taker + Stop Slippage)
+
         ═══════════════════════════════════════════════════════════════
         """
         # 파라미터 기본값 설정 (ACTIVE_PARAMS 연동, None 방지)
@@ -725,11 +941,18 @@ class AlphaX7Core:
         macd_signal = int(macd_signal if macd_signal is not None else ACTIVE_PARAMS.get('macd_signal') or 9)
         ema_period = int(ema_period if ema_period is not None else ACTIVE_PARAMS.get('ema_period') or 20)
 
+        # ADX 파라미터 (v7.22 추가)
+        adx_period = int(adx_period if adx_period is not None else ACTIVE_PARAMS.get('adx_period') or 14)
+        adx_threshold = float(adx_threshold if adx_threshold is not None else ACTIVE_PARAMS.get('adx_threshold') or 25.0)
+
         # 적응형 파라미터 계산
         self.calculate_adaptive_params(df_entry, rsi_period=rsi_period)
-        
-        # 모든 W/M 시그널 추출
-        signals = self._extract_all_signals(df_pattern, pattern_tolerance, entry_validity_hours, macd_fast, macd_slow, macd_signal)
+
+        # 모든 시그널 추출 (전략 타입에 따라 분기)
+        if self.strategy_type == 'adx':
+            signals = self._extract_all_signals_adx(df_pattern, pattern_tolerance, entry_validity_hours, adx_period, adx_threshold)
+        else:
+            signals = self._extract_all_signals(df_pattern, pattern_tolerance, entry_validity_hours, macd_fast, macd_slow, macd_signal)
 
         # MTF 필터용 trend map 생성
         trend_map = None
@@ -783,29 +1006,26 @@ class AlphaX7Core:
         lows = np.asarray(df_entry['low'].values, dtype=np.float64)
         closes = np.asarray(df_entry['close'].values, dtype=np.float64)
 
-        # RSI/ATR 계산
-        closes_series = pd.Series(closes)
-        delta = closes_series.diff()
-        gain_raw = delta.where(delta > 0, 0).rolling(rsi_period).mean()
-        loss_raw = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
+        # RSI/ATR 계산 (사전 계산된 값이 있으면 재사용)
+        if 'rsi' in df_entry.columns and 'atr' in df_entry.columns:
+            # [OK] 최적화: 사전 계산된 지표 사용 (7-10배 빠름)
+            rsis = np.asarray(df_entry['rsi'].values, dtype=np.float64)
+            atrs = np.asarray(df_entry['atr'].values, dtype=np.float64)
+        else:
+            # [OK] SSOT 준수: utils.indicators 사용 (EWM 기반, v7.27)
+            # RSI 계산 (Wilder's Smoothing)
+            closes_series = pd.Series(closes)
+            rsi_series = _calc_rsi(closes_series, period=rsi_period, return_series=True)
+            rsis = np.asarray(rsi_series.values, dtype=np.float64)
 
-        gain = cast(pd.Series, gain_raw)
-        loss = cast(pd.Series, loss_raw)
-
-        # 0 나누기 방지
-        loss_safe = loss.replace(0, np.nan)
-        rs = gain / loss_safe
-        rs_filled = rs.fillna(100)
-        rsi_calc = 100 - (100 / (1 + rs_filled))
-        rsi_final = rsi_calc.fillna(50)
-        rsis = np.asarray(rsi_final.values, dtype=np.float64)
-
-        prev_closes = np.roll(closes, 1)
-        prev_closes[0] = closes[0]
-        tr = np.maximum(np.maximum(highs - lows, np.abs(highs - prev_closes)), np.abs(lows - prev_closes))
-        atr_series_raw = pd.Series(tr).rolling(atr_period).mean()
-        atr_series = cast(pd.Series, atr_series_raw)
-        atrs = np.asarray(atr_series.fillna(0).values, dtype=np.float64)
+            # ATR 계산 (Wilder's Smoothing)
+            df_temp = pd.DataFrame({
+                'high': highs,
+                'low': lows,
+                'close': closes
+            })
+            atr_series = _calc_atr(df_temp, period=atr_period, return_series=True)
+            atrs = np.asarray(atr_series.values, dtype=np.float64)
         
         from collections import deque
         pending = deque()
@@ -847,12 +1067,12 @@ class AlphaX7Core:
                             if new_sl > shared_sl: shared_sl = new_sl
                     if lows[i] <= shared_sl:
                         for pos in positions:
-                            # [FIX] 슬리피지 로직 통일: slippage는 수수료율(0.0006)로 가정
-                            # pnl(%)에서 2 * slippage * 100(%) 차감
-                            fee_pct = slippage * 2 * 100
+                            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
+                            from config.constants.trading import BACKTEST_EXIT_COST
+                            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
                             trade = {
                                 'entry_time': pos['entry_time'], 'exit_time': t, 'type': 'Long',
-                                'entry': pos['entry'], 'exit': shared_sl, 'pnl': (shared_sl - pos['entry']) / pos['entry'] * 100 - fee_pct,
+                                'entry': pos['entry'], 'exit': shared_sl, 'pnl': (shared_sl - pos['entry']) / pos['entry'] * 100 - exit_fee_pct,
                                 'is_addon': pos.get('is_addon', False), 'entry_idx': pos.get('entry_idx', 0), 'exit_idx': i,
                             }
                             trades.append(trade)
@@ -871,11 +1091,12 @@ class AlphaX7Core:
                             if new_sl < shared_sl: shared_sl = new_sl
                     if highs[i] >= shared_sl:
                         for pos in positions:
-                            # [FIX] 슬리피지 로직 통일
-                            fee_pct = slippage * 2 * 100
+                            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
+                            from config.constants.trading import BACKTEST_EXIT_COST
+                            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
                             trade = {
                                 'entry_time': pos['entry_time'], 'exit_time': t, 'type': 'Short',
-                                'entry': pos['entry'], 'exit': shared_sl, 'pnl': (pos['entry'] - shared_sl) / pos['entry'] * 100 - fee_pct,
+                                'entry': pos['entry'], 'exit': shared_sl, 'pnl': (pos['entry'] - shared_sl) / pos['entry'] * 100 - exit_fee_pct,
                                 'is_addon': pos.get('is_addon', False), 'entry_idx': pos.get('entry_idx', 0), 'exit_idx': i,
                             }
                             trades.append(trade)
@@ -956,12 +1177,34 @@ class AlphaX7Core:
         macd_slow: int = 26,
         macd_signal: int = 9,
     ) -> List[Dict]:
-        """모든 W/M 패턴 시그널 추출"""
-        exp1 = df_1h['close'].ewm(span=macd_fast, adjust=False).mean()
-        exp2 = df_1h['close'].ewm(span=macd_slow, adjust=False).mean()
-        macd = exp1 - exp2
-        signal_line = macd.ewm(span=macd_signal, adjust=False).mean()
-        hist = macd - signal_line
+        """모든 W/M 패턴 시그널 추출 (MACD/ADX 전략 분기)"""
+        # 전략 타입에 따라 분기
+        if self.strategy_type == 'adx':
+            return self._extract_all_signals_adx(df_1h, tolerance, validity_hours)
+        else:
+            return self._extract_all_signals_macd(df_1h, tolerance, validity_hours, macd_fast, macd_slow, macd_signal)
+
+    def _extract_all_signals_macd(
+        self,
+        df_1h: pd.DataFrame,
+        tolerance: float,
+        validity_hours: float,
+        macd_fast: int = 12,
+        macd_slow: int = 26,
+        macd_signal: int = 9,
+    ) -> List[Dict]:
+        """MACD 기반 W/M 패턴 시그널 추출"""
+        # MACD 계산 (사전 계산된 값이 있으면 재사용)
+        if 'macd_hist' in df_1h.columns:
+            # [OK] 최적화: 사전 계산된 MACD 사용 (10-20배 빠름)
+            hist = df_1h['macd_hist']
+        else:
+            # 기존 로직: MACD 재계산 (실시간 거래용)
+            exp1 = df_1h['close'].ewm(span=macd_fast, adjust=False).mean()
+            exp2 = df_1h['close'].ewm(span=macd_slow, adjust=False).mean()
+            macd = exp1 - exp2
+            signal_line = macd.ewm(span=macd_signal, adjust=False).mean()
+            hist = macd - signal_line
         
         points = []
         n = len(hist)
@@ -997,6 +1240,82 @@ class AlphaX7Core:
                     signals.append({'time': H2['confirmed_time'], 'type': 'Short', 'pattern': 'M'})
         signals.sort(key=lambda x: x['time'])
         return signals
+
+    def _extract_all_signals_adx(
+        self,
+        df_1h: pd.DataFrame,
+        tolerance: float,
+        validity_hours: float,
+        adx_period: int = 14,
+        adx_threshold: float = 25.0
+    ) -> List[Dict]:
+        """
+        ADX 기반 W/M 패턴 신호 추출
+
+        전략:
+        1. W/M 패턴 인식 (MACD와 동일)
+        2. ADX 추세 필터 (ADX > adx_threshold만 진입)
+
+        Args:
+            df_1h: 1시간봉 데이터
+            tolerance: W/M 패턴 tolerance
+            validity_hours: W/M 패턴 유효시간
+            adx_period: ADX 계산 기간 (기본값: 14)
+            adx_threshold: ADX 최소값 (기본값: 25)
+
+        Returns:
+            신호 리스트 [{'time': timestamp, 'type': 'Long'/'Short', 'pattern': 'W'/'M'}]
+        """
+        # 1. MACD 기반 W/M 패턴 추출 (재사용)
+        macd_signals = self._extract_all_signals_macd(
+            df_1h,
+            tolerance=tolerance,
+            validity_hours=validity_hours,
+            macd_fast=12,
+            macd_slow=26,
+            macd_signal=9
+        )
+
+        if not macd_signals:
+            return []
+
+        # 2. ADX 계산 (SSOT 사용)
+        adx_result = _calc_adx(
+            df_1h,
+            period=adx_period,
+            return_series=True,
+            return_di=True
+        )
+
+        # Tuple unpacking (타입 안전성)
+        if isinstance(adx_result, tuple) and len(adx_result) == 3:
+            _, _, adx_series = cast(Tuple[pd.Series, pd.Series, pd.Series], adx_result)  # ADX만 사용 (+DI/-DI는 불필요)
+        else:
+            # Fallback: ADX만 반환된 경우
+            return []
+
+        # 3. timestamp → index 매핑
+        df_1h = df_1h.copy()
+        df_1h['timestamp'] = pd.to_datetime(df_1h['timestamp'])
+        ts_to_idx = {ts: i for i, ts in enumerate(df_1h['timestamp'])}
+
+        # 4. ADX 필터 적용
+        filtered_signals = []
+        for signal in macd_signals:
+            signal_ts = pd.to_datetime(signal['time'])
+            idx = ts_to_idx.get(signal_ts)
+
+            if idx is None:
+                continue
+
+            # ADX 체크
+            if idx < len(adx_series) and adx_series.iloc[idx] >= adx_threshold:
+                filtered_signals.append(signal)
+
+        return filtered_signals
+
+    # _calculate_adx_manual() 제거됨 (v7.23 SSOT 통합)
+    # utils.indicators.calculate_adx() 사용
 
     def _extract_new_signals(
         self,

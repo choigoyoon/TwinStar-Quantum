@@ -569,6 +569,9 @@ class BithumbExchange(BaseExchange):
     
     def get_balance(self) -> float:
         """KRW 잔고 조회"""
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
+
         if self.bithumb is None:
             return 0
         try:

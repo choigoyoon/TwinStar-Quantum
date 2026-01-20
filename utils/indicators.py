@@ -311,18 +311,17 @@ def calculate_adx(
     plus_dm_smooth = wilder_smooth(plus_dm, period)
     minus_dm_smooth = wilder_smooth(minus_dm, period)
 
-    # +DI and -DI 계산
-    plus_di = 100 * plus_dm_smooth / atr_smooth
-    minus_di = 100 * minus_dm_smooth / atr_smooth
-
-    # 0으로 나누기 방지
-    plus_di = np.where(atr_smooth == 0, 0, plus_di)
-    minus_di = np.where(atr_smooth == 0, 0, minus_di)
+    # +DI and -DI 계산 (0으로 나누기 방지 + 경고 억제)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        plus_di = np.where(atr_smooth == 0, 0, 100 * plus_dm_smooth / atr_smooth)
+        minus_di = np.where(atr_smooth == 0, 0, 100 * minus_dm_smooth / atr_smooth)
 
     # DX (Directional Index) 계산
     di_sum = plus_di + minus_di
     di_diff = np.abs(plus_di - minus_di)
-    dx = np.where(di_sum == 0, 0, 100 * di_diff / di_sum)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        dx = np.where(di_sum == 0, 0, 100 * di_diff / di_sum)
 
     # ADX 계산 (DX의 Wilder's Smoothing)
     adx = wilder_smooth(dx, period)

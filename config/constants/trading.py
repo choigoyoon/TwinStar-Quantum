@@ -9,10 +9,16 @@ DIRECTION_BOTH = 'Both'
 
 DIRECTIONS = [DIRECTION_LONG, DIRECTION_SHORT, DIRECTION_BOTH]
 
-# ============ 비용 상수 ============
-SLIPPAGE = 0.0006       # 슬리피지 (0.06%)
-FEE = 0.00055           # 수수료 (0.055%)
-TOTAL_COST = SLIPPAGE + FEE  # 총 비용 (0.115%)
+# ============ 비용 상수 (지정가 매매 기준) ============
+SLIPPAGE = 0.0          # 슬리피지 (0%, 지정가 주문)
+FEE = 0.0002            # 수수료 (0.02%, 메이커)
+TOTAL_COST = SLIPPAGE + FEE  # 총 비용 (0.02%)
+
+# ============ 백테스트 전용 비용 상수 (v7.26.1: 청산 슬리피지 확대) ============
+BACKTEST_ENTRY_FEE = 0.0002   # 진입 수수료 (0.02%, Maker)
+BACKTEST_EXIT_FEE = 0.00055   # 청산 수수료 (0.055%, Taker)
+BACKTEST_EXIT_SLIPPAGE = 0.0006  # [FIX] 0.0001 → 0.0006 (시장가 슬리피지 0.06%)
+BACKTEST_EXIT_COST = BACKTEST_EXIT_FEE + BACKTEST_EXIT_SLIPPAGE  # 청산 총 비용 (0.115%)
 
 # ============ 레버리지 상수 ============
 DEFAULT_LEVERAGE = 10
@@ -88,6 +94,38 @@ def opposite_direction(direction: str) -> str:
 
 
 # ============ 비용 계산 함수 ============
+
+def get_total_cost(exchange: str, slippage: float = SLIPPAGE) -> float:
+    """
+    거래소별 총 비용 계산 (수수료 + 슬리피지)
+
+    Args:
+        exchange: 거래소명 (예: 'bybit', 'binance', 'lighter')
+        slippage: 슬리피지 (기본값: 0.0006, 0.06%)
+
+    Returns:
+        총 비용 (왕복, 백분율)
+
+    Examples:
+        >>> get_total_cost('bybit')
+        0.00115  # 0.055% taker + 0.06% slippage
+        >>> get_total_cost('binance')
+        0.001  # 0.04% taker + 0.06% slippage
+        >>> get_total_cost('lighter')
+        0.00070  # 0.01% taker + 0.06% slippage
+
+    Note:
+        - Taker fee는 EXCHANGE_INFO에서 자동 조회
+        - 기본 슬리피지: 0.06% (모든 거래소 동일)
+        - TOTAL_COST 상수는 Bybit 기준 (하위 호환성)
+    """
+    from config.constants.exchanges import get_exchange_fees
+
+    fees = get_exchange_fees(exchange)
+    taker_fee = fees['taker'] / 100  # 백분율 → 소수 (0.055 → 0.00055)
+
+    return slippage + taker_fee
+
 
 def calculate_total_cost(price: float, size: float, fee_rate: float = FEE) -> float:
     """

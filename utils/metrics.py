@@ -277,7 +277,14 @@ def calculate_backtest_metrics(
     capital: float = 100.0
 ) -> Dict[str, Any]:
     """
-    백테스트 전체 메트릭 일괄 계산
+    백테스트 전체 메트릭 일괄 계산 (v7.25 업데이트)
+
+    핵심 지표 (v7.25):
+    1. total_pnl (단리 수익률) - 모든 PnL의 합
+    2. compound_return (복리 수익률) - 재투자 시 최종 수익률, 오버플로우 방지 1e10 제한
+    3. avg_pnl (거래당 평균) - 전략 효율성 지표
+    4. mdd (최대 낙폭) - 리스크 지표
+    5. safe_leverage (안전 레버리지) - MDD 10% 기준, 최대 20x
 
     Args:
         trades: 거래 리스트
@@ -289,8 +296,8 @@ def calculate_backtest_metrics(
             - total_trades: 총 거래 횟수
             - win_rate: 승률 (%)
             - profit_factor: Profit Factor
-            - total_pnl: 총 수익 (%)
-            - avg_pnl: 평균 수익 (%)
+            - total_pnl: 총 수익 (%, 단리)
+            - avg_pnl: 평균 수익 (%, 거래당 평균)
             - mdd: Maximum Drawdown (%)
             - sharpe_ratio: Sharpe Ratio
             - sortino_ratio: Sortino Ratio
@@ -302,31 +309,49 @@ def calculate_backtest_metrics(
             - largest_win: 최대 승리 (%)
             - largest_loss: 최대 손실 (%)
             - final_capital: 최종 자본
+            - compound_return: 복리 수익률 (%) [v7.24]
+            - safe_leverage: 안전 레버리지 (MDD 10% 기준) [v7.25]
+            - stability: 안정성 등급 (A/B/C/D/F) [v7.24]
+            - avg_trades_per_day: 일평균 거래수 [v7.24]
+            - cagr: 연간 복리 성장률 (%) [v7.24]
 
     Example:
         >>> trades = [{'pnl': 10}, {'pnl': -5}, {'pnl': 8}]
         >>> metrics = calculate_backtest_metrics(trades, leverage=10)
-        >>> print(f"승률: {metrics['win_rate']:.2f}%")
-        >>> print(f"PF: {metrics['profit_factor']:.2f}")
+        >>> print(f"단리: {metrics['total_pnl']:.2f}%")
+        >>> print(f"복리: {metrics['compound_return']:.2f}%")
+        >>> print(f"안전 레버리지: {metrics['safe_leverage']:.1f}x")
     """
     if not trades:
         return {
+            # 핵심 5개 지표 (v7.25)
+            'total_pnl': 0.0,
+            'compound_return': 0.0,
+            'avg_pnl': 0.0,
+            'mdd': 0.0,
+            'safe_leverage': 1.0,  # [v7.25]
+
+            # 기본 통계
             'total_trades': 0,
             'win_rate': 0.0,
             'profit_factor': 0.0,
-            'total_pnl': 0.0,
-            'avg_pnl': 0.0,
-            'mdd': 0.0,
             'sharpe_ratio': 0.0,
             'sortino_ratio': 0.0,
             'calmar_ratio': 0.0,
+
+            # 거래 세부사항
             'total_wins': 0,
             'total_losses': 0,
             'avg_win': 0.0,
             'avg_loss': 0.0,
             'largest_win': 0.0,
             'largest_loss': 0.0,
-            'final_capital': capital
+
+            # 자본 및 추가 메트릭
+            'final_capital': capital,
+            'stability': 'F',
+            'avg_trades_per_day': 0.0,
+            'cagr': 0.0
         }
 
     # PnL 추출 (leverage 적용)
@@ -345,10 +370,17 @@ def calculate_backtest_metrics(
     largest_win = max(winning_trades) if winning_trades else 0.0
     largest_loss = min(losing_trades) if losing_trades else 0.0
 
-    # 최종 자본 계산
+    # 최종 자본 계산 (복리)
     final_capital = capital
     for pnl in pnls:
         final_capital *= (1 + pnl / 100)
+        if final_capital <= 0:
+            final_capital = 0
+            break
+
+    # 복리 수익률 계산 (오버플로우 방지)
+    compound_return = (final_capital / capital - 1) * 100
+    compound_return = max(-100.0, min(compound_return, 1e10))
 
     # 메트릭 계산
     win_rate = calculate_win_rate(trades)
@@ -358,23 +390,80 @@ def calculate_backtest_metrics(
     sortino_ratio = calculate_sortino_ratio(pnls)
     calmar_ratio = calculate_calmar_ratio(trades)
 
+    # [v7.24] 안정성 계산
+    stability = calculate_stability(pnls)
+
+    # [v7.24] 일평균 거래수 계산
+    avg_trades_per_day = 0.0
+    if len(trades) >= 2:
+        try:
+            import pandas as pd
+            import numpy as np
+
+            # entry_time 또는 entry_idx 기반 기간 계산
+            first_entry = trades[0].get('entry_time') or trades[0].get('entry_idx', 0)
+            last_entry = trades[-1].get('entry_time') or trades[-1].get('entry_idx', len(trades))
+
+            if hasattr(first_entry, 'astype'):  # numpy datetime64
+                first_entry = pd.Timestamp(first_entry)
+                last_entry_ts = pd.Timestamp(last_entry)
+                # NaT 체크
+                if isinstance(last_entry_ts, type(pd.NaT)):
+                    raise ValueError("last_entry is NaT")
+                last_entry = last_entry_ts
+
+            if isinstance(first_entry, (pd.Timestamp, np.datetime64)):
+                first_ts = pd.Timestamp(first_entry)
+                last_ts = pd.Timestamp(last_entry)
+                # NaT 체크
+                if isinstance(first_ts, type(pd.NaT)) or isinstance(last_ts, type(pd.NaT)):
+                    raise ValueError("Timestamp is NaT")
+                total_days = max((last_ts - first_ts).days, 1)  # type: ignore[operator]
+            else:
+                # index 기반 (대략 1시간봉 기준 24캔들 = 1일)
+                total_days = max((last_entry - first_entry) / 24, 1)  # type: ignore[operator]
+
+            avg_trades_per_day = round(len(trades) / total_days, 2)
+        except Exception:
+            # 기본값: 30일 가정
+            avg_trades_per_day = round(len(trades) / 30, 2)
+
+    # [v7.24] CAGR 계산
+    cagr = calculate_cagr(trades, final_capital=final_capital, initial_capital=capital)
+
+    # [v7.25] 안전 레버리지 계산 (MDD 10% 기준, 최대 20x)
+    safe_leverage = 10.0 / mdd if mdd > 0 else 1.0
+    safe_leverage = min(safe_leverage, 20.0)
+
     return {
+        # 핵심 5개 지표 (v7.25)
+        'total_pnl': total_pnl,                    # 단리 수익률
+        'compound_return': compound_return,         # 복리 수익률
+        'avg_pnl': total_pnl / len(trades),        # 거래당 평균
+        'mdd': mdd,                                 # 최대 낙폭
+        'safe_leverage': safe_leverage,             # 안전 레버리지 [v7.25]
+
+        # 기본 통계
         'total_trades': len(trades),
         'win_rate': win_rate,
         'profit_factor': profit_factor,
-        'total_pnl': total_pnl,
-        'avg_pnl': total_pnl / len(trades),
-        'mdd': mdd,
         'sharpe_ratio': sharpe_ratio,
         'sortino_ratio': sortino_ratio,
         'calmar_ratio': calmar_ratio,
+
+        # 거래 세부사항
         'total_wins': total_wins,
         'total_losses': total_losses,
         'avg_win': avg_win,
         'avg_loss': avg_loss,
         'largest_win': largest_win,
         'largest_loss': largest_loss,
-        'final_capital': final_capital
+
+        # 자본 및 추가 메트릭
+        'final_capital': final_capital,
+        'stability': stability,
+        'avg_trades_per_day': avg_trades_per_day,
+        'cagr': cagr
     }
 
 

@@ -215,7 +215,13 @@ class TradingDashboard(QWidget):
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self._on_update)
         self.update_timer.start(5000)  # 5초마다
-    
+
+    def closeEvent(self, event):
+        """위젯 종료 시 리소스 정리 (v7.27 신규)"""
+        if self.update_timer and self.update_timer.isActive():
+            self.update_timer.stop()
+        super().closeEvent(event)
+
     def _on_refresh(self):
         """새로고침 클릭"""
         logger.info("🔄 대시보드 새로고침")

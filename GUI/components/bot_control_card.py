@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 from PyQt6.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t
-from ui.design_system.tokens import Colors, Size
+from ui.design_system.tokens import Colors, Size, Spacing, Radius, Typography
 
 # [FALLBACK] Constants
 try:
@@ -71,7 +71,7 @@ class BotControlCard(QWidget):
         # #번호
         self.num_label = QLabel(f"#{self.row_id}")
         self.num_label.setFixedWidth(Size.bot_num_width)
-        self.num_label.setStyleSheet("color: #888;")
+        self.num_label.setStyleSheet(f"color: {Colors.text_muted};")
         layout.addWidget(self.num_label)
 
         # 거래소
@@ -79,7 +79,7 @@ class BotControlCard(QWidget):
         self.exchange_combo.addItems(list(EXCHANGE_INFO.keys()))
         self.exchange_combo.setFixedWidth(Size.bot_exchange_width)
         self.exchange_combo.setToolTip(t("dashboard.exchange_tip", "거래소 선택"))
-        self.exchange_combo.setStyleSheet("color: white; padding: 3px;") # background removed
+        self.exchange_combo.setStyleSheet(f"color: white; padding: {Spacing.space_1};") # background removed
         self.exchange_combo.currentTextChanged.connect(self._on_exchange_changed)
         layout.addWidget(self.exchange_combo)
 
@@ -89,10 +89,10 @@ class BotControlCard(QWidget):
         self.symbol_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.symbol_combo.setFixedWidth(Size.bot_symbol_width)
         self.symbol_combo.setToolTip(t("dashboard.symbol_tip", "거래 코인 선택 (검색 가능)"))
-        self.symbol_combo.setStyleSheet("""
-            QComboBox {
-                color: white; padding: 3px;
-            }
+        self.symbol_combo.setStyleSheet(f"""
+            QComboBox {{
+                color: white; padding: {Spacing.space_1};
+            }}
         """) # Removed hardcoded background
         completer = self.symbol_combo.completer()
         if completer:
@@ -109,13 +109,13 @@ class BotControlCard(QWidget):
         self.seed_spin.setFixedWidth(Size.bot_seed_width)
         self.seed_spin.setEnabled(False)
         self.seed_spin.setToolTip(t("dashboard.seed_tip", "초기 투자금 (잠금 해제 시 수정 가능)"))
-        self.seed_spin.setStyleSheet("color: #888; padding: 3px;") # background removed
+        self.seed_spin.setStyleSheet(f"color: {Colors.text_muted}; padding: {Spacing.space_1};") # background removed
         layout.addWidget(self.seed_spin)
 
         # 화살표
         self.arrow_label = QLabel("→")
         self.arrow_label.setFixedWidth(Size.bot_arrow_width)
-        self.arrow_label.setStyleSheet("color: #666; font-weight: bold;")
+        self.arrow_label.setStyleSheet(f"color: {Colors.text_muted}; font-weight: bold;")
         layout.addWidget(self.arrow_label)
 
         # 현재 잔액 (읽기 전용)
@@ -128,7 +128,7 @@ class BotControlCard(QWidget):
         # 수익률
         self.pnl_label = QLabel("(+0.00%)")
         self.pnl_label.setFixedWidth(Size.bot_pnl_width)
-        self.pnl_label.setStyleSheet("color: #888;")
+        self.pnl_label.setStyleSheet(f"color: {Colors.text_muted};")
         self.pnl_label.setToolTip(t("dashboard.pnl_tip", "누적 수익률"))
         layout.addWidget(self.pnl_label)
 
@@ -147,7 +147,7 @@ class BotControlCard(QWidget):
         self.lock_btn.setCheckable(True)
         self.lock_btn.setChecked(True)
         self.lock_btn.setToolTip(t("dashboard.lock_tip", "잠금 해제하면 시드 수정 가능"))
-        self.lock_btn.setStyleSheet("border-radius: 3px;") # background removed
+        self.lock_btn.setStyleSheet(f"border-radius: {Radius.radius_sm};") # background removed
         self.lock_btn.clicked.connect(self._toggle_lock)
         layout.addWidget(self.lock_btn)
 
@@ -156,7 +156,7 @@ class BotControlCard(QWidget):
         self.adj_btn.setFixedWidth(Size.bot_adj_width)
         self.adj_btn.setEnabled(False)
         self.adj_btn.setToolTip(t("dashboard.adjustment_tip", "시드 조정 (입금/출금)"))
-        self.adj_btn.setStyleSheet("color: #666; border-radius: 2px;") # background removed
+        self.adj_btn.setStyleSheet(f"color: {Colors.text_muted}; border-radius: {Radius.radius_sm};") # background removed
         self.adj_btn.clicked.connect(lambda: self.adjust_clicked.emit(self.get_config()))
         layout.addWidget(self.adj_btn)
 
@@ -164,7 +164,7 @@ class BotControlCard(QWidget):
         self.reset_btn = QPushButton("↺")
         self.reset_btn.setFixedWidth(Size.bot_adj_width)
         self.reset_btn.setToolTip(t("dashboard.reset_tip", "PnL 초기화 (거래 기록 리셋)"))
-        self.reset_btn.setStyleSheet(f"color: {Colors.warning}; font-weight: bold; border-radius: 2px;") # background removed
+        self.reset_btn.setStyleSheet(f"color: {Colors.warning}; font-weight: bold; border-radius: {Radius.radius_sm};") # background removed
         self.reset_btn.clicked.connect(lambda: self.reset_clicked.emit(self.get_config()))
 
         # 레버리지
@@ -174,14 +174,14 @@ class BotControlCard(QWidget):
         self.leverage_spin.setSuffix("x")
         self.leverage_spin.setFixedWidth(Size.bot_leverage_width)
         self.leverage_spin.setToolTip(t("dashboard.leverage_tip", "레버리지 배율 (1~50)"))
-        self.leverage_spin.setStyleSheet("color: white; padding: 3px;") # background removed
+        self.leverage_spin.setStyleSheet(f"color: white; padding: {Spacing.space_1};") # background removed
         layout.addWidget(self.leverage_spin)
 
         # 프리셋
         self.preset_combo = QComboBox()
         self.preset_combo.setFixedWidth(Size.bot_preset_width)
         self.preset_combo.setToolTip(t("dashboard.preset_tip", "최적화된 전략 프리셋 (⭐ = 최고 승률)"))
-        self.preset_combo.setStyleSheet("color: white; padding: 3px;") # background removed
+        self.preset_combo.setStyleSheet(f"color: white; padding: {Spacing.space_1};") # background removed
         self.preset_combo.currentIndexChanged.connect(self._on_preset_changed)
         layout.addWidget(self.preset_combo)
 
@@ -190,14 +190,14 @@ class BotControlCard(QWidget):
         self.direction_combo.addItems(["Both", "Long", "Short"])
         self.direction_combo.setFixedWidth(Size.bot_direction_width)
         self.direction_combo.setToolTip(t("dashboard.direction_tip", "매매 방향\n• Both: 롱/숏 모두\n• Long: 롱만\n• Short: 숏만"))
-        self.direction_combo.setStyleSheet("color: white; padding: 3px;") # background removed
+        self.direction_combo.setStyleSheet(f"color: white; padding: {Spacing.space_1};") # background removed
         layout.addWidget(self.direction_combo)
         
         # 시작 버튼
         self.start_btn = QPushButton("▶")
         self.start_btn.setFixedWidth(Size.bot_start_width)
         self.start_btn.setStyleSheet(f"""
-            QPushButton {{ background: {Colors.success}; color: white; border-radius: 3px; font-weight: bold; }}
+            QPushButton {{ background: {Colors.success}; color: white; border-radius: {Radius.radius_sm}; font-weight: bold; }}
             QPushButton:hover {{ background: {Colors.success_hover}; }}
             QPushButton:disabled {{ background: #555; }}
         """)
@@ -209,7 +209,7 @@ class BotControlCard(QWidget):
         self.stop_btn = QPushButton("✕")
         self.stop_btn.setFixedWidth(Size.bot_stop_width)
         self.stop_btn.setStyleSheet(f"""
-            QPushButton {{ background: #666; color: white; border-radius: 3px; }}
+            QPushButton {{ background: {Colors.bg_overlay}; color: white; border-radius: {Radius.radius_sm}; }}
             QPushButton:hover {{ background: {Colors.danger}; }}
         """)
         self.stop_btn.setToolTip(t("dashboard.stop_remove_tip", "실행 중: 정지 / 대기 중: 행 삭제"))
@@ -232,7 +232,7 @@ class BotControlCard(QWidget):
 
         # 로그/상태 메세지
         self.message_label = QLabel("-")
-        self.message_label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: 11px;")
+        self.message_label.setStyleSheet(f"color: {Colors.text_secondary}; font-size: {Typography.text_xs};")
         self.message_label.setFixedWidth(Size.bot_message_width)
         self.message_label.setToolTip(t("dashboard.last_message_tip", "최근 봇 로그/상태"))
         layout.addWidget(self.message_label)
@@ -420,7 +420,7 @@ class BotControlCard(QWidget):
             self.start_btn.setEnabled(False)
             self.stop_btn.setText("⏹")
             self.stop_btn.setStyleSheet(f"""
-                QPushButton {{ background: {Colors.danger}; color: white; border-radius: 3px; }}
+                QPushButton {{ background: {Colors.danger}; color: white; border-radius: {Radius.radius_sm}; }}
                 QPushButton:hover {{ background: {Colors.danger_hover}; }}
             """)
             self.exchange_combo.setEnabled(False)
@@ -430,8 +430,8 @@ class BotControlCard(QWidget):
             self.status_label.setText("⚪")
             self.start_btn.setEnabled(True)
             self.stop_btn.setText("✕")
-            self.stop_btn.setStyleSheet("""
-                QPushButton { background: #666; color: white; border-radius: 3px; }
+            self.stop_btn.setStyleSheet(f"""
+                QPushButton {{ background: {Colors.bg_overlay}; color: white; border-radius: {Radius.radius_sm}; }}
                 QPushButton:hover {{ background: {Colors.danger}; }}
             """)
             self.exchange_combo.setEnabled(True)
@@ -480,15 +480,15 @@ class BotControlCard(QWidget):
         if is_locked:
             self.lock_btn.setText("🔒")
             self.seed_spin.setEnabled(False)
-            self.seed_spin.setStyleSheet("color: #888; padding: 3px;")
+            self.seed_spin.setStyleSheet(f"color: {Colors.text_muted}; padding: {Spacing.space_1};")
             self.adj_btn.setEnabled(False)
-            self.adj_btn.setStyleSheet("color: #666; border-radius: 2px;")
+            self.adj_btn.setStyleSheet(f"color: {Colors.text_muted}; border-radius: {Radius.radius_sm};")
         else:
             self.lock_btn.setText("🔓")
             self.seed_spin.setEnabled(True)
-            self.seed_spin.setStyleSheet("color: white; padding: 3px;")
+            self.seed_spin.setStyleSheet(f"color: white; padding: {Spacing.space_1};")
             self.adj_btn.setEnabled(True)
-            self.adj_btn.setStyleSheet(f"color: {Colors.success}; font-weight: bold; border-radius: 2px;")
+            self.adj_btn.setStyleSheet(f"color: {Colors.success}; font-weight: bold; border-radius: {Radius.radius_sm};")
 
         # 잠금 상태 저장
         self._save_lock_state(is_locked)

@@ -19,11 +19,8 @@ import multiprocessing as mp
 
 # 메트릭 계산 (SSOT)
 from utils.metrics import (
-    calculate_win_rate,
-    calculate_mdd,
-    calculate_profit_factor,
-    calculate_sharpe_ratio,
     assign_grade_by_preset
+    # calculate_backtest_metrics는 calculate_metrics() 내부에서 동적 import
 )
 
 def optimize_strategy(symbol: str, timeframe: str, exchange: str = 'bybit') -> Optional[dict]:
@@ -64,58 +61,175 @@ from utils.data_utils import resample_data as shared_resample
 
 # ==================== CPU 워커 자동 계산 ====================
 
-def get_optimal_workers(mode: str = 'standard') -> int:
+def get_numpy_threads() -> int:
     """
-    최적 워커 수 자동 계산 (환경 독립적)
+    NumPy/Pandas 내부 스레드 수 감지 (v7.29)
+
+    Returns:
+        NumPy가 사용하는 스레드 수 (기본값: 1)
+    """
+    # MKL/OpenBLAS 환경 변수 확인
+    mkl_threads = os.environ.get('MKL_NUM_THREADS', None)
+    openblas_threads = os.environ.get('OPENBLAS_NUM_THREADS', None)
+    omp_threads = os.environ.get('OMP_NUM_THREADS', None)
+
+    if mkl_threads:
+        return int(mkl_threads)
+    elif openblas_threads:
+        return int(openblas_threads)
+    elif omp_threads:
+        return int(omp_threads)
+    else:
+        # 기본값: 1 (단일 스레드 가정)
+        return 1
+
+
+def get_optimal_workers(mode: str = 'standard', available_memory_gb: float | None = None) -> int:
+    """
+    최적 워커 수 자동 계산 (v7.29 - 물리 코어 + NumPy 스레드 고려)
+
+    ✅ v7.29 개선:
+    - 물리 코어 우선 사용 (100% 효율)
+    - 하이퍼스레딩 보조 사용 (35% 효율, Deep 모드만)
+    - NumPy 멀티스레딩 고려 (n_workers × numpy_threads ≤ logical_cores)
+    - 메모리 제약 우선 적용
 
     Args:
         mode: 'quick', 'standard', 'deep'
+        available_memory_gb: 사용 가능한 메모리 (GB). None이면 자동 감지
 
     Returns:
         워커 수 (1 ~ cpu_count)
     """
-    total_cores = mp.cpu_count()
+    # 1. 코어 감지
+    try:
+        import psutil
+        physical_cores = psutil.cpu_count(logical=False) or 4
+        logical_cores = psutil.cpu_count(logical=True) or 4
+        hyperthreading = logical_cores > physical_cores
+    except ImportError:
+        # psutil 없으면 mp.cpu_count() 사용 (논리 코어)
+        logical_cores = mp.cpu_count() or 4
+        physical_cores = logical_cores  # 하이퍼스레딩 없다고 가정
+        hyperthreading = False
 
-    if total_cores is None or total_cores <= 0:
-        return 1
+    # 2. NumPy 멀티스레딩 감지
+    numpy_threads = get_numpy_threads()
 
+    # 3. 모드별 기본 워커 수 (물리 코어 기반)
     if mode == 'quick':
-        return max(1, total_cores // 2)
+        base_workers = max(1, physical_cores // 2)  # 50% 사용
+    elif mode == 'standard':
+        base_workers = max(2, physical_cores - 1)   # 물리 코어 - 1
     elif mode == 'deep':
-        return max(1, total_cores - 1)
-    else:  # standard
-        return max(1, int(total_cores * 0.75))
+        if hyperthreading:
+            # 물리 코어 전체 + 논리 코어 35% 활용
+            ht_bonus = max(1, (logical_cores - physical_cores) // 3)
+            base_workers = physical_cores + ht_bonus
+        else:
+            base_workers = max(2, physical_cores - 1)
+    else:
+        base_workers = max(2, physical_cores // 2)
+
+    # 4. NumPy 멀티스레딩 고려한 워커 조정
+    if numpy_threads > 1:
+        # 총 스레드 = n_workers × numpy_threads ≤ logical_cores
+        max_workers_by_numpy = logical_cores // numpy_threads
+        workers = min(base_workers, max_workers_by_numpy)
+    else:
+        workers = base_workers
+
+    # 5. 메모리 제약 (v7.28 기존 로직)
+    if available_memory_gb is None:
+        try:
+            import psutil
+            available_memory_gb = psutil.virtual_memory().available / (1024 ** 3)
+        except ImportError:
+            available_memory_gb = 999.0
+
+    # 메모리 제약 적용
+    if available_memory_gb < 2.0:
+        workers = min(workers, 2)
+    elif available_memory_gb < 4.0:
+        workers = min(workers, 4)
+    elif available_memory_gb < 8.0:
+        workers = min(workers, 6)
+
+    return max(1, workers)
 
 
 def get_worker_info(mode: str = 'standard') -> dict:
     """
-    워커 정보 반환 (로깅/GUI 표시용)
+    워커 정보 반환 (로깅/GUI 표시용, v7.29: 물리 코어 + NumPy 스레드 정보 추가)
 
     Returns:
         {
-            'total_cores': int,
+            'total_cores': int,              # 논리 코어 (하이퍼스레딩 포함)
+            'physical_cores': int,           # v7.29 신규: 물리 코어
+            'hyperthreading': bool,          # v7.29 신규: 하이퍼스레딩 여부
+            'numpy_threads': int,            # v7.29 신규: NumPy 내부 스레드
             'workers': int,
+            'total_threads': int,            # v7.29 신규: workers × numpy_threads
             'usage_percent': float,
             'description': str,
-            'free_cores': int
+            'free_cores': int,
+            'available_memory_gb': float,
+            'memory_limited': bool
         }
     """
-    total = mp.cpu_count() or 1
-    workers = get_optimal_workers(mode)
-    usage = (workers / total) * 100
+    # 1. 코어 정보 수집
+    try:
+        import psutil
+        physical_cores = psutil.cpu_count(logical=False) or 4
+        logical_cores = psutil.cpu_count(logical=True) or 4
+        hyperthreading = logical_cores > physical_cores
+        available_memory_gb = psutil.virtual_memory().available / (1024 ** 3)
+    except ImportError:
+        logical_cores = mp.cpu_count() or 1
+        physical_cores = logical_cores
+        hyperthreading = False
+        available_memory_gb = -1.0
 
+    # 2. NumPy 스레드 정보
+    numpy_threads = get_numpy_threads()
+
+    # 3. 워커 계산
+    workers = get_optimal_workers(mode, available_memory_gb)
+    total_threads = workers * numpy_threads
+    usage = (total_threads / logical_cores) * 100
+
+    # 4. 메모리 제한 여부 판단
+    cpu_only_workers = get_optimal_workers(mode, 999.0)  # 메모리 무제한
+    memory_limited = (workers < cpu_only_workers)
+
+    # 5. 설명 생성
     descriptions = {
-        'quick': f'빠른 모드 (코어 {usage:.0f}% 사용)',
-        'standard': f'표준 모드 (코어 {usage:.0f}% 사용)',
-        'deep': f'딥 모드 (코어 {usage:.0f}% 사용, 최대 성능)',
+        'quick': f'빠른 모드 (CPU {usage:.0f}% 사용)',
+        'standard': f'표준 모드 (CPU {usage:.0f}% 사용)',
+        'deep': f'딥 모드 (CPU {usage:.0f}% 사용, 최대 성능)',
     }
+    desc = descriptions.get(mode, '알 수 없음')
+
+    # 6. NumPy 멀티스레딩 정보 추가
+    if numpy_threads > 1:
+        desc += f' [NumPy: {numpy_threads}스레드]'
+
+    # 7. 메모리 제한 시 설명 추가
+    if memory_limited and available_memory_gb > 0:
+        desc += f' [메모리 제약: {available_memory_gb:.1f}GB]'
 
     return {
-        'total_cores': total,
+        'total_cores': logical_cores,
+        'physical_cores': physical_cores,        # v7.29
+        'hyperthreading': hyperthreading,        # v7.29
+        'numpy_threads': numpy_threads,          # v7.29
         'workers': workers,
+        'total_threads': total_threads,          # v7.29
         'usage_percent': usage,
-        'description': descriptions.get(mode, '알 수 없음'),
-        'free_cores': total - workers,
+        'description': desc,
+        'free_cores': logical_cores - total_threads,
+        'available_memory_gb': available_memory_gb,
+        'memory_limited': memory_limited
     }
 
 
@@ -364,6 +478,75 @@ def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
         'pullback_rsi_long': [40],                                            # 1개 (고정)
         'pullback_rsi_short': [60],                                           # 1개 (고정)
         # Total: 5×1×1×1×1×6×6×4×1×7×1×1 = 1,080개 ✅
+    }
+
+
+def generate_adaptive_grid(trend_tf: str, max_mdd: float = 20.0, sample_ratio: float = 0.33) -> Dict:
+    """
+    Adaptive 샘플링 Grid 생성 (v7.29 - 성능 최적화)
+
+    전략:
+    - 핵심 파라미터 (atr_mult, filter_tf): 100% 검사
+    - 보조 파라미터 (trail_start_r, trail_dist_r, entry_validity_hours): 계층 샘플링
+    - 목표: 1,080개 → 360개 (33% 검사, -67%)
+
+    Args:
+        trend_tf: 추세 타임프레임
+        max_mdd: 최대 낙폭 허용치
+        sample_ratio: 샘플링 비율 (기본값: 0.33 = 33%)
+
+    Returns:
+        Adaptive 샘플링된 파라미터 그리드
+
+    Examples:
+        # 기본 33% 샘플링
+        grid = generate_adaptive_grid('1h')  # 360개 조합
+
+        # 50% 샘플링 (더 정밀)
+        grid = generate_adaptive_grid('1h', sample_ratio=0.5)  # 540개 조합
+    """
+    from config.parameters import get_param_range_by_mode, DEFAULT_PARAMS
+
+    tf_range = TF_AUTO_RANGE.get(trend_tf, TF_AUTO_RANGE['1h'])
+
+    # 전체 범위 가져오기
+    filter_tf_full = get_param_range_by_mode('filter_tf', 'deep') or [DEFAULT_PARAMS.get('filter_tf', '4h')]
+    atr_mult_full = get_param_range_by_mode('atr_mult', 'deep') or [DEFAULT_PARAMS.get('atr_mult', 1.5)]
+    trail_start_r_full = get_param_range_by_mode('trail_start_r', 'deep') or [DEFAULT_PARAMS.get('trail_start_r', 0.8)]
+    trail_dist_r_full = get_param_range_by_mode('trail_dist_r', 'deep') or [DEFAULT_PARAMS.get('trail_dist_r', 0.1)]
+    entry_validity_hours_full = get_param_range_by_mode('entry_validity_hours', 'deep') or [DEFAULT_PARAMS.get('entry_validity_hours', 6.0)]
+
+    # ✅ 계층 샘플링 (중요도 기반)
+    # Level 1: atr_mult (가장 중요, MDD 직접 영향) → 100% 검사
+    atr_mult = atr_mult_full  # 6개 전체
+
+    # Level 2: filter_tf (추세 필터) → 100% 검사
+    filter_tf = filter_tf_full  # 5개 전체
+
+    # Level 3: trail_start_r (수익 보호) → 50% 샘플링
+    trail_start_r = [trail_start_r_full[i] for i in range(0, len(trail_start_r_full), 2)]  # 6개 → 3개
+
+    # Level 4: trail_dist_r (익절 타이밍) → 50% 샘플링
+    trail_dist_r = [trail_dist_r_full[i] for i in range(0, len(trail_dist_r_full), 2)]  # 4개 → 2개
+
+    # Level 5: entry_validity_hours (매매 빈도) → 30% 샘플링
+    entry_validity_hours = [entry_validity_hours_full[0], entry_validity_hours_full[-1]]  # 7개 → 2개 (양 끝)
+
+    return {
+        'trend_interval': [trend_tf],
+        'filter_tf': filter_tf,                        # 5개 (100%)
+        'entry_tf': [tf_range['entry_tf'][0]],        # 1개
+        'leverage': [1],                               # 1개
+        'direction': ['Both'],                         # 1개
+        'max_mdd': [max_mdd],                         # 1개
+        'atr_mult': atr_mult,                         # 6개 (100%)
+        'trail_start_r': trail_start_r,               # 3개 (50%)
+        'trail_dist_r': trail_dist_r,                 # 2개 (50%)
+        'pattern_tolerance': [0.05],                  # 1개
+        'entry_validity_hours': entry_validity_hours, # 2개 (30%)
+        'pullback_rsi_long': [40],                    # 1개
+        'pullback_rsi_short': [60],                   # 1개
+        # Total: 5×1×1×1×1×6×3×2×1×2×1×1 = 360개 (-67%) ✅
     }
 
 
@@ -617,11 +800,51 @@ class OptimizationResult:
     symbol: str = ""                      # [NEW] 심볼 (백테스트용)
     timeframe: str = ""                   # [NEW] 타임프레임 (백테스트용)
     final_capital: float = 0.0            # [NEW] 최종 자본 (백테스트용)
+    backtest_start_time: Optional[pd.Timestamp] = None  # [NEW] 백테스트 시작 시간 (v7.22)
+    backtest_end_time: Optional[pd.Timestamp] = None    # [NEW] 백테스트 종료 시간 (v7.22)
+    backtest_duration_days: int = 0       # [NEW] 백테스트 기간 (일) (v7.22)
 
 
 # calculate_grade() 함수 제거 (utils.metrics.assign_grade_by_preset()로 대체)
 # 이전 위치: 라인 376-393
 # 새로운 등급 시스템은 프리셋별 목표 기준을 사용합니다.
+
+
+def extract_timestamps_from_trades(trades: List[Dict]) -> tuple[Optional[pd.Timestamp], Optional[pd.Timestamp], int]:
+    """거래 리스트에서 타임스탬프 추출
+
+    Args:
+        trades: 백테스트 거래 리스트
+
+    Returns:
+        (start_time, end_time, duration_days)
+        - start_time: 첫 거래 진입 시간
+        - end_time: 마지막 거래 청산 시간
+        - duration_days: 백테스트 기간 (일)
+
+    Example:
+        >>> trades = [{'entry_time': '2024-01-01', 'exit_time': '2024-01-02'}, ...]
+        >>> start, end, days = extract_timestamps_from_trades(trades)
+        >>> print(f"Period: {start} ~ {end} ({days} days)")
+    """
+    if not trades or len(trades) == 0:
+        return None, None, 0
+
+    try:
+        # 첫 거래 진입 시간
+        start_time = pd.to_datetime(trades[0]['entry_time'])
+
+        # 마지막 거래 청산 시간
+        end_time = pd.to_datetime(trades[-1]['exit_time'])
+
+        # 기간 계산 (일)
+        duration = (end_time - start_time).days
+
+        return start_time, end_time, duration
+
+    except (KeyError, ValueError, TypeError) as e:
+        logger.debug(f"Failed to extract timestamps: {e}")
+        return None, None, 0
 
 
 def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, fee):
@@ -639,13 +862,17 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
         if isinstance(filter_tf, list): filter_tf = filter_tf[0]
         
         # 전략 인스턴스 생성
-        # AlphaX7Core는 use_mtf=True 파라미터 필요
+        # AlphaX7Core는 use_mtf=True, strategy_type 파라미터 필요
         use_mtf = params.get('use_mtf', True)  # 기본값 True
+        strategy_type = params.get('strategy_type', 'macd')  # 기본값 'macd'
         try:
-            strategy = strategy_class(use_mtf=use_mtf)
+            strategy = strategy_class(use_mtf=use_mtf, strategy_type=strategy_type)
         except TypeError:
-            # use_mtf 파라미터가 없는 전략 클래스
-            strategy = strategy_class()
+            # use_mtf/strategy_type 파라미터가 없는 전략 클래스
+            try:
+                strategy = strategy_class(use_mtf=use_mtf)
+            except TypeError:
+                strategy = strategy_class()
         
         # 총 비용
         total_cost = slippage + fee
@@ -692,12 +919,12 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
             
         # 메트릭 계산 (공용 정적 메서드 호출)
         metrics = BacktestOptimizer.calculate_metrics(trades)
-        
+
         # MDD 필터
         max_mdd_limit = params.get('max_mdd', 100.0)
         if max_mdd_limit < 100.0 and abs(metrics['max_drawdown']) > max_mdd_limit:
             return None
-            
+
         # 등급 할당 (strategy_type은 나중에 _classify_results()에서 할당)
         # 여기서는 균형형 기준으로 임시 등급 부여
         grade = assign_grade_by_preset(
@@ -710,6 +937,9 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
                 'compound_return': metrics['compound_return']
             }
         )
+
+        # [NEW] 타임스탬프 추출 (v7.22)
+        start_time, end_time, duration_days = extract_timestamps_from_trades(trades)
 
         return OptimizationResult(
             params=params,
@@ -725,7 +955,10 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
             stability=metrics.get('stability', "⚠️"),
             grade=grade,
             avg_pnl=metrics.get('avg_pnl', 0.0),
-            cagr=metrics.get('cagr', 0.0)
+            cagr=metrics.get('cagr', 0.0),
+            backtest_start_time=start_time,      # [NEW] v7.22
+            backtest_end_time=end_time,          # [NEW] v7.22
+            backtest_duration_days=duration_days  # [NEW] v7.22
         )
     except Exception as e:
         # 디버깅: 예외 로깅
@@ -749,17 +982,20 @@ class BacktestOptimizer:
         self,
         strategy_class,
         df: Optional[pd.DataFrame] = None,
-        strategy_type: str = 'macd'
+        strategy_type: str = 'macd',
+        exchange: str = 'bybit'
     ):
         """
         Args:
             strategy_class: X7PlusStrategy 등 전략 클래스
             df: 백테스트용 데이터프레임
             strategy_type: 전략 유형 ('macd' or 'adx')
+            exchange: 거래소명 (v7.23 추가, 수수료 기반 범위 자동 조정)
         """
         self.strategy_class = strategy_class
         self.df = df
         self.strategy_type = strategy_type
+        self.exchange = exchange  # v7.23: 거래소별 최적화
         self.results: List[OptimizationResult] = []
         self.progress_callback: Optional[Callable] = None
         self.cancelled = False
@@ -778,6 +1014,17 @@ class BacktestOptimizer:
         
     def _resample(self, df: pd.DataFrame, target_tf: str, quiet: bool = False) -> pd.DataFrame:
         """15m → Target TF 리샘플링 (공용 함수 사용)"""
+        # [FIX v7.26] 동일 타임프레임이면 리샘플링 건너뛰기
+        # DataFrame이 이미 target_tf인지 확인 (캔들 수로 추정)
+        if len(df) <= 55000:  # 1h 이상 타임프레임 (15m이면 203,823개)
+            if not quiet:
+                logger.info(f"[OPT] 리샘플링 건너뛰기: 이미 {target_tf} 데이터 ({len(df)}개)")
+            # 지표만 추가
+            if 'rsi' not in df.columns:
+                from utils.indicators import add_all_indicators
+                df = add_all_indicators(df.copy())
+            return df
+
         # 공용 utils.data_utils.resample_data 사용
         if shared_resample:
             return shared_resample(df, target_tf, add_indicators=True)
@@ -810,7 +1057,8 @@ class BacktestOptimizer:
     def run_optimization(self, df: Optional[pd.DataFrame], grid: Dict, max_workers: int = 4,
                          metric: str = 'WinRate', task_callback: Optional[Callable] = None,
                          capital_mode: str = 'compound', n_cores: Optional[int] = None,
-                         mode: str = 'standard') -> List[OptimizationResult]:
+                         mode: str = 'standard', skip_filter: bool = False,
+                         progress_callback: Optional[Callable[[int, int], None]] = None) -> List[OptimizationResult]:
         """
         그리드 서치 최적화 실행
         
@@ -834,15 +1082,15 @@ class BacktestOptimizer:
         if self.df is None or self.df.empty:
             raise ValueError("데이터가 설정되지 않았습니다")
         
-        # [FIX] df 타임스탬프 변환 (한 번만 수행)
-        df = self.df.copy()
-        if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
-            first_ts = df['timestamp'].iloc[0]
+        # ✅ v7.28: 저사양 PC 최적화 - 불필요한 복사 제거
+        # df 복사 대신 inplace 변환 (메모리 절약)
+        if not pd.api.types.is_datetime64_any_dtype(self.df['timestamp']):
+            first_ts = self.df['timestamp'].iloc[0]
             if isinstance(first_ts, (int, float, np.number)) and first_ts > 100000000000:
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+                self.df['timestamp'] = pd.to_datetime(self.df['timestamp'], unit='ms', utc=True)
             else:
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-        self.df = df
+                self.df['timestamp'] = pd.to_datetime(self.df['timestamp'])
+        df = self.df  # 참조만 유지 (복사 안 함)
 
         self.cancelled = False
         self.results = []
@@ -891,23 +1139,34 @@ class BacktestOptimizer:
             futures = []
             for combo in combinations:
                 params = dict(zip(keys, combo))
-                
+
+                # strategy_type 추가 (v7.22.1)
+                params['strategy_type'] = self.strategy_type
+
                 # 해당 조합에 맞는 cached df 추출
                 trend_tf = params.get('trend_interval', '4h')
                 if isinstance(trend_tf, list): trend_tf = trend_tf[0]
                 entry_tf = params.get('entry_tf')
                 if isinstance(entry_tf, list): entry_tf = entry_tf[0]
                 if not entry_tf:
-                    try:
-                        from GUI.constants import TF_MAPPING
-                    except ImportError:
-                        # Fallback if GUI package not found or structure differs
-                        TF_MAPPING = {'1h': '15m', '4h': '1h', '1d': '4h'}
-                    entry_tf = TF_MAPPING.get(trend_tf, '15min')
+                    # [FIX v7.26] DEFAULT_PARAMS에서 entry_tf 가져오기 (15m → 1h)
+                    entry_tf = DEFAULT_PARAMS.get('entry_tf', '15m')
                 
                 df_pattern = self._resample_cache.get(f"p_{trend_tf}")
                 df_entry = self._resample_cache.get(f"e_{entry_tf}")
-                
+
+                # [FIX] 캐시 miss 시 동적 리샘플링 (v7.22)
+                if df_pattern is None:
+                    df_pattern = self._resample(df, trend_tf, quiet=True)
+                    self._resample_cache[f"p_{trend_tf}"] = df_pattern
+
+                if df_entry is None:
+                    if entry_tf and entry_tf not in ['15min', '15m']:
+                        df_entry = self._resample(df, entry_tf, quiet=True)
+                    else:
+                        df_entry = df.copy()
+                    self._resample_cache[f"e_{entry_tf}"] = df_entry
+
                 # 파라미터에서 값 추출
                 _symbol = params.get('symbol', 'BTCUSDT')
                 _leverage = params.get('leverage', 3)
@@ -925,15 +1184,28 @@ class BacktestOptimizer:
                     _fee
                 ))
             
+            completed = 0
             for i, future in enumerate(as_completed(futures)):
                 if self.cancelled:
                     logger.info("❌ 최적화 취소됨")
                     executor.shutdown(wait=False, cancel_futures=True)
                     break
 
+                completed += 1
+
+                # 진행률 콜백 호출 (v7.26.2)
+                if progress_callback:
+                    progress_callback(completed, total)
+
                 try:
                     # 타임아웃 10초 설정 (Deep 모드 대응)
                     result = future.result(timeout=10)
+
+                    # [DEBUG] None 반환 로그 추가
+                    if result is None:
+                        # logger.debug(f"Worker returned None (likely 0 trades or filtered out)")
+                        pass
+
                     if result:
                         # === 필터링 조건 (v3.0 - SSOT 기반 사용자 목표) ===
                         # 전략: 고품질 결과만 수집 → 정렬로 최적 조합 찾기
@@ -948,18 +1220,26 @@ class BacktestOptimizer:
                         # 거래 빈도 계산 (avg_trades_per_day는 이미 result에 있음)
                         avg_trades_per_day = result.avg_trades_per_day
 
-                        passes_filter = (
-                            result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
-                            abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
-                            result.simple_return >= OPTIMIZATION_FILTER['min_total_return'] and
-                            avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
-                            result.trades >= OPTIMIZATION_FILTER['min_absolute_trades']
-                        )
-
-                        if passes_filter:
+                        # v7.22: skip_filter 플래그 체크
+                        if skip_filter:
+                            # Coarse Grid: 필터 우회, 모든 결과 수집
                             self.results.append(result)
                             if task_callback:
                                 task_callback(result)
+                        else:
+                            # 표준 필터 적용
+                            passes_filter = (
+                                result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
+                                abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
+                                result.simple_return >= OPTIMIZATION_FILTER['min_total_return'] and
+                                avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
+                                result.trades >= OPTIMIZATION_FILTER['min_absolute_trades']
+                            )
+
+                            if passes_filter:
+                                self.results.append(result)
+                                if task_callback:
+                                    task_callback(result)
                 except Exception as e:
                     # 프로세스 오류 로그
                     pass
@@ -973,24 +1253,30 @@ class BacktestOptimizer:
         if self.results:
             # 1. 지정된 메트릭으로 전체 정렬
             self.results.sort(key=lambda x: getattr(x, metric, 0), reverse=True)
-            
-            # 2. [NEW] 대표 유형 매칭 (원본 리스트는 유지하고 태깅만 수행)
-            # 상위 1000개 결과 중 중복 없는 대표 유형들 선정
-            top_results = self.results[:1000]
-            unique_for_classification = self.filter_unique_results(top_results, max_count=100)
-            representatives = self._classify_results(unique_for_classification, mode=mode)
-            
-            # 대표 유형들을 self.results 상단에 배치하고 나머지는 순서 유지
-            rep_keys = [str(r.params) for r in representatives]
-            final_list = representatives + [r for r in self.results if str(r.params) not in rep_keys]
-            
-            self.results = final_list[:2000] # 메모리 관리를 위해 상위 2000개로 제한
+
+            # 2. [NEW] v7.22: Coarse 모드는 분류 건너뛰기 (모든 결과 반환)
+            if mode == 'coarse':
+                logger.info(f"⚠️ [Coarse Mode] Skipping classification, returning all results")
+                # 상위 500개로 제한 (메모리 관리)
+                self.results = self.results[:500]
+            else:
+                # 2. [NEW] 대표 유형 매칭 (원본 리스트는 유지하고 태깅만 수행)
+                # 상위 1000개 결과 중 중복 없는 대표 유형들 선정
+                top_results = self.results[:1000]
+                unique_for_classification = self.filter_unique_results(top_results, max_count=100)
+                representatives = self._classify_results(unique_for_classification, mode=mode)
+
+                # 대표 유형들을 self.results 상단에 배치하고 나머지는 순서 유지
+                rep_keys = [str(r.params) for r in representatives]
+                final_list = representatives + [r for r in self.results if str(r.params) not in rep_keys]
+
+                self.results = final_list[:2000] # 메모리 관리를 위해 상위 2000개로 제한
 
 
         # 리샘플링 캐시 정리 (메모리 해제)
         self._resample_cache = {}
-        
-        logger.info(f"✅ 최적화 완료: {len(self.results)}개 대표 결과 도출")
+
+        logger.info(f"✅ 최적화 완료: {len(self.results)}개 결과 반환")
         return self.results
 
     def save_results_to_csv(
@@ -1121,14 +1407,14 @@ class BacktestOptimizer:
                     strategy.prepare_data()
             
             # ✅ 총 비용 계산 (슬리피지 + 수수료)
-            # AlphaX7Core는 'slippage' 인자를 차감할 때 2배를 적용하므로 (pnl - slippage*2)
-            # 왕복 수수료와 슬리피지를 합산하여 전달하면 됨.
-            # 예: 슬리피지 0.05%, 수수료 0.05% -> 합 0.1% -> 로직상 2배인 0.2%(왕복) 비용 처리
-            total_cost = slippage + fee
-            
+            # [v7.26] 진입 비용 (Limit/Maker)
+            # 청산 비용은 strategy_core.py에서 BACKTEST_EXIT_COST로 자동 차감 (0.065%)
+            # 따라서 여기서는 진입 비용만 전달 (기본: 0.0002 = 0.02%)
+            entry_cost = slippage + fee
+
             # 기본 파라미터와 병합 (DEFAULT_PARAMS 참조)
             backtest_params = {
-                'slippage': total_cost,  # 총 비용 적용
+                'slippage': entry_cost,  # DEPRECATED: 명칭 혼동, 실제로는 진입 비용
                 'atr_mult': params.get('atr_mult', DEFAULT_PARAMS.get('atr_mult', 1.5)),
                 'trail_start_r': params.get('trail_start_r', DEFAULT_PARAMS.get('trail_start_r', 0.8)),
                 'trail_dist_r': params.get('trail_dist_r', DEFAULT_PARAMS.get('trail_dist_r', 0.5)),
@@ -1141,7 +1427,7 @@ class BacktestOptimizer:
             
             # 📊 디버깅 로그
             if params.get('trend_interval') == '1d' and params.get('atr_mult') == 1.5:
-                logger.info(f"📊 [OPT] slippage={total_cost:.4f}, atr_mult={backtest_params['atr_mult']}, trail_start_r={backtest_params['trail_start_r']}, trail_dist_r={backtest_params['trail_dist_r']}")
+                logger.info(f"📊 [OPT] entry_cost={entry_cost:.4f}, atr_mult={backtest_params['atr_mult']}, trail_start_r={backtest_params['trail_start_r']}, trail_dist_r={backtest_params['trail_dist_r']}")
             
             # 전략 실행 시 전달할 파라미터
             # X7PlusStrategy.run_backtest_plus에 filter_tf 전달
@@ -1153,7 +1439,7 @@ class BacktestOptimizer:
                 trades = strategy.run_backtest(
                     df_pattern=df_pattern,
                     df_entry=df_entry,  # [FIX] 원본 15min 데이터 사용
-                    slippage=total_cost,  # [FIX] 총 비용 전달
+                    slippage=entry_cost,  # [v7.26] 진입 비용 전달
                     atr_mult=backtest_params.get('atr_mult'),
                     trail_start_r=backtest_params.get('trail_start_r'),
                     trail_dist_r=backtest_params.get('trail_dist_r'),
@@ -1271,130 +1557,63 @@ class BacktestOptimizer:
     @staticmethod
     def calculate_metrics(trades: List[Dict]) -> Dict:
         """
-        거래 결과에서 메트릭 계산 (통합 정적 메서드)
-        
+        거래 결과에서 메트릭 계산 (SSOT 완전 통합 v7.24)
+
         ═══════════════════════════════════════════════════════════
         📊 지표 계산 공식 (METRICS CALCULATION FORMULAS)
         ═══════════════════════════════════════════════════════════
-        
+
         1. win_rate (승률)
            공식: (수익 거래 수 / 전체 거래 수) × 100
            영향: filter_tf↑ → 승률↑, atr_mult↑ → 승률↑
-        
+
         2. simple_return (단리 수익률)
            공식: Σ(각 거래의 PnL%)
            영향: leverage↑ → 수익↑, trail_start_r↑ → 수익↑
-        
+
         3. compound_return (복리 수익률)
            공식: (Π(1 + PnL%/100) - 1) × 100
            영향: leverage↑ → 수익↑↑ (복리 효과)
-        
+
         4. max_drawdown (MDD, 최대 낙폭)
            공식: max((peak - current) / peak × 100)
            영향: leverage↑ → MDD↑, atr_mult↑ → MDD↑
-        
+
         5. sharpe_ratio (샤프 비율)
            공식: (평균 수익 / 표준편차) × √(252 × 4)
            영향: leverage↑ → 변동성↑ → 샤프↓
-        
+
         6. profit_factor (수익 팩터)
            공식: 총 수익 / 총 손실
            영향: 전체 파라미터의 복합 효과
         ═══════════════════════════════════════════════════════════
+
+        Note:
+            v7.24부터 utils.metrics.calculate_backtest_metrics()를 직접 호출합니다.
+            클램핑 없이 실제 PnL을 사용하여 정확한 메트릭을 계산합니다.
+            이는 MetaOptimizer와 동일한 방식이며, SSOT 원칙을 완전히 준수합니다.
         """
         if not trades:
             return {k: 0 for k in ['win_rate', 'total_return', 'simple_return', 'compound_return', 'max_drawdown', 'sharpe_ratio', 'profit_factor']}
-            
-        pnls = [t.get('pnl', 0) for t in trades]
-        pnl_series = pd.Series(pnls)
 
-        # 기본 메트릭 - SSOT 사용
-        win_rate = calculate_win_rate(trades)
-        simple_return = pnl_series.sum()
-        
-        # 1. 누적 수익률 (Compound/Equity) 계산
-        # [FIX] 단일 거래 PnL 상한선 적용 (±50%) - 오버플로우 방지
-        MAX_SINGLE_PNL = 50.0  # 단일 거래 최대 수익률 상한
-        MIN_SINGLE_PNL = -50.0  # 단일 거래 최대 손실률 하한
-        
-        equity = 1.0
-        cumulative_equity = [1.0]
-        for p in pnls:
-            # PnL 클램핑 (상한/하한 적용)
-            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, p))
-            equity *= (1 + clamped_pnl / 100)
-            if equity <= 0: equity = 0
-            cumulative_equity.append(equity)
-            if equity == 0: break
-        
-        compound_return = (equity - 1) * 100
-        compound_return = max(-100.0, min(compound_return, 1e10))  # 범위 제한: -100% ~ 1e10%
+        # ✅ SSOT 직접 호출 (클램핑 없음)
+        from utils.metrics import calculate_backtest_metrics
 
-        # 2. 최대 낙폭 (MDD %) 계산 - SSOT 사용
-        # PnL 클램핑이 적용된 trades 리스트 생성
-        clamped_trades = []
-        for p in pnls:
-            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, p))
-            clamped_trades.append({'pnl': clamped_pnl})
+        metrics = calculate_backtest_metrics(trades, leverage=1, capital=100.0)
 
-        # SSOT calculate_mdd() 호출
-        max_drawdown = calculate_mdd(clamped_trades)
-        
-        # 3. 샤프 비율 (Sharpe Ratio, 연간화) - SSOT
-        sharpe_ratio = calculate_sharpe_ratio(pnl_series.tolist(), periods_per_year=252 * 4)
-
-        # 4. Profit Factor - SSOT
-        trades_for_pf = [{'pnl': p} for p in pnls]
-        profit_factor = calculate_profit_factor(trades_for_pf)
-
-        # 5. 안정성 계산 - ✅ Phase 1-E P0-2: SSOT 사용
-        from utils.metrics import calculate_stability
-        stability = calculate_stability(pnls)
-
-        # 6. 일평균 거래수 계산
-        avg_trades_per_day = 0.0
-        if len(trades) >= 2:
-            try:
-                # entry_time 또는 entry_idx 기반 기간 계산
-                first_entry = trades[0].get('entry_time') or trades[0].get('entry_idx', 0)
-                last_entry = trades[-1].get('entry_time') or trades[-1].get('entry_idx', len(trades))
-                
-                if hasattr(first_entry, 'astype'):  # numpy datetime64
-                    first_entry = pd.Timestamp(first_entry)
-                    last_entry_ts = pd.Timestamp(last_entry)
-                    # NaT 체크
-                    if isinstance(last_entry_ts, type(pd.NaT)):
-                        raise ValueError("last_entry is NaT")
-                    last_entry = last_entry_ts
-
-                if isinstance(first_entry, (pd.Timestamp, np.datetime64)):
-                    first_ts = pd.Timestamp(first_entry)
-                    last_ts = pd.Timestamp(last_entry)
-                    # NaT 체크
-                    if isinstance(first_ts, type(pd.NaT)) or isinstance(last_ts, type(pd.NaT)):
-                        raise ValueError("Timestamp is NaT")
-                    total_days = max((last_ts - first_ts).days, 1)  # type: ignore[operator]
-                else:
-                    # index 기반 (대략 1시간봉 기준 24캔들 = 1일)
-                    total_days = max((last_entry - first_entry) / 24, 1)  # type: ignore[operator]
-                
-                avg_trades_per_day = round(len(trades) / total_days, 2)
-            except Exception:
-
-                avg_trades_per_day = round(len(trades) / 30, 2)  # 기본 30일 가정
-
+        # 키 이름 변환 (하위 호환성 유지)
         result = {
-            'win_rate': round(win_rate, 2),
-            'total_pnl': round(simple_return, 2),  # ✅ SSOT 표준 필드명
-            'simple_return': round(simple_return, 2),
-            'compound_return': round(compound_return, 2),
-            'mdd': round(max_drawdown, 2),  # ✅ SSOT 표준 필드명
-            'sharpe_ratio': round(sharpe_ratio, 2),
-            'profit_factor': round(profit_factor, 2),
-            'stability': stability,
-            'avg_trades_per_day': avg_trades_per_day,
-            'avg_pnl': round(pnl_series.mean(), 4),
-            'cagr': round(BacktestOptimizer._calculate_cagr(equity, trades), 2)
+            'win_rate': round(metrics['win_rate'], 2),
+            'total_pnl': round(metrics['total_pnl'], 2),
+            'simple_return': round(metrics['total_pnl'], 2),
+            'compound_return': round(metrics['compound_return'], 2),
+            'mdd': round(metrics['mdd'], 2),
+            'sharpe_ratio': round(metrics['sharpe_ratio'], 2),
+            'profit_factor': round(metrics['profit_factor'], 2),
+            'stability': metrics['stability'],
+            'avg_trades_per_day': metrics['avg_trades_per_day'],
+            'avg_pnl': round(metrics['avg_pnl'], 4),
+            'cagr': round(metrics['cagr'], 2)
         }
 
         # 하위 호환성: alias 제공 (Deprecated)
@@ -1693,14 +1912,282 @@ class BacktestOptimizer:
         
         return pd.DataFrame(rows)
 
+    # ==================== v7.22: Coarse-to-Fine API ====================
+
+    def run_coarse_grid_optimization(
+        self,
+        df: pd.DataFrame,
+        trend_tf: str,
+        metric: str = 'sharpe_ratio',
+        n_cores: Optional[int] = None
+    ) -> List[OptimizationResult]:
+        """
+        Coarse Grid 최적화 (넓은 범위 탐색)
+
+        3³ × 3 × 3 = 243개 조합:
+        - atr_mult: [1.0, 2.0, 3.0]
+        - filter_tf: ['4h', '12h', '1d']
+        - trail_start_r: [1.0, 2.0, 3.0]
+        - trail_dist_r: [0.015, 0.020, 0.030]
+        - entry_validity_hours: [6, 48, 96]
+
+        Args:
+            df: 백테스트 데이터
+            trend_tf: 추세 타임프레임
+            metric: 최적화 메트릭 ('sharpe_ratio', 'profit_factor', 등)
+            n_cores: CPU 코어 수 (None이면 자동)
+
+        Returns:
+            OptimizationResult 리스트 (정렬됨)
+        """
+        logger.info(f"🔍 [Coarse] Starting Coarse Grid optimization...")
+
+        # v7.23: 거래소별 수수료 및 파라미터 범위 자동 조정
+        from config.constants.trading import get_total_cost
+        from config.parameters import (
+            get_atr_range_by_exchange,
+            get_filter_tf_range_by_exchange
+        )
+
+        # 1. 거래소별 수수료 계산
+        total_cost = get_total_cost(self.exchange)
+
+        # 2. 거래소별 파라미터 범위
+        atr_range = get_atr_range_by_exchange(self.exchange, mode='coarse')
+        filter_range = get_filter_tf_range_by_exchange(self.exchange, mode='coarse')
+
+        logger.info(f"📊 [{self.exchange.upper()}] Total Cost: {total_cost*100:.3f}%")
+        logger.info(f"  ATR Range: {atr_range}")
+        logger.info(f"  Filter Range: {filter_range}")
+
+        # Coarse Grid 정의 (거래소별 조정)
+        # MACD: len(atr_range) × len(filter_range) × 3 × 3 × 3 조합
+        # ADX: 위 조합 × 3 × 3 추가
+        coarse_grid = {
+            'trend_interval': [trend_tf],
+            'atr_mult': atr_range,           # 거래소별 범위
+            'filter_tf': filter_range,        # 거래소별 범위
+            'trail_start_r': [1.0, 2.0, 3.0],
+            'trail_dist_r': [0.015, 0.020, 0.030],
+            'entry_validity_hours': [6.0, 48.0, 96.0],
+            'slippage': [total_cost],         # 거래소별 수수료
+            'fee': [0]  # slippage에 이미 포함되어 있으므로 0으로 설정
+        }
+
+        # ADX 전략이면 ADX 파라미터 추가
+        if self.strategy_type == 'adx':
+            coarse_grid['adx_period'] = [10, 14, 18]         # 3개 (빠름, 표준, 느림)
+            coarse_grid['adx_threshold'] = [20.0, 25.0, 30.0]  # 3개 (Wilder 1978 표준 범위 25±5)
+
+        # 조합 수 확인
+        import itertools
+        combinations = list(itertools.product(
+            *[coarse_grid[k] for k in coarse_grid.keys()]
+        ))
+        logger.info(f"📊 [Coarse] Grid size: {len(combinations)} combinations")
+
+        # ⚠️ WORKAROUND: 임시로 필터 값을 완화한 후 실행
+        from config import parameters
+        original_filter = parameters.OPTIMIZATION_FILTER.copy()
+
+        # 필터 완전 비활성화
+        parameters.OPTIMIZATION_FILTER = {
+            'min_win_rate': 0.0,
+            'max_mdd': 999.0,
+            'min_total_return': -9999.0,
+            'min_trades_per_day': 0.0,
+            'min_absolute_trades': 0
+        }
+        logger.info(f"⚠️ [Coarse] Filter temporarily disabled")
+
+        try:
+            # 기존 run_optimization 호출
+            results = self.run_optimization(
+                df=df,
+                grid=coarse_grid,
+                metric=metric,
+                n_cores=n_cores,
+                mode='coarse',  # ← 'coarse' 모드 사용 (분류 건너뛰기)
+                skip_filter=True  # ← [FIX] 필터 완전 우회 (라인 1808 완화와 일관성)
+            )
+        finally:
+            # 필터 복원
+            parameters.OPTIMIZATION_FILTER = original_filter
+            logger.info(f"✓ [Coarse] Filter restored")
+
+        logger.info(f"✓ [Coarse] Complete: {len(results)} results")
+        return results
+
+    def run_fine_grid_optimization(
+        self,
+        df: pd.DataFrame,
+        trend_tf: str,
+        coarse_results: List[OptimizationResult],
+        top_n: int = 20,
+        metric: str = 'sharpe_ratio',
+        n_cores: Optional[int] = None
+    ) -> List[OptimizationResult]:
+        """
+        Fine Grid 최적화 (정밀 탐색)
+
+        coarse_results 상위 top_n개에서 백분위수 추출:
+        - 10~90% 범위로 3단계 그리드 생성
+        - 약 27개 조합 (3³)
+
+        Args:
+            df: 백테스트 데이터
+            trend_tf: 추세 타임프레임
+            coarse_results: Coarse Grid 결과
+            top_n: 상위 N개 사용 (기본값 20, 전체의 ~8%)
+            metric: 최적화 메트릭
+            n_cores: CPU 코어 수
+
+        Returns:
+            OptimizationResult 리스트 (정렬됨)
+        """
+        logger.info(f"🎯 [Fine] Starting Fine Grid optimization...")
+
+        if not coarse_results:
+            logger.warning(f"❌ [Fine] No coarse results provided")
+            return []
+
+        # 상위 N개 추출
+        top_results = coarse_results[:top_n]
+        logger.info(f"📊 [Fine] Analyzing top {len(top_results)} results...")
+
+        # 백분위수 기반 범위 추출
+        fine_grid = self._extract_fine_ranges(top_results, trend_tf)
+
+        # 조합 수 확인
+        import itertools
+        combinations = list(itertools.product(
+            *[fine_grid[k] for k in fine_grid.keys()]
+        ))
+        logger.info(f"📊 [Fine] Grid size: {len(combinations)} combinations")
+
+        # 기존 run_optimization 호출
+        # [FIX] v7.22.1: Fine Grid도 필터 완화 (ADX 전략 지원)
+        from config import parameters
+        original_filter = parameters.OPTIMIZATION_FILTER.copy()
+
+        # 필터 완화 (Fine Grid는 Coarse보다 약간 엄격)
+        parameters.OPTIMIZATION_FILTER = {
+            'min_win_rate': 70.0,  # 70% 이상
+            'max_mdd': 30.0,       # 30% 이하
+            'min_total_return': 0.0,  # 0% 이상
+            'min_trades_per_day': 0.3,  # 0.3회/일 이상
+            'min_absolute_trades': 5  # 최소 5개
+        }
+
+        try:
+            results = self.run_optimization(
+                df=df,
+                grid=fine_grid,
+                metric=metric,
+                n_cores=n_cores,
+                mode='standard',
+                skip_filter=False  # 완화된 필터 사용
+            )
+        finally:
+            # 필터 복원
+            parameters.OPTIMIZATION_FILTER = original_filter
+
+        logger.info(f"✓ [Fine] Complete: {len(results)} results")
+        return results
+
+    def _extract_fine_ranges(
+        self,
+        top_results: List[OptimizationResult],
+        trend_tf: str
+    ) -> Dict:
+        """
+        상위 결과에서 백분위수 기반 Fine Grid 범위 추출
+
+        Args:
+            top_results: 상위 결과 리스트
+            trend_tf: 추세 타임프레임
+
+        Returns:
+            Fine Grid 딕셔너리 (3개 값씩)
+        """
+        from collections import Counter
+
+        # 파라미터별 값 수집
+        atr_mults = [r.params.get('atr_mult', 1.5) for r in top_results]
+        trail_starts = [r.params.get('trail_start_r', 1.0) for r in top_results]
+        trail_dists = [r.params.get('trail_dist_r', 0.02) for r in top_results]
+        entry_hours = [r.params.get('entry_validity_hours', 6.0) for r in top_results]
+        filter_tfs = [r.params.get('filter_tf', '4h') for r in top_results]
+
+        # ADX 파라미터 수집 (ADX 전략인 경우만)
+        adx_periods = [r.params.get('adx_period', 14) for r in top_results if 'adx_period' in r.params]
+        adx_thresholds = [r.params.get('adx_threshold', 25.0) for r in top_results if 'adx_threshold' in r.params]
+
+        # 수치형: 10~90% 백분위수 (3단계)
+        def percentile_range(values: List[float], steps: int = 3) -> List[float]:
+            if not values:
+                return []
+            p10 = float(np.percentile(values, 10))
+            p90 = float(np.percentile(values, 90))
+            if p10 == p90:
+                # ✅ FIX v7.22.1: 수렴 시 ±20% 범위로 확장 (국소 탐색)
+                center = p10
+                if center > 0:
+                    # 양수면 비율 기반 확장
+                    return [float(x) for x in np.linspace(center * 0.8, center * 1.2, steps)]
+                else:
+                    # 0 근처면 절대값 기반 확장
+                    return [float(x) for x in np.linspace(center - 0.2, center + 0.2, steps)]
+            return [float(x) for x in np.linspace(p10, p90, steps)]
+
+        # 카테고리형: 빈도 상위 3개
+        def top_categories(values: List[str], top_k: int = 3) -> List[str]:
+            counts = Counter(values)
+            return [v for v, _ in counts.most_common(top_k)]
+
+        fine_grid = {
+            'trend_interval': [trend_tf],
+            'atr_mult': percentile_range(atr_mults, 3),
+            'filter_tf': top_categories(filter_tfs, 3),
+            'trail_start_r': percentile_range(trail_starts, 3),
+            'trail_dist_r': percentile_range(trail_dists, 3),
+            'entry_validity_hours': percentile_range(entry_hours, 3)
+        }
+
+        # v7.23: 거래소별 수수료 적용 (Coarse와 일관성 보장)
+        from config.constants.trading import get_total_cost
+        total_cost = get_total_cost(self.exchange)
+        fine_grid['slippage'] = [total_cost]
+        fine_grid['fee'] = [0]
+
+        # ADX 파라미터 추가 (ADX 전략인 경우)
+        if adx_periods and adx_thresholds:
+            fine_grid['adx_period'] = percentile_range(adx_periods, 3)
+            fine_grid['adx_threshold'] = percentile_range(adx_thresholds, 3)
+
+        logger.info(f"📊 [Fine] Extracted ranges:")
+        for k, v in fine_grid.items():
+            if k != 'trend_interval':
+                logger.info(f"  {k}: {v}")
+
+        return fine_grid
+
 
 # 테스트
 if __name__ == "__main__":
+    # ✅ v7.28: 멀티프로세싱 스타트 메서드 명시 (Windows 호환성)
+    import multiprocessing as mp
+    try:
+        mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        # 이미 설정된 경우 무시
+        pass
+
     import os
     import sys
     import pandas as pd
     import traceback
-    
+
     try:
         # 1. 경로 설정
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

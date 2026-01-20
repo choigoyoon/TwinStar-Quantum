@@ -35,25 +35,13 @@ try:
 except ImportError:
     DEFAULT_PARAMS = {}
 
-# 디자인 토큰
+# 디자인 토큰 (Issue #2 Fix: 중앙화된 Fallback 사용, v7.27)
 try:
-    from ui.design_system.tokens import Colors, Spacing, Size
+    from ui.design_system.tokens import Colors, Spacing, Size, Typography
 except ImportError:
-    # Fallback (should not happen in production)
-    class _ColorsFallback:
-        success = "#3fb950"
-        danger = "#f85149"
-        warning = "#d29922"
-        text_primary = "#f0f6fc"
-        text_secondary = "#8b949e"
-    class _SpacingFallback:
-        i_space_2 = 8
-        i_space_3 = 12
-    class _SizeFallback:
-        control_min_width = 120
-    Colors = _ColorsFallback()  # type: ignore
-    Spacing = _SpacingFallback()  # type: ignore
-    Size = _SizeFallback()  # type: ignore
+    from ui.design_system.fallback_tokens import Colors, Spacing, Size, Typography
+    import logging
+    logging.warning("[BacktestWidget] Using fallback tokens - SSOT import failed")
 
 logger = get_module_logger(__name__)
 
@@ -88,9 +76,11 @@ class SingleBacktestWidget(QWidget):
         self.stat_winrate: Optional[StatLabel] = None
         self.stat_return: Optional[StatLabel] = None
         self.stat_mdd: Optional[StatLabel] = None
+        self.stat_safe_lev: Optional[StatLabel] = None  # [v7.25] 안전 레버리지
 
-        # 진행 바
+        # 진행 바 및 상태 표시
         self.progress_bar: Optional[QProgressBar] = None
+        self.status_label: Optional[QLabel] = None
 
         # 버튼
         self.run_btn: Optional[QPushButton] = None
@@ -186,7 +176,18 @@ class SingleBacktestWidget(QWidget):
         # Row 3: 통계 표시
         layout.addLayout(self._create_stats_row())
 
-        # Row 4: 진행 바
+        # Row 4: 상태 라벨 + 진행 바
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.text_secondary};
+                font-size: {Typography.text_sm};
+                padding: {Spacing.space_1} 0;
+            }}
+        """)
+        self.status_label.setVisible(False)  # 초기에는 숨김
+        layout.addWidget(self.status_label)
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setStyleSheet(BacktestStyles.progress_bar())
         self.progress_bar.setValue(0)
@@ -290,7 +291,7 @@ class SingleBacktestWidget(QWidget):
         # Preset
         row.addWidget(QLabel("Preset:"))
         self.preset_combo = QComboBox()
-        self.preset_combo.addItems(['None', 'aggressive', 'balanced', 'conservative'])
+        self._load_presets()  # Load from files + hardcoded
         self.preset_combo.setStyleSheet(BacktestStyles.combo_box())
         self.preset_combo.currentTextChanged.connect(self._on_preset_changed)
         row.addWidget(self.preset_combo)
@@ -299,19 +300,21 @@ class SingleBacktestWidget(QWidget):
         return row
 
     def _create_stats_row(self) -> QHBoxLayout:
-        """통계 표시 행"""
+        """통계 표시 행 (v7.25 업데이트: 안전 레버리지 추가)"""
         row = QHBoxLayout()
         row.setSpacing(Spacing.i_space_2)  # 8px
 
-        self.stat_trades = StatLabel("Trades", "-")
-        self.stat_winrate = StatLabel("Win Rate", "-")
-        self.stat_return = StatLabel("Return", "-")
-        self.stat_mdd = StatLabel("MDD", "-")
+        self.stat_trades = StatLabel("거래수", "-")  # [v7.25.3] 한글화
+        self.stat_winrate = StatLabel("승률", "-")  # [v7.25.3] 한글화
+        self.stat_return = StatLabel("수익률 (복리)", "-")  # [v7.25.2] 간결한 표기
+        self.stat_mdd = StatLabel("낙폭 (MDD)", "-")  # [v7.25.3] 한글화
+        self.stat_safe_lev = StatLabel("안전 레버리지 (낙폭 10% 기준)", "-")  # [v7.25.3] 한글화
 
         row.addWidget(self.stat_trades)
         row.addWidget(self.stat_winrate)
         row.addWidget(self.stat_return)
         row.addWidget(self.stat_mdd)
+        row.addWidget(self.stat_safe_lev)  # [v7.25] 신규
         row.addStretch()
 
         return row
@@ -330,6 +333,18 @@ class SingleBacktestWidget(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self._stop_backtest)
         row.addWidget(self.stop_btn)
+
+        # ✅ Phase 4: 최적 결과 자동 저장 체크박스
+        self.auto_save_checkbox = QCheckBox("Auto-save result")
+        self.auto_save_checkbox.setChecked(False)  # 기본값: 비활성화
+        self.auto_save_checkbox.setToolTip("Automatically save backtest result as preset")
+        self.auto_save_checkbox.setStyleSheet(f"""
+            QCheckBox {{
+                font-size: 12px;
+                color: {Colors.text_primary};
+            }}
+        """)
+        row.addWidget(self.auto_save_checkbox)
 
         row.addStretch()
         return row
@@ -408,11 +423,71 @@ class SingleBacktestWidget(QWidget):
         """거래소 변경 이벤트"""
         self._refresh_data_sources()
 
+    def _load_presets(self):
+        """프리셋 목록 로드 (파일 기반 + 하드코딩)"""
+        if not self.preset_combo:
+            return
+
+        # 1. 기본 항목
+        self.preset_combo.addItem("None")
+
+        # 2. Universal 프리셋 (우선 표시)
+        from pathlib import Path
+        preset_dir = Path('presets')
+        if preset_dir.exists():
+            # Universal 프리셋 (최신순)
+            universal_presets = list(preset_dir.glob('universal_*.json'))
+            for preset_path in sorted(universal_presets, reverse=True):
+                preset_name = preset_path.stem
+                self.preset_combo.addItem(f"🌐 {preset_name}", str(preset_path))
+
+            # 기타 프리셋
+            other_presets = [
+                p for p in preset_dir.glob('*.json')
+                if not p.name.startswith('universal_')
+            ]
+            for preset_path in sorted(other_presets, reverse=True):
+                preset_name = preset_path.stem
+                self.preset_combo.addItem(preset_name, str(preset_path))
+
+        # 3. 하드코딩 프리셋 (기존 호환성)
+        self.preset_combo.addItem("aggressive")
+        self.preset_combo.addItem("balanced")
+        self.preset_combo.addItem("conservative")
+
     def _on_preset_changed(self, preset_name: str):
         """프리셋 변경 이벤트"""
         if preset_name == 'None':
             return
 
+        # 파일 기반 프리셋 처리
+        if self.preset_combo is not None:
+            preset_path = self.preset_combo.currentData()
+            if preset_path:  # JSON 파일 경로가 있으면
+                try:
+                    import json
+                    with open(preset_path, 'r', encoding='utf-8') as f:
+                        preset = json.load(f)
+
+                    # best_params 적용
+                    params = preset.get('best_params', {})
+                    self._apply_params(params)
+
+                    # 메타 정보 표시
+                    meta = preset.get('meta_info', {})
+                    best_metrics = preset.get('best_metrics', {})
+                    status_msg = (
+                        f"프리셋 로드: {meta.get('symbol', '')} "
+                        f"{meta.get('timeframe', '')} "
+                        f"(승률: {best_metrics.get('win_rate', 0):.1f}%)"
+                    )
+                    logger.info(status_msg)
+                    return
+                except Exception as e:
+                    logger.error(f"파일 프리셋 로드 실패: {e}")
+                    return
+
+        # 하드코딩 프리셋 처리 (기존)
         try:
             params = self.param_manager.load_from_preset(preset_name)
             self._apply_params(params)
@@ -542,6 +617,7 @@ class SingleBacktestWidget(QWidget):
 
         # 시그널 연결
         self.worker.progress.connect(self._on_progress)
+        self.worker.status.connect(self._on_status)
         self.worker.finished.connect(self._on_finished)
         self.worker.error.connect(self._on_error)
 
@@ -571,9 +647,20 @@ class SingleBacktestWidget(QWidget):
             self.stop_btn.setEnabled(False)
 
     def _on_progress(self, value: int):
-        """진행률 업데이트"""
+        """진행률 업데이트
+
+        MEDIUM #7: 프로그레스 바 시각화 개선 (v7.27)
+        """
         if self.progress_bar:
             self.progress_bar.setValue(value)
+            # MEDIUM #7: 백분율 텍스트 표시 추가
+            self.progress_bar.setFormat(f"{value}%")
+
+    def _on_status(self, message: str):
+        """상태 메시지 업데이트 (v7.27 Issue #2)"""
+        if self.status_label:
+            self.status_label.setText(message)
+            self.status_label.setVisible(True)
 
     def _on_finished(self):
         """백테스트 완료"""
@@ -587,6 +674,8 @@ class SingleBacktestWidget(QWidget):
             self.stop_btn.setEnabled(False)
         if self.progress_bar:
             self.progress_bar.setValue(100)
+        if self.status_label:
+            self.status_label.setVisible(False)
 
         # 결과 가져오기
         trades = self.worker.trades_detail
@@ -601,12 +690,76 @@ class SingleBacktestWidget(QWidget):
         self._populate_result_table(trades)
         self._populate_audit_table(audit_logs)
 
+        # ✅ Phase 4: 최적 결과 자동 저장
+        auto_save_message = ""
+        if hasattr(self, 'auto_save_checkbox') and self.auto_save_checkbox.isChecked() and stats:
+            try:
+                # 심볼 및 타임프레임 추출
+                symbol = self.symbol_combo.currentText() if self.symbol_combo else 'UNKNOWN'
+                tf = self.trend_tf_combo.currentText() if self.trend_tf_combo else '1h'
+                exchange = self.exchange_combo.currentText() if self.exchange_combo else 'bybit'
+
+                # 파라미터 추출
+                params_dict = self.worker.strategy_params if self.worker.strategy_params else {}
+
+                # 메트릭 추출 (OptimizationResult에서)
+                optimization_result = {
+                    'win_rate': stats.win_rate,
+                    'mdd': stats.max_drawdown,
+                    'sharpe_ratio': stats.sharpe_ratio,
+                    'profit_factor': stats.profit_factor,
+                    'total_trades': stats.trades,
+                    'total_pnl': stats.simple_return,
+                    'compound_return': stats.compound_return,
+                    'avg_pnl': stats.avg_pnl,
+                    'stability': stats.stability,
+                }
+
+                # PresetStorage로 저장
+                from utils.preset_storage import PresetStorage
+                storage = PresetStorage()
+                filepath = storage.save_preset(
+                    symbol=symbol,
+                    tf=tf,
+                    params=params_dict,
+                    optimization_result=optimization_result,
+                    mode='backtest',
+                    strategy_type='macd',  # 기본값
+                    exchange=exchange
+                )
+
+                # 파일명 추출 (타입 안전)
+                from pathlib import Path
+                if isinstance(filepath, Path):
+                    filename = filepath.name
+                elif isinstance(filepath, str):
+                    filename = Path(filepath).name
+                else:
+                    filename = str(filepath)
+
+                auto_save_message = f"\n\n✅ Result auto-saved!\nFile: {filename}"
+                logger.info(f"✅ 백테스트 결과 자동 저장: {filename}")
+
+            except Exception as e:
+                logger.error(f"❌ 백테스트 결과 자동 저장 실패: {e}")
+                auto_save_message = f"\n\n⚠️ Auto-save failed: {str(e)}"
+
         # 시그널 발생
         df = self.worker.df_15m
         params = self.worker.strategy_params
         self.backtest_finished.emit(trades, df, params)
 
-        logger.info(f"Backtest finished: {len(trades)} trades")
+        # 완료 메시지 (자동 저장 메시지 포함)
+        completion_msg = f"Backtest finished: {len(trades)} trades{auto_save_message}"
+        logger.info(completion_msg)
+
+        # 사용자에게 완료 메시지 표시 (자동 저장 시에만)
+        if auto_save_message:
+            QMessageBox.information(
+                self,
+                "Backtest Complete",
+                f"Backtest completed successfully!\n\nTrades: {len(trades)}{auto_save_message}"
+            )
 
     def _on_error(self, error_msg: str):
         """에러 처리"""
@@ -615,12 +768,14 @@ class SingleBacktestWidget(QWidget):
             self.run_btn.setEnabled(True)
         if self.stop_btn:
             self.stop_btn.setEnabled(False)
+        if self.status_label:
+            self.status_label.setVisible(False)
 
         QMessageBox.critical(self, "Backtest Error", error_msg)
         logger.error(f"Backtest error: {error_msg}")
 
     def _update_stats(self, stats: OptimizationResult):
-        """통계 위젯 업데이트 (OptimizationResult 대응)"""
+        """통계 위젯 업데이트 (OptimizationResult 대응, v7.25 업데이트)"""
         if self.stat_trades:
             self.stat_trades.set_value(str(stats.trades))
 
@@ -637,9 +792,37 @@ class SingleBacktestWidget(QWidget):
 
         if self.stat_mdd:
             mdd = stats.max_drawdown
-            color = Colors.warning if mdd > 20 else Colors.text_primary # 20% 초과 시 경고
+            # [v7.25] MDD 색상 표시 (🟢 <5% / 🟡 5-10% / 🔴 >10%)
+            if mdd < 5:
+                color = Colors.success  # 녹색
+            elif mdd < 10:
+                color = Colors.warning  # 노랑
+            else:
+                color = Colors.danger  # 빨강
             self.stat_mdd.set_value(f"{mdd:.1f}%", color)
-            
+
+        if self.stat_safe_lev:
+            # [v7.25.3] 안전 레버리지 계산 (낙폭 10% 기준, 최대 20x)
+            mdd = stats.max_drawdown
+            safe_leverage = 10.0 / mdd if mdd > 0 else 1.0
+            safe_leverage = min(safe_leverage, 20.0)
+
+            # 문맥 포함 텍스트 생성 (한글화)
+            if safe_leverage < 1.0:
+                # 낙폭 > 10%: 레버리지 사용 위험
+                leverage_text = f"레버리지 1배 권장 (낙폭 {mdd:.1f}%)"
+                color = Colors.danger  # 빨강
+            elif safe_leverage < 2.0:
+                # 낙폭 5-10%: 낮은 레버리지 가능
+                leverage_text = f"레버리지 최대 {safe_leverage:.1f}배"
+                color = Colors.warning  # 노랑
+            else:
+                # 낙폭 < 5%: 안전한 레버리지
+                leverage_text = f"레버리지 최대 {safe_leverage:.1f}배 (안전)"
+                color = Colors.success  # 초록
+
+            self.stat_safe_lev.set_value(leverage_text, color)
+
         # [Phase 1 추가] 필터 통과 여부에 따른 시각적 피드백 (옵션)
         if not stats.passes_filter:
             logger.warning(f"Backtest result failed optimization filters (MDD <= 20%, WinRate >= 75%)")

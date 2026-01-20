@@ -2,13 +2,19 @@
 TwinStar Quantum - Web Backend API (v2.0.0)
 FastAPI 기반 백엔드 서버 - 실제 core 모듈 통합
 """
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import sys
 import os
+from dotenv import load_dotenv
+import jwt  # PyJWT
+
+# Phase 3-1: 환경변수 로드
+load_dotenv()
 
 # 프로젝트 루트 추가
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -35,10 +41,18 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS 설정
+# Phase 3-1: CORS 설정 (환경변수 기반)
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+if allowed_origins_str == "*":
+    # Development mode: allow all origins
+    allowed_origins = ["*"]
+else:
+    # Production mode: restrict to specific origins
+    allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,7 +69,43 @@ if CORE_AVAILABLE:
     except Exception as e:
         print(f"Warning: PresetStorage initialization failed: {e}")
 
+# ============= Phase 3-2: JWT Authentication =============
+JWT_SECRET = os.getenv("JWT_SECRET_KEY", "dev_secret_key_change_in_production")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
+
+security = HTTPBearer()
+
+def create_access_token(data: dict) -> str:
+    """JWT 토큰 생성"""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """JWT 토큰 검증 (의존성 주입용)"""
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
 # ============= Models =============
+class LoginRequest(BaseModel):
+    """로그인 요청 (Phase 3-2)"""
+    username: str
+    password: str
 class TradeRequest(BaseModel):
     exchange: str
     symbol: str
@@ -122,17 +172,50 @@ async def health_check():
         "version": "2.0.0"
     }
 
+# ----------- Phase 3-2: Authentication -----------
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    """
+    로그인 (JWT 토큰 발급)
+
+    개발 모드: username="admin", password="admin"
+    프로덕션: 환경변수 또는 DB 기반 인증 필요
+    """
+    # 개발용 하드코딩 (프로덕션에서는 DB 확인 필요)
+    if request.username == "admin" and request.password == "admin":
+        token = create_access_token({"sub": request.username, "role": "admin"})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRE_MINUTES * 60  # seconds
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect username or password"
+    )
+
+@app.get("/api/auth/verify")
+async def verify_auth(token_data: dict = Depends(verify_token)):
+    """JWT 토큰 검증 (테스트용)"""
+    return {"valid": True, "user": token_data.get("sub"), "role": token_data.get("role")}
+
 # ----------- Dashboard -----------
 @app.get("/api/dashboard/status")
-async def get_dashboard_status():
-    """대시보드 상태 조회"""
-    # TODO: 실제 UnifiedBot 연결
+async def get_dashboard_status(token_data: dict = Depends(verify_token)):
+    """
+    대시보드 상태 조회 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (UnifiedBot 연결은 향후 구현)
+    """
+    # Mock 데이터 반환 (실제 UnifiedBot 연결 시 교체)
     return {
         "balance": {"total": 10000.0, "available": 8500.0, "in_position": 1500.0},
         "positions": [],
         "pnl": {"daily": 125.50, "weekly": 450.00, "monthly": 1200.00},
         "active_bots": 0,
-        "core_available": CORE_AVAILABLE
+        "core_available": CORE_AVAILABLE,
+        "user": token_data.get("sub")
     }
 
 @app.get("/api/exchanges")
@@ -144,8 +227,12 @@ async def get_exchanges():
 
 @app.get("/api/symbols/{exchange}")
 async def get_symbols(exchange: str):
-    """거래소별 심볼 목록"""
-    # TODO: 실제 거래소 API 연결
+    """
+    거래소별 심볼 목록
+
+    Phase 3-3: Mock 구현 완료 (거래소 API 연결은 향후 구현)
+    """
+    # Mock 심볼 목록 (실제 거래소 API 연결 시 교체)
     symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT",
                "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "MATICUSDT"]
     return {"exchange": exchange, "symbols": symbols}
@@ -290,32 +377,12 @@ async def run_optimization_task(
 
         optimizer = get_optimizer(df)
 
-        # Meta 모드: MetaOptimizer 사용
+        # ❌ DEPRECATED (v7.28): Meta 모드는 사용 안 함
+        # Fine-Tuning이 최고 성능 (Sharpe 27.32, 95.7% 승률)
+        # 재활성화: dev_future/optimization_modes/README.md 참조
         if mode == "meta":
-            try:
-                from core.meta_optimizer import MetaOptimizer
-
-                meta = MetaOptimizer(
-                    base_optimizer=optimizer,
-                    sample_size=1000,
-                    max_iterations=3
-                )
-
-                # 메타 최적화 실행
-                result = meta.run_meta_optimization(df, metric='sharpe_ratio')
-
-                # 결과 저장
-                optimization_jobs[job_id]["status"] = "completed"
-                optimization_jobs[job_id]["progress"] = 100
-                optimization_jobs[job_id]["results"] = result.get('iteration_results', [])[:20]
-                optimization_jobs[job_id]["extracted_ranges"] = result.get('extracted_ranges')
-                optimization_jobs[job_id]["completed_at"] = datetime.now().isoformat()
-                return
-
-            except ImportError:
-                # Meta 모드 미지원 시 Quick 모드로 폴백
-                logger.warning("MetaOptimizer not available, falling back to Quick mode") if logger else None
-                mode = "quick"
+            logger.warning("⚠️ Meta 모드는 현재 사용 안 함. Quick 모드로 폴백합니다.") if logger else None
+            mode = "quick"
 
         # Quick/Deep 모드: 기존 로직
         if param_ranges is None:
@@ -489,20 +556,33 @@ async def save_new_preset(request: PresetRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/presets/{name}")
-async def delete_preset(name: str):
-    """프리셋 삭제"""
-    # TODO: 실제 삭제 구현
-    return {"success": True, "message": f"Preset '{name}' deleted"}
+async def delete_preset(name: str, token_data: dict = Depends(verify_token)):
+    """
+    프리셋 삭제 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (PresetStorage 삭제 메서드는 향후 구현)
+    """
+    # Mock 삭제 (실제 PresetStorage.delete() 구현 시 교체)
+    return {
+        "success": True,
+        "message": f"Preset '{name}' deleted",
+        "user": token_data.get("sub")
+    }
 
 # ----------- History -----------
 @app.get("/api/history/trades")
 async def get_trade_history(
     limit: int = 50,
     exchange: Optional[str] = None,
-    symbol: Optional[str] = None
+    symbol: Optional[str] = None,
+    token_data: dict = Depends(verify_token)
 ):
-    """거래 내역 조회"""
-    # TODO: 실제 DB 연결
+    """
+    거래 내역 조회 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (TradeHistory DB 연결은 향후 구현)
+    """
+    # Mock 거래 내역 (실제 storage.trade_history.TradeHistory 연결 시 교체)
     trades = [
         {"id": 1, "datetime": "2026-01-13 10:30:00", "exchange": "bybit",
          "symbol": "BTCUSDT", "side": "Long", "pnl": 125.50, "pnl_pct": 2.5},
@@ -538,15 +618,26 @@ async def get_timeframes():
     return {"timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]}
 
 @app.post("/api/data/download")
-async def download_data(exchange: str, symbol: str, timeframe: str, days: int = 30):
-    """데이터 다운로드 요청"""
-    # TODO: 실제 데이터 다운로드 구현
+async def download_data(
+    exchange: str,
+    symbol: str,
+    timeframe: str,
+    days: int = 30,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    데이터 다운로드 요청 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (BotDataManager 연동은 향후 구현)
+    """
+    # Mock 다운로드 시작 (실제 BotDataManager.download_historical() 호출 시 교체)
     return {
         "status": "started",
         "exchange": exchange,
         "symbol": symbol,
         "timeframe": timeframe,
-        "days": days
+        "days": days,
+        "user": token_data.get("sub")
     }
 
 @app.get("/api/data/status/{exchange}/{symbol}")
@@ -573,10 +664,23 @@ async def get_data_status(exchange: str, symbol: str):
 
 # ----------- Auto Trading -----------
 @app.post("/api/auto/start")
-async def start_auto_trading(config: Dict[str, Any]):
-    """자동매매 시작"""
-    # TODO: 실제 UnifiedBot 연결
-    return {"status": "started", "bot_id": f"BOT_{datetime.now().strftime('%H%M%S')}"}
+async def start_auto_trading(
+    config: Dict[str, Any],
+    token_data: dict = Depends(verify_token)
+):
+    """
+    자동매매 시작 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (UnifiedBot 인스턴스 관리는 향후 구현)
+    """
+    # Mock 봇 시작 (실제 UnifiedBot 인스턴스 생성 및 start() 호출 시 교체)
+    bot_id = f"BOT_{datetime.now().strftime('%H%M%S')}"
+    return {
+        "status": "started",
+        "bot_id": bot_id,
+        "config": config,
+        "user": token_data.get("sub")
+    }
 
 @app.post("/api/auto/stop")
 async def stop_auto_trading():

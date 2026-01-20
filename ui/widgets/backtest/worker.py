@@ -12,13 +12,8 @@ from utils.logger import get_module_logger
 # SSOT imports
 from core.optimizer import OptimizationResult
 from utils.metrics import (
-    calculate_mdd,
-    calculate_win_rate,
-    calculate_sharpe_ratio,
-    calculate_profit_factor,
-    calculate_stability,
-    calculate_cagr,
     assign_grade_by_preset
+    # calculate_backtest_metrics는 run() 내부에서 동적 import
 )
 
 try:
@@ -37,6 +32,7 @@ class BacktestWorker(QThread):
 
     Signals:
         progress(int): 진행률 (0-100)
+        status(str): 현재 작업 상태 메시지
         finished(): 백테스트 완료
         error(str): 에러 발생
 
@@ -60,6 +56,7 @@ class BacktestWorker(QThread):
 
     # Signals
     progress = pyqtSignal(int)
+    status = pyqtSignal(str)
     finished = pyqtSignal()
     error = pyqtSignal(str)
 
@@ -103,12 +100,18 @@ class BacktestWorker(QThread):
     def run(self):
         """백테스트 실행 (QThread.run() override)"""
         try:
+            # ✅ Issue #2 수정: 초기 상태 피드백 (v7.27)
+            self.progress.emit(0)
+            self.status.emit("전략 초기화 중...")
             logger.info("=== 백테스트 시작 ===")
+
             self.progress.emit(10)
+            self.status.emit("데이터 로딩 중...")
 
             # Step 1: 데이터 로드
             self._load_data()
             self.progress.emit(30)
+            self.status.emit("파라미터 병합 중...")
 
             # Step 2: 파라미터 병합
             params = self._merge_parameters()
@@ -159,6 +162,12 @@ class BacktestWorker(QThread):
             logger.error(error_msg)
             traceback.print_exc()
             self.error.emit(str(e))
+
+        finally:
+            # CRITICAL #1: 워커 종료 시 리소스 정리 (v7.27)
+            # 취소, 오류, 정상 완료 모두 여기서 정리
+            self._cleanup_resources()
+            logger.info("[BacktestWorker] 리소스 정리 완료")
 
     def _load_data(self):
         """데이터 로드"""
@@ -337,59 +346,26 @@ class BacktestWorker(QThread):
         trades = self.trades_detail
         leverage = self.leverage
 
-        # 1. PnL 리스트 및 레버리지 적용 (메트릭 계산 전 수행)
-        # 최적화 엔진과 동일하게 레버리지가 적용된 개별 PnL을 기반으로 계산함
-        # [FIX] 단일 거래 PnL 클램핑 (±50%) - 최적화 엔진과 동일한 로직
-        MAX_SINGLE_PNL = 50.0  # 단일 거래 최대 수익률 상한
-        MIN_SINGLE_PNL = -50.0  # 단일 거래 최대 손실률 하한
+        # ✅ v7.24: SSOT 완전 통합 (클램핑 제거)
+        # MetaOptimizer 및 BacktestOptimizer와 동일한 방식
+        from utils.metrics import calculate_backtest_metrics
 
-        leveraged_trades = []
-        for t in trades:
-            raw_pnl = t.get('pnl', 0) * leverage
-            # PnL 클램핑 적용 (오버플로우 방지)
-            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, raw_pnl))
-            leveraged_trades.append({**t, 'pnl': clamped_pnl})
+        # SSOT 직접 호출 (클램핑 없음, 레버리지 적용)
+        metrics = calculate_backtest_metrics(trades, leverage=leverage, capital=100.0)
 
-        pnls = [t['pnl'] for t in leveraged_trades]
-        
-        # Simple Return
-        simple_return = sum(pnls)
+        # 메트릭 추출
+        win_rate = metrics['win_rate']
+        mdd = metrics['mdd']
+        sharpe = metrics['sharpe_ratio']
+        pf = metrics['profit_factor']
+        stability = metrics['stability']
+        compound_return = metrics['compound_return']
+        simple_return = metrics['total_pnl']
+        cagr = metrics['cagr']
+        avg_trades_per_day = metrics['avg_trades_per_day']
 
-        # 2. SSOT 메트릭 계산 호출
-        win_rate = calculate_win_rate(leveraged_trades)      # Expects List[Dict]
-        mdd = calculate_mdd(leveraged_trades)               # Expects List[Dict]
-        sharpe = calculate_sharpe_ratio(pnls)               # Expects List[float]
-        pf = calculate_profit_factor(leveraged_trades)      # Expects List[Dict]
-        stability = calculate_stability(pnls)               # Expects List[float]
-        
-        # Compound Return (최적화 엔진과 동일한 로직)
-        equity = 1.0
-        cumulative_equity = [1.0]
-        for p in pnls:
-            equity *= (1 + p / 100)
-            if equity <= 0:
-                equity = 0
-            cumulative_equity.append(equity)
-            if equity == 0:
-                break
-        compound_return = (equity - 1) * 100
-        compound_return = max(-100.0, min(compound_return, 1e10))  # 범위 제한: -100% ~ 1e10%
-
-        # CAGR (연간 환산 수익률)
-        # 데이터 기간 계산
-        if self.df_15m is not None and len(self.df_15m) > 1:
-            start_time = self.df_15m['timestamp'].iloc[0]
-            end_time = self.df_15m['timestamp'].iloc[-1]
-            if isinstance(start_time, (int, float)):
-                duration_days = (end_time - start_time) / (1000 * 60 * 60 * 24)
-            else:
-                duration_days = (end_time - start_time).total_seconds() / (60 * 60 * 24)
-            
-            cagr = calculate_cagr(leveraged_trades, 100 + compound_return)
-            avg_trades_per_day = len(trades) / duration_days if duration_days > 0 else 0
-        else:
-            cagr = 0
-            avg_trades_per_day = 0
+        # 최종 자본 (equity)
+        equity = metrics['final_capital'] / 100.0  # capital=100 기준으로 계산됨
 
         # 3. 등급 할당 (균형 프리셋 기준)
         grade = assign_grade_by_preset(
@@ -438,3 +414,32 @@ class BacktestWorker(QThread):
                    f"MDD: {self.result_stats.max_drawdown:.1f}%, "
                    f"PF: {self.result_stats.profit_factor:.2f}, "
                    f"Pass: {self.result_stats.passes_filter}")
+
+    def _cleanup_resources(self):
+        """
+        CRITICAL #1: 워커 종료 시 리소스 정리 (v7.27)
+
+        취소, 오류, 정상 완료 모두 여기서 정리됩니다.
+        메모리 누수 방지 및 데이터 무결성 보장.
+        """
+        try:
+            # 1. 대용량 DataFrame 정리
+            if hasattr(self, 'df_15m') and self.df_15m is not None:
+                del self.df_15m
+                self.df_15m = None
+
+            # 2. 거래 내역 정리 (메모리 해제)
+            if hasattr(self, 'trades_detail'):
+                # 리스트가 너무 크면 일부만 유지 (디버깅용 최대 100개)
+                if len(self.trades_detail) > 100:
+                    self.trades_detail = self.trades_detail[:100]
+
+            # 3. Strategy 객체 참조 해제 (순환 참조 방지)
+            if hasattr(self, 'strategy'):
+                # Strategy 내부 캐시 정리
+                if hasattr(self.strategy, 'df_15m'):
+                    delattr(self.strategy, 'df_15m')
+
+        except Exception as e:
+            # 정리 중 오류는 로그만 남기고 무시 (크래시 방지)
+            logger.warning(f"[BacktestWorker] 리소스 정리 중 경고: {e}")

@@ -105,18 +105,22 @@ from core.signal_processor import SignalProcessor
 from core.order_executor import OrderExecutor
 from core.position_manager import PositionManager
 from core.capital_manager import CapitalManager
+from core.strategy_core import AlphaX7Core  # ✅ v7.27: Priority 4 - 실시간 패턴 감지
 HAS_MODULAR_COMPONENTS = True
 
 
 
 class UnifiedBot:
     """통합 매매 봇 Class"""
-    
+
     TF_MAP = {
         '1h':  {'trend': '60',   'pattern': '60',   'entry': '15'},
         '4h':  {'trend': '240',  'pattern': '60',   'entry': '15'},
         '1d':  {'trend': '1440', 'pattern': '240',  'entry': '60'},
     }
+
+    # Type hints for conditionally set attributes
+    strategy_core: Optional['AlphaX7Core']
 
     def __init__(self, exchange, use_binance_signal: bool = False, simulation_mode: bool = False):
         self.is_running = True
@@ -127,6 +131,10 @@ class UnifiedBot:
         self.direction = getattr(exchange, 'direction', 'Both') if exchange else 'Both'
         self._data_lock = threading.RLock()
         self._position_lock = threading.RLock()  # Position thread safety
+
+        # ✅ v7.28: API 키 검증 (실매매 모드만)
+        if not simulation_mode and exchange:
+            self._validate_api_keys(exchange)
 
         # [HEALTH] 헬스체크 데몬 시작
         try:
@@ -143,10 +151,68 @@ class UnifiedBot:
         from core.license_guard import get_license_guard
         self.license_guard = get_license_guard() if not simulation_mode else None
 
-        from utils.preset_manager import get_backtest_params
-        # getattr의 리턴값이 None일 수 있으므로 안전하게 처리
-        preset_name = str(getattr(exchange, 'preset_name', 'Default'))
-        self.strategy_params = get_backtest_params(preset_name)
+        # 프리셋 로드 로직 (v7.27 - Universal 우선순위 추가)
+        # 우선순위: 1) Universal → 2) 심볼별 → 3) 이름 지정 → 4) DEFAULT
+        preset_name = getattr(exchange, 'preset_name', None)
+        symbol = exchange.symbol.split('/')[0] if hasattr(exchange, 'symbol') and exchange.symbol else 'BTC'
+        tf = getattr(exchange, 'timeframe', '1h')
+
+        # 우선순위 1: Universal 프리셋 (최신)
+        from pathlib import Path
+        preset_dir = Path('presets')
+        if preset_dir.exists():
+            universal_presets = list(preset_dir.glob(f'universal_*_{tf}_*.json'))
+            if universal_presets:
+                # 최신 파일 선택
+                latest_preset = max(universal_presets, key=lambda p: p.stat().st_mtime)
+
+                try:
+                    import json
+                    with open(latest_preset, 'r', encoding='utf-8') as f:
+                        preset = json.load(f)
+
+                    # 심볼 호환성 체크
+                    meta_symbols = preset.get('meta_info', {}).get('symbols', [])
+                    if symbol in meta_symbols or len(meta_symbols) > 50:  # 범용 프리셋
+                        self.strategy_params = preset['best_params']
+                        logger.info(f"✅ 범용 프리셋 로드: {latest_preset.name}")
+                        logger.info(f"   대상: {len(meta_symbols)}개 심볼")
+                        logger.info(f"   Sharpe: {preset.get('best_metrics', {}).get('sharpe_ratio', 0):.2f}")
+                        logger.info(f"   승률: {preset.get('best_metrics', {}).get('win_rate', 0):.2f}%")
+                        # Universal 로드 성공 시 초기화 계속
+                        pass  # Continue to initialization below
+                    else:
+                        # 심볼 호환 안 됨 → 우선순위 2로
+                        logger.info(f"⚠️ Universal 프리셋 심볼 불일치: {symbol} not in {meta_symbols[:5]}...")
+                        raise ValueError("Symbol not compatible")
+
+                except (ValueError, KeyError, json.JSONDecodeError) as e:
+                    # Universal 실패 → 우선순위 2로
+                    pass
+
+        # 우선순위 2: 심볼별 프리셋 (기존 coarse_fine)
+        if not hasattr(self, 'strategy_params') or not self.strategy_params:
+            from utils.preset_storage import PresetStorage
+            storage = PresetStorage(base_path='presets/coarse_fine')
+            preset = storage.load_preset(symbol, tf)
+
+            if preset and 'best_params' in preset:
+                self.strategy_params = preset['best_params']
+                logger.info(f"✅ 심볼별 프리셋 로드: {symbol} {tf}")
+                logger.info(f"   Sharpe: {preset.get('best_metrics', {}).get('sharpe_ratio', 0):.2f}")
+                logger.info(f"   승률: {preset.get('best_metrics', {}).get('win_rate', 0):.2f}%")
+
+        # 우선순위 3: 이름 지정 프리셋 (레거시)
+        if (not hasattr(self, 'strategy_params') or not self.strategy_params) and preset_name and preset_name != 'Default':
+            from utils.preset_manager import get_backtest_params
+            self.strategy_params = get_backtest_params(str(preset_name))
+            logger.info(f"✅ 프리셋 로드 (이름): {preset_name}")
+
+        # 우선순위 4: DEFAULT (폴백)
+        if not hasattr(self, 'strategy_params') or not self.strategy_params:
+            from utils.preset_manager import get_backtest_params
+            self.strategy_params = get_backtest_params('Default')
+            logger.warning(f"⚠️ 프리셋 없음: {symbol} {tf}, DEFAULT 사용")
 
         # 2. 필수 멤버 변수 (레거시/UI 호환)
         self.position = None
@@ -168,6 +234,13 @@ class UnifiedBot:
         self.inc_rsi: Optional[Any] = None  # IncrementalRSI
         self.inc_atr: Optional[Any] = None  # IncrementalATR
         self._incremental_initialized = False
+
+        # ✅ v7.27: Priority 4 - 실시간 W/M 패턴 감지 (deque 버퍼)
+        self.inc_macd: Optional[Any] = None  # IncrementalMACD
+        self.macd_histogram_buffer: deque = deque(maxlen=100)
+        self.price_buffer: deque = deque(maxlen=100)
+        self.timestamp_buffer: deque = deque(maxlen=100)
+        self._macd_initialized = False
 
         # 3. Capital Management (Centralized)
         initial_capital = getattr(exchange, 'amount_usd', 100) if exchange else 100
@@ -225,17 +298,23 @@ class UnifiedBot:
             self.mod_data = BotDataManager(exchange_name, self.symbol, self.strategy_params)
             self.mod_signal = SignalProcessor(self.strategy_params, self.direction)
             self.mod_order = OrderExecutor(
-                exchange=self.exchange, 
-                strategy_params=self.strategy_params, 
-                notifier=None, 
+                exchange=self.exchange,
+                strategy_params=self.strategy_params,
+                notifier=None,
                 dry_run=self.simulation_mode,
                 state_manager=self.mod_state
             )
+
+            # ✅ v7.27: Priority 4 - AlphaX7Core 인스턴스 생성
+            strategy_type = self.strategy_params.get('strategy_type', 'macd')
+            use_mtf = self.strategy_params.get('use_mtf_filter', True)
+            self.strategy_core = AlphaX7Core(use_mtf=use_mtf, strategy_type=strategy_type)
+
             self.mod_position = PositionManager(
-                exchange=self.exchange, 
-                strategy_params=self.strategy_params, 
-                strategy_core=None, # 주입 가능 시점에 업데이트
-                dry_run=self.simulation_mode, 
+                exchange=self.exchange,
+                strategy_params=self.strategy_params,
+                strategy_core=self.strategy_core,  # ✅ v7.27: strategy_core 주입
+                dry_run=self.simulation_mode,
                 state_manager=self.mod_state
             )
             logging.info(f"[INIT] \u2705 {self.symbol} Modular components ready")
@@ -289,10 +368,33 @@ class UnifiedBot:
                     close=float(row['close'])
                 )
 
+            # ✅ v7.27: Priority 4 - MACD 트래커 및 deque 버퍼 초기화
+            from utils.incremental_indicators import IncrementalMACD
+
+            macd_fast = self.strategy_params.get('macd_fast', 6)
+            macd_slow = self.strategy_params.get('macd_slow', 18)
+            macd_signal = self.strategy_params.get('macd_signal', 7)
+
+            self.inc_macd = IncrementalMACD(fast=macd_fast, slow=macd_slow, signal=macd_signal)
+
+            # deque 버퍼 초기화
+            for _, row in df_warmup.iterrows():
+                macd_result = self.inc_macd.update(float(row['close']))
+
+                self.macd_histogram_buffer.append(macd_result['histogram'])
+                self.price_buffer.append({
+                    'high': float(row['high']),
+                    'low': float(row['low']),
+                    'close': float(row['close'])
+                })
+                self.timestamp_buffer.append(row['timestamp'])
+
+            self._macd_initialized = True
+
             self._incremental_initialized = True
             logger.info(
-                f"[INCREMENTAL] ✅ Initialized RSI({rsi_period}), ATR({atr_period}) "
-                f"with {len(df_warmup)} candles"
+                f"[INCREMENTAL] [OK] Initialized RSI({rsi_period}), ATR({atr_period}), "
+                f"MACD({macd_fast}/{macd_slow}/{macd_signal}) with {len(df_warmup)} candles"
             )
             return True
 
@@ -300,6 +402,41 @@ class UnifiedBot:
             logger.error(f"[INCREMENTAL] Initialization failed: {e}")
             self._incremental_initialized = False
             return False
+
+    def _fallback_batch_calculate_indicators(self) -> None:
+        """
+        CRITICAL #2 FIX (v7.27): 증분 지표 실패 시 배치 계산 폴백
+
+        증분 지표 초기화 실패 또는 업데이트 실패 시 전체 배치 계산으로 폴백합니다.
+        최근 100개 캔들을 사용하여 RSI/ATR을 계산합니다.
+
+        Note:
+            - 증분 계산 대비 73배 느림 (0.99ms vs 0.014ms)
+            - 하지만 에러 방지를 위한 필수 폴백 메커니즘
+        """
+        try:
+            if not hasattr(self, 'mod_data') or self.mod_data.df_entry_full is None:
+                return
+
+            # 최근 100개 캔들로 배치 계산
+            df_recent = self.mod_data.get_recent_data(limit=100, with_indicators=True, warmup_window=0)
+            if df_recent is None or len(df_recent) < 14:
+                return
+
+            # RSI/ATR 값 추출
+            if 'rsi' in df_recent.columns:
+                self.indicator_cache['rsi'] = float(df_recent['rsi'].iloc[-1])
+            if 'atr' in df_recent.columns:
+                self.indicator_cache['atr'] = float(df_recent['atr'].iloc[-1])
+
+            logging.debug(
+                f"[INCREMENTAL] Fallback batch calculation: "
+                f"RSI={self.indicator_cache.get('rsi', 0):.2f}, "
+                f"ATR={self.indicator_cache.get('atr', 0):.4f}"
+            )
+
+        except Exception as e:
+            logging.error(f"[INCREMENTAL] Fallback batch calculation failed: {e}")
 
     # ========== Public/GUI Methods ==========
     def get_readiness_status(self) -> dict:
@@ -594,6 +731,7 @@ class UnifiedBot:
             self.mod_data._save_with_lazy_merge()
 
             # ✅ v7.16: 증분 지표 업데이트 (O(1) 복잡도)
+            # CRITICAL #2 FIX (v7.27): 초기화 실패 시 배치 계산 폴백
             if self._incremental_initialized and self.inc_rsi and self.inc_atr:
                 try:
                     # RSI 업데이트
@@ -604,13 +742,69 @@ class UnifiedBot:
                     atr = self.inc_atr.update(
                         high=float(candle['high']),
                         low=float(candle['low']),
-                        close=float(candle['close'])
-                    )
+                        close=float(candle['close']))
                     self.indicator_cache['atr'] = atr
 
-                    logging.debug(f"[INCREMENTAL] ✅ RSI={rsi:.2f}, ATR={atr:.4f}")
+                    logging.debug(f"[INCREMENTAL] [OK] RSI={rsi:.2f}, ATR={atr:.4f}")
                 except Exception as e:
                     logging.error(f"[INCREMENTAL] Update failed: {e}")
+                    # CRITICAL #2: 증분 업데이트 실패 시 배치 계산으로 폴백
+                    self._fallback_batch_calculate_indicators()
+            else:
+                # CRITICAL #2: 증분 지표 미초기화 시 배치 계산 폴백
+                if not self._incremental_initialized:
+                    logging.debug("[INCREMENTAL] Not initialized, using batch calculation")
+                self._fallback_batch_calculate_indicators()
+
+            # ✅ v7.27: Priority 4 - MACD 업데이트 및 W/M 패턴 실시간 감지
+            if self._macd_initialized and self.inc_macd:
+                try:
+                    # MACD 증분 업데이트
+                    macd_result = self.inc_macd.update(float(candle['close']))
+
+                    # deque 버퍼 업데이트
+                    self.macd_histogram_buffer.append(macd_result['histogram'])
+                    self.price_buffer.append({
+                        'high': float(candle['high']),
+                        'low': float(candle['low']),
+                        'close': float(candle['close'])
+                    })
+                    self.timestamp_buffer.append(candle['timestamp'])
+
+                    # W/M 패턴 실시간 감지
+                    if hasattr(self, 'strategy_core') and self.strategy_core:
+                        # 4h MTF 필터 (1h → 4h 리샘플링)
+                        filter_trend = self._calculate_mtf_filter()
+
+                        # 파라미터 가져오기
+                        pattern_tolerance = self.strategy_params.get('pattern_tolerance', 0.05)
+                        entry_validity_hours = self.strategy_params.get('entry_validity_hours', 48.0)
+
+                        # 실시간 패턴 감지
+                        signal = self.strategy_core.detect_wm_pattern_realtime(
+                            macd_histogram_buffer=self.macd_histogram_buffer,
+                            price_buffer=self.price_buffer,
+                            timestamp_buffer=self.timestamp_buffer,
+                            pattern_tolerance=pattern_tolerance,
+                            entry_validity_hours=entry_validity_hours,
+                            filter_trend=filter_trend
+                        )
+
+                        if signal:
+                            logging.info(f"[WM_PATTERN] [OK] Realtime signal: {signal.signal_type} @ ${signal.entry_price:,.0f}")
+                            # 신호를 pending_signals에 추가 (기존 로직과 통합)
+                            self.pending_signals.append({
+                                'type': signal.signal_type,
+                                'price': signal.entry_price,
+                                'stop_loss': signal.stop_loss,
+                                'atr': signal.atr,
+                                'time': signal.entry_time,
+                                'pattern': signal.pattern
+                            })
+
+                    logging.debug(f"[MACD] [OK] Histogram={macd_result['histogram']:.4f}")
+                except Exception as e:
+                    logging.error(f"[MACD] Pattern detection failed: {e}")
 
             # 5. 패턴 데이터 업데이트
             self._process_historical_data()
@@ -647,12 +841,37 @@ class UnifiedBot:
             logging.warning(f"[WS] Backfill after connect failed: {e}")
 
     def _on_ws_disconnect(self, reason: str):
-        """WebSocket 연결 끊김 콜백"""
+        """WebSocket 연결 끊김 콜백 (v7.28: 사용자 알림 추가)"""
         logging.warning(f"[WS] ⚠️ Disconnected: {self.symbol} - {reason}")
 
+        # ✅ 사용자 알림 (GUI/텔레그램)
+        try:
+            from utils.notifier import notify_user
+            notify_user(
+                level='warning',
+                title=f'WebSocket 연결 끊김: {self.symbol}',
+                message=f'거래소 연결이 끊어졌습니다. 자동 재연결 중...\n사유: {reason}',
+                exchange=getattr(self.exchange, 'exchange_name', 'Unknown')
+            )
+        except Exception as e:
+            logging.debug(f"[WS] User notification failed: {e}")
+
     def _on_ws_error(self, error: str):
-        """WebSocket 에러 콜백"""
+        """WebSocket 에러 콜백 (v7.28: 사용자 알림 추가)"""
         logging.error(f"[WS] ❌ Error: {self.symbol} - {error}")
+
+        # ✅ 사용자 알림 (치명적 에러만)
+        if '401' in error or 'Unauthorized' in error:
+            try:
+                from utils.notifier import notify_user
+                notify_user(
+                    level='error',
+                    title=f'WebSocket 인증 실패: {self.symbol}',
+                    message=f'API 키 확인이 필요합니다.\n에러: {error}',
+                    exchange=getattr(self.exchange, 'exchange_name', 'Unknown')
+                )
+            except Exception as e:
+                logging.debug(f"[WS] User notification failed: {e}")
 
     def _start_data_monitor(self):
         """데이터 모니터 스레드 (30초마다 갱신 + WebSocket 헬스체크)"""
@@ -685,6 +904,50 @@ class UnifiedBot:
 
     # ========== Bridge \u0026 Helpers ==========
     def _get_signal_exchange(self): return self.exchange
+
+    def _calculate_mtf_filter(self) -> Optional[str]:
+        """
+        MTF (Multi-Timeframe) 필터 계산 (1h → 4h 리샘플링)
+
+        Returns:
+            'up': 상승 추세 (Long 허용)
+            'down': 하락 추세 (Short 허용)
+            None: 추세 없음 또는 데이터 부족
+        """
+        try:
+            # 1. 최근 데이터 가져오기 (최소 200개)
+            if not hasattr(self, 'mod_data') or self.mod_data.df_entry_full is None:
+                return None
+
+            df_1h = self.mod_data.get_recent_data(limit=200)
+            if df_1h is None or len(df_1h) < 50:
+                return None
+
+            # 2. 1h → 4h 리샘플링
+            from utils.data_utils import resample_data
+            df_4h = resample_data(df_1h, '4h')
+            if df_4h is None or len(df_4h) < 2:
+                return None
+
+            # 3. EMA 기반 추세 판단
+            if len(df_4h) >= 20:
+                ema_period = 20
+                df_4h_copy = df_4h.copy()
+                df_4h_copy['ema'] = df_4h_copy['close'].ewm(span=ema_period, adjust=False).mean()
+
+                last_close = df_4h_copy['close'].iloc[-1]
+                last_ema = df_4h_copy['ema'].iloc[-1]
+
+                if last_close > last_ema * 1.01:  # 1% 이상 위
+                    return 'up'
+                elif last_close < last_ema * 0.99:  # 1% 이상 아래
+                    return 'down'
+
+            return None
+
+        except Exception as e:
+            logging.error(f"[MTF] Filter calculation failed: {e}")
+            return None
     def _can_trade(self) -> bool:
         """
         거래 가능 여부 확인 (P1-002: 잔고 체크 포함)
@@ -792,6 +1055,76 @@ class UnifiedBot:
             logging.error(f"[BOT] State save error: {e}")
 
         logging.info(f"[BOT] Bot stopped for {self.symbol}")
+
+    def _validate_api_keys(self, exchange: Any) -> None:
+        """
+        API 키 검증 (v7.28)
+
+        실매매 시작 전 API 키 존재 여부 및 유효성 확인.
+        키 누락 시 명확한 에러 메시지 표시.
+
+        Args:
+            exchange: 거래소 어댑터 인스턴스
+
+        Raises:
+            ValueError: API 키 누락 또는 유효하지 않음
+        """
+        exchange_name = getattr(exchange, 'exchange_name', 'Unknown')
+
+        # 1. API 키 속성 확인
+        has_api_key = hasattr(exchange, 'api_key') and exchange.api_key
+        has_secret = hasattr(exchange, 'secret') and exchange.secret
+
+        if not has_api_key or not has_secret:
+            error_msg = f"❌ API 키 누락: {exchange_name}\n" \
+                       f"거래소 API 키와 Secret를 설정해주세요.\n" \
+                       f"경로: 설정 → API 키 관리"
+            logging.error(f"[API] {error_msg}")
+
+            # GUI 사용자 알림
+            try:
+                from utils.notifier import notify_user
+                notify_user(
+                    level='error',
+                    title=f'API 키 누락: {exchange_name}',
+                    message=error_msg,
+                    exchange=exchange_name
+                )
+            except Exception as e:
+                logging.debug(f"[API] User notification failed: {e}")
+
+            raise ValueError(f"API key or secret missing for {exchange_name}")
+
+        # 2. API 키 유효성 테스트 (간단한 잔고 조회)
+        logging.info(f"[API] Validating keys for {exchange_name}...")
+        try:
+            # 잔고 조회 (간단한 인증 테스트)
+            if hasattr(exchange, 'get_balance'):
+                balance = exchange.get_balance()
+                if balance is None:
+                    raise Exception("Balance query returned None")
+                logging.info(f"[API] ✅ Keys validated for {exchange_name}")
+            else:
+                logging.warning(f"[API] ⚠️ Cannot validate keys (no get_balance method)")
+        except Exception as e:
+            error_msg = f"❌ API 키 인증 실패: {exchange_name}\n" \
+                       f"에러: {str(e)}\n" \
+                       f"API 키가 올바른지 확인해주세요."
+            logging.error(f"[API] {error_msg}")
+
+            # GUI 사용자 알림
+            try:
+                from utils.notifier import notify_user
+                notify_user(
+                    level='error',
+                    title=f'API 키 인증 실패: {exchange_name}',
+                    message=error_msg,
+                    exchange=exchange_name
+                )
+            except Exception as notif_e:
+                logging.debug(f"[API] User notification failed: {notif_e}")
+
+            raise ValueError(f"API key validation failed for {exchange_name}: {e}")
 
     def _health_api_check(self) -> bool:
         """헬스체크용 API 상태 확인"""

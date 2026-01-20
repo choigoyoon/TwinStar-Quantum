@@ -1,0 +1,101 @@
+{
+  "meta_info": {
+    "exchange": "bybit",
+    "symbol": "BTCUSDT",
+    "timeframe": "1h",
+    "strategy_type": "macd",
+    "optimization_method": "sensitivity_analysis",
+    "created_at": "2026-01-18T00:00:00",
+    "total_candles": 203823,
+    "period_days": 8492,
+    "source": "Phase 1 영향도 분석 (test_sensitivity_analysis.py)",
+    "baseline_sharpe": 19.82,
+    "optimal_sharpe": 29.81,
+    "improvement": 9.98,
+    "improvement_pct": 50.4
+  },
+  "best_params": {
+    "atr_mult": 0.5,
+    "filter_tf": "2h",
+    "trail_start_r": 0.4,
+    "trail_dist_r": 0.02,
+    "entry_validity_hours": 6,
+    "leverage": 10,
+    "macd_fast": 4,
+    "macd_slow": 16,
+    "macd_signal": 5,
+    "ema_period": 10,
+    "atr_period": 14,
+    "rsi_period": 14,
+    "adx_period": 14,
+    "adx_threshold": 25.0,
+    "enable_adx_filter": false,
+    "pullback_rsi_long": 35,
+    "pullback_rsi_short": 65,
+    "enable_pullback": true,
+    "pattern_tolerance": 0.05,
+    "max_adds": 1,
+    "entry_tf": "15m",
+    "direction": "Both",
+    "slippage": 0.0006,
+    "fee": 0.00055,
+    "max_slippage": 0.01
+  },
+  "best_metrics": {
+    "total_trades": 8913,
+    "win_rate": 86.7,
+    "sharpe_ratio": 29.81,
+    "mdd": 3.7,
+    "profit_factor": 0.0,
+    "total_pnl": 3520.9,
+    "compound_return": 3520.9,
+    "avg_pnl": 0.0,
+    "avg_trades_per_day": 1.05,
+    "stability": "A",
+    "cagr": 41.5
+  },
+  "parameter_impact": {
+    "filter_tf": {
+      "impact": 4.01,
+      "optimal_value": "2h",
+      "max_sharpe": 21.51,
+      "description": "가장 큰 영향력 - 필터 타임프레임"
+    },
+    "trail_start_r": {
+      "impact": 3.51,
+      "optimal_value": 0.4,
+      "max_sharpe": 20.0,
+      "description": "두 번째 영향력 - 트레일링 시작 배수"
+    },
+    "trail_dist_r": {
+      "impact": 2.47,
+      "optimal_value": 0.02,
+      "max_sharpe": 20.86,
+      "description": "세 번째 영향력 - 트레일링 간격"
+    },
+    "atr_mult": {
+      "impact": 1.15,
+      "optimal_value": 0.5,
+      "max_sharpe": 19.94,
+      "description": "네 번째 영향력 - ATR 배수"
+    }
+  },
+  "validation": {
+    "ssot_version": "v7.24",
+    "metrics_module": "utils.metrics.calculate_backtest_metrics",
+    "mdd_accuracy": "±1%",
+    "clamping": "removed",
+    "analysis_method": "One-at-a-time sensitivity analysis",
+    "baseline_trades": 8913,
+    "baseline_win_rate": 86.7,
+    "baseline_sharpe": 19.82,
+    "baseline_mdd": 3.7
+  },
+  "notes": [
+    "Phase 1 영향도 분석 결과 (2026-01-18)",
+    "One-at-a-time 방식으로 각 파라미터 개별 최적화",
+    "예상 개선: Sharpe +9.98 (+50.4%)",
+    "Fine-Tuning (Phase 2) 대기 중 - 1,089개 조합 정밀 탐색",
+    "실시간 매매 전 백테스트 재검증 권장"
+  ]
+}

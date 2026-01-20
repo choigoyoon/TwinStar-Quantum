@@ -5,6 +5,7 @@ utils/incremental_indicators.py
 - IncrementalEMA: EMA 증분 업데이트
 - IncrementalRSI: RSI 증분 업데이트 (Wilder's Smoothing)
 - IncrementalATR: ATR 증분 업데이트 (Wilder's Smoothing)
+- IncrementalMACD: MACD 증분 업데이트 (v7.27)
 
 사용 사례:
 - WebSocket 실시간 데이터 처리
@@ -248,6 +249,113 @@ class IncrementalATR:
         return f"IncrementalATR(period={self.period}, current={self.current_atr:.4f if self.current_atr else 'None'})"
 
 
+class IncrementalMACD:
+    """
+    증분 MACD (Moving Average Convergence Divergence) 계산기 (v7.27)
+
+    새로운 종가가 추가될 때마다 O(1) 시간에 MACD 업데이트
+    EMA 기반 계산 (Fast, Slow, Signal)
+
+    MACD Line = EMA(fast) - EMA(slow)
+    Signal Line = EMA(MACD Line, signal_period)
+    Histogram = MACD Line - Signal Line
+
+    Example:
+        >>> macd = IncrementalMACD(fast=6, slow=18, signal=7)
+        >>> for close in closes:
+        ...     result = macd.update(close)
+        ...     print(f"Histogram: {result['histogram']:.4f}")
+    """
+
+    def __init__(self, fast: int = 12, slow: int = 26, signal: int = 9):
+        """
+        Args:
+            fast: 빠른 EMA 기간 (기본값: 12, v7.27: 6)
+            slow: 느린 EMA 기간 (기본값: 26, v7.27: 18)
+            signal: Signal Line EMA 기간 (기본값: 9, v7.27: 7)
+        """
+        if fast <= 0 or slow <= 0 or signal <= 0:
+            raise ValueError(f"All periods must be positive, got fast={fast}, slow={slow}, signal={signal}")
+        if fast >= slow:
+            raise ValueError(f"fast period ({fast}) must be less than slow period ({slow})")
+
+        self.fast = fast
+        self.slow = slow
+        self.signal = signal
+
+        # EMA 트래커 생성
+        self.ema_fast = IncrementalEMA(period=fast)
+        self.ema_slow = IncrementalEMA(period=slow)
+        self.ema_signal = IncrementalEMA(period=signal)
+
+        # 현재 MACD 값 저장
+        self.current_macd: Optional[float] = None
+        self.current_signal: Optional[float] = None
+        self.current_histogram: Optional[float] = None
+
+    def update(self, close: float) -> dict:
+        """
+        새 종가로 MACD 업데이트 (O(1) 복잡도)
+
+        Args:
+            close: 새로운 종가
+
+        Returns:
+            dict: {
+                'macd_line': MACD Line 값,
+                'signal_line': Signal Line 값,
+                'histogram': Histogram 값
+            }
+
+        Note:
+            - Fast/Slow EMA 계산 후 MACD Line 도출
+            - MACD Line으로 Signal Line 계산
+            - Histogram = MACD - Signal
+        """
+        # 1. Fast/Slow EMA 업데이트
+        ema_fast_value = self.ema_fast.update(close)
+        ema_slow_value = self.ema_slow.update(close)
+
+        # 2. MACD Line 계산
+        self.current_macd = ema_fast_value - ema_slow_value
+
+        # 3. Signal Line 계산 (MACD Line의 EMA)
+        self.current_signal = self.ema_signal.update(self.current_macd)
+
+        # 4. Histogram 계산
+        self.current_histogram = self.current_macd - self.current_signal
+
+        return {
+            'macd_line': self.current_macd,
+            'signal_line': self.current_signal,
+            'histogram': self.current_histogram
+        }
+
+    def get_current(self) -> Optional[dict]:
+        """현재 MACD 값 반환 (계산되지 않았으면 None)"""
+        if self.current_macd is None or self.current_signal is None or self.current_histogram is None:
+            return None
+
+        return {
+            'macd_line': self.current_macd,
+            'signal_line': self.current_signal,
+            'histogram': self.current_histogram
+        }
+
+    def reset(self) -> None:
+        """상태 초기화"""
+        self.ema_fast.reset()
+        self.ema_slow.reset()
+        self.ema_signal.reset()
+        self.current_macd = None
+        self.current_signal = None
+        self.current_histogram = None
+
+    def __repr__(self) -> str:
+        hist = f"{self.current_histogram:.4f}" if self.current_histogram is not None else "None"
+        return f"IncrementalMACD(fast={self.fast}, slow={self.slow}, signal={self.signal}, histogram={hist})"
+
+
 # 편의 함수들
 def create_rsi_tracker(period: int = 14) -> IncrementalRSI:
     """RSI 트래커 생성 (편의 함수)"""
@@ -262,6 +370,17 @@ def create_atr_tracker(period: int = 14) -> IncrementalATR:
 def create_ema_tracker(period: int = 20) -> IncrementalEMA:
     """EMA 트래커 생성 (편의 함수)"""
     return IncrementalEMA(period=period)
+
+
+def create_macd_tracker(fast: int = 12, slow: int = 26, signal: int = 9) -> IncrementalMACD:
+    """MACD 트래커 생성 (편의 함수)
+
+    Args:
+        fast: 빠른 EMA 기간 (기본값: 12, v7.27: 6)
+        slow: 느린 EMA 기간 (기본값: 26, v7.27: 18)
+        signal: Signal Line EMA 기간 (기본값: 9, v7.27: 7)
+    """
+    return IncrementalMACD(fast=fast, slow=slow, signal=signal)
 
 
 if __name__ == '__main__':
@@ -298,5 +417,12 @@ if __name__ == '__main__':
     for candle in test_candles:
         current = atr.update(**candle)
         print(f"  H:{candle['high']}, L:{candle['low']}, C:{candle['close']}, ATR: {current:.2f}")
+
+    # MACD 테스트
+    print("\n4. IncrementalMACD Test (v7.27 파라미터)")
+    macd = IncrementalMACD(fast=6, slow=18, signal=7)
+    for i, close in enumerate(test_closes):
+        result = macd.update(close)
+        print(f"  Close: {close}, MACD: {result['macd_line']:.4f}, Signal: {result['signal_line']:.4f}, Histogram: {result['histogram']:.4f}")
 
     print("\n=== All Tests Completed ===")

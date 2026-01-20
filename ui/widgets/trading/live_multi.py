@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QLabel, QPushButton, QComboBox, QSpinBox, QDoubleSpinBox,
     QGroupBox, QFrame, QTableWidget, QTableWidgetItem, QHeaderView
 )
-from PyQt6.QtCore import pyqtSignal, QTimer, Qt
+from PyQt6.QtCore import pyqtSignal, QTimer, Qt, QMutex
 from PyQt6.QtGui import QFont
 from typing import Optional, List, Dict, Any
 
@@ -22,29 +22,15 @@ from utils.logger import get_module_logger
 
 # 디자인 토큰 및 스타일
 try:
-    from ui.design_system.tokens import Colors, Spacing, Typography, Radius, Size
+    from ui.design_system.tokens import Colors, Spacing, Typography, Size
     from ui.widgets.backtest.styles import BacktestStyles
 except ImportError:
-    # Fallback (하위 호환성)
-    class _ColorsFallback:
-        success = "#3fb950"
-        danger = "#f85149"
-        info = "#58a6ff"
-        accent_primary = "#00d4ff"
-        text_primary = "#f0f6fc"
-        text_secondary = "#8b949e"
-        text_muted = "#6e7681"
-        bg_base = "#0d1117"
-        bg_surface = "#161b22"
-        bg_elevated = "#1f2937"
-        border_default = "#30363d"
+    # Issue #2 Fix: 중앙화된 Fallback 사용 (v7.27)
+    from ui.design_system.fallback_tokens import Colors, Spacing, Typography, Size
+    import logging
+    logging.warning("[LiveMulti] Using fallback tokens - SSOT import failed")
 
-    class _SpacingFallback:
-        i_space_1 = 4
-        i_space_2 = 8
-        i_space_3 = 12
-        i_space_4 = 16
-
+    # BacktestStyles fallback (스타일 클래스는 별도 처리)
     class _BacktestStylesFallback:
         @staticmethod
         def button_primary() -> str:
@@ -53,6 +39,10 @@ except ImportError:
         @staticmethod
         def button_danger() -> str:
             return "background: #f85149; color: white; padding: 8px 16px; border-radius: 5px;"
+
+        @staticmethod
+        def button_info() -> str:
+            return "background: #58a6ff; color: white; padding: 8px 16px; border-radius: 5px;"
 
         @staticmethod
         def combo_box() -> str:
@@ -70,9 +60,7 @@ except ImportError:
         def table() -> str:
             return "background: #161b22; color: white; border: none;"
 
-    Colors = _ColorsFallback()  # type: ignore
-    Spacing = _SpacingFallback()  # type: ignore
-    BacktestStyles = _BacktestStylesFallback()  # type: ignore
+    BacktestStyles = _BacktestStylesFallback()
 
 logger = get_module_logger(__name__)
 
@@ -108,7 +96,8 @@ class LiveMultiWidget(QWidget):
         self.watch_spin: Optional[QSpinBox] = None
         self.max_pos_spin: Optional[QSpinBox] = None
         self.leverage_spin: Optional[QSpinBox] = None
-        self.seed_spin: Optional[QDoubleSpinBox] = None
+        self.initial_capital_spin: Optional[QDoubleSpinBox] = None  # Phase 1: 초기 자본 필드
+        self.current_balance_label: Optional[QLabel] = None  # Phase 1: 현재 잔액 라벨
         self.mode_combo: Optional[QComboBox] = None
 
         self.watching_label: Optional[QLabel] = None
@@ -123,8 +112,30 @@ class LiveMultiWidget(QWidget):
         self.status_timer = QTimer(self)
         self.status_timer.timeout.connect(self._request_status_update)
 
+        # Phase 2: 잔액 업데이트 타이머 (1초마다)
+        self.balance_timer = QTimer(self)
+        self.balance_timer.timeout.connect(self._update_balance_display)
+
+        # Issue #4: 잔액 업데이트 mutex (v7.27)
+        self.balance_mutex = QMutex()
+
         # UI 초기화
         self._init_ui()
+
+    def closeEvent(self, event):
+        """위젯 종료 시 리소스 정리 (v7.27 신규)"""
+        # 타이머 정리
+        if self.status_timer and self.status_timer.isActive():
+            self.status_timer.stop()
+
+        if self.balance_timer and self.balance_timer.isActive():
+            self.balance_timer.stop()
+
+        # 실행 중이면 중지
+        if self.is_running:
+            self._stop_trading()
+
+        super().closeEvent(event)
 
     def _init_ui(self):
         """UI 초기화 (토큰 기반 디자인)"""
@@ -206,14 +217,16 @@ class LiveMultiWidget(QWidget):
         self.leverage_spin.setStyleSheet(BacktestStyles.spin_box())
         grid.addWidget(self.leverage_spin, row, 1)
 
-        # 시드
-        grid.addWidget(QLabel("시드 자본:"), row, 2)
-        self.seed_spin = QDoubleSpinBox()
-        self.seed_spin.setRange(10, 10000)
-        self.seed_spin.setValue(100)
-        self.seed_spin.setPrefix("$")
-        self.seed_spin.setStyleSheet(BacktestStyles.spin_box())
-        grid.addWidget(self.seed_spin, row, 3)
+        # Phase 1: 초기 자본 (매매 시작 전에만 수정 가능)
+        grid.addWidget(QLabel("초기 자본:"), row, 2)
+        self.initial_capital_spin = QDoubleSpinBox()
+        self.initial_capital_spin.setRange(10, 100000)
+        self.initial_capital_spin.setValue(100)
+        self.initial_capital_spin.setPrefix("$")
+        self.initial_capital_spin.setSuffix(" (시작 전 수정)")
+        self.initial_capital_spin.setStyleSheet(BacktestStyles.spin_box())
+        self.initial_capital_spin.setToolTip("매매 시작 전에만 수정 가능합니다")
+        grid.addWidget(self.initial_capital_spin, row, 3)
 
         # 자본 모드
         grid.addWidget(QLabel("자본 모드:"), row, 4)
@@ -222,6 +235,23 @@ class LiveMultiWidget(QWidget):
         self.mode_combo.setStyleSheet(BacktestStyles.combo_box())
         self.mode_combo.setMinimumWidth(Size.input_min_width)
         grid.addWidget(self.mode_combo, row, 5)
+
+        row += 1
+
+        # Phase 1: 현재 잔액 (읽기 전용, 실시간 업데이트)
+        grid.addWidget(QLabel("현재 잔액:"), row, 2)
+        self.current_balance_label = QLabel("$100.00 🔒")
+        self.current_balance_label.setStyleSheet(f"""
+            color: {Colors.text_primary};
+            font-weight: bold;
+            font-size: 14px;
+            padding: 8px;
+            background: {Colors.bg_elevated};
+            border-radius: 4px;
+        """)
+        self.current_balance_label.setToolTip("실시간 업데이트 중 (읽기 전용)")
+        self.current_balance_label.setMinimumWidth(200)
+        grid.addWidget(self.current_balance_label, row, 3)
 
         # 컬럼 stretch
         grid.setColumnStretch(1, 1)
@@ -295,7 +325,7 @@ class LiveMultiWidget(QWidget):
         return group
 
     def _create_control_buttons(self) -> QHBoxLayout:
-        """제어 버튼 (시작/중지)"""
+        """제어 버튼 (시작/중지/거래내역)"""
         row = QHBoxLayout()
         row.setSpacing(Spacing.i_space_2)
         row.addStretch()
@@ -306,6 +336,17 @@ class LiveMultiWidget(QWidget):
         self.start_btn.clicked.connect(self._toggle_trading)
         self.start_btn.setMinimumWidth(Size.input_min_width)  # 200px
         row.addWidget(self.start_btn)
+
+        # 거래내역 버튼 (Phase 7-3 추가)
+        history_btn = QPushButton("📜 History")
+        try:
+            history_btn.setStyleSheet(BacktestStyles.button_info())
+        except AttributeError:
+            # button_info() 메서드가 없을 경우 기본 스타일 사용
+            history_btn.setStyleSheet(BacktestStyles.combo_box())
+        history_btn.setMinimumWidth(Size.button_min_width)  # 80px
+        history_btn.clicked.connect(self._show_history)
+        row.addWidget(history_btn)
 
         row.addStretch()
         return row
@@ -327,6 +368,23 @@ class LiveMultiWidget(QWidget):
         # 설정 수집
         config = self.get_config()
 
+        # Phase 2: 초기 자본 필드 잠금 (매매 중 수정 방지)
+        if self.initial_capital_spin:
+            self.initial_capital_spin.setEnabled(False)
+            self.initial_capital_spin.setSuffix(" (매매 중)")
+
+        # Phase 2: 잔액 업데이트 타이머 시작 (1초마다)
+        if self.balance_timer:
+            self.balance_timer.start(1000)
+
+        # Phase 2: 초기 잔액 표시 (Issue #4: mutex 보호)
+        initial = self.initial_capital_spin.value() if self.initial_capital_spin else 100.0
+        self.balance_mutex.lock()
+        try:
+            self._on_balance_updated(initial)
+        finally:
+            self.balance_mutex.unlock()
+
         # UI 업데이트
         self.start_btn.setText("⏹ Stop Trading")
         self.start_btn.setStyleSheet(BacktestStyles.button_danger())
@@ -344,6 +402,15 @@ class LiveMultiWidget(QWidget):
             return
 
         self.is_running = False
+
+        # Phase 2: 초기 자본 필드 잠금 해제
+        if self.initial_capital_spin:
+            self.initial_capital_spin.setEnabled(True)
+            self.initial_capital_spin.setSuffix(" (시작 전 수정)")
+
+        # Phase 2: 잔액 업데이트 타이머 중지
+        if self.balance_timer:
+            self.balance_timer.stop()
 
         # UI 복원
         self.start_btn.setText("▶ Start Trading")
@@ -517,7 +584,7 @@ class LiveMultiWidget(QWidget):
             'watch_count': self.watch_spin.value() if self.watch_spin else 50,
             'max_positions': self.max_pos_spin.value() if self.max_pos_spin else 1,
             'leverage': self.leverage_spin.value() if self.leverage_spin else 10,
-            'seed': self.seed_spin.value() if self.seed_spin else 100.0,
+            'initial_capital': self.initial_capital_spin.value() if self.initial_capital_spin else 100.0,
             'capital_mode': 'compound' if (self.mode_combo and self.mode_combo.currentIndex() == 0) else 'fixed'
         }
 
@@ -525,7 +592,7 @@ class LiveMultiWidget(QWidget):
         """설정 적용 (백테스트 → 실시간 복사용)
 
         Args:
-            config: {'exchange': ..., 'leverage': ..., 'seed': ...}
+            config: {'exchange': ..., 'leverage': ..., 'initial_capital': ...}
         """
         if self.exchange_combo and 'exchange' in config:
             idx = self.exchange_combo.findText(config['exchange'])
@@ -541,14 +608,141 @@ class LiveMultiWidget(QWidget):
         if self.leverage_spin and 'leverage' in config:
             self.leverage_spin.setValue(config['leverage'])
 
-        if self.seed_spin and 'seed' in config:
-            self.seed_spin.setValue(config['seed'])
+        # Phase 3: initial_capital 또는 하위 호환 seed
+        if self.initial_capital_spin:
+            capital = config.get('initial_capital', config.get('seed', 100.0))
+            self.initial_capital_spin.setValue(capital)
 
         if self.mode_combo and 'capital_mode' in config:
             idx = 0 if config['capital_mode'] == 'compound' else 1
             self.mode_combo.setCurrentIndex(idx)
 
         logger.info(f"[LiveMulti] 설정 적용: {config}")
+
+    def _show_history(self):
+        """거래내역 팝업 표시 (Phase 7-3)"""
+        try:
+            # GUI.history_widget import
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            from GUI.history_widget import HistoryWidget
+
+            # 팝업 다이얼로그 생성 (최초 1회만)
+            if not hasattr(self, '_history_dialog'):
+                self._history_dialog = HistoryWidget()
+                self._history_dialog.setWindowTitle("📜 거래 내역")
+                self._history_dialog.resize(1200, 800)
+
+            # 표시
+            self._history_dialog.show()
+            self._history_dialog.raise_()
+            self._history_dialog.activateWindow()
+
+            logger.info("[LiveMulti] 거래내역 팝업 표시")
+        except Exception as e:
+            logger.error(f"[LiveMulti] 거래내역 팝업 표시 실패: {e}")
+            # 에러 메시지 표시 (선택적)
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Error", f"거래내역을 로드할 수 없습니다.\n{e}")
+
+    def _update_balance_display(self):
+        """잔액 표시 업데이트 (1초마다 호출) - Phase 2, Issue #4
+
+        멀티 심볼 거래의 경우 모든 심볼의 PnL을 합산하여 표시합니다.
+
+        Issue #4 Fix: QMutex로 UI 위젯 동시 접근 방지 (v7.27)
+        """
+        if not self.is_running or not self.current_balance_label:
+            return
+
+        # ✅ Critical section 시작 (UI 위젯 접근 보호)
+        self.balance_mutex.lock()
+        try:
+            # 현재 거래소
+            exchange = self.exchange_combo.currentText().lower() if self.exchange_combo else 'bybit'
+
+            # 모든 거래 내역에서 총 손익 계산 (멀티 심볼)
+            from storage import trade_storage
+
+            total_pnl_usd = 0.0
+            active_symbols = []
+
+            # 모든 스토리지 인스턴스를 순회하며 현재 거래소의 심볼들을 찾음
+            for key, storage in trade_storage._storage_instances.items():
+                # key 형식: "{exchange}_{symbol}" (예: "bybit_BTCUSDT")
+                if key.startswith(f"{exchange}_"):
+                    stats = storage.get_stats()
+                    symbol_pnl = stats.get('total_pnl_usd', 0)
+
+                    if symbol_pnl != 0:  # 거래 내역이 있는 심볼만
+                        total_pnl_usd += symbol_pnl
+                        symbol_name = key.split('_', 1)[1]  # 심볼 추출
+                        active_symbols.append(f"{symbol_name}({symbol_pnl:+.2f})")
+
+            # 초기 자본
+            initial = self.initial_capital_spin.value() if self.initial_capital_spin else 100.0
+
+            # 현재 잔액 계산
+            current_balance = initial + total_pnl_usd
+
+            # UI 업데이트
+            self._on_balance_updated(current_balance)
+
+            # 디버그 로그 (활성 심볼이 있을 때만)
+            if active_symbols:
+                logger.debug(f"[LiveMulti] 잔액 업데이트: {len(active_symbols)}개 심볼, 총 PnL ${total_pnl_usd:+.2f}")
+
+        except Exception as e:
+            logger.error(f"[LiveMulti] 잔액 업데이트 실패: {e}")
+        finally:
+            # ✅ Critical section 종료 (항상 unlock)
+            self.balance_mutex.unlock()
+
+    def _on_balance_updated(self, new_balance: float):
+        """잔액 업데이트 슬롯 - Phase 2, 3
+
+        Args:
+            new_balance: 새로운 잔액 ($)
+        """
+        if not self.current_balance_label or not self.initial_capital_spin:
+            return
+
+        initial = self.initial_capital_spin.value()
+        pnl = new_balance - initial
+
+        # 모드 확인
+        is_compound = self.mode_combo.currentIndex() == 0 if self.mode_combo else True
+
+        # 색상 결정
+        if pnl > 0:
+            color = Colors.success  # 초록
+        elif pnl < 0:
+            color = Colors.danger   # 빨강
+        else:
+            color = Colors.text_primary  # 회색
+
+        # 텍스트 및 툴팁
+        if is_compound:
+            # 복리: 현재 잔액 표시
+            text = f"${new_balance:,.2f} 🔒"
+            tooltip = f"다음 거래 크기: ${new_balance:,.2f}\n누적 손익: {pnl:+,.2f}"
+        else:
+            # 고정: 누적 손익 표시
+            text = f"{pnl:+,.2f} 🔒"
+            tooltip = f"다음 거래 크기: ${initial:,.2f} (고정)\n현재 잔액: ${new_balance:,.2f}"
+
+        # UI 업데이트
+        self.current_balance_label.setText(text)
+        self.current_balance_label.setStyleSheet(f"""
+            color: {color};
+            font-weight: bold;
+            font-size: 14px;
+            padding: 8px;
+            background: {Colors.bg_elevated};
+            border-radius: 4px;
+        """)
+        self.current_balance_label.setToolTip(tooltip)
 
 
 # 개발/테스트용 실행

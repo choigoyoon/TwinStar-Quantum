@@ -260,26 +260,34 @@ class UnifiedBacktest:
                         exit_reason = 'TP'
                         
                 if exit_price:
+                    # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
+                    from config.constants.trading import BACKTEST_EXIT_COST
+                    exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
+
                     # Calculate PnL
                     pnl = (exit_price - entry_price) / entry_price
                     if direction == 'sell': pnl = -pnl
-                    
+
                     return {
                         'symbol': symbol,
                         'entry_time': entry_time,
                         'exit_time': c_ts,
-                        'pnl_percent': pnl * 100,
+                        'pnl_percent': pnl * 100 - exit_fee_pct,
                         'exit_reason': exit_reason
                     }
                     
             # End of Data (Force Close)
+            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
+            from config.constants.trading import BACKTEST_EXIT_COST
+            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
+
             last = future.iloc[-1]
             pnl = (last['close'] - entry_price) / entry_price
             if direction == 'sell': pnl = -pnl
             return {
                 'entry_time': entry_time,
                 'exit_time': last.name,
-                'pnl_percent': pnl * 100,
+                'pnl_percent': pnl * 100 - exit_fee_pct,
                 'exit_reason': 'Force'
             }
             

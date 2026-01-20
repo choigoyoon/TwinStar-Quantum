@@ -660,6 +660,9 @@ class BingXExchange(BaseExchange):
 
     def get_balance(self) -> float:
         """잔고 조회"""
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
+
         if USE_DIRECT_API:
             return self._get_balance_direct()
         else:

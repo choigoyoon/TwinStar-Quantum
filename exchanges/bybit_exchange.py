@@ -500,9 +500,12 @@ class BybitExchange(BaseExchange):
     
     def get_balance(self) -> float:
         """잔고 조회 (Unified -> Contract -> Funding 확인)"""
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
+
         if self.session is None:
             return 0
-            
+
         try:
             # 1. UNIFIED or CONTRACT Checking
             for acc_type in ["UNIFIED", "CONTRACT"]:

@@ -128,7 +128,7 @@ def calculate_win_rate(trades: List[Dict[str, Any]]) -> float:
 
 def calculate_sharpe_ratio(
     returns: List[float] | Any,
-    periods_per_year: int = 252 * 4,
+    periods_per_year: int = 252 * 24,
     risk_free_rate: float = 0.0
 ) -> float:
     """
@@ -137,10 +137,11 @@ def calculate_sharpe_ratio(
     Args:
         returns: 수익률 리스트 또는 pandas Series
         periods_per_year: 연간 거래 주기 수
-                         - 15분봉: 252 * 4 * 24 = 24,192 (1일 96개)
+                         - 15분봉: 252 * 96 = 24,192 (1일 96개)
                          - 1시간봉: 252 * 24 = 6,048 (1일 24개)
+                         - 4시간봉: 252 * 6 = 1,512 (1일 6개)
                          - 일봉: 252 (1일 1개)
-                         기본값: 252 * 4 = 1,008 (15분봉 기준, 1일 4시간 거래)
+                         기본값: 252 * 24 = 6,048 (1시간봉 기준, 실제 백테스트 데이터)
         risk_free_rate: 무위험 수익률 (기본 0)
 
     Returns:
@@ -152,10 +153,10 @@ def calculate_sharpe_ratio(
         >>> print(f"Sharpe Ratio: {sharpe:.2f}")
 
     Note:
-        기존 2개 위치의 불일치 해결:
-        - optimizer.py: 252 × 4
-        - optimization_logic.py: 252 × 6
-        → 통일: 252 × 4 (15분봉 기준, 1일 4시간 거래)
+        v7.29 수정: periods_per_year 기본값 변경
+        - Before: 252 × 4 = 1,008 (모호한 기준, 4시간 거래는 존재하지 않음)
+        - After: 252 × 24 = 6,048 (1시간봉 기준, 실제 백테스트 데이터와 일치)
+        - 영향: Sharpe Ratio 값이 √(6,048/1,008) = √6 ≈ 2.45배 증가
     """
     # pandas Series 또는 list를 numpy array로 변환
     returns_arr = np.array(returns)
@@ -180,7 +181,7 @@ def calculate_sharpe_ratio(
 
 def calculate_sortino_ratio(
     returns: List[float] | Any,
-    periods_per_year: int = 252 * 4,
+    periods_per_year: int = 252 * 24,
     risk_free_rate: float = 0.0,
     target_return: float = 0.0
 ) -> float:

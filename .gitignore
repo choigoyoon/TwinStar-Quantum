@@ -48,6 +48,11 @@ api_keys*.json
 *.pem
 *.secret
 
+# ========== 암호화된 모듈 ==========
+# 서버에서 배포하거나 별도 관리
+encrypted_modules/
+*.enc
+
 
 # Claude temp
 tmpclaude-*/

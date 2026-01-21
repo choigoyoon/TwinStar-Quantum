@@ -4,8 +4,8 @@ Alpha-X7 Final 핵심 전략 모듈
 - 모든 거래소에서 공통으로 사용
 - 이 파일만 수정하면 모든 봇에 자동 적용
 
-Version: 7.22.1
-Date: 2026-01-17
+Version: 7.30
+Date: 2026-01-21
 """
 from collections import deque
 import numpy as np
@@ -102,7 +102,7 @@ def calculate_backtest_metrics(trades: List[Dict], leverage: int = 1) -> Dict:
         키 이름을 변환하여 반환합니다 (하위 호환성).
 
         utils.metrics          →  core.strategy_core
-        ───────────────────────────────────────────
+        -------------------------------------------
         total_pnl             →  total_return
         total_trades          →  trade_count
         mdd                   →  max_drawdown
@@ -158,9 +158,9 @@ class AlphaX7Core:
     - RSI 풀백 추가 진입
     """
     
-    # 클래스 변수 (JSON/Constants 연동) - [FIX] 안전한 기본값 추가
+    # 클래스 변수 (JSON/Constants 연동) - [v7.30 SSOT] DEFAULT_PARAMS 기준 폴백
     PATTERN_TOLERANCE: float = ACTIVE_PARAMS.get('pattern_tolerance', 0.05) or 0.05
-    ENTRY_VALIDITY_HOURS: float = ACTIVE_PARAMS.get('entry_validity_hours', 48.0) or 48.0
+    ENTRY_VALIDITY_HOURS: float = ACTIVE_PARAMS.get('entry_validity_hours', 12.0) or 12.0  # v7.30: 48.0 → 12.0
     TRAIL_DIST_R: float = ACTIVE_PARAMS.get('trail_dist_r', 0.5) or 0.5
     MAX_ADDS: int = ACTIVE_PARAMS.get('max_adds', 1) or 1
 
@@ -329,8 +329,8 @@ class AlphaX7Core:
         if len(df_final) < ema_period:
             return None
         
-        # EMA 계산 (파라미터화된 ema_period 사용)
-        ema_val = ACTIVE_PARAMS.get('ema_period', 10)
+        # EMA 계산 (파라미터화된 ema_period 사용) - v7.30: 10 → 20
+        ema_val = ACTIVE_PARAMS.get('ema_period', 20)
         ema = df_final['close'].ewm(span=ema_val, adjust=False).mean()
         
         last_close = df_final['close'].iloc[-1]
@@ -899,37 +899,37 @@ class AlphaX7Core:
         """
         백테스트 실행 (통합 로직)
 
-        ═══════════════════════════════════════════════════════════════
-        📊 파라미터별 지표 영향 관계 (PARAMETER-METRIC IMPACT)
-        ═══════════════════════════════════════════════════════════════
+        ===============================================================
+        [CHART] 파라미터별 지표 영향 관계 (PARAMETER-METRIC IMPACT)
+        ===============================================================
 
         [손익 관련]
-        • atr_mult ↑      → MDD ↑, 승률 ↑ (넓은 SL = 조기청산 방지)
-        • trail_start_r ↑ → 수익률 ↑ (더 많이 수익 확보 후 트레일링)
-        • trail_dist_r ↑  → MDD ↑, 수익률 ± (청산 늦음)
+        atr_mult ↑ → MDD ↑, 승률 ↑ (넓은 SL = 조기청산 방지)
+        trail_start_r ↑ → 수익률 ↑ (더 많이 수익 확보 후 트레일링)
+        trail_dist_r ↑ → MDD ↑, 수익률 ± (청산 늦음)
 
         [거래 빈도]
-        • filter_tf (상위) → 승률 ↑, 거래수 ↓ (엄격한 필터)
-        • entry_validity_hours ↑ → 거래수 ↑ (신호 유효기간 연장)
-        • enable_pullback  → 거래수 ↑ (추가 진입 기회)
+        filter_tf (상위) → 승률 ↑, 거래수 ↓ (엄격한 필터)
+        entry_validity_hours ↑ → 거래수 ↑ (신호 유효기간 연장)
+        enable_pullback → 거래수 ↑ (추가 진입 기회)
 
         [방향성]
-        • allowed_direction = 'Both' → 거래수 ↑↑
-        • allowed_direction = 'Long' → 상승장에서 승률 ↑
+        allowed_direction = 'Both' → 거래수 ↑↑
+        allowed_direction = 'Long' → 상승장에서 승률 ↑
 
         [비용 (v7.26)]
-        • slippage: DEPRECATED - BACKTEST_EXIT_COST 사용 (0.065%)
-        • 진입: 0.02% (Limit/Maker)
-        • 청산: 0.065% (Market/Taker + Stop Slippage)
+        slippage: DEPRECATED - BACKTEST_EXIT_COST 사용 (0.065%)
+        진입: 0.02% (Limit/Maker)
+        청산: 0.065% (Market/Taker + Stop Slippage)
 
-        ═══════════════════════════════════════════════════════════════
+        ===============================================================
         """
-        # 파라미터 기본값 설정 (ACTIVE_PARAMS 연동, None 방지)
+        # 파라미터 기본값 설정 (v7.30 SSOT - ACTIVE_PARAMS 연동, None 방지)
         atr_mult = float(atr_mult if atr_mult is not None else ACTIVE_PARAMS.get('atr_mult') or 1.25)
         trail_start_r = float(trail_start_r if trail_start_r is not None else ACTIVE_PARAMS.get('trail_start_r') or 0.8)
         trail_dist_r = float(trail_dist_r if trail_dist_r is not None else ACTIVE_PARAMS.get('trail_dist_r') or 0.5)
         pattern_tolerance = float(pattern_tolerance if pattern_tolerance is not None else ACTIVE_PARAMS.get('pattern_tolerance') or 0.05)
-        entry_validity_hours = float(entry_validity_hours if entry_validity_hours is not None else ACTIVE_PARAMS.get('entry_validity_hours') or 48.0)
+        entry_validity_hours = float(entry_validity_hours if entry_validity_hours is not None else ACTIVE_PARAMS.get('entry_validity_hours') or 12.0)  # v7.30: 48.0 → 12.0
         pullback_rsi_long = float(pullback_rsi_long if pullback_rsi_long is not None else ACTIVE_PARAMS.get('pullback_rsi_long') or 35.0)
         pullback_rsi_short = float(pullback_rsi_short if pullback_rsi_short is not None else ACTIVE_PARAMS.get('pullback_rsi_short') or 65.0)
         max_adds = int(max_adds if max_adds is not None else ACTIVE_PARAMS.get('max_adds') or 1)

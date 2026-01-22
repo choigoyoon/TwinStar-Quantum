@@ -3,6 +3,7 @@
 
 파라미터 그리드 서치를 수행하고 최적 파라미터를 찾는 위젯
 
+v7.31 (2026-01-21): 레버리지 시뮬레이션 위젯 추가
 v7.26.8 (2026-01-19): Phase 4-6 완료 - 7개 Mixin으로 완전 분리 (522줄)
 v7.26.5 (2026-01-19): Mixin 패턴 통합 (Phase 4-2 Task 3)
 v7.20 (2026-01-17): 메타 최적화 모드 추가
@@ -10,13 +11,14 @@ v7.12 (2026-01-16): 토큰 기반 디자인 시스템 적용
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton,
-    QComboBox, QSpinBox, QProgressBar,
-    QTableWidget, QTableWidgetItem,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QComboBox, QSpinBox, QProgressBar, QRadioButton, QButtonGroup,
+    QTableWidget, QTableWidgetItem, QDialog,
     QMessageBox
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QColor
+import functools
 from typing import Optional, Dict, Any, List
 
 from .worker import OptimizationWorker
@@ -28,17 +30,150 @@ from .single_business_mixin import SingleOptimizationBusinessMixin
 from .single_helpers_mixin import SingleOptimizationHelpersMixin
 from .single_heatmap_mixin import SingleOptimizationHeatmapMixin
 from .single_mode_config_mixin import SingleOptimizationModeConfigMixin
-from ui.design_system.tokens import Colors, Typography, Spacing, Radius
+from ui.design_system.tokens import Colors, Typography, Spacing, Radius, Size
 
 from utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
-# 최적화 모드 매핑 (v7.28: Meta 제거)
+
+# ============ 레버리지 시뮬레이션 위젯 (v7.31) ============
+
+class LeverageSimulationWidget(QWidget):
+    """
+    펼쳐보기 레버리지 시뮬레이션 위젯 (v7.31)
+    
+    기능:
+    - 1x-10x 레버리지별 수익률/MDD 시뮬레이션
+    - MDD 20% 제약 자동 적용 (초과 시 비활성화)
+    - 권장 레버리지 ⭐ 표시
+    - 사용자 선택 → 프리셋 저장
+    
+    Signals:
+        leverage_selected(int): 사용자가 레버리지 선택 후 저장 버튼 클릭
+    """
+    
+    leverage_selected = pyqtSignal(int)
+    
+    def __init__(self, base_result: Dict[str, Any], parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.base_result = base_result
+        self.selected_leverage = 1
+        self._init_ui()
+    
+    def _init_ui(self):
+        """UI 초기화"""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            Spacing.i_space_5,  # 20px (들여쓰기)
+            Spacing.i_space_2,  # 8px
+            Spacing.i_space_3,  # 12px
+            Spacing.i_space_2   # 8px
+        )
+        layout.setSpacing(Spacing.i_space_1)  # 4px
+        
+        # 타이틀
+        title = QLabel("📊 레버리지 시뮬레이션 (MDD 제약: 20%)")
+        title.setStyleSheet(f"""
+            QLabel {{
+                font-size: {Typography.text_base};
+                font-weight: {Typography.font_bold};
+                color: {Colors.accent_primary};
+                padding: {Spacing.space_1} 0;
+            }}
+        """)
+        layout.addWidget(title)
+        
+        # 레버리지 시뮬레이션 가져오기
+        from config.parameters import simulate_leverage_scenarios
+        sim_data = simulate_leverage_scenarios(self.base_result, max_mdd=20.0)
+        
+        self.leverage_group = QButtonGroup(self)
+        
+        # 각 레버리지 옵션 표시
+        for lev_str, data in sim_data['simulations'].items():
+            lev_value = int(lev_str.replace('x', ''))
+            is_safe = data['safe']
+            
+            # 라디오 버튼
+            radio = QRadioButton()
+            radio.setEnabled(is_safe)
+            
+            # 레이블
+            ret = data['return']
+            mdd = data['mdd']
+            
+            if is_safe:
+                if lev_value == sim_data['recommended']:
+                    icon = "⭐"
+                    radio.setChecked(True)
+                    self.selected_leverage = lev_value
+                else:
+                    icon = "✅"
+                label_text = f"{lev_str}: +{ret:.1f}% (MDD {mdd:.1f}%) {icon}"
+                color = Colors.success if lev_value == sim_data['recommended'] else Colors.text_primary
+            else:
+                icon = "⚠️"
+                label_text = f"{lev_str}: +{ret:.1f}% (MDD {mdd:.1f}%) {icon} MDD 초과"
+                color = Colors.text_muted
+            
+            label = QLabel(label_text)
+            label.setStyleSheet(f"""
+                QLabel {{
+                    color: {color};
+                    font-size: {Typography.text_sm};
+                }}
+            """)
+            
+            # 행 레이아웃
+            row_layout = QHBoxLayout()
+            row_layout.setSpacing(Spacing.i_space_2)
+            row_layout.addWidget(radio)
+            row_layout.addWidget(label)
+            row_layout.addStretch()
+            
+            layout.addLayout(row_layout)
+            
+            self.leverage_group.addButton(radio, lev_value)
+        
+        # 저장 버튼
+        save_btn = QPushButton("💾 이 설정으로 프리셋 저장")
+        save_btn.setFixedHeight(Size.button_sm)
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {Colors.accent_primary};
+                color: {Colors.text_primary};
+                font-size: {Typography.text_sm};
+                font-weight: {Typography.font_medium};
+                border: none;
+                border-radius: {Radius.radius_sm};
+                padding: {Spacing.space_1} {Spacing.space_3};
+            }}
+            QPushButton:hover {{
+                background: {Colors.accent_hover};
+            }}
+        """)
+        save_btn.clicked.connect(self._on_save_clicked)
+        layout.addWidget(save_btn)
+        
+        # 버튼 그룹 시그널 연결
+        self.leverage_group.buttonClicked.connect(self._on_leverage_changed)
+    
+    def _on_leverage_changed(self, button):
+        """레버리지 선택 변경"""
+        lev = self.leverage_group.id(button)
+        self.selected_leverage = lev
+        logger.debug(f"레버리지 선택: {lev}x")
+    
+    def _on_save_clicked(self):
+        """저장 버튼 클릭"""
+        self.leverage_selected.emit(self.selected_leverage)
+
+
+# 최적화 모드 매핑 (v7.41: Deep 모드 복구)
 MODE_MAP = {
-    0: 'fine',   # v7.25: Fine-Tuning 기본 (Sharpe 27.32, 95.7% 승률)
-    1: 'quick',  # 빠른 검증
-    2: 'deep'    # 세밀한 탐색
-    # Meta 모드 제거: dev_future/optimization_modes/ 로 이동
+    0: 'fine',      # Fine-Tuning (영향도 기반, 140개)
+    1: 'adaptive',  # Adaptive (샘플링 기반, ~360개)
+    2: 'deep'       # Deep (전수 조사, ~11,520개)
 }
 
 
@@ -78,11 +213,6 @@ class SingleOptimizationWidget(
     optimization_finished = pyqtSignal(list)
     best_params_selected = pyqtSignal(dict)
 
-    # Mixin method stubs (implemented in SingleOptimizationEventsMixin)
-    def _on_progress_update(self, completed: int, total: int) -> None: ...
-    def _on_optimization_finished(self, results: list) -> None: ...
-    def _on_optimization_error(self, error_msg: str) -> None: ...
-
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
 
@@ -108,7 +238,7 @@ class SingleOptimizationWidget(
         self.rsi_period_widget: ParamIntRangeWidget
         self.entry_validity_widget: ParamRangeWidget
 
-        # ✅ Phase 4-2: 전략별 파라미터 위젯
+        # [OK] Phase 4-2: 전략별 파라미터 위젯
         self.macd_fast_widget: ParamIntRangeWidget
         self.macd_slow_widget: ParamIntRangeWidget
         self.macd_signal_widget: ParamIntRangeWidget
@@ -126,6 +256,9 @@ class SingleOptimizationWidget(
 
         # 결과 테이블
         self.result_table: QTableWidget
+        
+        # v7.31: 클릭 시 레버리지 옵션 펼치기
+        self.expanded_rows: set = set()  # 펼쳐진 행 추적
 
         # Note: 다음 메서드들은 Mixin에서 제공됩니다 (Pyright 타입 체크용 선언)
         # SingleOptimizationEventsMixin:
@@ -259,7 +392,7 @@ class SingleOptimizationWidget(
             reply = QMessageBox.question(
                 self,
                 "Deep Mode Confirmation",
-                "Deep mode will test ~1,080 combinations and may take 4-5 hours.\n\n"
+                "Deep mode will test ~11,520 combinations and may take 15-20 minutes.\n\n"
                 "Continue with Deep mode?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No  # Default to No
@@ -276,7 +409,7 @@ class SingleOptimizationWidget(
         try:
             dm = BotDataManager(exchange, symbol, {'entry_tf': timeframe})
 
-            # ✅ 전체 히스토리 로드 (Parquet에서 35,000+ 캔들)
+            # [OK] 전체 히스토리 로드 (Parquet에서 35,000+ 캔들)
             df_full = dm.get_full_history(with_indicators=False)
 
             if df_full is None or df_full.empty:
@@ -315,7 +448,7 @@ class SingleOptimizationWidget(
         # 5. Worker 생성 및 시그널 연결
         self.worker = OptimizationWorker(
             engine=engine,
-            df=df_full,  # ✅ 전체 히스토리 사용 (35,000+ 캔들)
+            df=df_full, # [OK] 전체 히스토리 사용 (35,000+ 캔들)
             param_grid=grid,
             max_workers=max_workers,
             symbol=symbol,
@@ -347,11 +480,14 @@ class SingleOptimizationWidget(
 
     def _update_result_table(self, results: list):
         """결과 테이블 업데이트 (v7.26.3: 배치 업데이트 최적화)"""
-        # ✅ Phase 4: 성능 최적화 - UI 업데이트 일시 중지
+        # [v7.31] 펼쳐진 행 초기화
+        self.expanded_rows.clear()
+        
+        # [OK] Phase 4: 성능 최적화 - UI 업데이트 일시 중지
         self.result_table.setUpdatesEnabled(False)
         self.result_table.setSortingEnabled(False)
 
-        # ✅ MDD 20% 이하만 필터링
+        # [OK] MDD 20% 이하만 필터링
         filtered_results = []
         for result in results:
             if isinstance(result, dict):
@@ -362,10 +498,10 @@ class SingleOptimizationWidget(
             if mdd <= 20.0:  # MDD 20% 이하만
                 filtered_results.append(result)
 
-        # ✅ 필터링된 결과를 self.results에 저장 (v7.26.2: 인덱싱 불일치 수정)
+        # [OK] 필터링된 결과를 self.results에 저장 (v7.26.2: 인덱싱 불일치 수정)
         self.results = filtered_results
 
-        # ✅ 비슷한 결과 그룹화
+        # [OK] 비슷한 결과 그룹화
         groups = self._group_similar_results(filtered_results)
         group_colors = [
             QColor("#2e3440"),  # 어두운 회색 (그룹 0)
@@ -375,15 +511,15 @@ class SingleOptimizationWidget(
         ]
 
         self.result_table.setRowCount(len(filtered_results))
-        logger.info(f"📊 결과 필터링: {len(results)}개 → {len(filtered_results)}개 (MDD ≤ 20%)")
-        logger.info(f"🎨 그룹화: {len(set(groups.values()))}개 그룹")
+        logger.info(f"[CHART] 결과 필터링: {len(results)}개 → {len(filtered_results)}개 (MDD ≤ 20%)")
+        logger.info(f"[ART] 그룹화: {len(set(groups.values()))}개 그룹")
 
         # Issue #5: 대용량 테이블 성능 최적화 (v7.27)
         # 100개 이상 결과 시 배치 업데이트 사용 (5-10배 빠름)
         use_batch_update = len(filtered_results) >= 100
         if use_batch_update:
             self.result_table.setUpdatesEnabled(False)
-            logger.info(f"⚡ 배치 업데이트 모드: {len(filtered_results)}개 행")
+            logger.info(f"[LIGHTNING] 배치 업데이트 모드: {len(filtered_results)}개 행")
 
         for i, result in enumerate(filtered_results):
             # v7.26: 딕셔너리와 객체 모두 지원 (복리 제거)
@@ -407,12 +543,12 @@ class SingleOptimizationWidget(
                 trade_count = getattr(result, 'trade_count', 0)
                 avg_pnl = simple_return / trade_count if trade_count > 0 else 0.0
 
-            # ✅ 그룹 배경색 적용
+            # [OK] 그룹 배경색 적용
             group_id = groups.get(i, 0)
             bg_color = group_colors[group_id % len(group_colors)]
 
-            # ✅ 체크박스 (0번 컬럼)
-            checkbox = QTableWidgetItem()
+            # [OK] 체크박스 (0번 컬럼)
+            checkbox = QTableWidgetItem(f"#{i+1:02}") # v7.31: 순위 텍스트 추가 (식별용)
             checkbox.setFlags(checkbox.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             checkbox.setCheckState(Qt.CheckState.Unchecked)
             checkbox.setBackground(bg_color)
@@ -434,7 +570,7 @@ class SingleOptimizationWidget(
             item = QTableWidgetItem(f"{mdd:.1f}")
             item.setData(0x0100, mdd)
             item.setBackground(bg_color)
-            # MDD 색상: 🟢 <5%, 🟡 5-10%, 🟠 10-15%, 🔴 15-20%
+            # MDD 색상: [GREEN] <5%, [YELLOW] 5-10%, [ORANGE] 10-15%, [RED] 15-20%
             if mdd < 5.0:
                 item.setForeground(QColor("#00ff88"))  # 초록
             elif mdd < 10.0:
@@ -482,10 +618,10 @@ class SingleOptimizationWidget(
             item.setBackground(bg_color)
             self.result_table.setItem(i, 7, item)
 
-        # ✅ Phase 4: UI 업데이트 재개
+        # [OK] Phase 4: UI 업데이트 재개
+        self.result_table.setUpdatesEnabled(True)
         if use_batch_update:
-            self.result_table.setUpdatesEnabled(True)
-            logger.info(f"✅ 배치 업데이트 완료: {len(filtered_results)}개 행 렌더링")
+            logger.info(f"[OK] 배치 업데이트 완료: {len(filtered_results)}개 행 렌더링")
         self.result_table.setSortingEnabled(True)
 
 
@@ -507,21 +643,31 @@ class SingleOptimizationWidget(
         # 초기 상태 설정
         self._toggle_meta_slider(self.mode_combo.currentIndex())
 
-    def _toggle_meta_slider(self, mode_index: int) -> None:
+    def _toggle_meta_slider(self, _mode_index: int) -> None:
         """
-        Meta 슬라이더 표시/숨김
+        Meta 슬라이더 표시/숨김 (v7.30: Meta 제거됨)
+
+        v7.28부터 Meta 모드 제거됨. MODE_MAP = {0: fine, 1: quick, 2: deep}
+        Meta 슬라이더는 항상 숨김 처리.
 
         Args:
-            mode_index: 모드 인덱스 (1=Meta일 때만 표시)
+            _mode_index: 모드 인덱스 (사용 안함, 호환성 유지)
         """
-        is_meta = (mode_index == 1)  # v7.21: Meta 모드는 index 1
-
+        # v7.30: Meta 모드 제거됨 - 슬라이더 항상 숨김
         for i in range(self.meta_settings_layout.count()):
             item = self.meta_settings_layout.itemAt(i)
             if item is not None:
                 widget = item.widget()
                 if widget is not None:
-                    widget.setVisible(is_meta)
+                    widget.setVisible(False)
+
+        # [v7.41] 모드별 UI 상세 설정 연결
+        if _mode_index == 0:
+            self._on_fine_tuning_mode_selected()
+        elif _mode_index == 1:
+            self._on_adaptive_mode_selected()
+        elif _mode_index == 2:
+            self._on_deep_mode_selected()
 
     def _setup_strategy_widget_visibility(self) -> None:
         """
@@ -555,6 +701,183 @@ class SingleOptimizationWidget(
             self.adx_period_widget.setVisible(not is_macd)
             self.adx_threshold_widget.setVisible(not is_macd)
             self.di_threshold_widget.setVisible(not is_macd)
+
+
+    def _on_result_row_clicked(self, item):
+        """결과 행 클릭 시 레버리지 옵션 펼치기/접기 (v7.31)"""
+        row = item.row()
+        
+        if row < 0:
+            return
+        
+        # 실제 데이터 행이 아닌 경우(인서트된 서브행) 클릭 무시 (시스템 버튼은 별도 동작)
+        item0 = self.result_table.item(row, 0)
+        row_text = item0.text() if item0 else ""
+        
+        logger.debug(f"[UI] Row clicked: {row}, text: '{row_text}'")
+        
+        # 메인 행은 "#01" 형태의 텍스트를 가짐. 서브행은 ""임.
+        if not row_text.startswith("#"):
+            return
+        
+        # 실제 결과 인덱스 계산
+        actual_index = self._get_actual_result_index(row)
+        logger.debug(f"[UI] Actual data index: {actual_index}")
+        if actual_index >= len(self.results):
+            return
+        
+        result = self.results[actual_index]
+        
+        # 펼치기/접기 토글
+        if row in self.expanded_rows:
+            self._collapse_leverage_rows(row)
+            self.expanded_rows.remove(row)
+        else:
+            self._expand_leverage_rows(row, result)
+            self.expanded_rows.add(row)
+    
+    def _expand_leverage_rows(self, result_row: int, result: dict):
+        """레버리지 옵션 행들을 테이블에 삽입"""
+        from config.parameters import simulate_leverage_scenarios
+        sim_data = simulate_leverage_scenarios(result, max_mdd=20.0)
+        
+        leverage_options = [1, 2, 3, 5, 10]
+        insert_row = result_row + 1
+        
+        # UI 업데이트 일시 중지 (성능 및 깜빡임 방지)
+        self.result_table.setUpdatesEnabled(False)
+        self.result_table.setSortingEnabled(False) # 확장 중 정렬 금지
+        
+        for i, lev in enumerate(leverage_options):
+            lev_str = f'{lev}x'
+            data = sim_data['simulations'][lev_str]
+            
+            self.result_table.insertRow(insert_row + i)
+            
+            # 서브행 배경색 (약간 더 어둡게)
+            sub_bg = QColor(Colors.bg_elevated)
+            
+            # 0번: 인덴트/빈칸
+            empty_item = QTableWidgetItem("")
+            empty_item.setBackground(sub_bg)
+            self.result_table.setItem(insert_row + i, 0, empty_item)
+            
+            # 1번: 레버리지 라벨
+            is_safe = data['safe']
+            recommended = (lev == sim_data['recommended'])
+            icon = "⭐" if recommended else ("✅" if is_safe else "⚠️")
+            color = Colors.success if is_safe else Colors.text_muted
+            
+            lev_label = f"   {lev_str} {icon}"
+            item = QTableWidgetItem(lev_label)
+            item.setForeground(QColor(color))
+            item.setBackground(sub_bg)
+            # 폰트 약화 (메인 결과와 구분)
+            font = item.font()
+            font.setPointSize(9)
+            item.setFont(font)
+            self.result_table.setItem(insert_row + i, 1, item)
+            
+            # 2번: 예상 수익률
+            ret_item = QTableWidgetItem(f"+{data['return']:.1f}%")
+            ret_item.setForeground(QColor(color))
+            ret_item.setBackground(sub_bg)
+            self.result_table.setItem(insert_row + i, 2, ret_item)
+            
+            # 3번: 예상 MDD (20% 초과 시 강조)
+            mdd_val = abs(data['mdd'])
+            mdd_item = QTableWidgetItem(f"{mdd_val:.1f}%")
+            if mdd_val > 20.0:
+                mdd_item.setForeground(QColor(Colors.danger))
+                mdd_item.setFont(font) # 굵게 할 수도 있음
+            else:
+                mdd_item.setForeground(QColor(color))
+            mdd_item.setBackground(sub_bg)
+            self.result_table.setItem(insert_row + i, 3, mdd_item)
+            
+            # 4번: 저장 버튼
+            if is_safe:
+                save_btn = QPushButton(f"💾 {lev}x 저장")
+                save_btn.setFixedHeight(22)
+                save_btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: {Colors.accent_primary if recommended else Colors.bg_surface};
+                        color: {Colors.text_primary};
+                        border: 1px solid {Colors.border_muted};
+                        border-radius: {Radius.radius_sm};
+                        font-size: 8pt;
+                    }}
+                    QPushButton:hover {{
+                        background: {Colors.accent_hover};
+                    }}
+                """)
+                # partial 사용 (클로저 문제 해결 및 타입 안정성)
+                callback = functools.partial(self._save_preset_with_leverage, result, lev)
+                save_btn.clicked.connect(callback)
+                
+                logger.debug(f"[UI] Leverage save button created: {lev}x, callback: {callback}")
+                self.result_table.setCellWidget(insert_row + i, 4, save_btn)
+            else:
+                # MDD 초과 시 저장 불가 안내
+                warn_item = QTableWidgetItem("MDD 한도 초과")
+                warn_item.setForeground(QColor(Colors.text_muted))
+                warn_item.setBackground(sub_bg)
+                warn_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.result_table.setItem(insert_row + i, 4, warn_item)
+            
+            # 5번~7번: 추가 메트릭 (Sharpe, 거래수, 평균 수익)
+            # Sharpe와 거래수는 레버리지에 불변, 평균 수익은 비례
+            sharpe = result.get('sharpe_ratio', 0.0)
+            trades = result.get('total_trades', 0)
+            avg_pnl = result.get('avg_pnl', 0.0) * lev
+            
+            # Sharpe
+            item = QTableWidgetItem(f"{sharpe:.2f}")
+            item.setForeground(QColor(Colors.text_secondary))
+            item.setBackground(sub_bg)
+            item.setFont(font)
+            self.result_table.setItem(insert_row + i, 5, item)
+            
+            # 거래수
+            item = QTableWidgetItem(f"{trades}")
+            item.setForeground(QColor(Colors.text_secondary))
+            item.setBackground(sub_bg)
+            item.setFont(font)
+            self.result_table.setItem(insert_row + i, 6, item)
+            
+            # 평균 수익
+            item = QTableWidgetItem(f"{avg_pnl:.3f}%")
+            item.setForeground(QColor(color))
+            item.setBackground(sub_bg)
+            item.setFont(font)
+            self.result_table.setItem(insert_row + i, 7, item)
+        
+        self.result_table.setUpdatesEnabled(True)
+        # self.result_table.setSortingEnabled(True) # 주의: 확장된 상태에서 정렬하면 행 순서 꼬임. 접을 때까지 비활성화 권장
+    
+    def _collapse_leverage_rows(self, result_row: int):
+        """펼쳐진 레버리지 행들 제거"""
+        self.result_table.setUpdatesEnabled(False)
+        for _ in range(5):
+            if result_row + 1 < self.result_table.rowCount():
+                self.result_table.removeRow(result_row + 1)
+        self.result_table.setUpdatesEnabled(True)
+        self.result_table.setSortingEnabled(True)
+    
+    def _get_actual_result_index(self, table_row: int) -> int:
+        """
+        테이블 행 번호를 실제 결과 리스트(self.results)의 인덱스로 변환
+        
+        현재 테이블에는 확장된 시뮬레이션 행들이 섞여 있으므로, 
+        자기보다 앞서 펼쳐진 행들의 총 개수를 빼주어야 함.
+        """
+        offset = 0
+        for expanded_row in sorted(self.expanded_rows):
+            if expanded_row < table_row:
+                offset += 5 # 각 확장마다 5행씩 추가됨
+        
+        actual_index = table_row - offset
+        return actual_index
 
 
 __all__ = ['SingleOptimizationWidget']

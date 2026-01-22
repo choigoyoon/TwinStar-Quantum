@@ -12,46 +12,46 @@ from typing import Any, Optional
 
 
 # ============ 기본 파라미터 (전체 프로젝트 공용) ============
-# [OPTIMIZED] 중요 파라미터 중심 탐색(A-3) 결과 (2026.01.01)
-# 성과: 수익 5,375% | 승률 84.3% | MDD 9.2% (3x 레버리지 기준)
+# [v7.30 SSOT] optimizer._worker_run_single() 기준으로 통일
+# 모든 파일(optimizer, strategy_core, validate_preset 등)에서 이 값 참조
 DEFAULT_PARAMS = {
-    # MACD 파라미터 (최적화됨)
-    'macd_fast': 6,            # [OPT] 12 → 6 (매우 민감)
-    'macd_slow': 18,           # [OPT] 26 → 18 (빠름)
-    'macd_signal': 7,          # [OPT] 9 → 7 (민감)
-    
-    # EMA 필터 파라미터 (최적화됨)  
-    'ema_period': 10,          # [OPT] 20 → 10 (민감)
-    
-    # ATR 파라미터 (최적화됨)
-    'atr_mult': 1.25,          # [OPT] 2.2 → 1.25 (88.4% 프리셋 기준)
+    # MACD 파라미터 (optimizer 기준)
+    'macd_fast': 12,           # [SSOT v7.30] optimizer 기본값
+    'macd_slow': 26,           # [SSOT v7.30] optimizer 기본값
+    'macd_signal': 9,          # [SSOT v7.30] optimizer 기본값
+
+    # EMA 필터 파라미터 (optimizer 기준)
+    'ema_period': 20,          # [SSOT v7.30] optimizer 기본값
+
+    # ATR 파라미터
+    'atr_mult': 1.25,          # 프리셋에서 오버라이드됨
     'atr_period': 14,
-    
-    # RSI 파라미터 (최적화됨)
-    'rsi_period': 14,          # [OPT] 14 (표준 유지)
 
-    # ADX 파라미터 (Session 8 추가)
-    'adx_period': 14,          # ADX 계산 기간 (표준)
-    'adx_threshold': 25.0,     # 추세 강도 임계값 (>25: 강한 추세)
-    'enable_adx_filter': False, # ADX 필터 활성화 여부 (기본 비활성)
+    # RSI 파라미터
+    'rsi_period': 14,
 
-    # 트레일링 파라미터
+    # ADX 파라미터
+    'adx_period': 14,
+    'adx_threshold': 25.0,
+    'enable_adx_filter': False,
+
+    # 트레일링 파라미터 (optimizer 기준)
     'trail_start_r': 0.8,
-    'trail_dist_r': 0.1,       # [OPT] 0.5 → 0.1 (88.4% 프리셋 기준)
-    
-    # 풀백 파라미터
-    'pullback_rsi_long': 35,   # [OPT] 45 → 35 (88.4% 프리셋 기준)
-    'pullback_rsi_short': 65,  # [OPT] 55 → 65 (88.4% 프리셋 기준)
-    'enable_pullback': True,
-    
-    # 패턴 파라미터
+    'trail_dist_r': 0.5,       # [SSOT v7.30] optimizer 기본값 (0.1 → 0.5)
+
+    # 풀백 파라미터 (optimizer 기준)
+    'pullback_rsi_long': 35,
+    'pullback_rsi_short': 65,
+    'enable_pullback': False,  # [SSOT v7.30] optimizer 기본값 (True → False)
+
+    # 패턴 파라미터 (optimizer 기준)
     'pattern_tolerance': 0.05,
-    'entry_validity_hours': 6.0,  # [OPT] 48 → 6 (88.4% 프리셋 기준)
+    'entry_validity_hours': 12.0,  # [SSOT v7.30] optimizer 기본값 (6.0 → 12.0)
     'max_adds': 1,
     'filter_tf': '4h',
-    'entry_tf': '1h',  # [FIX v7.26] 15m → 1h (백테스트 기본값, 15m은 실시간용)
+    'entry_tf': '1h',
     'direction': 'Both',
-    
+
     # 비용 파라미터 (v7.26.1: 진입/청산 분리)
     # 진입 (지정가 주문 - Limit/Maker)
     'entry_slippage': 0.0,      # 지정가 주문은 슬리피지 없음
@@ -66,6 +66,14 @@ DEFAULT_PARAMS = {
     # 거래 파라미터
     'leverage': 10,
     'max_slippage': 0.01,  # 1%
+
+    # [v7.41] Adaptive Range Parameters (가변 엔진)
+    'range_low_slope': 0.012,    # 횡보/약세 임계값
+    'range_high_slope': 0.035,   # 강세/폭발 임계값
+    'precision_mult': 0.7,      # 정밀 모드 가중치
+    'aggressive_mult': 1.5,     # 공격 모드 가중치
+    'precision_rsi_offset': 7.0, # 정밀 모드 RSI 오프셋
+    'aggressive_rsi_offset': 10.0 # 공격 모드 RSI 오프셋
 }
 
 # ============ 비용 상수 (프로젝트 공용) ============
@@ -110,6 +118,13 @@ PARAM_RANGES = {
     # 패턴
     'pattern_tolerance': (0.02, 0.08, 0.01),
     'entry_validity_hours': (12.0, 72.0, 12.0),
+    
+    # [v7.41] Adaptive Ranges
+    'range_low_slope': (0.005, 0.02, 0.005),
+    'precision_mult': (0.5, 0.9, 0.1),
+    'aggressive_mult': (1.2, 2.0, 0.2),
+    'precision_rsi_offset': (2.0, 15.0, 3.0),
+    'aggressive_rsi_offset': (5.0, 25.0, 5.0),
 }
 
 
@@ -166,6 +181,38 @@ PARAM_RANGES_BY_MODE = {
         'deep': [0.15, 0.2, 0.25, 0.3],
         'fine': [0.015, 0.018, 0.02, 0.022, 0.025, 0.03, 0.04, 0.05]  # Phase 1 영향도 분석 기준
     },
+
+    # 가변 엔진 파라미터 (Adaptive Engine)
+    'range_low_slope': {
+        'quick': [0.012],
+        'standard': [0.01, 0.015],
+        'deep': [0.005, 0.01, 0.015, 0.02]
+    },
+    'range_high_slope': {
+        'quick': [0.035],
+        'standard': [0.03, 0.04],
+        'deep': [0.025, 0.03, 0.035, 0.04, 0.05]
+    },
+    'precision_mult': {
+        'quick': [0.7],
+        'standard': [0.6, 0.8],
+        'deep': [0.5, 0.6, 0.7, 0.8, 0.9]
+    },
+    'aggressive_mult': {
+        'quick': [1.5],
+        'standard': [1.3, 1.7],
+        'deep': [1.2, 1.4, 1.6, 1.8, 2.0]
+    },
+    'precision_rsi_offset': {
+        'quick': [7.0],
+        'standard': [5.0, 10.0],
+        'deep': [2.0, 5.0, 8.0, 12.0, 15.0]
+    },
+    'aggressive_rsi_offset': {
+        'quick': [10.0],
+        'standard': [5.0, 15.0],
+        'deep': [5.0, 10.0, 15.0, 20.0, 25.0]
+    }
 }
 
 
@@ -392,11 +439,131 @@ STRATEGY_INDICATOR_PARAMS = {
 }
 
 
+# ============ Fine-Tuning 파라미터 범위 (v7.31 - 레버리지 1배 고정) ============
+# 영향도 기반 3개 파라미터 탐색 (filter_tf, trail_start_r, trail_dist_r)
+# Phase 1 분석 결과 (2026-01-19) 반영:
+# - 영향도: filter_tf (40%) > trail_start_r (30%) > trail_dist_r (25%)
+# - Baseline: filter_tf='2h', trail_start_r=0.4, trail_dist_r=0.02 (Sharpe 29.81)
+FINE_TUNING_RANGES = {
+    # 탐색할 파라미터 (영향도 기반)
+    'filter_tf': ['2h', '4h', '6h', '12h'],                    # 4개
+    'trail_start_r': [0.3, 0.35, 0.4, 0.45, 0.5],              # 5개
+    'trail_dist_r': [0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05],  # 7개
+    
+    # 고정 파라미터 (조합 증가 방지)
+    'leverage': [1],  # 1x 고정
+    'atr_mult': [1.5],  # 고정
+    'entry_validity_hours': [6.0],  # 고정
+    'rsi_period': [14],  # 고정
+    'macd_fast': [6],  # 고정
+    'macd_slow': [18],  # 고정
+    'macd_signal': [7],  # 고정
+}
+# 총 조합 수: 4 × 5 × 7 × 1^6 = 140개
+
+# ============ 레버리지 계산 유틸리티 (v7.31) ============
+
+def calculate_optimal_leverage(base_mdd: float, max_mdd: float = 20.0) -> int:
+    """
+    MDD 제약 하에서 최대 안전 레버리지 계산
+    
+    Args:
+        base_mdd: 기본 전략 MDD (절댓값, 예: 7.8)
+        max_mdd: 허용 최대 MDD (기본값: 20%)
+    
+    Returns:
+        최적 레버리지 (1, 2, 3, 5, 10 중 하나)
+    
+    Examples:
+        >>> calculate_optimal_leverage(5.0, 20.0)
+        3  # 20 / 5 = 4.0, 3x까지 안전
+        
+        >>> calculate_optimal_leverage(10.0, 20.0)
+        2  # 20 / 10 = 2.0, 2x까지 안전
+        
+        >>> calculate_optimal_leverage(25.0, 20.0)
+        1  # base_mdd > max_mdd, 1x만 가능
+    """
+    # Edge cases
+    if base_mdd <= 0:
+        return 1
+    
+    if base_mdd >= max_mdd:
+        return 1  # 이미 기본 MDD가 한도 초과
+    
+    # 최대 안전 레버리지 계산
+    max_safe_leverage = max_mdd / base_mdd
+    
+    # 표준 레버리지 옵션 (역순으로 체크)
+    leverage_options = [10, 5, 3, 2, 1]
+    
+    for lev in leverage_options:
+        if lev <= max_safe_leverage:
+            return lev
+    
+    return 1  # Fallback
+
+
+def simulate_leverage_scenarios(base_result: dict, max_mdd: float = 20.0) -> dict:
+    """
+    다양한 레버리지 레벨에서의 성과 시뮬레이션
+    
+    Args:
+        base_result: 레버리지 1x 최적화 결과
+            - 'total_return': 총 수익률 (%)
+            - 'max_drawdown': 최대 낙폭 (%)
+        max_mdd: 허용 최대 MDD (기본값: 20%)
+    
+    Returns:
+        {
+            'simulations': {
+                '1x': {'return': float, 'mdd': float, 'safe': bool},
+                '2x': {...},
+                ...
+            },
+            'recommended': int  # 권장 레버리지
+        }
+    
+    Examples:
+        >>> result = {'total_return': 10.0, 'max_drawdown': -5.0}
+        >>> sim = simulate_leverage_scenarios(result, max_mdd=20.0)
+        >>> sim['simulations']['2x']
+        {'return': 20.0, 'mdd': -10.0, 'safe': True}
+        >>> sim['recommended']
+        3
+    """
+    # [v7.31] 키 불일치 방지 (total_return -> simple_return 병행 지원)
+    base_return = base_result.get('total_return') or base_result.get('simple_return', 0)
+    base_mdd = abs(base_result.get('max_drawdown') or base_result.get('mdd', 0))
+    
+    leverage_options = [1, 2, 3, 5, 10]
+    simulations = {}
+    
+    for lev in leverage_options:
+        scaled_return = base_return * lev
+        scaled_mdd = base_mdd * lev
+        is_safe = scaled_mdd <= max_mdd
+        
+        simulations[f'{lev}x'] = {
+            'return': scaled_return,
+            'mdd': -scaled_mdd,  # 음수로 저장 (표준 형식)
+            'safe': is_safe
+        }
+    
+    # 권장 레버리지 계산
+    recommended = calculate_optimal_leverage(base_mdd, max_mdd)
+    
+    return {
+        'simulations': simulations,
+        'recommended': recommended
+    }
+
+
 # ============ 최적화 모드 정의 (v7.25 - Fine-Tuning 추가) ============
 # Standard 모드 제거 (v7.21): Quick/Deep으로 충분, Meta가 가장 효율적
 OPTIMIZATION_MODES = {
     'fine': {
-        'name': '🎯 Fine-Tuning (영향도 기반 탐색)',
+        'name': '[TARGET] Fine-Tuning (영향도 기반 탐색)',
         'description': '영향도 높은 3개 파라미터 넓게 탐색 + 목표 필터 (MDD≤20%, 승률≥85%, 거래당≥0.5%)',
         'method': 'fine_tuning',
         'combinations': 320,
@@ -419,7 +586,7 @@ OPTIMIZATION_MODES = {
         }
     },
     'meta': {
-        'name': '🔍 Meta (자동 범위 탐색)',
+        'name': '[SEARCH] Meta (자동 범위 탐색)',
         'description': '3,000개 조합을 20초에 실행하여 최적 범위 자동 추출',
         'method': 'meta_optimization',
         'sample_size': 3000,
@@ -428,7 +595,7 @@ OPTIMIZATION_MODES = {
         'output': 'extracted_ranges.json + best_params.json'
     },
     'quick': {
-        'name': '⚡ Quick (빠른 검증)',
+        'name': '[LIGHTNING] Quick (빠른 검증)',
         'description': 'Meta 추출 범위의 양 끝만 테스트 (검증용)',
         'method': 'use_extracted_ranges',
         'density': 'endpoints',
@@ -437,7 +604,7 @@ OPTIMIZATION_MODES = {
         'requires': 'meta_results'
     },
     'deep': {
-        'name': '🔬 Deep (세부 최적화)',
+        'name': ' Deep (세부 최적화)',
         'description': 'Meta 추출 범위 전체 탐색 (최종 파라미터)',
         'method': 'use_extracted_ranges',
         'density': 'full',
@@ -761,4 +928,4 @@ if __name__ == '__main__':
     print(f"   Trading params: {list(get_trading_params().keys())}")
     print(f"   Pattern params: {list(get_pattern_params().keys())}")
     
-    print("\n✅ All tests passed!")
+    print("\n[OK] All tests passed!")

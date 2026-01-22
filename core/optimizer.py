@@ -88,7 +88,7 @@ def get_optimal_workers(mode: str = 'standard', available_memory_gb: float | Non
     """
     최적 워커 수 자동 계산 (v7.29 - 물리 코어 + NumPy 스레드 고려)
 
-    ✅ v7.29 개선:
+    [OK] v7.29 개선:
     - 물리 코어 우선 사용 (100% 효율)
     - 하이퍼스레딩 보조 사용 (35% 효율, Deep 모드만)
     - NumPy 멀티스레딩 고려 (n_workers × numpy_threads ≤ logical_cores)
@@ -287,7 +287,7 @@ INDICATOR_RANGE = {
 # ==================== 모드별 지표 범위 ====================
 
 # Quick 모드 (최소 조합, 4개) - 승률 80%+ & 매매빈도 0.5회/일 목표
-# ✅ DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
+# [OK] DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
 INDICATOR_RANGE_QUICK = {
     'macd_fast': [8, 12],
     'macd_slow': [20, 26],
@@ -307,7 +307,7 @@ INDICATOR_RANGE_QUICK = {
 # 핵심 조합: 2 (atr_mult) × 1 (rsi_period) × 2 (entry_validity_hours) = 4개
 
 # Standard 모드 (균형, 36개) - 승률 75%+ & 매매빈도 1-2회/일 목표
-# ✅ DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
+# [OK] DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
 INDICATOR_RANGE_STANDARD = {
     'macd_fast': [6, 8, 10, 12],
     'macd_slow': [18, 20, 24, 26],
@@ -327,7 +327,7 @@ INDICATOR_RANGE_STANDARD = {
 # 핵심 조합: 4 (atr_mult) × 3 (rsi_period) × 3 (entry_validity_hours) = 36개
 
 # Deep 모드 (완전 탐색, 252개) - 다양한 스타일 탐색 (공격×3, 균형, 보수, 고승률, 저빈도)
-# ✅ DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
+# [OK] DEFAULT_PARAMS 포함: atr_mult=1.25, rsi_period=14, entry_validity_hours=6
 INDICATOR_RANGE_DEEP = {
     'atr_mult': [1.0, 1.25, 1.5, 2.0, 2.5, 3.0],  # 6개 - 최적값(1.25) 포함, 3.5 제거
     'rsi_period': [5, 7, 11, 14, 21, 25, 30],     # 7개 - 전체 범위
@@ -390,7 +390,7 @@ def generate_full_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
         'entry_validity_hours': entry_validity_hours,                         # 5개 [6, 12, 24, 48, 72]
         'pullback_rsi_long': [40],                                            # 1개 (고정)
         'pullback_rsi_short': [60],                                           # 1개 (고정)
-        # Total: 3×1×1×1×1×4×4×2×1×5×1×1 = 120개 ✅
+        # Total: 3×1×1×1×1×4×4×2×1×5×1×1 = 120개 [OK]
     }
 
 
@@ -422,7 +422,7 @@ def generate_quick_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
         'entry_validity_hours': entry_validity_hours,                          # 2개 [48, 72]
         'pullback_rsi_long': [40],                                             # 1개 (고정)
         'pullback_rsi_short': [60],                                            # 1개 (고정)
-        # Total: 2×1×1×1×1×2×2×1×1×2×1×1 = 8개 ✅
+        # Total: 2×1×1×1×1×2×2×1×1×2×1×1 = 8개 [OK]
     }
 
 
@@ -462,6 +462,14 @@ def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
     trail_start_r = get_param_range_by_mode('trail_start_r', 'deep') or [DEFAULT_PARAMS.get('trail_start_r', 0.8)]
     trail_dist_r = get_param_range_by_mode('trail_dist_r', 'deep') or [DEFAULT_PARAMS.get('trail_dist_r', 0.1)]
     entry_validity_hours = get_param_range_by_mode('entry_validity_hours', 'deep') or [DEFAULT_PARAMS.get('entry_validity_hours', 6.0)]
+    
+    # 가변 엔진 파라미터 추가 (v7.41)
+    range_low_slope = get_param_range_by_mode('range_low_slope', 'deep') or [0.012]
+    range_high_slope = get_param_range_by_mode('range_high_slope', 'deep') or [0.035]
+    precision_mult = get_param_range_by_mode('precision_mult', 'deep') or [0.7]
+    aggressive_mult = get_param_range_by_mode('aggressive_mult', 'deep') or [1.5]
+    precision_rsi_offset = get_param_range_by_mode('precision_rsi_offset', 'deep') or [7.0]
+    aggressive_rsi_offset = get_param_range_by_mode('aggressive_rsi_offset', 'deep') or [10.0]
 
     return {
         'trend_interval': [trend_tf],
@@ -470,14 +478,21 @@ def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
         'leverage': [1],                                                      # 1개 (고정)
         'direction': ['Both'],                                                # 1개 (고정)
         'max_mdd': [max_mdd],                                                 # 1개 (고정)
-        'atr_mult': atr_mult,                                                 # 6개 [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
-        'trail_start_r': trail_start_r,                                       # 6개 [0.8, 1.0, 1.5, 2.0, 2.5, 3.0]
-        'trail_dist_r': trail_dist_r,                                         # 4개 [0.15, 0.2, 0.25, 0.3]
-        'pattern_tolerance': [0.05],                                          # 1개 (고정)
-        'entry_validity_hours': entry_validity_hours,                         # 7개 [6, 12, 24, 36, 48, 72, 96]
-        'pullback_rsi_long': [40],                                            # 1개 (고정)
-        'pullback_rsi_short': [60],                                           # 1개 (고정)
-        # Total: 5×1×1×1×1×6×6×4×1×7×1×1 = 1,080개 ✅
+        'atr_mult': atr_mult,                                                 # 6개
+        'trail_start_r': [trail_start_r[i] for i in range(0, len(trail_start_r), 2)], # 6개 -> 3개 (샘플링)
+        'trail_dist_r': [trail_dist_r[i] for i in range(0, len(trail_dist_r), 2)],   # 4개 -> 2개 (샘플링)
+        'pattern_tolerance': [0.05],                                          # 1개
+        'entry_validity_hours': [entry_validity_hours[0], entry_validity_hours[-1]], # 7개 -> 2개
+        'pullback_rsi_long': [40],                                            # 1개
+        'pullback_rsi_short': [60],                                           # 1개
+        # 가변 엔진 (Adaptive) 파라미터 활성화
+        'range_low_slope': [range_low_slope[1], range_low_slope[3]],         # 0.01, 0.02
+        'range_high_slope': [range_high_slope[0], range_high_slope[3]],        # 0.025, 0.04
+        'precision_mult': [precision_mult[1], precision_mult[4]],            # 0.6, 0.9
+        'aggressive_mult': [aggressive_mult[1], aggressive_mult[3]],         # 1.4, 1.8
+        'precision_rsi_offset': [precision_rsi_offset[1], precision_rsi_offset[3]], # 5.0, 12.0
+        'aggressive_rsi_offset': [aggressive_rsi_offset[1], aggressive_rsi_offset[3]], # 10.0, 20.0
+        # Total: 5(tf) * 6(atr) * 3(trail_s) * 2(trail_d) * 2(ev) * 2(slope_l) * 2(slope_h) * 2(p_m) * 2(a_m) * 2(p_o) * 2(a_o) = 23,040 조합 (v7.42)
     }
 
 
@@ -516,7 +531,7 @@ def generate_adaptive_grid(trend_tf: str, max_mdd: float = 20.0, sample_ratio: f
     trail_dist_r_full = get_param_range_by_mode('trail_dist_r', 'deep') or [DEFAULT_PARAMS.get('trail_dist_r', 0.1)]
     entry_validity_hours_full = get_param_range_by_mode('entry_validity_hours', 'deep') or [DEFAULT_PARAMS.get('entry_validity_hours', 6.0)]
 
-    # ✅ 계층 샘플링 (중요도 기반)
+    # [OK] 계층 샘플링 (중요도 기반)
     # Level 1: atr_mult (가장 중요, MDD 직접 영향) → 100% 검사
     atr_mult = atr_mult_full  # 6개 전체
 
@@ -546,7 +561,7 @@ def generate_adaptive_grid(trend_tf: str, max_mdd: float = 20.0, sample_ratio: f
         'entry_validity_hours': entry_validity_hours, # 2개 (30%)
         'pullback_rsi_long': [40],                    # 1개
         'pullback_rsi_short': [60],                   # 1개
-        # Total: 5×1×1×1×1×6×3×2×1×2×1×1 = 360개 (-67%) ✅
+        # Total: 5×1×1×1×1×6×3×2×1×2×1×1 = 360개 (-67%) [OK]
     }
 
 
@@ -662,18 +677,18 @@ def validate_deep_mode() -> tuple:
         (can_use: bool, message: str)
     """
     if not is_admin_mode():
-        return False, "⚠️ Deep 모드는 관리자 권한이 필요합니다. 관리자로 실행해주세요."
+        return False, "[WARNING] Deep 모드는 관리자 권한이 필요합니다. 관리자로 실행해주세요."
     
     # 메모리 체크 (최소 8GB 권장)
     try:
         import psutil
         available_gb = psutil.virtual_memory().available / (1024**3)
         if available_gb < 4:
-            return False, f"⚠️ Deep 모드는 최소 4GB 메모리가 필요합니다. (현재: {available_gb:.1f}GB)"
+            return False, f"[WARNING] Deep 모드는 최소 4GB 메모리가 필요합니다. (현재: {available_gb:.1f}GB)"
     except ImportError:
         pass  # psutil 없으면 체크 스킵
     
-    return True, "✅ Deep 모드 사용 가능"
+    return True, "[OK] Deep 모드 사용 가능"
 
 
 
@@ -734,51 +749,51 @@ class OptimizationResult:
     """
     최적화 결과 데이터
     
-    ═══════════════════════════════════════════════════════════════
-    📊 지표별 영향 관계 (METRICS IMPACT REFERENCE)
-    ═══════════════════════════════════════════════════════════════
+    ===============================================================
+    [CHART] 지표별 영향 관계 (METRICS IMPACT REFERENCE)
+    ===============================================================
     
     [입력 파라미터] → [영향 지표]
-    ───────────────────────────────────────────────────────────────
-    • atr_mult (ATR 배수)
+    ---------------------------------------------------------------
+    atr_mult (ATR 배수)
       → max_drawdown: ATR↑ = 넓은 SL = MDD↑
       → win_rate: ATR↑ = 여유있는 SL = 승률↑ (조기 청산 방지)
       → trades: 영향 적음
     
-    • trail_start_r (트레일링 시작 R배수)
+    trail_start_r (트레일링 시작 R배수)
       → simple_return/compound_return: 시작↑ = 더 많이 수익 확보 후 트레일링
       → win_rate: 시작↑ = 익절 확률↑
       → max_drawdown: 간접 영향
     
-    • trail_dist_r (트레일링 거리 R배수)
+    trail_dist_r (트레일링 거리 R배수)
       → max_drawdown: 거리↑ = 청산 늦음 = MDD↑
       → simple_return: 거리↑ = 수익 더 추구 = 수익↑ or 반납
     
-    • leverage (레버리지)
+    leverage (레버리지)
       → simple_return/compound_return: 레버리지↑ = 수익률↑ (비례)
       → max_drawdown: 레버리지↑ = MDD↑ (비례)
       → sharpe_ratio: 변동성↑ = 샤프↓
     
-    • direction (방향: Long/Short/Both)
+    direction (방향: Long/Short/Both)
       → trades: Both = 거래↑↑
       → win_rate: 시장 상황에 따라 변동
     
-    • filter_tf (필터 타임프레임)
+    filter_tf (필터 타임프레임)
       → win_rate: 상위TF 필터 = 신호 품질↑ = 승률↑
       → trades: 엄격한 필터 = 거래↓
     
-    • entry_tf (진입 타임프레임)
+    entry_tf (진입 타임프레임)
       → trades: 작은TF = 기회↑ = 거래↑
       → win_rate: 타이밍 정확도에 영향
-    ───────────────────────────────────────────────────────────────
+    ---------------------------------------------------------------
     
     [지표 계산 위치]
-    • win_rate: _calculate_metrics() → (수익거래/전체거래) × 100
-    • max_drawdown: _calculate_metrics() → 최고점 대비 최대 하락폭
-    • sharpe_ratio: _calculate_metrics() → (평균수익/표준편차) × √252
-    • simple_return: _calculate_metrics() → Σ(각 거래 수익률)
-    • compound_return: _calculate_metrics() → Π(1+수익률) - 1
-    ═══════════════════════════════════════════════════════════════
+    win_rate: _calculate_metrics() → (수익거래/전체거래) × 100
+    max_drawdown: _calculate_metrics() → 최고점 대비 최대 하락폭
+    sharpe_ratio: _calculate_metrics() → (평균수익/표준편차) × √252
+    simple_return: _calculate_metrics() → Σ(각 거래 수익률)
+    compound_return: _calculate_metrics() → Π(1+수익률) - 1
+    ===============================================================
     """
     params: Dict                          # 사용된 파라미터
     trades: int                           # 매매 횟수 → direction, filter_tf, entry_tf 영향
@@ -790,8 +805,8 @@ class OptimizationResult:
     sharpe_ratio: float = 0.0             # 샤프비율 → leverage 영향 (변동성)
     profit_factor: float = 0.0            # 수익팩터 → 전체적 파라미터 영향
     avg_trades_per_day: float = 0.0       # 일평균 거래수
-    stability: str = "⚠️"                 # 3구간 안정성 지표
-    strategy_type: str = ""               # 전략 유형 (🔥공격, ⚖균형, 🛡보수)
+    stability: str = "[WARNING]" # 3구간 안정성 지표
+    strategy_type: str = "" # 전략 유형 ([FIRE]공격, 균형, 보수)
     grade: str = ""                       # 등급 (S/A/B/C)
     capital_mode: str = "compound"        # 자본 모드
     avg_pnl: float = 0.0                  # [NEW] 평균 PnL (%)
@@ -803,6 +818,8 @@ class OptimizationResult:
     backtest_start_time: Optional[pd.Timestamp] = None  # [NEW] 백테스트 시작 시간 (v7.22)
     backtest_end_time: Optional[pd.Timestamp] = None    # [NEW] 백테스트 종료 시간 (v7.22)
     backtest_duration_days: int = 0       # [NEW] 백테스트 기간 (일) (v7.22)
+    entry_validation_stats: Optional[Dict] = None  # [v7.30] Entry Validator 통계
+    metrics_after_validation: Optional[Dict] = None  # [v7.30] Entry Validator 적용 후 메트릭
 
 
 # calculate_grade() 함수 제거 (utils.metrics.assign_grade_by_preset()로 대체)
@@ -877,27 +894,34 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
         # 총 비용
         total_cost = slippage + fee
         
-        # 백테스트 실행 (파라미터화 완료)
+        # 백테스트 실행 (v7.30 SSOT: DEFAULT_PARAMS에서 모든 기본값 참조)
         trades = strategy.run_backtest(
             df_pattern=df_pattern,
             df_entry=df_entry,
             slippage=total_cost,
-            atr_mult=params.get('atr_mult', DEFAULT_PARAMS.get('atr_mult', 1.5)),
-            trail_start_r=params.get('trail_start_r', DEFAULT_PARAMS.get('trail_start_r', 0.8)),
-            trail_dist_r=params.get('trail_dist_r', DEFAULT_PARAMS.get('trail_dist_r', 0.5)),
-            pattern_tolerance=params.get('pattern_tolerance', DEFAULT_PARAMS.get('pattern_tolerance', 0.03)),
-            entry_validity_hours=params.get('entry_validity_hours', DEFAULT_PARAMS.get('entry_validity_hours', 12.0)),
-            pullback_rsi_long=params.get('pullback_rsi_long', DEFAULT_PARAMS.get('pullback_rsi_long', 35)),
-            pullback_rsi_short=params.get('pullback_rsi_short', DEFAULT_PARAMS.get('pullback_rsi_short', 65)),
-            max_adds=params.get('max_adds', DEFAULT_PARAMS.get('max_adds', 1)),
+            atr_mult=params.get('atr_mult', DEFAULT_PARAMS['atr_mult']),
+            trail_start_r=params.get('trail_start_r', DEFAULT_PARAMS['trail_start_r']),
+            trail_dist_r=params.get('trail_dist_r', DEFAULT_PARAMS['trail_dist_r']),
+            pattern_tolerance=params.get('pattern_tolerance', DEFAULT_PARAMS['pattern_tolerance']),
+            entry_validity_hours=params.get('entry_validity_hours', DEFAULT_PARAMS['entry_validity_hours']),
+            pullback_rsi_long=params.get('pullback_rsi_long', DEFAULT_PARAMS['pullback_rsi_long']),
+            pullback_rsi_short=params.get('pullback_rsi_short', DEFAULT_PARAMS['pullback_rsi_short']),
+            max_adds=params.get('max_adds', DEFAULT_PARAMS['max_adds']),
             filter_tf=filter_tf,
-            rsi_period=params.get('rsi_period', DEFAULT_PARAMS.get('rsi_period', 14)),
-            atr_period=params.get('atr_period', DEFAULT_PARAMS.get('atr_period', 14)),
-            macd_fast=params.get('macd_fast', DEFAULT_PARAMS.get('macd_fast', 12)),
-            macd_slow=params.get('macd_slow', DEFAULT_PARAMS.get('macd_slow', 26)),
-            macd_signal=params.get('macd_signal', DEFAULT_PARAMS.get('macd_signal', 9)),
-            ema_period=params.get('ema_period', DEFAULT_PARAMS.get('ema_period', 20)),
-            enable_pullback=params.get('enable_pullback', False)
+            rsi_period=params.get('rsi_period', DEFAULT_PARAMS['rsi_period']),
+            atr_period=params.get('atr_period', DEFAULT_PARAMS['atr_period']),
+            macd_fast=params.get('macd_fast', DEFAULT_PARAMS['macd_fast']),
+            macd_slow=params.get('macd_slow', DEFAULT_PARAMS['macd_slow']),
+            macd_signal=params.get('macd_signal', DEFAULT_PARAMS['macd_signal']),
+            ema_period=params.get('ema_period', DEFAULT_PARAMS['ema_period']),
+            enable_pullback=params.get('enable_pullback', DEFAULT_PARAMS['enable_pullback']),
+            # [v7.41] Adaptive Parameters 연동
+            range_low_slope=params.get('range_low_slope', DEFAULT_PARAMS.get('range_low_slope', 0.012)),
+            range_high_slope=params.get('range_high_slope', DEFAULT_PARAMS.get('range_high_slope', 0.035)),
+            precision_mult=params.get('precision_mult', DEFAULT_PARAMS.get('precision_mult', 0.7)),
+            aggressive_mult=params.get('aggressive_mult', DEFAULT_PARAMS.get('aggressive_mult', 1.5)),
+            precision_rsi_offset=params.get('precision_rsi_offset', DEFAULT_PARAMS.get('precision_rsi_offset', 7.0)),
+            aggressive_rsi_offset=params.get('aggressive_rsi_offset', DEFAULT_PARAMS.get('aggressive_rsi_offset', 10.0))
         )
 
         
@@ -952,7 +976,7 @@ def _worker_run_single(strategy_class, params, df_pattern, df_entry, slippage, f
             sharpe_ratio=metrics['sharpe_ratio'],
             profit_factor=metrics['profit_factor'],
             avg_trades_per_day=metrics.get('avg_trades_per_day', 0.0),
-            stability=metrics.get('stability', "⚠️"),
+            stability=metrics.get('stability', "[WARNING]"),
             grade=grade,
             avg_pnl=metrics.get('avg_pnl', 0.0),
             cagr=metrics.get('cagr', 0.0),
@@ -1050,8 +1074,8 @@ class BacktestOptimizer:
             if 'atr' not in resampled.columns and 'atr_14' in resampled.columns:
                 resampled['atr'] = resampled['atr_14']
         except Exception as e:
-            if not quiet: logger.info(f"⚠️ 지표 재계산 실패: {e}")
-        if not quiet: logger.info(f"📊 [OPT] 지표 재계산: {target_tf} ({len(resampled)}캔들)")
+            if not quiet: logger.info(f"[WARNING] 지표 재계산 실패: {e}")
+        if not quiet: logger.info(f"[CHART] [OPT] 지표 재계산: {target_tf} ({len(resampled)}캔들)")
         return resampled
     
     def run_optimization(self, df: Optional[pd.DataFrame], grid: Dict, max_workers: int = 4,
@@ -1082,7 +1106,7 @@ class BacktestOptimizer:
         if self.df is None or self.df.empty:
             raise ValueError("데이터가 설정되지 않았습니다")
         
-        # ✅ v7.28: 저사양 PC 최적화 - 불필요한 복사 제거
+        # [OK] v7.28: 저사양 PC 최적화 - 불필요한 복사 제거
         # df 복사 대신 inplace 변환 (메모리 절약)
         if not pd.api.types.is_datetime64_any_dtype(self.df['timestamp']):
             first_ts = self.df['timestamp'].iloc[0]
@@ -1104,10 +1128,9 @@ class BacktestOptimizer:
         combinations = list(itertools.product(*values))
         total = len(combinations)
         
-        # [NEW] n_cores 처리
+        # [NEW] n_cores 처리 (v7.29: 시스템 최적 워커 수 감지)
         if n_cores is None:
-            import multiprocessing
-            n_cores = multiprocessing.cpu_count()
+            n_cores = get_optimal_workers(mode)
         
         # [NEW] 지표 선행 계산 (ThreadPool 경합 방지)
         all_trend_tfs = set(grid.get('trend_interval', []))
@@ -1126,128 +1149,106 @@ class BacktestOptimizer:
                 else:
                     self._resample_cache[key] = df.copy()
         
-        logger.info(f"Optimization started: {total} combinations, {n_cores} cores (ProcessPool)")
+        logger.info(f"Optimization started: {total} combinations, {n_cores} cores (Throttled ProcessPool)")
         
-        # 병렬 처리 (ProcessPoolExecutor)
-        from concurrent.futures import ProcessPoolExecutor, as_completed
+        # 병렬 처리 (ProcessPoolExecutor + Throttling)
+        from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
         
         with ProcessPoolExecutor(max_workers=n_cores) as executor:
-            # TF별 미리 리샘플링된 DF들을 맵으로 준비
-            # (멀티프로세싱 시 파라미터로 매번 DF를 통째로 전달하면 오버헤드가 크지만, 
-            #  여기서는 pickle로 전달됨)
+            # Throttled submission to avoid pickling overhead on Windows
+            # 한꺼번에 수천 개를 제출하면 직렬화 부하로 30%대에서 멈추는 증상이 발생함
+            max_queue = n_cores * 2
+            futures_dict = {}
+            combo_iter = iter(combinations)
             
-            futures = []
-            for combo in combinations:
-                params = dict(zip(keys, combo))
+            def submit_next():
+                try:
+                    combo = next(combo_iter)
+                    params = dict(zip(keys, combo))
+                    params['strategy_type'] = self.strategy_type
+                    
+                    trend_tf = params.get('trend_interval', '4h')
+                    if isinstance(trend_tf, list): trend_tf = trend_tf[0]
+                    entry_tf = params.get('entry_tf')
+                    if isinstance(entry_tf, list): entry_tf = entry_tf[0]
+                    if not entry_tf:
+                        entry_tf = DEFAULT_PARAMS.get('entry_tf', '15m')
+                    
+                    df_pattern = self._resample_cache.get(f"p_{trend_tf}")
+                    df_entry = self._resample_cache.get(f"e_{entry_tf}")
 
-                # strategy_type 추가 (v7.22.1)
-                params['strategy_type'] = self.strategy_type
+                    # 캐시 miss 방어
+                    if df_pattern is None: df_pattern = self._resample(df, trend_tf, quiet=True)
+                    if df_entry is None: df_entry = self._resample(df, entry_tf, quiet=True) if entry_tf not in ['15min', '15m'] else df.copy()
 
-                # 해당 조합에 맞는 cached df 추출
-                trend_tf = params.get('trend_interval', '4h')
-                if isinstance(trend_tf, list): trend_tf = trend_tf[0]
-                entry_tf = params.get('entry_tf')
-                if isinstance(entry_tf, list): entry_tf = entry_tf[0]
-                if not entry_tf:
-                    # [FIX v7.26] DEFAULT_PARAMS에서 entry_tf 가져오기 (15m → 1h)
-                    entry_tf = DEFAULT_PARAMS.get('entry_tf', '15m')
-                
-                df_pattern = self._resample_cache.get(f"p_{trend_tf}")
-                df_entry = self._resample_cache.get(f"e_{entry_tf}")
+                    _leverage = params.get('leverage', 3)
+                    if isinstance(_leverage, list): _leverage = _leverage[0]
+                    _slippage = params.get('slippage', DEFAULT_PARAMS['slippage'])
+                    _fee = params.get('fee', DEFAULT_PARAMS['fee'])
 
-                # [FIX] 캐시 miss 시 동적 리샘플링 (v7.22)
-                if df_pattern is None:
-                    df_pattern = self._resample(df, trend_tf, quiet=True)
-                    self._resample_cache[f"p_{trend_tf}"] = df_pattern
+                    future = executor.submit(
+                        _worker_run_single,
+                        self.strategy_class,
+                        params,
+                        df_pattern,
+                        df_entry,
+                        _slippage,
+                        _fee
+                    )
+                    futures_dict[future] = params
+                    return True
+                except StopIteration:
+                    return False
 
-                if df_entry is None:
-                    if entry_tf and entry_tf not in ['15min', '15m']:
-                        df_entry = self._resample(df, entry_tf, quiet=True)
-                    else:
-                        df_entry = df.copy()
-                    self._resample_cache[f"e_{entry_tf}"] = df_entry
+            # 초기 큐 채우기
+            for _ in range(min(total, max_queue)):
+                submit_next()
 
-                # 파라미터에서 값 추출
-                _symbol = params.get('symbol', 'BTCUSDT')
-                _leverage = params.get('leverage', 3)
-                if isinstance(_leverage, list): _leverage = _leverage[0]
-                _slippage = params.get('slippage', DEFAULT_PARAMS['slippage'])
-                _fee = params.get('fee', DEFAULT_PARAMS['fee'])
-
-                futures.append(executor.submit(
-                    _worker_run_single,
-                    self.strategy_class,
-                    params,
-                    df_pattern,
-                    df_entry,
-                    _slippage,
-                    _fee
-                ))
-            
             completed = 0
-            for i, future in enumerate(as_completed(futures)):
+            while futures_dict:
                 if self.cancelled:
-                    logger.info("❌ 최적화 취소됨")
+                    logger.info("[NO] 최적화 취소됨")
                     executor.shutdown(wait=False, cancel_futures=True)
                     break
 
-                completed += 1
-
-                # 진행률 콜백 호출 (v7.26.2)
-                if progress_callback:
-                    progress_callback(completed, total)
-
-                try:
-                    # 타임아웃 10초 설정 (Deep 모드 대응)
-                    result = future.result(timeout=10)
-
-                    # [DEBUG] None 반환 로그 추가
-                    if result is None:
-                        # logger.debug(f"Worker returned None (likely 0 trades or filtered out)")
-                        pass
-
-                    if result:
-                        # === 필터링 조건 (v3.0 - SSOT 기반 사용자 목표) ===
-                        # 전략: 고품질 결과만 수집 → 정렬로 최적 조합 찾기
-                        # SSOT: config.parameters.OPTIMIZATION_FILTER
-                        # 1. 승률 ≥ 80%
-                        # 2. MDD ≤ 20%
-                        # 3. 전체 단리 수익률 ≥ 0.5%
-                        # 4. 일평균 거래 빈도 ≥ 0.5회/일
-                        # 5. 절대 최소 거래수 ≥ 10개
-                        from config.parameters import OPTIMIZATION_FILTER
-
-                        # 거래 빈도 계산 (avg_trades_per_day는 이미 result에 있음)
-                        avg_trades_per_day = result.avg_trades_per_day
-
-                        # v7.22: skip_filter 플래그 체크
-                        if skip_filter:
-                            # Coarse Grid: 필터 우회, 모든 결과 수집
-                            self.results.append(result)
-                            if task_callback:
-                                task_callback(result)
-                        else:
-                            # 표준 필터 적용
-                            passes_filter = (
-                                result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
-                                abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
-                                result.simple_return >= OPTIMIZATION_FILTER['min_total_return'] and
-                                avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
-                                result.trades >= OPTIMIZATION_FILTER['min_absolute_trades']
-                            )
-
-                            if passes_filter:
-                                self.results.append(result)
-                                if task_callback:
-                                    task_callback(result)
-                except Exception as e:
-                    # 프로세스 오류 로그
-                    pass
+                # 완료된 작업 대기
+                done, _ = wait(futures_dict.keys(), return_when=FIRST_COMPLETED)
                 
-                # 진행률 업데이트
-                if self.progress_callback:
-                    progress = int((i + 1) / total * 100)
-                    self.progress_callback(progress)
+                for future in done:
+                    params = futures_dict.pop(future)
+                    completed += 1
+
+                    # 진행률 콜백 호출 (파라미터 우선)
+                    if progress_callback:
+                        progress_callback(completed, total)
+                    elif self.progress_callback:
+                        self.progress_callback(int(completed / total * 100))
+
+                    try:
+                        result = future.result(timeout=60)
+                        if result:
+                            from config.parameters import OPTIMIZATION_FILTER
+                            avg_trades_per_day = result.avg_trades_per_day
+
+                            if skip_filter:
+                                self.results.append(result)
+                                if task_callback: task_callback(result)
+                            else:
+                                passes_filter = (
+                                    result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
+                                    abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
+                                    result.simple_return >= OPTIMIZATION_FILTER['min_total_return'] and
+                                    avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
+                                    result.trades >= OPTIMIZATION_FILTER['min_absolute_trades']
+                                )
+                                if passes_filter:
+                                    self.results.append(result)
+                                    if task_callback: task_callback(result)
+                    except Exception as e:
+                        logger.debug(f"Task failed: {e}")
+
+                    # 다음 작업 제출 ( replenishment )
+                    submit_next()
         
         # 결과 정렬 및 상세 분류 (v2)
         if self.results:
@@ -1256,7 +1257,7 @@ class BacktestOptimizer:
 
             # 2. [NEW] v7.22: Coarse 모드는 분류 건너뛰기 (모든 결과 반환)
             if mode == 'coarse':
-                logger.info(f"⚠️ [Coarse Mode] Skipping classification, returning all results")
+                logger.info(f"[WARNING] [Coarse Mode] Skipping classification, returning all results")
                 # 상위 500개로 제한 (메모리 관리)
                 self.results = self.results[:500]
             else:
@@ -1276,7 +1277,83 @@ class BacktestOptimizer:
         # 리샘플링 캐시 정리 (메모리 해제)
         self._resample_cache = {}
 
-        logger.info(f"✅ 최적화 완료: {len(self.results)}개 결과 반환")
+        # ===================================
+        # [v7.30] Entry Validator 자동 호출
+        # ===================================
+        if self.results and len(self.results) > 0:
+            try:
+                from core.entry_validator import filter_trades_with_entry_validation
+                from utils.metrics import calculate_backtest_metrics
+
+                # 최적 결과 (1등)
+                best_result = self.results[0]
+
+                # 최적 파라미터로 재백테스트 (거래 리스트 필요)
+                logger.info("[VALIDATOR] O=H/O=L 제외 효과 분석 중...")
+
+                # df_pattern, df_entry 준비
+                trend_tf = best_result.params.get('trend_interval', '4h')
+                if isinstance(trend_tf, list):
+                    trend_tf = trend_tf[0]
+                entry_tf = best_result.params.get('entry_tf', '1h')
+                if isinstance(entry_tf, list):
+                    entry_tf = entry_tf[0]
+
+                df_pattern = self._resample(df, trend_tf, quiet=True) if df is not None else None
+                df_entry = self._resample(df, entry_tf, quiet=True) if df is not None and entry_tf not in ['15min', '15m'] else df
+
+                if df_pattern is not None and df_entry is not None:
+                    # 백테스트 재실행
+                    strategy_instance = self.strategy_class(use_mtf=True, strategy_type=self.strategy_type)
+                    best_trades = strategy_instance.run_backtest(
+                        df_pattern=df_pattern,
+                        df_entry=df_entry,
+                        **best_result.params
+                    )
+
+                    if best_trades and len(best_trades) > 0:
+                        # Entry Validator 적용
+                        filtered_trades, stats = filter_trades_with_entry_validation(
+                            df_entry, best_trades, improvement_pct=0.00001
+                        )
+
+                        # Before vs After 메트릭
+                        metrics_before = calculate_backtest_metrics(best_trades, leverage=1, capital=100)
+                        metrics_after = calculate_backtest_metrics(filtered_trades, leverage=1, capital=100) if len(filtered_trades) > 0 else None
+
+                        # 결과 출력
+                        logger.info("=" * 60)
+                        logger.info("O=H/O=L 제외 효과 분석")
+                        logger.info("=" * 60)
+                        logger.info(f"매매 횟수: {len(best_trades)} → {len(filtered_trades)} (-{stats['decline_rate']:.1f}%)")
+                        logger.info(f"  - 지정가 미체결: {stats['limit_not_filled']}회")
+                        logger.info(f"  - O=H 제외 (롱): {stats['oh_excluded']}회")
+                        logger.info(f"  - O=L 제외 (숏): {stats['ol_excluded']}회")
+
+                        if metrics_after:
+                            win_rate_change = metrics_after['win_rate'] - metrics_before['win_rate']
+                            sharpe_change = metrics_after['sharpe_ratio'] - metrics_before['sharpe_ratio']
+                            logger.info(f"승률: {metrics_before['win_rate']:.2f}% → {metrics_after['win_rate']:.2f}% ({win_rate_change:+.2f}%p)")
+                            logger.info(f"Sharpe: {metrics_before['sharpe_ratio']:.2f} → {metrics_after['sharpe_ratio']:.2f} ({sharpe_change:+.2f})")
+                            logger.info(f"MDD: {metrics_before['mdd']:.2f}% → {metrics_after['mdd']:.2f}%")
+
+                            # 권장 사항
+                            if stats['decline_rate'] < 10 and win_rate_change > 0:
+                                logger.info("[OK] 권장: O=H/O=L 제외 로직 적용 (성능 개선)")
+                            elif stats['decline_rate'] >= 20:
+                                logger.info("[WARNING] 매매 횟수 감소율 높음 (검토 필요)")
+                        logger.info("=" * 60)
+
+                        # 결과에 추가 정보 저장
+                        best_result.entry_validation_stats = stats
+                        if metrics_after:
+                            best_result.metrics_after_validation = metrics_after
+
+            except Exception as e:
+                logger.warning(f"[WARNING] Entry Validator 실행 실패: {e}")
+                # 에러가 발생해도 기존 결과는 반환
+
+        logger.info(f"[OK] 최적화 완료: {len(self.results)}개 결과 반환")
         return self.results
 
     def save_results_to_csv(
@@ -1406,7 +1483,7 @@ class BacktestOptimizer:
                 if hasattr(strategy, 'prepare_data'):
                     strategy.prepare_data()
             
-            # ✅ 총 비용 계산 (슬리피지 + 수수료)
+            # [OK] 총 비용 계산 (슬리피지 + 수수료)
             # [v7.26] 진입 비용 (Limit/Maker)
             # 청산 비용은 strategy_core.py에서 BACKTEST_EXIT_COST로 자동 차감 (0.065%)
             # 따라서 여기서는 진입 비용만 전달 (기본: 0.0002 = 0.02%)
@@ -1425,9 +1502,9 @@ class BacktestOptimizer:
                 'max_adds': params.get('max_adds', DEFAULT_PARAMS.get('max_adds', 1))
             }
             
-            # 📊 디버깅 로그
+            # [CHART] 디버깅 로그
             if params.get('trend_interval') == '1d' and params.get('atr_mult') == 1.5:
-                logger.info(f"📊 [OPT] entry_cost={entry_cost:.4f}, atr_mult={backtest_params['atr_mult']}, trail_start_r={backtest_params['trail_start_r']}, trail_dist_r={backtest_params['trail_dist_r']}")
+                logger.info(f"[CHART] [OPT] entry_cost={entry_cost:.4f}, atr_mult={backtest_params['atr_mult']}, trail_start_r={backtest_params['trail_start_r']}, trail_dist_r={backtest_params['trail_dist_r']}")
             
             # 전략 실행 시 전달할 파라미터
             # X7PlusStrategy.run_backtest_plus에 filter_tf 전달
@@ -1449,13 +1526,13 @@ class BacktestOptimizer:
                     pullback_rsi_short=backtest_params.get('pullback_rsi_short'),
                     max_adds=backtest_params.get('max_adds'),
                     filter_tf=filter_tf,
-                    rsi_period=params.get('rsi_period', DEFAULT_PARAMS.get('rsi_period', 14)),
-                    atr_period=params.get('atr_period', DEFAULT_PARAMS.get('atr_period', 14)),
-                    macd_fast=params.get('macd_fast', DEFAULT_PARAMS.get('macd_fast', 12)),
-                    macd_slow=params.get('macd_slow', DEFAULT_PARAMS.get('macd_slow', 26)),
-                    macd_signal=params.get('macd_signal', DEFAULT_PARAMS.get('macd_signal', 9)),
-                    ema_period=params.get('ema_period', DEFAULT_PARAMS.get('ema_period', 20)),
-                    enable_pullback=params.get('enable_pullback', False)  # [NEW] 불타기 옵션
+                    rsi_period=params.get('rsi_period', DEFAULT_PARAMS['rsi_period']),
+                    atr_period=params.get('atr_period', DEFAULT_PARAMS['atr_period']),
+                    macd_fast=params.get('macd_fast', DEFAULT_PARAMS['macd_fast']),
+                    macd_slow=params.get('macd_slow', DEFAULT_PARAMS['macd_slow']),
+                    macd_signal=params.get('macd_signal', DEFAULT_PARAMS['macd_signal']),
+                    ema_period=params.get('ema_period', DEFAULT_PARAMS['ema_period']),
+                    enable_pullback=params.get('enable_pullback', DEFAULT_PARAMS['enable_pullback'])  # v7.30 SSOT
                 )
 
             else:
@@ -1518,50 +1595,26 @@ class BacktestOptimizer:
                 sharpe_ratio=metrics['sharpe_ratio'],
                 profit_factor=metrics['profit_factor'],
                 avg_trades_per_day=metrics.get('avg_trades_per_day', 0.0),
-                stability=metrics.get('stability', "⚠️"),
+                stability=metrics.get('stability', "[WARNING]"),
                 grade=grade,
                 avg_pnl=metrics.get('avg_pnl', 0.0),
                 cagr=metrics.get('cagr', 0.0)
             )
             
         except Exception as e:
-            logger.warning(f"  ⚠️ 백테스트 오류: {e}")
+            logger.warning(f" [WARNING] 백테스트 오류: {e}")
             return None
     
-    @staticmethod
-    def calculate_mdd(equity_curve: List[float]) -> float:
-        """
-        Equity Curve에서 MDD 계산
-        Args:
-            equity_curve: 자산 곡선 (List[float])
-        Returns:
-            MDD (%)
-        """
-        if not equity_curve:
-            return 0.0
-            
-        peak = equity_curve[0]
-        max_drawdown = 0.0
-        
-        for val in equity_curve:
-            if val > peak:
-                peak = val
-            
-            if peak > 1e-9:
-                drawdown = (peak - val) / peak * 100
-                if drawdown > max_drawdown:
-                    max_drawdown = drawdown
-                    
-        return min(max_drawdown, 100.0)
+    # calculate_mdd() 삭제 (v7.30) → utils.metrics.calculate_mdd() 사용 (SSOT)
 
     @staticmethod
     def calculate_metrics(trades: List[Dict]) -> Dict:
         """
         거래 결과에서 메트릭 계산 (SSOT 완전 통합 v7.24)
 
-        ═══════════════════════════════════════════════════════════
-        📊 지표 계산 공식 (METRICS CALCULATION FORMULAS)
-        ═══════════════════════════════════════════════════════════
+        ===========================================================
+        [CHART] 지표 계산 공식 (METRICS CALCULATION FORMULAS)
+        ===========================================================
 
         1. win_rate (승률)
            공식: (수익 거래 수 / 전체 거래 수) × 100
@@ -1586,7 +1639,7 @@ class BacktestOptimizer:
         6. profit_factor (수익 팩터)
            공식: 총 수익 / 총 손실
            영향: 전체 파라미터의 복합 효과
-        ═══════════════════════════════════════════════════════════
+        ===========================================================
 
         Note:
             v7.24부터 utils.metrics.calculate_backtest_metrics()를 직접 호출합니다.
@@ -1596,7 +1649,7 @@ class BacktestOptimizer:
         if not trades:
             return {k: 0 for k in ['win_rate', 'total_return', 'simple_return', 'compound_return', 'max_drawdown', 'sharpe_ratio', 'profit_factor']}
 
-        # ✅ SSOT 직접 호출 (클램핑 없음)
+        # [OK] SSOT 직접 호출 (클램핑 없음)
         from utils.metrics import calculate_backtest_metrics
 
         metrics = calculate_backtest_metrics(trades, leverage=1, capital=100.0)
@@ -1692,7 +1745,7 @@ class BacktestOptimizer:
                     res.strategy_type = f"{label_prefix}#{added+1}"
                     # 프리셋 타입에 맞게 등급 재할당
                     res.grade = assign_grade_by_preset(
-                        preset_type=label_prefix,  # "🔥공격" 등
+                        preset_type=label_prefix, # "[FIRE]공격" 등
                         metrics={
                             'win_rate': res.win_rate,
                             'profit_factor': res.profit_factor,
@@ -1715,48 +1768,48 @@ class BacktestOptimizer:
                 (100 - abs(x.max_drawdown)) * 0.5 + 
                 x.sharpe_ratio * 2.0
             ))
-            add_rep(best, "🏆최적")
+            add_rep(best, "[TROPHY]최적")
             return representatives
         
         # ===== Standard 모드: 3개 (공격, 균형, 보수) =====
         if mode == 'standard':
-            # 1. 🔥공격형: 최고 수익률
+            # 1. [FIRE]공격형: 최고 수익률
             aggressive = max(results, key=lambda x: x.compound_return)
-            add_rep(aggressive, "🔥공격")
+            add_rep(aggressive, "[FIRE]공격")
             
-            # 2. ⚖균형형: 최고 샤프 지수
+            # 2. 균형형: 최고 샤프 지수
             balanced = max(results, key=lambda x: x.sharpe_ratio)
-            add_rep(balanced, "⚖균형")
+            add_rep(balanced, "균형")
             
-            # 3. 🛡보수형: 최저 MDD (수익 > 0 중)
+            # 3. 보수형: 최저 MDD (수익 > 0 중)
             if profitable:
                 conservative = min(profitable, key=lambda x: abs(x.max_drawdown))
-                add_rep(conservative, "🛡보수")
+                add_rep(conservative, "보수")
             
             return representatives
         
         # ===== Deep 모드: 5개+ (공격×3, 균형, 보수) =====
-        # 1. 🔥공격형 Top 3: 최고 수익률 상위 3개
+        # 1. [FIRE]공격형 Top 3: 최고 수익률 상위 3개
         sorted_by_return = sorted(results, key=lambda x: x.compound_return, reverse=True)
-        add_multiple_reps(sorted_by_return, "🔥공격", 3)
+        add_multiple_reps(sorted_by_return, "[FIRE]공격", 3)
         
-        # 2. ⚖균형형: 최고 샤프 지수
+        # 2. 균형형: 최고 샤프 지수
         balanced = max(results, key=lambda x: x.sharpe_ratio)
-        add_rep(balanced, "⚖균형")
+        add_rep(balanced, "균형")
         
-        # 3. 🛡보수형: 최저 MDD (수익 > 0 중)
+        # 3. 보수형: 최저 MDD (수익 > 0 중)
         if profitable:
             conservative = min(profitable, key=lambda x: abs(x.max_drawdown))
-            add_rep(conservative, "🛡보수")
+            add_rep(conservative, "보수")
         
-        # 4. 🎯고승률형: 최고 승률
+        # 4. [TARGET]고승률형: 최고 승률
         high_wr = max(results, key=lambda x: x.win_rate)
-        add_rep(high_wr, "🎯고승률")
+        add_rep(high_wr, "[TARGET]고승률")
         
-        # 5. 🐢저빈도형: 일평균 거래 가장 적은 것 (수익 > 0)
+        # 5. 저빈도형: 일평균 거래 가장 적은 것 (수익 > 0)
         if profitable:
             low_freq = min(profitable, key=lambda x: getattr(x, 'avg_trades_per_day', x.trades / 30))
-            add_rep(low_freq, "🐢저빈도")
+            add_rep(low_freq, "저빈도")
         
         return representatives
     
@@ -1807,7 +1860,7 @@ class BacktestOptimizer:
             if ratio >= threshold:
                 # 지배적인 값 발견 -> 고정
                 fixed_params[param] = [most_common_val]
-                logger.info(f"📌 [OPT-ADAPT] '{param}' fixed to {most_common_val} (Dominance: {ratio:.1%})")
+                logger.info(f"[PIN] [OPT-ADAPT] '{param}' fixed to {most_common_val} (Dominance: {ratio:.1%})")
             else:
                 # 분포 분석 -> 범위 축소 (최소~최대값 사이를 다시 촘촘하게)
                 min_v = min(values)
@@ -1827,7 +1880,7 @@ class BacktestOptimizer:
                     # 카테고리형 (filter_tf 등)
                     reduced_ranges[param] = sorted(list(set(values)))
                 
-                logger.debug(f"🔍 [OPT-ADAPT] '{param}' range narrowed: {min_v} ~ {max_v}")
+                logger.debug(f"[SEARCH] [OPT-ADAPT] '{param}' range narrowed: {min_v} ~ {max_v}")
 
         # 새로운 그리드 생성
         new_grid = {}
@@ -1891,7 +1944,7 @@ class BacktestOptimizer:
             if len(unique) >= max_count:
                 break
         
-        logger.info(f"🔄 [FILTER] {len(results)} → {len(unique)} (중복 제거)")
+        logger.info(f"[RELOAD] [FILTER] {len(results)} → {len(unique)} (중복 제거)")
         return unique
 
     def to_dataframe(self) -> pd.DataFrame:
@@ -1940,7 +1993,7 @@ class BacktestOptimizer:
         Returns:
             OptimizationResult 리스트 (정렬됨)
         """
-        logger.info(f"🔍 [Coarse] Starting Coarse Grid optimization...")
+        logger.info(f"[SEARCH] [Coarse] Starting Coarse Grid optimization...")
 
         # v7.23: 거래소별 수수료 및 파라미터 범위 자동 조정
         from config.constants.trading import get_total_cost
@@ -1956,7 +2009,7 @@ class BacktestOptimizer:
         atr_range = get_atr_range_by_exchange(self.exchange, mode='coarse')
         filter_range = get_filter_tf_range_by_exchange(self.exchange, mode='coarse')
 
-        logger.info(f"📊 [{self.exchange.upper()}] Total Cost: {total_cost*100:.3f}%")
+        logger.info(f"[CHART] [{self.exchange.upper()}] Total Cost: {total_cost*100:.3f}%")
         logger.info(f"  ATR Range: {atr_range}")
         logger.info(f"  Filter Range: {filter_range}")
 
@@ -1984,9 +2037,9 @@ class BacktestOptimizer:
         combinations = list(itertools.product(
             *[coarse_grid[k] for k in coarse_grid.keys()]
         ))
-        logger.info(f"📊 [Coarse] Grid size: {len(combinations)} combinations")
+        logger.info(f"[CHART] [Coarse] Grid size: {len(combinations)} combinations")
 
-        # ⚠️ WORKAROUND: 임시로 필터 값을 완화한 후 실행
+        # [WARNING] WORKAROUND: 임시로 필터 값을 완화한 후 실행
         from config import parameters
         original_filter = parameters.OPTIMIZATION_FILTER.copy()
 
@@ -1998,7 +2051,7 @@ class BacktestOptimizer:
             'min_trades_per_day': 0.0,
             'min_absolute_trades': 0
         }
-        logger.info(f"⚠️ [Coarse] Filter temporarily disabled")
+        logger.info(f"[WARNING] [Coarse] Filter temporarily disabled")
 
         try:
             # 기존 run_optimization 호출
@@ -2013,9 +2066,9 @@ class BacktestOptimizer:
         finally:
             # 필터 복원
             parameters.OPTIMIZATION_FILTER = original_filter
-            logger.info(f"✓ [Coarse] Filter restored")
+            logger.info(f"[CHECK] [Coarse] Filter restored")
 
-        logger.info(f"✓ [Coarse] Complete: {len(results)} results")
+        logger.info(f"[CHECK] [Coarse] Complete: {len(results)} results")
         return results
 
     def run_fine_grid_optimization(
@@ -2045,15 +2098,15 @@ class BacktestOptimizer:
         Returns:
             OptimizationResult 리스트 (정렬됨)
         """
-        logger.info(f"🎯 [Fine] Starting Fine Grid optimization...")
+        logger.info(f"[TARGET] [Fine] Starting Fine Grid optimization...")
 
         if not coarse_results:
-            logger.warning(f"❌ [Fine] No coarse results provided")
+            logger.warning(f"[NO] [Fine] No coarse results provided")
             return []
 
         # 상위 N개 추출
         top_results = coarse_results[:top_n]
-        logger.info(f"📊 [Fine] Analyzing top {len(top_results)} results...")
+        logger.info(f"[CHART] [Fine] Analyzing top {len(top_results)} results...")
 
         # 백분위수 기반 범위 추출
         fine_grid = self._extract_fine_ranges(top_results, trend_tf)
@@ -2063,7 +2116,7 @@ class BacktestOptimizer:
         combinations = list(itertools.product(
             *[fine_grid[k] for k in fine_grid.keys()]
         ))
-        logger.info(f"📊 [Fine] Grid size: {len(combinations)} combinations")
+        logger.info(f"[CHART] [Fine] Grid size: {len(combinations)} combinations")
 
         # 기존 run_optimization 호출
         # [FIX] v7.22.1: Fine Grid도 필터 완화 (ADX 전략 지원)
@@ -2092,7 +2145,7 @@ class BacktestOptimizer:
             # 필터 복원
             parameters.OPTIMIZATION_FILTER = original_filter
 
-        logger.info(f"✓ [Fine] Complete: {len(results)} results")
+        logger.info(f"[CHECK] [Fine] Complete: {len(results)} results")
         return results
 
     def _extract_fine_ranges(
@@ -2130,7 +2183,7 @@ class BacktestOptimizer:
             p10 = float(np.percentile(values, 10))
             p90 = float(np.percentile(values, 90))
             if p10 == p90:
-                # ✅ FIX v7.22.1: 수렴 시 ±20% 범위로 확장 (국소 탐색)
+                # [OK] FIX v7.22.1: 수렴 시 ±20% 범위로 확장 (국소 탐색)
                 center = p10
                 if center > 0:
                     # 양수면 비율 기반 확장
@@ -2165,7 +2218,7 @@ class BacktestOptimizer:
             fine_grid['adx_period'] = percentile_range(adx_periods, 3)
             fine_grid['adx_threshold'] = percentile_range(adx_thresholds, 3)
 
-        logger.info(f"📊 [Fine] Extracted ranges:")
+        logger.info(f"[CHART] [Fine] Extracted ranges:")
         for k, v in fine_grid.items():
             if k != 'trend_interval':
                 logger.info(f"  {k}: {v}")
@@ -2175,7 +2228,7 @@ class BacktestOptimizer:
 
 # 테스트
 if __name__ == "__main__":
-    # ✅ v7.28: 멀티프로세싱 스타트 메서드 명시 (Windows 호환성)
+    # [OK] v7.28: 멀티프로세싱 스타트 메서드 명시 (Windows 호환성)
     import multiprocessing as mp
     try:
         mp.set_start_method('spawn', force=True)
@@ -2201,7 +2254,7 @@ if __name__ == "__main__":
         if not os.path.exists(csv_path):
             csv_path = os.path.join(BASE_DIR, 'data', 'bybit_BTCUSDT_15m.csv') # Fallback
             
-        logger.info(f"📊 Testing with: {csv_path}")
+        logger.info(f"[CHART] Testing with: {csv_path}")
         
         if os.path.exists(csv_path):
             if csv_path.endswith('.parquet'):
@@ -2228,27 +2281,27 @@ if __name__ == "__main__":
             optimizer = BacktestOptimizer(AlphaX7Core, df)
             grid = generate_fast_grid('1h')
             
-            logger.info(f"🚀 [Stage 1] Fast Grid Search Starting...")
+            logger.info(f"[ROCKET] [Stage 1] Fast Grid Search Starting...")
             results = optimizer.run_optimization(df, grid, metric='sharpe_ratio')
-            logger.info(f"✅ Found {len(results)} combinations.")
+            logger.info(f"[OK] Found {len(results)} combinations.")
             
             # 2. 분석 및 범위 축소 (신규 기능 테스트)
             refined_grid = optimizer.analyze_top_results(n=10, threshold=0.7)
             
             # 3. 2단계 정밀 최적화
             if refined_grid:
-                logger.info(f"✨ [Analysis] Refined Grid calculated: {refined_grid}")
-                logger.info(f"🚀 [Stage 2] Iterative Scan Starting...")
+                logger.info(f"[SPARKLE] [Analysis] Refined Grid calculated: {refined_grid}")
+                logger.info(f"[ROCKET] [Stage 2] Iterative Scan Starting...")
                 refined_results = optimizer.run_optimization(df, refined_grid, metric='sharpe_ratio')
-                logger.info(f"🏆 Final Best Results: {len(refined_results)}")
+                logger.info(f"[TROPHY] Final Best Results: {len(refined_results)}")
                 
                 for res in refined_results[:5]:
                     logger.info(f" - {res.params}: Sharpe={res.sharpe_ratio:.2f}, WR={res.win_rate:.1f}%")
             else:
-                logger.info("✨ [Analysis] No dominant patterns found to refine.")
+                logger.info("[SPARKLE] [Analysis] No dominant patterns found to refine.")
         else:
-            logger.error(f"❌ No test data found at {csv_path}. Please download data first.")
+            logger.error(f"[NO] No test data found at {csv_path}. Please download data first.")
             
     except Exception:
-        logger.info("❌ Test failed with error:")
+        logger.info("[NO] Test failed with error:")
         traceback.print_exc()

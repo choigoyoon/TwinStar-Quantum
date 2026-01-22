@@ -9,7 +9,8 @@ v7.26 (2026-01-19): Phase 3 리팩토링 - 코드 복잡도 개선
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QComboBox, QSpinBox, QSlider, QGroupBox, QCheckBox, QTableWidget, QHeaderView
+    QComboBox, QSpinBox, QSlider, QGroupBox, QCheckBox, QTableWidget, QHeaderView,
+    QGridLayout
 )
 from PyQt6.QtCore import Qt
 from typing import TYPE_CHECKING
@@ -62,7 +63,7 @@ class SingleOptimizationUIBuilderMixin:
         ...
 
     def _create_input_section(self) -> QGroupBox:
-        """거래소/심볼/타임프레임 선택 섹션 생성"""
+        """거래소/심볼/타임프레임 선택 섹션 생성 (가로 배치로 개편)"""
         group = QGroupBox("데이터 소스 선택")
         group.setStyleSheet(f"""
             QGroupBox {{
@@ -81,109 +82,67 @@ class SingleOptimizationUIBuilderMixin:
             }}
         """)
 
-        layout = QVBoxLayout(group)
-        layout.setSpacing(Spacing.i_space_2)  # 8px
+        # 그리드 레이아웃 사용 (가로 배치 최적화)
+        layout = QGridLayout(group)
+        layout.setSpacing(Spacing.i_space_3)  # 12px
         layout.setContentsMargins(
-            Spacing.i_space_3,
-            Spacing.i_space_3,
-            Spacing.i_space_3,
-            Spacing.i_space_3
+            Spacing.i_space_4,
+            Spacing.i_space_4,
+            Spacing.i_space_4,
+            Spacing.i_space_4
         )
 
-        # 거래소 선택
-        exchange_layout = QHBoxLayout()
-        exchange_layout.setSpacing(Spacing.i_space_2)
-
-        exchange_label = QLabel("거래소:")
-        exchange_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
-        exchange_layout.addWidget(exchange_label)
-
+        # 1행: 거래소, 심볼, 타임프레임
+        # 거래소
+        layout.addWidget(QLabel("거래소:"), 0, 0)
         self.exchange_combo = QComboBox()
         self.exchange_combo.addItems(["Bybit", "Binance", "OKX", "BingX", "Bitget"])
         self.exchange_combo.setMinimumWidth(Size.control_min_width)
         self.exchange_combo.setStyleSheet(self._get_combo_style())
-        exchange_layout.addWidget(self.exchange_combo)
+        layout.addWidget(self.exchange_combo, 0, 1)
 
-        exchange_layout.addStretch()
-        layout.addLayout(exchange_layout)
-
-        # 심볼 선택
-        symbol_layout = QHBoxLayout()
-        symbol_layout.setSpacing(Spacing.i_space_2)
-
-        symbol_label = QLabel("심볼:")
-        symbol_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
-        symbol_layout.addWidget(symbol_label)
-
+        # 심볼
+        layout.addWidget(QLabel("심볼:"), 0, 2)
         self.symbol_combo = QComboBox()
         self.symbol_combo.addItems(["BTC/USDT", "ETH/USDT", "SOL/USDT"])
+        self.symbol_combo.setCurrentIndex(0)
         self.symbol_combo.setMinimumWidth(Size.control_min_width)
         self.symbol_combo.setStyleSheet(self._get_combo_style())
-        symbol_layout.addWidget(self.symbol_combo)
+        layout.addWidget(self.symbol_combo, 0, 3)
 
-        symbol_layout.addStretch()
-        layout.addLayout(symbol_layout)
-
-        # 타임프레임 선택
-        tf_layout = QHBoxLayout()
-        tf_layout.setSpacing(Spacing.i_space_2)
-
-        tf_label = QLabel("타임프레임:")
-        tf_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
-        tf_layout.addWidget(tf_label)
-
+        # 타임프레임
+        layout.addWidget(QLabel("타임프레임:"), 0, 4)
         self.timeframe_combo = QComboBox()
         self.timeframe_combo.addItems(["1h", "4h", "1d"])
         self.timeframe_combo.setMinimumWidth(Size.control_min_width)
         self.timeframe_combo.setStyleSheet(self._get_combo_style())
-        tf_layout.addWidget(self.timeframe_combo)
+        layout.addWidget(self.timeframe_combo, 0, 5)
 
-        tf_layout.addStretch()
-        layout.addLayout(tf_layout)
-
-        # 전략 선택 (v3.0 - Phase 3)
-        strategy_layout = QHBoxLayout()
-        strategy_layout.setSpacing(Spacing.i_space_2)
-
-        strategy_label = QLabel("전략:")
-        strategy_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
-        strategy_layout.addWidget(strategy_label)
-
+        # 2행: 전략, 모드
+        # 전략
+        layout.addWidget(QLabel("전략:"), 1, 0)
         self.strategy_combo = QComboBox()
-        self.strategy_combo.addItems(["📊 MACD", "📈 ADX"])
+        self.strategy_combo.addItems(["[CHART] MACD", "[UP] ADX"])
         self.strategy_combo.setMinimumWidth(Size.control_min_width)
         self.strategy_combo.setStyleSheet(self._get_combo_style())
         self.strategy_combo.currentIndexChanged.connect(self._on_strategy_changed)  # type: ignore
-        strategy_layout.addWidget(self.strategy_combo)
+        layout.addWidget(self.strategy_combo, 1, 1)
 
-        strategy_layout.addStretch()
-        layout.addLayout(strategy_layout)
-
-        # 최적화 모드 선택
-        mode_layout = QHBoxLayout()
-        mode_layout.setSpacing(Spacing.i_space_2)
-
-        mode_label = QLabel("최적화 모드:")
-        mode_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
-        mode_layout.addWidget(mode_label)
-
+        # 최적화 모드 (v7.31: Adaptive + Fine-Tuning 2개만)
+        layout.addWidget(QLabel("최적화 모드:"), 1, 2)
         self.mode_combo = QComboBox()
         self.mode_combo.addItems([
-            "🎯 Fine-Tuning (영향도 기반, 108개, ~72초) - 최고 성능 ✅",
-            "⚡ Quick (빠른 검증, ~8개, 2분)",
-            "🔬 Deep (세부 최적화, ~1,080개, 4-5시간)"
-            # Meta 모드 제거: dev_future/optimization_modes/ 로 이동
+            "[🎯 TARGET] Fine-Tuning (영향도 기반, 140개, ~2분) - 레버리지 1x",
+            "[⚡ ADAPTIVE] Adaptive (샘플링 탐색, ~360개, ~1분) - 자동 범위",
+            "[🔥 DEEP] Deep Optimization (전수 조사, ~11,520개, ~15분) - 가변 엔진 최적화"
         ])
         self.mode_combo.setCurrentIndex(0)
-        self.mode_combo.setMinimumWidth(Size.control_min_width)
+        self.mode_combo.setMinimumWidth(Size.control_min_width * 2) # 모드는 길게
         self.mode_combo.setStyleSheet(self._get_combo_style())
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)  # type: ignore
-        mode_layout.addWidget(self.mode_combo)
+        layout.addWidget(self.mode_combo, 1, 3, 1, 3) # 3컬럼 차지
 
-        mode_layout.addStretch()
-        layout.addLayout(mode_layout)
-
-        # Meta 모드 전용: Sample Size 슬라이더 (v7.26.5: Phase 4-2 Task 3)
+        # 3행: Meta 모드 전용 설정 (v7.26.5: Phase 4-2 Task 3)
         self.meta_settings_layout = QHBoxLayout()
         self.meta_settings_layout.setSpacing(Spacing.i_space_2)
 
@@ -194,75 +153,49 @@ class SingleOptimizationUIBuilderMixin:
         self.sample_size_slider = QSlider(Qt.Orientation.Horizontal)
         self.sample_size_slider.setMinimum(500)
         self.sample_size_slider.setMaximum(5000)
-        self.sample_size_slider.setValue(2000)  # 기본값
+        self.sample_size_slider.setValue(2000)
         self.sample_size_slider.setSingleStep(500)
         self.sample_size_slider.setTickInterval(500)
         self.sample_size_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.sample_size_slider.setMinimumWidth(Size.slider_min_width)  # Issue #3: Size 토큰 사용 (v7.27)
+        self.sample_size_slider.setMinimumWidth(Size.slider_min_width)
         self.sample_size_slider.valueChanged.connect(self._on_sample_size_changed)  # type: ignore
         self.meta_settings_layout.addWidget(self.sample_size_slider)
 
         self.sample_size_value_label = QLabel("2000")
-        self.sample_size_value_label.setStyleSheet(f"""
-            font-size: {Typography.text_sm};
-            color: {Colors.accent_primary};
-            font-weight: {Typography.font_bold};
-            min-width: 50px;
-        """)
+        self.sample_size_value_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.accent_primary}; font-weight: {Typography.font_bold}; min-width: 50px;")
         self.meta_settings_layout.addWidget(self.sample_size_value_label)
 
         self.sample_size_coverage_label = QLabel("(커버율: 7.4%)")
-        self.sample_size_coverage_label.setStyleSheet(f"""
-            font-size: {Typography.text_xs};
-            color: {Colors.text_secondary};
-        """)
+        self.sample_size_coverage_label.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_secondary};")
         self.meta_settings_layout.addWidget(self.sample_size_coverage_label)
 
         self.meta_settings_layout.addStretch()
-        layout.addLayout(self.meta_settings_layout)
+        layout.addLayout(self.meta_settings_layout, 2, 0, 1, 6)
 
-        # Meta Settings는 초기에 숨김 (Meta 모드 선택 시 표시됨)
-        for i in range(self.meta_settings_layout.count()):
-            item = self.meta_settings_layout.itemAt(i)
-            if item is not None:
-                widget = item.widget()
-                if widget is not None:
-                    widget.hide()
-
-        # 예상 정보 표시 (v7.26.5)
-        info_layout = QHBoxLayout()
-        info_layout.setSpacing(Spacing.i_space_3)
-
+        # 4행: 예상 정보 표시
+        info_row_layout = QHBoxLayout()
+        info_row_layout.setSpacing(Spacing.i_space_3)
+        
         self.estimated_combo_label = QLabel("예상 조합 수: ~50개")
-        self.estimated_combo_label.setStyleSheet(f"""
-            font-size: {Typography.text_sm};
-            color: {Colors.accent_primary};
-            font-weight: {Typography.font_bold};
-        """)
-        info_layout.addWidget(self.estimated_combo_label)
+        self.estimated_combo_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.accent_primary}; font-weight: {Typography.font_bold};")
+        info_row_layout.addWidget(self.estimated_combo_label)
 
         self.estimated_time_label = QLabel("예상 시간: 2분")
-        self.estimated_time_label.setStyleSheet(f"""
-            font-size: {Typography.text_sm};
-            color: {Colors.text_secondary};
-        """)
-        info_layout.addWidget(self.estimated_time_label)
+        self.estimated_time_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
+        info_row_layout.addWidget(self.estimated_time_label)
 
         self.recommended_workers_label = QLabel("권장 워커: 4개")
-        self.recommended_workers_label.setStyleSheet(f"""
-            font-size: {Typography.text_sm};
-            color: {Colors.text_secondary};
-        """)
-        info_layout.addWidget(self.recommended_workers_label)
-
-        info_layout.addStretch()
-        layout.addLayout(info_layout)
+        self.recommended_workers_label.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary};")
+        info_row_layout.addWidget(self.recommended_workers_label)
+        
+        info_row_layout.addStretch()
+        layout.addLayout(info_row_layout, 3, 0, 1, 6)
 
         return group
 
     def _create_param_section(self) -> QGroupBox:
-        """파라미터 범위 설정 섹션 생성"""
-        group = QGroupBox("파라미터 범위")
+        """파라미터 범위 설정 섹션 생성 (접이식 개편)"""
+        group = QGroupBox("파라미터 범위 설정")
         group.setStyleSheet(f"""
             QGroupBox {{
                 font-size: {Typography.text_base};
@@ -271,7 +204,7 @@ class SingleOptimizationUIBuilderMixin:
                 border: 1px solid {Colors.border_muted};
                 border-radius: {Radius.radius_md};
                 margin-top: {Spacing.space_3};
-                padding-top: {Spacing.space_4};
+                padding-top: {Spacing.space_5};
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
@@ -280,81 +213,111 @@ class SingleOptimizationUIBuilderMixin:
             }}
         """)
 
-        layout = QVBoxLayout(group)
-        layout.setSpacing(Spacing.i_space_2)
-        layout.setContentsMargins(
+        main_layout = QVBoxLayout(group)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 1. 상단 토글 체크박스
+        toggle_layout = QHBoxLayout()
+        toggle_layout.setContentsMargins(Spacing.i_space_3, Spacing.i_space_2, Spacing.i_space_3, Spacing.i_space_2)
+        
+        self.param_toggle_check = QCheckBox("파라미터 상세 범위 설정 (상세 보기)")
+        self.param_toggle_check.setChecked(False)  # 기본값: 숨김
+        self.param_toggle_check.setStyleSheet(f"""
+            QCheckBox {{
+                font-size: {Typography.text_sm};
+                font-weight: {Typography.font_bold};
+                color: {Colors.accent_primary};
+                padding: {Spacing.space_1};
+            }}
+        """)
+        toggle_layout.addWidget(self.param_toggle_check)
+        toggle_layout.addStretch()
+        main_layout.addLayout(toggle_layout)
+
+        # 2. 파라미터 컨텐츠 위젯 (숨김/표시 대상)
+        self.param_content_widget = QWidget()
+        self.param_content_widget.setVisible(False) # 초기 상태 숨김
+        param_layout = QVBoxLayout(self.param_content_widget)
+        param_layout.setSpacing(Spacing.i_space_2)
+        param_layout.setContentsMargins(
             Spacing.i_space_3,
-            Spacing.i_space_3,
+            Spacing.i_space_1,
             Spacing.i_space_3,
             Spacing.i_space_3
         )
+
+        # 토글 연결
+        self.param_toggle_check.toggled.connect(self.param_content_widget.setVisible)
 
         # ATR 배수
         self.atr_mult_widget = ParamRangeWidget(
             "ATR 배수", 1.0, 3.0, 0.5, decimals=2,
             tooltip="손절가 설정 배수 (ATR × 이 값 = 손절 거리)"
         )
-        layout.addWidget(self.atr_mult_widget)
+        param_layout.addWidget(self.atr_mult_widget)
 
         # RSI 기간
         self.rsi_period_widget = ParamIntRangeWidget(
             "RSI 기간", 7, 21, 2,
             tooltip="RSI 지표 계산 기간"
         )
-        layout.addWidget(self.rsi_period_widget)
+        param_layout.addWidget(self.rsi_period_widget)
 
         # 진입 유효시간
         self.entry_validity_widget = ParamRangeWidget(
             "진입 유효시간", 6.0, 24.0, 6.0, decimals=1,
             tooltip="패턴 발생 후 진입 유효 시간 (hours)"
         )
-        layout.addWidget(self.entry_validity_widget)
+        param_layout.addWidget(self.entry_validity_widget)
 
-        # MACD 파라미터 위젯 (v7.26.6)
+        # MACD 파라미터 위젯
         self.macd_fast_widget = ParamIntRangeWidget(
             "MACD Fast", 6, 12, 2,
             tooltip="MACD 빠른 이동평균 기간"
         )
-        layout.addWidget(self.macd_fast_widget)
+        param_layout.addWidget(self.macd_fast_widget)
 
         self.macd_slow_widget = ParamIntRangeWidget(
             "MACD Slow", 18, 26, 2,
             tooltip="MACD 느린 이동평균 기간"
         )
-        layout.addWidget(self.macd_slow_widget)
+        param_layout.addWidget(self.macd_slow_widget)
 
         self.macd_signal_widget = ParamIntRangeWidget(
             "MACD Signal", 7, 11, 2,
             tooltip="MACD 시그널 기간"
         )
-        layout.addWidget(self.macd_signal_widget)
+        param_layout.addWidget(self.macd_signal_widget)
 
-        # ADX 파라미터 위젯 (v7.26.6)
+        # ADX 파라미터 위젯
         self.adx_period_widget = ParamIntRangeWidget(
             "ADX Period", 10, 18, 2,
             tooltip="ADX 지표 계산 기간"
         )
-        layout.addWidget(self.adx_period_widget)
+        param_layout.addWidget(self.adx_period_widget)
 
         self.adx_threshold_widget = ParamRangeWidget(
             "ADX Threshold", 20.0, 40.0, 5.0, decimals=1,
             tooltip="ADX 임계값 (추세 강도 필터)"
         )
-        layout.addWidget(self.adx_threshold_widget)
+        param_layout.addWidget(self.adx_threshold_widget)
 
         self.di_threshold_widget = ParamRangeWidget(
             "DI Threshold", 20.0, 40.0, 5.0, decimals=1,
             tooltip="+DI/-DI 임계값 (추세 방향 필터)"
         )
-        layout.addWidget(self.di_threshold_widget)
+        param_layout.addWidget(self.di_threshold_widget)
 
-        # 기본적으로 MACD 위젯만 표시 (v7.26.6)
+        # 기본 전략 기반 가시성 설정 (Mixin 사용 시점에는 strategy_combo가 없을 수 있으므로 주의)
         self.macd_fast_widget.setVisible(True)
         self.macd_slow_widget.setVisible(True)
         self.macd_signal_widget.setVisible(True)
         self.adx_period_widget.setVisible(False)
         self.adx_threshold_widget.setVisible(False)
         self.di_threshold_widget.setVisible(False)
+
+        main_layout.addWidget(self.param_content_widget)
 
         return group
 
@@ -509,11 +472,18 @@ class SingleOptimizationUIBuilderMixin:
         ])
         header = self.result_table.horizontalHeader()
         if header:
-            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            # 기본 모드: 컨텐츠에 맞춤
+            header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            # 주요 정보 컬럼은 너비 확장
+            header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # 총 수익률
+            header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # 안전 레버리지
             header.setSortIndicatorShown(True)  # 정렬 화살표 표시
         self.result_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.result_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.result_table.setSortingEnabled(True)  # 정렬 활성화
+        
+        # v7.31: 클릭 시 레버리지 시뮬레이션 펼치기
+        self.result_table.itemClicked.connect(self._on_result_row_clicked)  # type: ignore
         self.result_table.setStyleSheet(f"""
             QTableWidget {{
                 background-color: {Colors.bg_base};
@@ -538,7 +508,7 @@ class SingleOptimizationUIBuilderMixin:
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(Spacing.i_space_2)
 
-        # ✅ Phase 4: 최적 결과 자동 저장 체크박스
+        # [OK] Phase 4: 최적 결과 자동 저장 체크박스
         self.auto_save_checkbox = QCheckBox("최적 결과 자동 저장")
         self.auto_save_checkbox.setChecked(False)  # 기본값: 비활성화
         self.auto_save_checkbox.setStyleSheet(f"""

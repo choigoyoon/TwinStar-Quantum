@@ -894,6 +894,13 @@ class AlphaX7Core:
         ema_period: Optional[int] = None,            # → 추세 판단 (EMA 기간)
         adx_period: Optional[int] = None,            # → ADX 반응 속도 (ADX 기간, v7.22)
         adx_threshold: Optional[float] = None,       # → 추세 강도 필터 (ADX 임계값, v7.22)
+        # [v7.42 Adaptive Parameters]
+        range_low_slope: float = 0.012,
+        range_high_slope: float = 0.035,
+        precision_mult: float = 0.7,
+        aggressive_mult: float = 1.5,
+        precision_rsi_offset: float = 7.0,
+        aggressive_rsi_offset: float = 10.0,
         **kwargs
     ) -> Any:
         """
@@ -1006,153 +1013,237 @@ class AlphaX7Core:
         lows = np.asarray(df_entry['low'].values, dtype=np.float64)
         closes = np.asarray(df_entry['close'].values, dtype=np.float64)
 
-        # RSI/ATR 계산 (사전 계산된 값이 있으면 재사용)
-        if 'rsi' in df_entry.columns and 'atr' in df_entry.columns:
-            # [OK] 최적화: 사전 계산된 지표 사용 (7-10배 빠름)
-            rsis = np.asarray(df_entry['rsi'].values, dtype=np.float64)
-            atrs = np.asarray(df_entry['atr'].values, dtype=np.float64)
-        else:
-            # [OK] SSOT 준수: utils.indicators 사용 (EWM 기반, v7.27)
-            # RSI 계산 (Wilder's Smoothing)
-            closes_series = pd.Series(closes)
-            rsi_series = _calc_rsi(closes_series, period=rsi_period, return_series=True)
-            rsis = np.asarray(rsi_series.values, dtype=np.float64)
+        # [v7.36 Strict Nowcast] 지표 데이터 준비
+        closes_series = pd.Series(closes)
+        rsi_series = _calc_rsi(closes_series, period=rsi_period, return_series=True)
+        rsis = np.asarray(rsi_series.values, dtype=np.float64)
 
-            # ATR 계산 (Wilder's Smoothing)
-            df_temp = pd.DataFrame({
-                'high': highs,
-                'low': lows,
-                'close': closes
-            })
-            atr_series = _calc_atr(df_temp, period=atr_period, return_series=True)
-            atrs = np.asarray(atr_series.values, dtype=np.float64)
+        df_temp = pd.DataFrame({'high': highs, 'low': lows, 'close': closes})
+        atr_series = _calc_atr(df_temp, period=atr_period, return_series=True)
+        atrs = np.asarray(atr_series.values, dtype=np.float64)
+        
+        # [v7.36 Slicing Nowcast] 사용자 지침: "봉마감을 보지말고 슬라이싱(Rolling)해서 계산하라"
+        # filter_tf 기준 EMA를 entry_tf(15m) 단위로 슬라이싱하여 계산
+        if self.USE_MTF_FILTER and filter_tf:
+            # 타임프레임별 15분봉 개수 계산 (v7.42)
+            tf_to_minutes = {
+                '15m': 15, '30m': 30, '1h': 60, '2h': 120, '4h': 240, 
+                '6h': 360, '12h': 720, '1d': 1440
+            }
+            filter_min = tf_to_minutes.get(filter_tf, 240)
+            entry_min = 15 # AlphaX7 v7 standard entry is 15m
+            tf_multiplier = filter_min // entry_min
+            
+            # [v7.39 Range-Based Adaptive Engine]
+            # 시장 에너지를 3단계로 분류하여 진입/청산 로직을 가변적으로 조절
+            ema_rolling_period = ema_period * tf_multiplier
+            ema_slicing = closes_series.ewm(span=ema_rolling_period, adjust=False).mean()
+            
+            ema_slope = (ema_slicing - ema_slicing.shift(tf_multiplier)) / ema_slicing.shift(tf_multiplier) * 100
+            ema_slope_arr = np.asarray(ema_slope.values, dtype=np.float64)
+            
+            # 추세 방향성 판단
+            trend_map_arr = np.where(closes_series.shift(1) > ema_slicing.shift(1), 'up', 'down')
+        else:
+            ema_slope_arr = np.zeros(len(df_entry))
+            trend_map_arr = np.array(['up'] * len(df_entry))
         
         from collections import deque
         pending = deque()
         sig_idx = 0
         audit_logs = [] if collect_audit else None
         
-        for i in range(len(df_entry)):
+        for i in range(1, len(df_entry)):
             t = times[i]
-            t_ts = _to_dt(t)  # UTC aware 타임스탬프로 변환
-            if t_ts is None:
-                continue
+            t_ts = _to_dt(t)
+            if t_ts is None: continue
+
+            # [나우캐스트] 현재 봉(i)에서 쓸 수 있는 정보는 마감된 i-1의 데이터뿐
+            prev_rsi = rsis[i-1]
+            prev_atr = atrs[i-1]
+            prev_trend = trend_map_arr[i-1]
+
+            # [v7.40 User Range Mapping] "여기서 여기까지는 얘"
+            current_slope_val = abs(ema_slope_arr[i-1])
+            
+            if current_slope_val < range_low_slope: # [Range 1] 저에너지/횡보 구간
+                adj_tolerance = pattern_tolerance * precision_mult
+                adj_pullback_long = pullback_rsi_long - precision_rsi_offset
+                adj_pullback_short = pullback_rsi_short + precision_rsi_offset
+                adj_atr_mult = atr_mult * precision_mult   # ATR 배수도 가변 적용
+                adj_trail_start = trail_start_r * precision_mult
+                market_zone = "Precision"
+                
+            elif current_slope_val < range_high_slope: # [Range 2] 표준 추세 구간
+                adj_tolerance = pattern_tolerance
+                adj_pullback_long = pullback_rsi_long
+                adj_pullback_short = pullback_rsi_short
+                adj_atr_mult = atr_mult
+                adj_trail_start = trail_start_r
+                market_zone = "Balance"
+                
+            else: # [Range 3] 고에너지/강세 구간
+                adj_tolerance = pattern_tolerance * aggressive_mult
+                adj_pullback_long = pullback_rsi_long + aggressive_rsi_offset
+                adj_pullback_short = pullback_rsi_short - aggressive_rsi_offset
+                adj_atr_mult = atr_mult * aggressive_mult
+                adj_trail_start = trail_start_r * aggressive_mult
+                market_zone = "Aggressive"
 
             while sig_idx < len(signals):
-                st = _to_dt(signals[sig_idx]['time'])
+                sig = signals[sig_idx]
+                st = _to_dt(sig['time'])
                 if st is None:
-                    sig_idx += 1
-                    continue
-                if st <= t_ts:
-                    order = signals[sig_idx].copy()
+                    sig_idx += 1; continue
+                
+                # [Range-Based Filter] 정밀 모드일 때는 오차 범위 내의 신호만 허용 (v7.42 string matching fixed)
+                if market_zone == "Precision":
+                    if sig.get('error', 0) > adj_tolerance:
+                        sig_idx += 1; continue
+                
+                if st <= t_ts: 
+                    order = sig.copy()
                     order['expire_time'] = st + timedelta(hours=entry_validity_hours)
+                    order['market_zone'] = market_zone # 진입 시점 환경 기록
                     pending.append(order)
                     sig_idx += 1
-                else: break
+                else:
+                    break # [CRITICAL] 1분 멈춤 현상 수정: 현재 봉보다 미래 신호면 루프 탈출
 
             while pending:
                 expire_ts = _to_dt(pending[0]['expire_time'])
                 if expire_ts is not None and expire_ts <= t_ts:
                     pending.popleft()
-                else:
-                    break
+                else: break
             
+            # 1. 청산 로직 (보수적: 이전 봉에서 확정된 shared_sl 사용)
             if positions:
                 if current_direction == 'Long':
-                    if highs[i] > extreme_price:
-                        extreme_price = highs[i]
-                        if extreme_price >= shared_trail_start:
-                            mult = 2 if rsis[i] > pullback_rsi_short else (0.8 if rsis[i] < 50 else 1)
-                            new_sl = extreme_price - shared_trail_dist * mult
-                            if new_sl > shared_sl: shared_sl = new_sl
+                    # 이번 봉의 저가가 어제까지 확정된 SL에 닿았는가?
                     if lows[i] <= shared_sl:
+                        # 청산 가격은 SL 또는 시가 중 더 나쁜 가격 (보수적)
+                        exit_price = min(shared_sl, opens[i])
                         for pos in positions:
-                            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
-                            from config.constants.trading import BACKTEST_EXIT_COST
-                            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
+                            exit_fee_pct = slippage * 100
                             trade = {
-                                'entry_time': pos['entry_time'], 'exit_time': t, 'type': 'Long',
-                                'entry': pos['entry'], 'exit': shared_sl, 'pnl': (shared_sl - pos['entry']) / pos['entry'] * 100 - exit_fee_pct,
-                                'is_addon': pos.get('is_addon', False), 'entry_idx': pos.get('entry_idx', 0), 'exit_idx': i,
+                                'entry_time': pos['entry_time'], 'exit_time': t, 'side': 'Long',
+                                'entry_price': pos['entry'], 'exit_price': exit_price, 'size': 1.0,
+                                'pnl': (exit_price - pos['entry']) / pos['entry'] * 100 - exit_fee_pct,
+                                'is_addon': pos.get('is_addon', False), 'entry_idx': pos.get('entry_idx', 0), 
+                                'exit_idx': i, 'duration': str(pd.to_timedelta(t - pos['entry_time'])),
+                                'exit_reason': 'Stop Loss/Trail',
+                                'context': pos.get('context') # [v7.37] 진입 전후 맥락 데이터 보존
                             }
                             trades.append(trade)
-                            if audit_logs is not None:
-                                audit_logs.append({
-                                    'timestamp': t, 'logic': 'Exit (SL/Trail)', 'action': 'Close Long',
-                                    'pnl': trade['pnl'], 'details': f"Exit @ {shared_sl:.2f}, SL hit"
-                                })
                         positions = []; current_direction = None; add_count = 0
-                else: # Short
-                    if lows[i] < extreme_price:
-                        extreme_price = lows[i]
-                        if extreme_price <= shared_trail_start:
-                            mult = 2 if rsis[i] < pullback_rsi_long else (0.8 if rsis[i] > 50 else 1)
-                            new_sl = extreme_price + shared_trail_dist * mult
-                            if new_sl < shared_sl: shared_sl = new_sl
+                    else:
+                        # 아직 살아있다면, 이번 봉의 고가를 보고 "다음 봉부터 적용할" SL 업데이트
+                        if highs[i] > extreme_price:
+                            extreme_price = highs[i]
+                            if extreme_price >= shared_trail_start:
+                                mult = 2 if prev_rsi > pullback_rsi_short else (0.8 if prev_rsi < 50 else 1)
+                                new_sl = extreme_price - shared_trail_dist * mult
+                                if new_sl > shared_sl: shared_sl = new_sl
+
+                elif current_direction == 'Short':
                     if highs[i] >= shared_sl:
+                        exit_price = max(shared_sl, opens[i])
                         for pos in positions:
-                            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
-                            from config.constants.trading import BACKTEST_EXIT_COST
-                            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
+                            exit_fee_pct = slippage * 100
                             trade = {
-                                'entry_time': pos['entry_time'], 'exit_time': t, 'type': 'Short',
-                                'entry': pos['entry'], 'exit': shared_sl, 'pnl': (pos['entry'] - shared_sl) / pos['entry'] * 100 - exit_fee_pct,
-                                'is_addon': pos.get('is_addon', False), 'entry_idx': pos.get('entry_idx', 0), 'exit_idx': i,
+                                'entry_time': pos['entry_time'], 'exit_time': t, 'side': 'Short',
+                                'entry_price': pos['entry'], 'exit_price': exit_price, 'size': 1.0,
+                                'pnl': (pos['entry'] - exit_price) / pos['entry'] * 100 - exit_fee_pct,
+                                'is_addon': pos.get('is_addon', False), 'entry_idx': pos.get('entry_idx', 0), 
+                                'exit_idx': i, 'duration': str(pd.to_timedelta(t - pos['entry_time'])),
+                                'exit_reason': 'Stop Loss/Trail',
+                                'context': pos.get('context') # [v7.37] 숏 진입 맥락 보존
                             }
                             trades.append(trade)
                             if audit_logs is not None:
-                                audit_logs.append({
-                                    'timestamp': t, 'logic': 'Exit (SL/Trail)', 'action': 'Close Short',
-                                    'pnl': trade['pnl'], 'details': f"Exit @ {shared_sl:.2f}, SL hit"
-                                })
+                                audit_logs.append({'timestamp': t, 'logic': 'Exit', 'action': 'Close Short', 'pnl': trade['pnl'], 'details': f'SL @ {exit_price:.2f}'})
                         positions = []; current_direction = None; add_count = 0
+                    else:
+                        if lows[i] < extreme_price:
+                            extreme_price = lows[i]
+                            if extreme_price <= shared_trail_start:
+                                mult = 2 if prev_rsi < pullback_rsi_long else (0.8 if prev_rsi > 50 else 1)
+                                new_sl = extreme_price + shared_trail_dist * mult
+                                if new_sl < shared_sl: shared_sl = new_sl
+                
+                # [Range-Based Fullback] 풀백 값도 영역별로 다르게 체크
+                pullback_long_threshold = adj_pullback_long
+                pullback_short_threshold = adj_pullback_short
                 
                 if enable_pullback and positions and add_count < max_adds:
-                    if current_direction == 'Long' and rsis[i] < pullback_rsi_long:
-                        positions.append({'entry_time': t, 'entry': opens[i], 'is_addon': True, 'entry_idx': i})
-                        add_count += 1
-                        if audit_logs is not None:
-                            audit_logs.append({
-                                'timestamp': t, 'logic': 'Pullback', 'action': 'Add Long',
-                                'pnl': 0, 'details': f"RSI {rsis[i]:.1f} < {pullback_rsi_long}"
-                            })
-                    elif current_direction == 'Short' and rsis[i] > pullback_rsi_short:
-                        positions.append({'entry_time': t, 'entry': opens[i], 'is_addon': True, 'entry_idx': i})
-                        add_count += 1
-                        if audit_logs is not None:
-                            audit_logs.append({
-                                'timestamp': t, 'logic': 'Pullback', 'action': 'Add Short',
-                                'pnl': 0, 'details': f"RSI {rsis[i]:.1f} > {pullback_rsi_short}"
-                            })
+                    # limit_entry = opens[i] * 0.99999 if current_direction == 'Long' else opens[i] * 1.00001 # Removed as per instruction
+                    is_filled = (lows[i] <= opens[i]) if current_direction == 'Long' else (highs[i] >= opens[i])
+                    if is_filled:
+                        if current_direction == 'Long' and prev_rsi < pullback_long_threshold:
+                            # 추가 진입 성공
+                            add_pos = {'entry_time': t, 'entry': opens[i], 'is_addon': True, 'entry_idx': i}
+                            positions.append(add_pos)
+                            add_count += 1
+                            if audit_logs is not None: audit_logs.append({'timestamp': t, 'logic': 'Pullback', 'action': 'Add Long', 'details': f'RSI {prev_rsi:.1f}'})
+                        elif current_direction == 'Short' and prev_rsi > pullback_short_threshold:
+                            add_pos = {'entry_time': t, 'entry': opens[i], 'is_addon': True, 'entry_idx': i}
+                            positions.append(add_pos)
+                            add_count += 1
+                            if audit_logs is not None: audit_logs.append({'timestamp': t, 'logic': 'Pullback', 'action': 'Add Short', 'details': f'RSI {prev_rsi:.1f}'})
             
-            if not positions:
-                for order in pending:
-                    d = order['type']
-                    # [FIX] Both 방향 지원
-                    allowed = allowed_direction.lower() if allowed_direction else 'both'
-                    if allowed not in ['both', 'long/short (both)', '']:
-                        if d.lower() != allowed:
-                            continue
-                    if trend_map is not None:
-                        curr_trend = trend_map.iloc[i] if i < len(trend_map) else 'neutral'
-                        if (d == 'Long' and curr_trend == 'down') or (d == 'Short' and curr_trend == 'up'): continue
-                    
-                    ep = opens[i]
-                    if atrs[i] <= 0: continue
-                    sl = ep - atrs[i] * atr_mult if d == 'Long' else ep + atrs[i] * atr_mult
-                    risk = abs(ep - sl)
-                    
-                    if (d == 'Long' and ep > sl) or (d == 'Short' and ep < sl):
-                        current_direction = d; extreme_price = ep; shared_sl = sl; add_count = 0
-                        shared_trail_start = ep + risk * trail_start_r if d == 'Long' else ep - risk * trail_start_r
-                        shared_trail_dist = risk * trail_dist_r
-                        positions.append({'entry_time': t, 'entry': ep, 'is_addon': False, 'entry_idx': i})
-                        if audit_logs is not None:
-                            audit_logs.append({
-                                'timestamp': t, 'logic': f'{order.get("pattern", "W/M")} Pattern', 'action': f'Open {d}',
-                                'pnl': 0, 'details': f'Entry @ {ep:.2f}, SL @ {sl:.2f}'
-                            })
-                        pending.clear(); break
+            # 2. 신규 진입 로직
+            if not positions and pending:
+                order = pending[0]
+                d = order['type']
+                allowed = allowed_direction.lower() if allowed_direction else 'both'
+                if allowed in ['both', 'long/short (both)', ''] or d.lower() == allowed:
+                    if (d == 'Long' and prev_trend == 'up') or (d == 'Short' and prev_trend == 'down'):
+                        limit_entry = opens[i] * 0.99999 if d == 'Long' else opens[i] * 1.00001
+                        is_filled = (lows[i] <= opens[i]) if d == 'Long' else (highs[i] >= opens[i])
+                        
+                        if is_filled:
+                            ep = limit_entry
+                            # [Range-Based SL] 변하는 ATR 배수 적용
+                            sl = ep - prev_atr * adj_atr_mult if d == 'Long' else ep + prev_atr * adj_atr_mult
+                            risk = abs(ep - sl)
+                            current_direction = d; extreme_price = ep; shared_sl = sl; add_count = 0
+                            # [Range-Based Trail] 변하는 트레일링 시작점 적용
+                            shared_trail_start = ep + risk * adj_trail_start if d == 'Long' else ep - risk * adj_trail_start
+                            shared_trail_dist = risk * trail_dist_r
+                            
+                            # [Trade Context Audit] 사용자 지짐: "진입 전후 몇캔들까지 다보고 변화 분석"
+                            window_start = max(0, i-4)
+                            context = {
+                                'pre_closes': closes[window_start:i].tolist(),
+                                'pre_rsis': rsis[window_start:i].tolist(),
+                                'entry_rsi': prev_rsi, 'entry_trend': prev_trend,
+                                'market_zone': market_zone, # [v7.41] 에너지 존 기록
+                            }
+                            
+                            # [Immediate SL Check] (v7.37: 분석 데이터 포함)
+                            is_emergency = (lows[i] <= sl) if d == 'Long' else (highs[i] >= sl)
+                            if is_emergency:
+                                exit_fee_pct = slippage * 100
+                                trades.append({
+                                    'entry_time': t, 'exit_time': t, 'side': d, 'entry_price': ep, 'exit_price': sl, 'size': 1.0,
+                                    'pnl': -risk/ep*100 - exit_fee_pct, 'entry_idx': i, 'exit_idx': i, 'exit_reason': 'Immediate SL',
+                                    'context': context # 초기 손절 그룹 데이터
+                                })
+                                current_direction = None
+                            else:
+                                new_pos = {
+                                    'entry_time': t, 'entry': ep, 'is_addon': False, 'entry_idx': i,
+                                    'context': context
+                                }
+                                positions.append(new_pos)
+                                
+                                if audit_logs is not None:
+                                    audit_logs.append({
+                                        'timestamp': t, 'logic': 'Entry', 'action': f'Open {d}',
+                                        'details': f'Price {ep:.2f} | RSI {prev_rsi:.1f} | Trend {prev_trend}',
+                                        'momentum': closes[window_start:i+1].tolist()
+                                    })
+                            pending.clear()
         
         if not return_state:
             if collect_audit:
@@ -1217,7 +1308,8 @@ class AlphaX7Core:
                     seg = df_1h.iloc[start:i]
                     if len(seg) > 0:
                         max_idx = seg['high'].idxmax()
-                        points.append({'type': 'H', 'price': df_1h.loc[max_idx, 'high'], 'time': df_1h.loc[max_idx, 'timestamp'], 'confirmed_time': df_1h.iloc[i-1]['timestamp']})
+                        # [v7.36 Strict Nowcast] 확정 시점은 '다음 정시' (i번째 봉의 시작점)
+                        points.append({'type': 'H', 'price': df_1h.loc[max_idx, 'high'], 'time': df_1h.loc[max_idx, 'timestamp'], 'confirmed_time': df_1h.iloc[i]['timestamp'] if i < len(df_1h) else df_1h.iloc[i-1]['timestamp'] + pd.Timedelta(hours=1)})
             elif hist.iloc[i] < 0:
                 start = i
                 while i < n and hist.iloc[i] < 0: i += 1
@@ -1225,7 +1317,8 @@ class AlphaX7Core:
                     seg = df_1h.iloc[start:i]
                     if len(seg) > 0:
                         min_idx = seg['low'].idxmin()
-                        points.append({'type': 'L', 'price': df_1h.loc[min_idx, 'low'], 'time': df_1h.loc[min_idx, 'timestamp'], 'confirmed_time': df_1h.iloc[i-1]['timestamp']})
+                        # [v7.36 Strict Nowcast] 확정 시점은 '다음 정시' (i번째 봉의 시작점)
+                        points.append({'type': 'L', 'price': df_1h.loc[min_idx, 'low'], 'time': df_1h.loc[min_idx, 'timestamp'], 'confirmed_time': df_1h.iloc[i]['timestamp'] if i < len(df_1h) else df_1h.iloc[i-1]['timestamp'] + pd.Timedelta(hours=1)})
             else: i += 1
         
         signals = []
@@ -1233,11 +1326,14 @@ class AlphaX7Core:
             if points[i-2]['type'] == 'L' and points[i-1]['type'] == 'H' and points[i]['type'] == 'L':
                 L1, L2 = points[i-2], points[i]
                 if abs(L2['price'] - L1['price']) / L1['price'] < tolerance:
-                    signals.append({'time': L2['confirmed_time'], 'type': 'Long', 'pattern': 'W'})
+                    # [v7.36 Strict Nowcast] 신호 확정은 봉 마감 직후 정시 (t+1h)
+                    confirm_time = L2['confirmed_time'] 
+                    signals.append({'time': confirm_time, 'type': 'Long', 'pattern': 'W'})
             if points[i-2]['type'] == 'H' and points[i-1]['type'] == 'L' and points[i]['type'] == 'H':
                 H1, H2 = points[i-2], points[i]
                 if abs(H2['price'] - H1['price']) / H1['price'] < tolerance:
-                    signals.append({'time': H2['confirmed_time'], 'type': 'Short', 'pattern': 'M'})
+                    confirm_time = H2['confirmed_time']
+                    signals.append({'time': confirm_time, 'type': 'Short', 'pattern': 'M'})
         signals.sort(key=lambda x: x['time'])
         return signals
 

@@ -63,7 +63,7 @@ class SingleOptimizationModeConfigMixin:
 
         # 4. Phase 1 Baseline 정보 표시
         baseline_info = (
-            "📊 Phase 1 Baseline (Sharpe 19.82):\n"
+            "[CHART] Phase 1 Baseline (Sharpe 19.82):\n"
             "- filter_tf='2h', trail_start_r=0.4, trail_dist_r=0.02\n"
             "- 640개 조합으로 최적값 주변 정밀 탐색"
         )
@@ -108,6 +108,33 @@ class SingleOptimizationModeConfigMixin:
         # 따라서 힌트만 표시 (선택 사항)
 
         logger.info(f"메타 최적화 모드 선택: 파라미터 범위 자동 탐색 (sample_size={sample_size})")
+
+    def _on_adaptive_mode_selected(self):
+        """Adaptive 모드 선택 시 UI 업데이트 (v7.41)"""
+        # 1. 예상 정보 업데이트
+        total_combos = 360 # core/optimizer.py:generate_adaptive_grid 기준
+        estimated_seconds = total_combos * 0.25  # 가변 로직 추가로 약간 증가 가능
+        time_minutes = estimated_seconds / 60
+
+        self.estimated_combo_label.setText(f"예상 조합 수: ~{total_combos}개")
+        self.estimated_time_label.setText(f"예상 시간: ~{time_minutes:.1f}분")
+        self.recommended_workers_label.setText("권장 워커: 8개 이상 (Deep 전용 엔진)")
+
+        logger.info("Adaptive 모드 선택: 샘플링 탐색 (~360개)")
+
+    def _on_deep_mode_selected(self):
+        """Deep 모드 선택 시 UI 업데이트 (v7.41)"""
+        # 1. 예상 정보 업데이트
+        total_combos = 11520 # core/optimizer.py:generate_deep_grid 기준
+        # 대략적인 시간 계산 (워커당 처리 속도 고려)
+        estimated_seconds = total_combos * 0.1 # 멀티프로세싱 최적화 시
+        time_minutes = estimated_seconds / 60
+
+        self.estimated_combo_label.setText(f"예상 조합 수: {total_combos:,}개")
+        self.estimated_time_label.setText(f"예상 시간: ~{time_minutes:.0f}분 (Deep)")
+        self.recommended_workers_label.setText("권장 워커: 최대 가동 (전수 조사)")
+
+        logger.info(f"Deep 모드 선택: 전수 조사 ({total_combos:,} 조합)")
 
 
 __all__ = ['SingleOptimizationModeConfigMixin']

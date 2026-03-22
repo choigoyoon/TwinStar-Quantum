@@ -38,7 +38,7 @@ class PresetHealthMonitor:
     STATUS_PAUSED = 'paused'
     STATUS_REOPTIMIZE = 'needs_reoptimize'
     
-    def __init__(self, presets_dir: str = None):
+    def __init__(self, presets_dir: Optional[str] = None):
         self.presets_dir = Path(presets_dir or PRESETS_DIR)
         self.presets_dir.mkdir(parents=True, exist_ok=True)
         
@@ -274,7 +274,7 @@ class PresetHealthMonitor:
         
         return summary
     
-    def reset_stats(self, preset_name: str = None):
+    def reset_stats(self, preset_name: Optional[str] = None):
         """통계 초기화"""
         if preset_name:
             self._realtime_stats.pop(preset_name, None)

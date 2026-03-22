@@ -1,19 +1,19 @@
-from typing import Dict, List, Optional, Callable
+from __future__ import annotations
+from typing import Dict, List, Optional, Callable, Any, TYPE_CHECKING
 from dataclasses import dataclass
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import pandas as pd
 
-try:
-    from config.parameters import PARAM_RANGES, DEFAULT_PARAMS
-except ImportError:
-    # Fallback or Mock for testing
-    PARAM_RANGES = {}
-    DEFAULT_PARAMS = {}
+# 메트릭 계산 (SSOT)
+from utils.metrics import calculate_profit_factor, calculate_sharpe_ratio
+
+from config.parameters import PARAM_RANGES, DEFAULT_PARAMS
 
 try:
     from core.strategy_core import AlphaX7Core
 except ImportError:
-    AlphaX7Core = None
+    AlphaX7Core: Any = None
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class OptimizationResult:
     """최적화 결과 데이터"""
     params: Dict
     win_rate: float
-    simple_return: float
+    total_pnl: float  # ✅ SSOT 표준 필드명 (구 simple_return)
     compound_return: float
     max_drawdown: float
     sharpe_ratio: float
@@ -32,13 +32,20 @@ class OptimizationResult:
     strategy_type: str = ""
     stability: str = "⚠️"
 
+    @property
+    def simple_return(self) -> float:
+        """Deprecated: 하위 호환성을 위한 alias. total_pnl을 사용하세요."""
+        return self.total_pnl
 
-# ============ 필터 기준 (결과 탈락 조건) ============
+
+# ============ 필터 기준 (DEPRECATED - SSOT 사용) ============
+# DEPRECATED: config.parameters.OPTIMIZATION_FILTER로 이전됨
+# 하위 호환성을 위해 유지하지만 사용하지 마세요.
 FILTER_CRITERIA = {
-    'max_mdd': 20.0,           # MDD ≤ 20%
-    'min_win_rate': 70.0,      # 승률 ≥ 70%
-    'min_pf': 1.5,             # PF ≥ 1.5
-    'min_trades_per_day': 0.33 # 3일에 1번 이상 (일평균 0.33회)
+    'max_mdd': 20.0,
+    'min_win_rate': 70.0,
+    'min_pf': 1.5,
+    'min_trades_per_day': 0.33
 }
 
 # ============ 등급 기준 (S/A/B/C) ============
@@ -50,34 +57,65 @@ GRADE_CRITERIA = {
 }
 
 
-def passes_filter(result, total_days: float = 365.0) -> bool:
-    """최적화 결과가 필터 기준을 통과하는지 확인"""
-    avg_trades = result.trade_count / max(total_days, 1)
+def passes_filter(result, total_days: float) -> bool:
+    """
+    최적화 결과 필터링 (SSOT 기준 사용)
+
+    Args:
+        result: OptimizationResult 객체
+        total_days: 실제 백테스트 데이터 기간 (일) - 필수
+
+    Returns:
+        필터 통과 여부
+
+    Note:
+        v3.0부터 config.parameters.OPTIMIZATION_FILTER를 사용합니다.
+        total_days는 필수 매개변수입니다 (365일 고정값 제거).
+    """
+    from config.parameters import OPTIMIZATION_FILTER
+
+    if total_days <= 0:
+        return False
+
+    avg_trades_per_day = result.trade_count / total_days
+
     return (
-        abs(result.max_drawdown) <= FILTER_CRITERIA['max_mdd'] and
-        result.win_rate >= FILTER_CRITERIA['min_win_rate'] and
-        result.profit_factor >= FILTER_CRITERIA['min_pf'] and
-        avg_trades >= FILTER_CRITERIA['min_trades_per_day']
+        result.win_rate >= OPTIMIZATION_FILTER['min_win_rate'] and
+        abs(result.max_drawdown) <= OPTIMIZATION_FILTER['max_mdd'] and
+        result.total_return >= OPTIMIZATION_FILTER['min_total_return'] and
+        avg_trades_per_day >= OPTIMIZATION_FILTER['min_trades_per_day'] and
+        result.trade_count >= OPTIMIZATION_FILTER['min_absolute_trades']
     )
 
 
 def calculate_grade(win_rate: float, mdd: float, pf: float) -> str:
-    """등급 계산 (S/A/B/C)"""
-    mdd = abs(mdd)
-    if win_rate >= 85 and mdd <= 12 and pf >= 3.0:
-        return "🏆S"
-    if win_rate >= 75 and mdd <= 17 and pf >= 2.0:
-        return "🥇A"
-    if win_rate >= 70 and mdd <= 20 and pf >= 1.5:
-        return "🥈B"
-    return "🥉C"
+    """
+    등급 계산 (utils.metrics wrapper - 하위 호환성)
+
+    Note:
+        이 함수는 하위 호환성을 위해 유지됩니다.
+        신규 코드는 utils.metrics.assign_grade_by_preset()를 직접 사용하세요.
+    """
+    from utils.metrics import assign_grade_by_preset
+
+    # 기본값: 균형형 기준 사용
+    return assign_grade_by_preset(
+        preset_type='balanced',
+        metrics={
+            'win_rate': win_rate,
+            'mdd': mdd,
+            'profit_factor': pf,
+            'sharpe_ratio': 0  # 계산 필요시 전달
+        }
+    )
 
 
 # ============ 4단계 순차 최적화 Grid 정의 (프리셋 기반) ============
 
-# --- Quick 모드: 빠르게 대략 탐색 (~10개 총합) ---
+# --- Quick 모드: 빠르게 대략 탐색 (~20개 총합) ---
+# [UPDATE 2026-01-16] filter_tf 12h 추가, entry_validity 48h 추가
 STAGE1_QUICK = {
-    'filter_tf': ['4h'],                     # 1 (베스트 TF)
+    'filter_tf': ['4h', '12h'],              # 2 (베스트 TF + 강한 필터)
     'atr_mult': [0.95, 1.05],                # 2
     'direction': ['Both'],                   # 1
 }
@@ -86,30 +124,35 @@ STAGE2_QUICK = {
     'trail_dist_r': [0.1],                   # 1
 }
 STAGE3_QUICK = {
-    'entry_validity_hours': [12.0],          # 1
+    'entry_validity_hours': [12.0, 48.0],    # 2 (기본 + 장기)
     'pullback_rsi_long': [40],               # 1
     'pullback_rsi_short': [60],              # 1
 }
 
-# --- Standard 모드: 실사용 권장 (~144개 총합) ---
+# --- Standard 모드: 실사용 권장 (~216개 총합) ---
+# [UPDATE 2026-01-16] 7차 세션 권장사항 반영
+# - filter_tf: 12h 추가 (거래빈도 감소)
+# - direction: Short 추가 (양방향 완전 지원)
+# - entry_validity_hours: 48h 추가 (패턴 유효기간 확장)
 STAGE1_STANDARD = {
-    'filter_tf': ['2h', '4h', '6h'],         # 3
+    'filter_tf': ['4h', '6h', '12h'],        # 3 (2h 제외, 12h 추가)
     'atr_mult': [0.95, 1.0, 1.05],           # 3
-    'direction': ['Both', 'Long'],           # 2
+    'direction': ['Both', 'Long', 'Short'],  # 3 (Short 추가)
 }
 STAGE2_STANDARD = {
     'trail_start_r': [0.4, 0.5, 0.6, 0.7],   # 4
     'trail_dist_r': [0.08, 0.1, 0.12],       # 3
 }
 STAGE3_STANDARD = {
-    'entry_validity_hours': [6.0, 12.0, 24.0], # 3
+    'entry_validity_hours': [12.0, 24.0, 48.0], # 3 (6h→12h, 48h 추가)
     'pullback_rsi_long': [35, 40],           # 2
     'pullback_rsi_short': [60, 65],          # 2
 }
 
-# --- Deep 모드: 촘촘한 전수조사 (~500개 총합) ---
+# --- Deep 모드: 촘촘한 전수조사 (~675개 총합) ---
+# [UPDATE 2026-01-16] filter_tf 12h/1d 추가, entry_validity 72h 추가
 STAGE1_DEEP = {
-    'filter_tf': ['2h', '4h', '6h'],         # 3
+    'filter_tf': ['4h', '6h', '12h', '1d'],  # 4 (2h 제외, 12h/1d 추가)
     'atr_mult': [0.9, 0.95, 1.0, 1.05, 1.1], # 5
     'direction': ['Both', 'Long', 'Short'],  # 3
 }
@@ -118,7 +161,7 @@ STAGE2_DEEP = {
     'trail_dist_r': [0.08, 0.09, 0.1, 0.11, 0.12], # 5
 }
 STAGE3_DEEP = {
-    'entry_validity_hours': [6.0, 12.0, 18.0, 24.0, 48.0], # 5
+    'entry_validity_hours': [12.0, 24.0, 48.0, 72.0], # 4 (6h/18h 제외, 72h 추가)
     'pullback_rsi_long': [30, 35, 40],       # 3
     'pullback_rsi_short': [60, 65, 70],      # 3
 }
@@ -143,18 +186,18 @@ STAGE3_GRID = STAGE3_STANDARD
 def calculate_optimal_leverage(mdd: float, target_mdd: float = 20.0) -> int:
     """
     MDD 기반 적정 레버리지 계산
-    
+
+    Wrapper for utils.metrics.calculate_optimal_leverage() (SSOT)
+
     Args:
         mdd: 현재 MDD (%)
         target_mdd: 목표 MDD (기본 20%)
-    
+
     Returns:
         적정 레버리지 (최대 10)
     """
-    if mdd <= 0:
-        return 1
-    leverage = target_mdd / mdd
-    return min(max(1, int(leverage)), 10)
+    from utils.metrics import calculate_optimal_leverage as calc_opt_lev
+    return calc_opt_lev(mdd, target_mdd, max_leverage=10)
 
 
 # ============ 멀티프로세스 워커 함수 (모듈 레벨) ============
@@ -171,7 +214,6 @@ def _worker_run_backtest(args):
     """
     import pandas as pd
     import math
-    import numpy as np
     
     params, df_dict, columns = args
     
@@ -188,7 +230,7 @@ def _worker_run_backtest(args):
             ts = df['timestamp']
             # int/float (ms) → datetime
             if pd.api.types.is_numeric_dtype(ts):
-                df['timestamp'] = pd.to_datetime(ts, unit='ms')
+                df['timestamp'] = pd.to_datetime(ts, unit='ms', utc=True)
             # string → datetime
             elif pd.api.types.is_string_dtype(ts):
                 df['timestamp'] = pd.to_datetime(ts)
@@ -221,7 +263,7 @@ def _worker_run_backtest(args):
         strategy = AlphaX7Core(use_mtf=True)  # MTF 필터 활성화 (추세 정렬)
 
         # 비용 합산 (백테스트 UI와 동일)
-        combined_cost = params.get('slippage', 0.0006) + params.get('fee', 0.00055)
+        combined_cost = params.get('slippage', DEFAULT_PARAMS['slippage']) + params.get('fee', DEFAULT_PARAMS['fee'])
         
         # 백테스트 실행
         bt_params = {k: v for k, v in params.items() if k not in ['slippage', 'fee', 'filter_tf']}
@@ -235,7 +277,7 @@ def _worker_run_backtest(args):
         
         if not trades:
             return OptimizationResult(
-                params=params, win_rate=0, simple_return=0, compound_return=0,
+                params=params, win_rate=0, total_pnl=0, compound_return=0,
                 max_drawdown=0, sharpe_ratio=0, trade_count=0, profit_factor=0
             )
         
@@ -244,54 +286,59 @@ def _worker_run_backtest(args):
         pnls = [t.get('pnl', 0) * leverage for t in trades]
         simple_return = sum(pnls)
         
-        # Compound return
-        log_sum = 0
+        # ✅ Phase 1-E P1-1: 클램핑 정책 적용
+        # Compound return (청산/파산 안전 처리 + 클램핑)
+        MAX_SINGLE_PNL = 50.0
+        MIN_SINGLE_PNL = -50.0
+
+        equity = 1.0
         for p in pnls:
-            if p > -100:
-                log_sum += math.log(1 + p / 100)
-        compound_return = (math.exp(log_sum) - 1) * 100
+            # 클램핑 적용
+            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, p))
+            equity *= (1 + clamped_pnl / 100)
+            if equity <= 0:  # 파산 (전액 손실)
+                equity = 0
+                break
+        compound_return = (equity - 1) * 100
+        # 범위 제한: -100% ~ +무한대 (표시 오류 방지)
+        compound_return = max(-100.0, compound_return)
         
         wins = [p for p in pnls if p > 0]
         win_rate = len(wins) / len(trades) * 100 if trades else 0
         
-        # MDD
-        equity = 1.0
+        # MDD (청산 안전 처리 + 클램핑)
+        equity_mdd = 1.0
         peak = 1.0
         mdd = 0
         for p in pnls:
-            equity *= (1 + p/100)
-            if equity > peak: peak = equity
-            dd = (peak - equity) / peak * 100
-            if dd > mdd: mdd = dd
+            # 클램핑 적용
+            clamped_pnl = max(MIN_SINGLE_PNL, min(MAX_SINGLE_PNL, p))
+            equity_mdd *= (1 + clamped_pnl / 100)
+            if equity_mdd <= 0:  # 파산 시 MDD = 100%
+                mdd = 100.0
+                break
+            if equity_mdd > peak:
+                peak = equity_mdd
+            dd = (peak - equity_mdd) / peak * 100
+            if dd > mdd:
+                mdd = dd
         
         # Strategy type
         strategy_type = "⚖ 균형"
+        total_pnl_value = simple_return  # 변수명 통일 전환
         if mdd < 10 and win_rate > 60: strategy_type = "🛡 보수"
-        elif simple_return > 100 or leverage > 10: strategy_type = "🔥 공격"
+        elif total_pnl_value > 100 or leverage > 10: strategy_type = "🔥 공격"
         
-        # Sharpe
-        if len(pnls) > 1:
-            std = np.std(pnls)
-            avg = np.mean(pnls)
-            sharpe = (avg / std) * np.sqrt(252 * 6) if std > 1e-6 else 0
-        else:
-            sharpe = 0
+        # Sharpe Ratio - SSOT (252 × 4 통일)
+        sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 24)
+
+        # Profit Factor - SSOT
+        trades_for_pf = [{'pnl': p} for p in pnls]
+        profit_factor = calculate_profit_factor(trades_for_pf)
         
-        # Profit Factor
-        gains = sum([p for p in pnls if p > 0])
-        losses = abs(sum([p for p in pnls if p < 0]))
-        profit_factor = gains / losses if losses > 1e-6 else gains
-        
-        # Stability
-        n = len(pnls)
-        if n >= 3:
-            p1 = sum(pnls[:n//3])
-            p2 = sum(pnls[n//3:2*n//3])
-            p3 = sum(pnls[2*n//3:])
-            score = sum([p1 > 0, p2 > 0, p3 > 0])
-            stability = "✅" * score + "⚠️" * (3 - score)
-        else:
-            stability = "⚠️"
+        # Stability (SSOT 호출)
+        from utils.metrics import calculate_stability
+        stability = calculate_stability(pnls)
         
         # === 탐색용 기본 필터 (최종 선별은 get_top_n에서) ===
         # PF ≥ 1.0 (손실 아님), 거래수 ≥ 10
@@ -301,7 +348,7 @@ def _worker_run_backtest(args):
         return OptimizationResult(
             params=params,
             win_rate=win_rate,
-            simple_return=simple_return,
+            total_pnl=simple_return,  # ✅ SSOT 표준 필드명
             compound_return=compound_return,
             max_drawdown=mdd,
             sharpe_ratio=sharpe,
@@ -319,16 +366,16 @@ class OptimizationEngine:
     
     def __init__(
         self,
-        strategy: AlphaX7Core = None,
-        param_ranges: Dict = None,
-        progress_callback: Callable[[int, int], None] = None
+        strategy: Any = None,
+        param_ranges: Optional[Dict] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None
     ):
         self.strategy = strategy or (AlphaX7Core() if AlphaX7Core else None)
         self.param_ranges = param_ranges or PARAM_RANGES
         self.progress_callback = progress_callback
         self._stop_requested = False
-    
-    def generate_param_grid(self, selected_params: List[str] = None) -> List[Dict]:
+
+    def generate_param_grid(self, selected_params: Optional[List[str]] = None) -> List[Dict]:
         """파라미터 그리드 생성"""
         import itertools
         import numpy as np
@@ -360,23 +407,39 @@ class OptimizationEngine:
         
         return grid
     
-    def generate_grid_from_options(self, param_options: Dict[str, List]) -> List[Dict]:
+    def generate_grid_from_options(self, param_options: Dict[str, List]) -> List[Dict[str, Any]]:
         """주어진 파라미터 옵션(List)들의 모든 조합 생성"""
         import itertools
         from config.parameters import DEFAULT_PARAMS
 
-        keys = list(param_options.keys())
-        values_list = list(param_options.values())
-        
+        # None 값 필터링 및 기본값 제공 (런타임 에러 방지)
+        filtered_options = {}
+        for key, values in param_options.items():
+            if values is None or (isinstance(values, list) and len(values) == 0):
+                # None 또는 빈 리스트: 기본값으로 대체
+                default_value = DEFAULT_PARAMS.get(key)
+                if default_value is not None:
+                    filtered_options[key] = [default_value]
+                # 기본값도 없으면 해당 키 제외 (skip)
+            else:
+                filtered_options[key] = values
+
+        # 유효한 파라미터가 없으면 빈 그리드 반환
+        if not filtered_options:
+            return []
+
+        keys = list(filtered_options.keys())
+        values_list = list(filtered_options.values())
+
         combinations = list(itertools.product(*values_list))
-        
+
         grid = []
         for combo in combinations:
             params = DEFAULT_PARAMS.copy()
             for i, key in enumerate(keys):
                 params[key] = combo[i]
             grid.append(params)
-        
+
         return grid
 
     
@@ -396,7 +459,7 @@ class OptimizationEngine:
             
             if not trades:
                 return OptimizationResult(
-                    params=params, win_rate=0, simple_return=0, compound_return=0,
+                    params=params, win_rate=0, total_pnl=0, compound_return=0,
                     max_drawdown=0, sharpe_ratio=0, trade_count=0, profit_factor=0
                 )
             
@@ -405,61 +468,56 @@ class OptimizationEngine:
             pnls = [t.get('pnl', 0) * leverage for t in trades]
             simple_return = sum(pnls)
             
-            # Compound return
+            # Compound return (청산/파산 안전 처리)
             import math
-            log_sum = 0
+            equity = 1.0
             for p in pnls:
-                if p > -100:
-                    log_sum += math.log(1 + p / 100)
-            compound_return = (math.exp(log_sum) - 1) * 100
+                equity *= (1 + p / 100)
+                if equity <= 0:  # 파산
+                    equity = 0
+                    break
+            compound_return = (equity - 1) * 100
+            compound_return = max(-100.0, compound_return)  # 범위 제한
             
             wins = [p for p in pnls if p > 0]
             win_rate = len(wins) / len(trades) * 100 if trades else 0
             
-            # MDD
-            equity = 1.0
+            # MDD (청산 안전 처리)
+            equity_mdd = 1.0
             peak = 1.0
             mdd = 0
             for p in pnls:
-                equity *= (1 + p/100)
-                if equity > peak: peak = equity
-                dd = (peak - equity) / peak * 100
-                if dd > mdd: mdd = dd
+                equity_mdd *= (1 + p / 100)
+                if equity_mdd <= 0:  # 파산 시 MDD = 100%
+                    mdd = 100.0
+                    break
+                if equity_mdd > peak:
+                    peak = equity_mdd
+                dd = (peak - equity_mdd) / peak * 100
+                if dd > mdd:
+                    mdd = dd
             
             # Determine strategy type
             strategy_type = "⚖ 균형"
+            total_pnl_value = simple_return  # 변수명 통일 전환
             if mdd < 10 and win_rate > 60: strategy_type = "🛡 보수"
-            elif simple_return > 100 or leverage > 10: strategy_type = "🔥 공격"
+            elif total_pnl_value > 100 or leverage > 10: strategy_type = "🔥 공격"
             
-            # Sharpe Ratio (Standardized to 252 * 4 entries/day approximation)
-            import numpy as np
-            if len(pnls) > 1:
-                std = np.std(pnls)
-                avg = np.mean(pnls)
-                sharpe = (avg / std) * np.sqrt(252 * 6) if std > 1e-6 else 0
-            else:
-                sharpe = 0
-                
-            # Profit Factor
-            gains = sum([p for p in pnls if p > 0])
-            losses = abs(sum([p for p in pnls if p < 0]))
-            profit_factor = gains / losses if losses > 1e-6 else gains
+            # Sharpe Ratio - SSOT (252 × 4 통일)
+            sharpe = calculate_sharpe_ratio(pnls, periods_per_year=252 * 24)
+
+            # Profit Factor - SSOT
+            trades_for_pf = [{'pnl': p} for p in pnls]
+            profit_factor = calculate_profit_factor(trades_for_pf)
             
-            # Stability (3 stages)
-            n = len(pnls)
-            if n >= 3:
-                p1 = sum(pnls[:n//3])
-                p2 = sum(pnls[n//3:2*n//3])
-                p3 = sum(pnls[2*n//3:])
-                score = sum([p1 > 0, p2 > 0, p3 > 0])
-                stability = "✅" * score + "⚠️" * (3 - score)
-            else:
-                stability = "⚠️"
+            # Stability (SSOT 호출)
+            from utils.metrics import calculate_stability
+            stability = calculate_stability(pnls)
                 
             return OptimizationResult(
                 params=params,
                 win_rate=win_rate,
-                simple_return=simple_return,
+                total_pnl=simple_return,  # ✅ SSOT 표준 필드명
                 compound_return=compound_return,
                 max_drawdown=mdd,
                 sharpe_ratio=sharpe,
@@ -477,7 +535,7 @@ class OptimizationEngine:
         df,
         param_grid: List[Dict],
         max_workers: int = 4,
-        task_callback: Callable[[OptimizationResult], None] = None,
+        task_callback: Optional[Callable[[OptimizationResult], None]] = None,
         capital_mode: str = 'COMPOUND'
     ) -> List[OptimizationResult]:
         """전체 최적화 실행"""
@@ -505,9 +563,10 @@ class OptimizationEngine:
             for future in as_completed(self._futures):
                 if self._stop_requested:
                     break
-                
+
                 try:
-                    result = future.result(timeout=1)
+                    # 타임아웃 10초로 증가 (Deep 모드 대응, 대형 DataFrame 처리)
+                    result = future.result(timeout=10)
                     if result:
                         results.append(result)
                         if task_callback:
@@ -531,17 +590,24 @@ class OptimizationEngine:
                 # 남은 futures 취소
                 for future in list(self._futures.keys()):
                     future.cancel()
-                
-                # Executor 종료 (즉시)
-                self._executor.shutdown(wait=False, cancel_futures=True)
-                
+
+                # Executor 종료 (Python 버전 호환성 체크)
+                import sys
+                if sys.version_info >= (3, 9):
+                    # Python 3.9+: cancel_futures 파라미터 지원
+                    self._executor.shutdown(wait=False, cancel_futures=True)
+                else:
+                    # Python 3.8 이하: cancel_futures 미지원
+                    self._executor.shutdown(wait=False)
+
                 # 자식 프로세스 강제 종료
                 import os
                 import signal
                 for pid in getattr(self._executor, '_processes', {}).keys():
                     try:
                         os.kill(pid, signal.SIGTERM)
-                    except:
+                    except Exception:
+
                         pass
             except Exception as e:
                 logger.debug(f"Executor cleanup: {e}")
@@ -558,15 +624,16 @@ class OptimizationEngine:
         self,
         results: List[OptimizationResult],
         sort_by: str = 'total_return',
-        top_n: int = 10
+        top_n: int = 10,
+        capital_mode: str = 'COMPOUND'
     ) -> List[OptimizationResult]:
         """최적 파라미터 정렬"""
         if not results:
             return []
-        
+
         # sort_by mapping
         key_map = {
-            'Return': 'compound_return' if kwargs.get('capital_mode', '').upper() == 'COMPOUND' else 'simple_return',
+            'Return': 'compound_return' if capital_mode.upper() == 'COMPOUND' else 'total_pnl',  # ✅ SSOT 표준
             'WinRate': 'win_rate',
             'Sharpe': 'sharpe_ratio',
             'MDD': 'max_drawdown',
@@ -584,10 +651,10 @@ class OptimizationEngine:
     
     def run_staged_optimization(
         self,
-        df,
+        df: pd.DataFrame,
         target_mdd: float = 20.0,
         max_workers: int = 4,
-        stage_callback: Callable[[int, str, dict], None] = None,
+        stage_callback: Optional[Callable[[int, str, Optional[dict]], None]] = None,
         mode: str = 'standard',
         capital_mode: str = 'COMPOUND'
     ) -> Dict:
@@ -629,7 +696,7 @@ class OptimizationEngine:
         def balanced_score(r):
             """MDD가 낮으면서 수익률도 좋은지 평가"""
             # capital_mode에 따른 수익률 선택
-            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.simple_return
+            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.total_pnl  # ✅ SSOT 표준
             # MDD 페널티: 15% 초과분에 대해 강한 페널티
             mdd_penalty = max(0, r.max_drawdown - 12) * 5.0
             # 수익률 보너스 (로그 수익률로 과적합 방지하며 점진적 보너스)
@@ -759,6 +826,22 @@ class OptimizationEngine:
         
         total_combos = len(stage1_grid) + len(stage2_combos) * len(stage1_top) + len(stage3_combos) * len(stage2_top)
         
+        # ===== 5단계: 영향도 분석 리포트 자동 생성 =====
+        all_results = stage1_results + all_stage2_results + all_stage3_results
+        report_path = None
+        if len(all_results) >= 20:
+            try:
+                from utils.optimization_impact_report import generate_impact_report_from_results
+                report_path = generate_impact_report_from_results(
+                    all_results,
+                    symbol="Unknown",
+                    timeframe=f"filter_tf={fixed_params.get('filter_tf', '4h')}"
+                )
+                if report_path:
+                    notify(4, f"영향도 리포트 생성: {report_path}")
+            except Exception as e:
+                logger.debug(f"영향도 리포트 생성 실패: {e}")
+        
         return {
             'params': fixed_params,
             'final_result': best_result,
@@ -767,5 +850,254 @@ class OptimizationEngine:
             'mdd': mdd,
             'leverage': optimal_leverage,
             'total_combinations': total_combos,
-            'grade': grade if best_result else "🥉C"
+            'grade': grade if best_result else "🥉C",
+            'impact_report': report_path  # 영향도 리포트 경로
+        }
+
+    def run_adaptive_meta_optimization(
+        self,
+        df: pd.DataFrame,
+        target_mdd: float = 20.0,
+        max_workers: int = 4,
+        stage_callback: Optional[Callable[[int, str, Optional[dict]], None]] = None,
+        capital_mode: str = 'COMPOUND',
+        samples_per_round: int = 6,
+        max_rounds: int = 3
+    ) -> Dict:
+        """
+        적응형 메타 최적화 (Adaptive Meta Grid Optimization)
+        
+        철학: "범위는 넓게, 값은 빠르게"
+        - 소수 샘플로 반응도 확인 → 좋은 영역으로 범위 좁힘 → 반복
+        
+        Args:
+            df: 백테스트 데이터
+            target_mdd: 목표 MDD (기본 20%)
+            max_workers: 병렬 워커 수
+            stage_callback: 단계 완료 콜백
+            capital_mode: 'COMPOUND' 또는 'SIMPLE'
+            samples_per_round: 라운드당 샘플 수 (기본 6개)
+            max_rounds: 최대 라운드 수 (기본 3회)
+        
+        Returns:
+            Dict with: params, result, rounds_history, leverage
+        
+        Example:
+            Round 1: filter_tf=[4h, 12h, 1d] × direction=[Both, Long] = 6개
+                     → 12h+Long이 베스트 (승률 82%, MDD 10%)
+            
+            Round 2: filter_tf=[10h, 12h, 14h] × atr_mult=[0.9, 1.0, 1.1] = 9개
+                     → 범위 좁혀서 세밀 탐색
+            
+            Round 3: 최종 미세 조정
+        """
+        import itertools
+        import numpy as np
+        
+        def notify(round_num, msg, params=None):
+            if stage_callback:
+                stage_callback(round_num, msg, params or {})
+            logger.info(f"[AdaptiveMeta] Round {round_num}: {msg}")
+        
+        def balanced_score(r):
+            """MDD 낮고 수익률 높은 결과 우선"""
+            ret = r.compound_return if capital_mode.upper() == 'COMPOUND' else r.total_pnl
+            mdd_penalty = max(0, r.max_drawdown - 12) * 5.0
+            return ret * 0.01 - mdd_penalty
+        
+        # ============ 파라미터 범위 정의 (넓게 시작) ============
+        param_ranges = {
+            'filter_tf': {
+                'values': ['4h', '6h', '12h', '1d'],
+                'type': 'categorical'
+            },
+            'direction': {
+                'values': ['Both', 'Long', 'Short'],
+                'type': 'categorical'
+            },
+            'atr_mult': {
+                'min': 0.8, 'max': 1.5, 'step': 0.1,
+                'type': 'numeric'
+            },
+            'trail_start_r': {
+                'min': 0.3, 'max': 0.9, 'step': 0.1,
+                'type': 'numeric'
+            },
+            'trail_dist_r': {
+                'min': 0.05, 'max': 0.15, 'step': 0.02,
+                'type': 'numeric'
+            },
+            'entry_validity_hours': {
+                'min': 6.0, 'max': 72.0, 'step': 12.0,
+                'type': 'numeric'
+            }
+        }
+        
+        # 현재 활성 파라미터 (좁혀갈 대상)
+        active_params = ['filter_tf', 'direction', 'atr_mult']
+        
+        fixed_params = DEFAULT_PARAMS.copy()
+        fixed_params['leverage'] = 1
+        
+        rounds_history = []
+        best_overall = None
+        
+        # ============ 라운드별 적응형 탐색 ============
+        for round_num in range(1, max_rounds + 1):
+            notify(round_num, f"시작 - 활성 파라미터: {active_params}")
+            
+            # 1. 현재 범위에서 샘플 생성
+            sample_grid = []
+            
+            for param_name in active_params:
+                pdef = param_ranges[param_name]
+                
+                if pdef['type'] == 'categorical':
+                    # 카테고리형: 현재 values 그대로
+                    sample_grid.append((param_name, pdef['values']))
+                else:
+                    # 수치형: min~max 사이 균등 샘플링
+                    vals = np.arange(pdef['min'], pdef['max'] + pdef['step']/2, pdef['step'])
+                    # 샘플 수 제한 (최대 3개)
+                    if len(vals) > 3:
+                        indices = np.linspace(0, len(vals)-1, 3, dtype=int)
+                        vals = [vals[i] for i in indices]
+                    sample_grid.append((param_name, list(vals)))
+            
+            # 조합 생성
+            keys = [s[0] for s in sample_grid]
+            value_lists = [s[1] for s in sample_grid]
+            combos = list(itertools.product(*value_lists))
+            
+            # 샘플 수 제한
+            if len(combos) > samples_per_round * 2:
+                # 균등 샘플링
+                indices = np.linspace(0, len(combos)-1, samples_per_round, dtype=int)
+                combos = [combos[i] for i in indices]
+            
+            notify(round_num, f"샘플 {len(combos)}개 테스트 중...")
+            
+            # 2. 백테스트 실행
+            test_grid = []
+            for combo in combos:
+                params = fixed_params.copy()
+                for i, key in enumerate(keys):
+                    params[key] = combo[i]
+                test_grid.append(params)
+            
+            results = self.run_optimization(df, test_grid, max_workers, capital_mode=capital_mode)
+            
+            if not results:
+                notify(round_num, "결과 없음 - 종료")
+                break
+            
+            # 3. 결과 분석 및 베스트 선택
+            sorted_results = sorted(results, key=balanced_score, reverse=True)
+            best = sorted_results[0]
+            
+            # 반응도 분석: 각 파라미터별 베스트 값 확인
+            param_best_values = {}
+            for param_name in active_params:
+                # 해당 파라미터 값별 평균 스코어
+                value_scores = {}
+                for r in results:
+                    val = r.params.get(param_name)
+                    if val not in value_scores:
+                        value_scores[val] = []
+                    value_scores[val].append(balanced_score(r))
+                
+                # 평균 스코어가 가장 높은 값
+                best_val = max(value_scores.keys(), key=lambda v: np.mean(value_scores[v]))
+                param_best_values[param_name] = {
+                    'best': best_val,
+                    'scores': {k: np.mean(v) for k, v in value_scores.items()}
+                }
+            
+            round_info = {
+                'round': round_num,
+                'samples': len(combos),
+                'best_params': best.params.copy(),
+                'best_score': balanced_score(best),
+                'win_rate': best.win_rate,
+                'mdd': best.max_drawdown,
+                'param_analysis': param_best_values
+            }
+            rounds_history.append(round_info)
+            
+            notify(round_num, f"베스트: 승률={best.win_rate:.1f}%, MDD={best.max_drawdown:.1f}%")
+            
+            # 4. 범위 좁히기 (다음 라운드용)
+            for param_name in active_params:
+                pdef = param_ranges[param_name]
+                best_val = param_best_values[param_name]['best']
+                
+                if pdef['type'] == 'categorical':
+                    # 카테고리형: 베스트 값 주변만 유지
+                    current_vals = pdef['values']
+                    if len(current_vals) > 2:
+                        # 베스트 + 인접값만 유지
+                        if best_val in current_vals:
+                            idx = current_vals.index(best_val)
+                            new_vals = [current_vals[max(0, idx-1)], best_val]
+                            if idx + 1 < len(current_vals):
+                                new_vals.append(current_vals[idx+1])
+                            param_ranges[param_name]['values'] = list(set(new_vals))
+                else:
+                    # 수치형: 베스트 값 주변으로 범위 축소
+                    old_range = pdef['max'] - pdef['min']
+                    new_range = old_range * 0.5  # 범위 절반으로
+                    
+                    new_min = max(pdef['min'], best_val - new_range / 2)
+                    new_max = min(pdef['max'], best_val + new_range / 2)
+                    new_step = pdef['step'] * 0.5  # 스텝도 절반
+                    
+                    param_ranges[param_name]['min'] = round(new_min, 2)
+                    param_ranges[param_name]['max'] = round(new_max, 2)
+                    param_ranges[param_name]['step'] = round(max(new_step, 0.01), 2)
+            
+            # 5. 다음 라운드 파라미터 전환
+            if round_num == 1:
+                # 2라운드: trail 파라미터로 전환
+                active_params = ['atr_mult', 'trail_start_r', 'trail_dist_r']
+                # 1라운드 베스트 고정
+                fixed_params.update({
+                    'filter_tf': best.params.get('filter_tf'),
+                    'direction': best.params.get('direction')
+                })
+            elif round_num == 2:
+                # 3라운드: entry_validity + 미세조정
+                active_params = ['entry_validity_hours', 'atr_mult']
+                fixed_params.update({
+                    'trail_start_r': best.params.get('trail_start_r'),
+                    'trail_dist_r': best.params.get('trail_dist_r')
+                })
+            
+            # 전체 베스트 업데이트
+            if best_overall is None or balanced_score(best) > balanced_score(best_overall):
+                best_overall = best
+        
+        # ============ 최종 결과 ============
+        if best_overall:
+            final_params = best_overall.params.copy()
+            mdd = best_overall.max_drawdown
+            optimal_leverage = calculate_optimal_leverage(mdd, target_mdd)
+            final_params['leverage'] = optimal_leverage
+            grade = calculate_grade(best_overall.win_rate, mdd, best_overall.profit_factor)
+        else:
+            final_params = fixed_params
+            mdd = 0
+            optimal_leverage = 1
+            grade = "🥉C"
+        
+        total_samples = sum(r['samples'] for r in rounds_history)
+        notify(max_rounds, f"완료: 총 {total_samples}개 샘플, 레버리지={optimal_leverage}x, 등급={grade}")
+        
+        return {
+            'params': final_params,
+            'final_result': best_overall,
+            'rounds_history': rounds_history,
+            'mdd': mdd,
+            'leverage': optimal_leverage,
+            'total_samples': total_samples,
+            'grade': grade
         }

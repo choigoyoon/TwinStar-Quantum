@@ -18,7 +18,7 @@ class Signal:
     stop_loss: float
     pattern: str  # 'W', 'M', etc.
     confidence: float = 1.0
-    metadata: Dict = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -63,7 +63,7 @@ class BaseStrategy(ABC):
     # 필수 파라미터 목록
     required_params: List[str] = []
     
-    def __init__(self, params: Dict = None):
+    def __init__(self, params: Optional[Dict[str, Any]] = None):
         """
         Args:
             params: 전략 파라미터 (None이면 default_params 사용)
@@ -81,7 +81,7 @@ class BaseStrategy(ABC):
     def check_signal(
         self,
         df_pattern: pd.DataFrame,
-        df_entry: pd.DataFrame = None,
+        df_entry: Optional[pd.DataFrame] = None,
         **kwargs
     ) -> Optional[Signal]:
         """
@@ -100,8 +100,8 @@ class BaseStrategy(ABC):
     def run_backtest(
         self,
         df: pd.DataFrame,
-        start_date: datetime = None,
-        end_date: datetime = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         **kwargs
     ) -> Optional[BacktestResult]:
         """
@@ -160,7 +160,7 @@ class StrategyRegistry:
         return list(cls._strategies.keys())
     
     @classmethod
-    def create(cls, name: str, params: Dict = None) -> Optional[BaseStrategy]:
+    def create(cls, name: str, params: Optional[Dict[str, Any]] = None) -> Optional[BaseStrategy]:
         """전략 인스턴스 생성"""
         strategy_class = cls.get(name)
         if strategy_class:
@@ -186,7 +186,8 @@ if __name__ == '__main__':
             return None
     
     print(f"Registered: {StrategyRegistry.list_all()}")
-    
+
     strategy = StrategyRegistry.create("test_strategy")
     print(f"Created: {strategy}")
-    print(f"Describe: {strategy.describe()}")
+    if strategy:
+        print(f"Describe: {strategy.describe()}")

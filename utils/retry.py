@@ -62,8 +62,10 @@ def retry_with_backoff(
                         logger.error(
                             f"[RETRY] {func.__name__} 최대 재시도 초과 ({max_retries + 1}회): {e}"
                         )
-            
-            raise last_exception
+
+            if last_exception:
+                raise last_exception
+            raise RuntimeError(f"{func.__name__} 호출 실패: 알 수 없는 오류")
         
         return wrapper
     return decorator

@@ -21,7 +21,7 @@ result = {
 try:
     result["steps"].append("1. Import modules")
     import pandas as pd
-    from indicator_generator import IndicatorGenerator
+    from utils.indicators import IndicatorGenerator
     from core.strategy_core import AlphaX7Core
     from tools.realtime_simulator import RealtimeSimulator
     result["steps"].append("   Imports OK")
@@ -96,7 +96,7 @@ try:
     # 시뮬레이터 실행
     result["steps"].append("4. Run simulator")
     sim = RealtimeSimulator(parquet_path, "default")
-    sim.df = df
+    sim.df_15m = df  # Use df_15m which is the actual attribute name
     sim.load_preset()
     
     sim_trades = sim.run(start_idx=test_start, end_idx=test_end, verbose=False)

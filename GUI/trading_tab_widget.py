@@ -4,7 +4,7 @@ Organizes Trading Dashboard and Auto Pipeline into sub-tabs.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 from locales.lang_manager import t
 
 logger = logging.getLogger(__name__)

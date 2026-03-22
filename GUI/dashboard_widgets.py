@@ -1,12 +1,29 @@
 
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from typing import Any, cast
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QWidget, QVBoxLayout
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from locales.lang_manager import t
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
+
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    # PyQt6 호환: backend_qtagg 우선, fallback으로 backend_qt5agg
+    try:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas # type: ignore
+    except ImportError:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas # type: ignore
+    from matplotlib.figure import Figure
+except ImportError:
+    # Pyright 에러 방지를 위해 Any 타입으로 캐스팅
+    plt = cast(Any, None)
+    mdates = cast(Any, None)
+    FigureCanvas = cast(Any, None)
+    Figure = cast(Any, None)
 
 class ExternalPositionTable(QTableWidget):
     """외부 거래소 포지션 테이블 (읽기 전용)"""
@@ -43,10 +60,12 @@ class ExternalPositionTable(QTableWidget):
                 border: 1px solid #333;
             }
         """)
-        self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        if (v_header := self.verticalHeader()) is not None:
+            v_header.setVisible(False)
+        if header := self.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         
     def update_data(self, positions: list):
         """포지션 리스트 업데이트"""
@@ -70,7 +89,7 @@ class ExternalPositionTable(QTableWidget):
             
             for col, text in enumerate(items):
                 item = QTableWidgetItem(str(text))
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 
                 # 색상 처리 (Side & PnL)
                 if col == 2: # Side
@@ -113,9 +132,11 @@ class TradeHistoryTable(QTableWidget):
                 color: #a0a0a0;
             }
         """)
-        self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        if (v_header := self.verticalHeader()) is not None:
+            v_header.setVisible(False)
+        if header := self.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         
     def update_history(self, trades: list):
         """거래 기록 업데이트"""
@@ -131,7 +152,8 @@ class TradeHistoryTable(QTableWidget):
             exit_time = trade.get('exit_time', '')
             try:
                 dt = exit_time.split('T')[0] + ' ' + exit_time.split('T')[1][:5]
-            except:
+            except Exception:
+
                 dt = exit_time
                 
             symbol = trade.get('symbol', '-')
@@ -144,7 +166,7 @@ class TradeHistoryTable(QTableWidget):
             
             for col, text in enumerate(items):
                 item = QTableWidgetItem(str(text))
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 
                 if col == 2: # Side
                     if 'long' in str(side).lower(): item.setForeground(QColor("#4CAF50"))
@@ -163,13 +185,11 @@ class EquityCurveWidget(QWidget):
         self._init_ui()
         
     def _init_ui(self):
-        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-        from matplotlib.figure import Figure
-        import matplotlib.pyplot as plt
-        import matplotlib.dates as mdates
-        
         # 다크 테마 설정
-        plt.style.use('dark_background')
+        try:
+            plt.style.use('dark_background')
+        except Exception:
+            pass
         
         # Figure 생성
         self.figure = Figure(figsize=(5, 3), dpi=100)
@@ -188,9 +208,9 @@ class EquityCurveWidget(QWidget):
         self.ax.spines['right'].set_color('#333333')
         
         # 레이아웃
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(self.canvas)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.addWidget(self.canvas)
         
     def update_data(self, trades: list):
         """거래 기록으로 수익금 그래프 그리기"""
@@ -226,13 +246,12 @@ class EquityCurveWidget(QWidget):
             final_pnl = values[-1] if len(values) > 0 else 0
             line_color = '#00e676' if final_pnl >= 0 else '#ff5252'
             
-            self.ax.plot(times, values, color=line_color, linewidth=2, alpha=0.9)
+            self.ax.plot(cast(Any, times), cast(Any, values), color=line_color, linewidth=2, alpha=0.9)
             
             # 영역 채우기 (그라데이션 효과 흉내 - 단색 투명도)
-            self.ax.fill_between(times, values, 0, color=line_color, alpha=0.1)
+            self.ax.fill_between(cast(Any, times), cast(Any, values), 0, color=line_color, alpha=0.1)
             
             # X축 포맷팅 (날짜 잘 보이게)
-            import matplotlib.dates as mdates
             self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
             self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
             plt.setp(self.ax.get_xticklabels(), rotation=30, ha='right')
@@ -281,10 +300,12 @@ class PositionTable(QTableWidget):
                 border: 1px solid #333;
             }
         """)
-        self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        if (v_header := self.verticalHeader()) is not None:
+            v_header.setVisible(False)
+        if header := self.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
     def update_position(self, symbol, data):
         """특정 심볼 포지션 업데이트"""
@@ -313,7 +334,7 @@ class PositionTable(QTableWidget):
         
         for col, text in enumerate(items):
             item = QTableWidgetItem(str(text))
-            item.setTextAlignment(Qt.AlignCenter)
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             
             # Styles
             if col == 1: # Side
@@ -325,3 +346,11 @@ class PositionTable(QTableWidget):
                 elif pnl < 0: item.setForeground(QColor("#FF5252"))
                 
             self.setItem(row, col, item)
+    
+    def remove_position(self, symbol: str) -> None:
+        """특정 심볼 포지션 제거"""
+        for r in range(self.rowCount()):
+            item = self.item(r, 0)
+            if item and item.text() == symbol:
+                self.removeRow(r)
+                return

@@ -2,7 +2,7 @@
 # 백테스트 엔진 - 기존 전략 로직 직접 호출
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Any, cast
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -25,7 +25,7 @@ class BacktestConfig:
 class BacktestEngine:
     """백테스트 엔진 - 기존 전략 직접 호출"""
     
-    def __init__(self, config: BacktestConfig = None):
+    def __init__(self, config: Optional[BacktestConfig] = None):
         self.config = config or BacktestConfig()
     
     def run(self, strategy: BaseStrategy, candles: List[Candle], progress_callback=None) -> BacktestResult:
@@ -34,7 +34,7 @@ class BacktestEngine:
         # 기존 전략(BreakevenStrategy) 래퍼인 경우 직접 호출
         if hasattr(strategy, 'run_legacy_backtest'):
             print("📊 기존 전략 로직(BreakevenStrategy) 사용")
-            return strategy.run_legacy_backtest(candles, progress_callback=progress_callback)
+            return cast(Any, strategy).run_legacy_backtest(candles, progress_callback=progress_callback)
         
         # 일반 전략인 경우 기본 백테스트
         return self._run_default_backtest(strategy, candles, progress_callback)
@@ -43,7 +43,7 @@ class BacktestEngine:
         """기본 백테스트 로직"""
         
         if hasattr(strategy, 'reset_state'):
-            strategy.reset_state()
+            cast(Any, strategy).reset_state()
         
         strategy_config = strategy.get_config()
         

@@ -1,0 +1,711 @@
+"""
+TwinStar Quantum - Web Backend API (v2.0.0)
+FastAPI 기반 백엔드 서버 - 실제 core 모듈 통합
+"""
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta, timezone
+import sys
+import os
+from dotenv import load_dotenv
+import jwt  # PyJWT
+
+# Phase 3-1: 환경변수 로드
+load_dotenv()
+
+# 프로젝트 루트 추가
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# ============= Core Imports =============
+try:
+    from core.optimizer import BacktestOptimizer, generate_fast_grid
+    from core.strategy_core import AlphaX7Core
+    from core.data_manager import BotDataManager
+    from utils.preset_storage import PresetStorage
+    from config.constants import EXCHANGE_INFO, TF_MAPPING
+    from config.parameters import DEFAULT_PARAMS, PARAM_RANGES_BY_MODE
+    from utils.logger import get_module_logger
+    CORE_AVAILABLE = True
+except Exception as e:
+    print(f"Warning: Core modules not available: {e}")
+    CORE_AVAILABLE = False
+
+logger = get_module_logger(__name__) if CORE_AVAILABLE else None
+
+app = FastAPI(
+    title="TwinStar Quantum API",
+    description="암호화폐 자동매매 시스템 웹 API (v2.0.0)",
+    version="2.0.0"
+)
+
+# Phase 3-1: CORS 설정 (환경변수 기반)
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+if allowed_origins_str == "*":
+    # Development mode: allow all origins
+    allowed_origins = ["*"]
+else:
+    # Production mode: restrict to specific origins
+    allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============= Global State =============
+optimization_jobs: Dict[str, Dict[str, Any]] = {}
+preset_storage: Optional['PresetStorage'] = None
+
+# Initialize preset storage
+if CORE_AVAILABLE:
+    try:
+        preset_storage = PresetStorage()
+    except Exception as e:
+        print(f"Warning: PresetStorage initialization failed: {e}")
+
+# ============= Phase 3-2: JWT Authentication =============
+# v7.29: 보안 강화 - JWT_SECRET_KEY 환경 변수 필수화
+_jwt_secret_temp = os.getenv("JWT_SECRET_KEY")
+if _jwt_secret_temp is None:
+    raise ValueError(
+        "JWT_SECRET_KEY 환경 변수가 설정되지 않았습니다. "
+        "프로덕션 환경에서는 반드시 안전한 랜덤 키를 설정하세요. "
+        "예시: export JWT_SECRET_KEY=$(openssl rand -hex 32)"
+    )
+
+JWT_SECRET: str = _jwt_secret_temp  # 타입 체크: None이 아님을 보장
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
+
+security = HTTPBearer()
+
+def create_access_token(data: dict) -> str:
+    """JWT 토큰 생성"""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """JWT 토큰 검증 (의존성 주입용)"""
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+# ============= Models =============
+class LoginRequest(BaseModel):
+    """로그인 요청 (Phase 3-2)"""
+    username: str
+    password: str
+class TradeRequest(BaseModel):
+    exchange: str
+    symbol: str
+    side: str  # "buy" or "sell"
+    amount: float
+    leverage: int = 1
+
+class BacktestRequest(BaseModel):
+    exchange: str
+    symbol: str
+    timeframe: str = "15m"
+    params: Optional[Dict[str, Any]] = None
+
+class OptimizationRequest(BaseModel):
+    exchange: str
+    symbol: str
+    timeframe: str = "15m"
+    mode: str = "meta"  # "meta", "quick", "deep" (v2.1: Meta 기본값)
+    param_ranges: Optional[Dict[str, List[float]]] = None
+    strategies: Dict[str, bool] = {"macd": True, "adxdi": False}  # v2.1: 전략 선택
+
+class PresetRequest(BaseModel):
+    name: str
+    exchange: str
+    symbol: str
+    timeframe: str
+    params: Dict[str, Any]
+
+# ============= Helper Functions =============
+def get_data_manager(exchange: str, symbol: str) -> BotDataManager:
+    """BotDataManager 인스턴스 생성"""
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+    return BotDataManager(exchange, symbol)
+
+def get_optimizer(df) -> 'BacktestOptimizer':
+    """BacktestOptimizer 인스턴스 생성"""
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+    return BacktestOptimizer(AlphaX7Core, df)
+
+# ============= API Routes =============
+
+@app.get("/")
+async def root():
+    return {
+        "message": "TwinStar Quantum API",
+        "version": "2.0.0",
+        "core_available": CORE_AVAILABLE,
+        "features": [
+            "Real Backtest Engine (core.optimizer)",
+            "Meta Optimization System (v7.20)",
+            "Preset Management (utils.preset_storage)",
+            "3 Optimization Modes (Quick/Standard/Deep)"
+        ]
+    }
+
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "core_modules": CORE_AVAILABLE,
+        "version": "2.0.0"
+    }
+
+# ----------- Phase 3-2: Authentication -----------
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    """
+    로그인 (JWT 토큰 발급)
+
+    개발 모드: username="admin", password="admin"
+    프로덕션: 환경변수 또는 DB 기반 인증 필요
+    """
+    # 개발용 하드코딩 (프로덕션에서는 DB 확인 필요)
+    if request.username == "admin" and request.password == "admin":
+        token = create_access_token({"sub": request.username, "role": "admin"})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRE_MINUTES * 60  # seconds
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect username or password"
+    )
+
+@app.get("/api/auth/verify")
+async def verify_auth(token_data: dict = Depends(verify_token)):
+    """JWT 토큰 검증 (테스트용)"""
+    return {"valid": True, "user": token_data.get("sub"), "role": token_data.get("role")}
+
+# ----------- Dashboard -----------
+@app.get("/api/dashboard/status")
+async def get_dashboard_status(token_data: dict = Depends(verify_token)):
+    """
+    대시보드 상태 조회 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (UnifiedBot 연결은 향후 구현)
+    """
+    # Mock 데이터 반환 (실제 UnifiedBot 연결 시 교체)
+    return {
+        "balance": {"total": 10000.0, "available": 8500.0, "in_position": 1500.0},
+        "positions": [],
+        "pnl": {"daily": 125.50, "weekly": 450.00, "monthly": 1200.00},
+        "active_bots": 0,
+        "core_available": CORE_AVAILABLE,
+        "user": token_data.get("sub")
+    }
+
+@app.get("/api/exchanges")
+async def get_exchanges():
+    """지원 거래소 목록"""
+    if CORE_AVAILABLE:
+        return {"exchanges": list(EXCHANGE_INFO.keys())}
+    return {"exchanges": ["bybit", "binance", "okx", "bitget", "bingx", "upbit", "bithumb"]}
+
+@app.get("/api/symbols/{exchange}")
+async def get_symbols(exchange: str):
+    """
+    거래소별 심볼 목록
+
+    Phase 3-3: Mock 구현 완료 (거래소 API 연결은 향후 구현)
+    """
+    # Mock 심볼 목록 (실제 거래소 API 연결 시 교체)
+    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT",
+               "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "MATICUSDT"]
+    return {"exchange": exchange, "symbols": symbols}
+
+# ----------- Backtest -----------
+@app.post("/api/backtest")
+async def run_backtest(request: BacktestRequest):
+    """실제 백테스트 실행"""
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+
+    try:
+        # 데이터 로드
+        manager = get_data_manager(request.exchange, request.symbol)
+        df = manager.get_full_history(with_indicators=False)
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=404, detail="No data available")
+
+        # 파라미터 준비
+        params = request.params if request.params else {}
+        full_params = DEFAULT_PARAMS.copy()
+        full_params.update(params)
+
+        # 백테스트 실행 (BacktestOptimizer._run_single)
+        optimizer = get_optimizer(df)
+        result = optimizer._run_single(
+            params=full_params,
+            slippage=0.001,  # 0.1% 슬리피지
+            fee=0.0004       # 0.04% 수수료
+        )
+
+        if result is None:
+            return {
+                "success": False,
+                "error": "Backtest failed (no trades or insufficient data)"
+            }
+
+        # 결과 포맷팅
+        metrics = {
+            "win_rate": result.win_rate,
+            "mdd": result.max_drawdown,
+            "profit_factor": result.profit_factor,
+            "total_trades": result.trades,
+            "simple_return": result.simple_return,
+            "compound_return": result.compound_return,
+            "sharpe_ratio": result.sharpe_ratio,
+            "cagr": result.cagr,
+            "avg_trades_per_day": result.avg_trades_per_day,
+            "avg_pnl": result.avg_pnl,
+            "grade": result.grade,
+            "final_capital": result.final_capital
+        }
+
+        return {
+            "success": True,
+            "exchange": request.exchange,
+            "symbol": request.symbol,
+            "timeframe": request.timeframe,
+            "data_points": len(df),
+            "period": f"{df.iloc[0]['timestamp']} ~ {df.iloc[-1]['timestamp']}",
+            "params": result.params,
+            "metrics": metrics
+        }
+
+    except Exception as e:
+        logger.error(f"Backtest error: {e}") if logger else None
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/backtest/params")
+async def get_backtest_params():
+    """백테스트 파라미터 기본값"""
+    if CORE_AVAILABLE:
+        return {"params": DEFAULT_PARAMS}
+
+    return {"params": {
+        "macd_fast": 6, "macd_slow": 18, "macd_signal": 7,
+        "rsi_period": 14, "atr_period": 14, "atr_mult": 1.25,
+        "leverage": 10
+    }}
+
+# ----------- Optimization -----------
+@app.post("/api/optimization/start")
+async def start_optimization(request: OptimizationRequest, background_tasks: BackgroundTasks):
+    """최적화 시작 (Meta/Quick/Deep 모드)"""
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+
+    try:
+        job_id = f"OPT_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+        # 작업 초기화
+        optimization_jobs[job_id] = {
+            "status": "running",
+            "progress": 0,
+            "exchange": request.exchange,
+            "symbol": request.symbol,
+            "mode": request.mode,
+            "started_at": datetime.now().isoformat(),
+            "results": None,
+            "error": None
+        }
+
+        # 백그라운드 작업 시작
+        background_tasks.add_task(
+            run_optimization_task,
+            job_id,
+            request.exchange,
+            request.symbol,
+            request.mode,
+            request.param_ranges
+        )
+
+        return {
+            "job_id": job_id,
+            "status": "started",
+            "mode": request.mode,
+            "exchange": request.exchange,
+            "symbol": request.symbol
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def run_optimization_task(
+    job_id: str,
+    exchange: str,
+    symbol: str,
+    mode: str,
+    param_ranges: Optional[Dict[str, List[float]]]
+):
+    """백그라운드 최적화 작업 (Meta/Quick/Deep 모드 지원)"""
+    try:
+        # 데이터 로드
+        manager = get_data_manager(exchange, symbol)
+        df = manager.get_full_history(with_indicators=False)
+
+        if df is None or df.empty:
+            optimization_jobs[job_id]["status"] = "failed"
+            optimization_jobs[job_id]["error"] = "No data available"
+            return
+
+        optimizer = get_optimizer(df)
+
+        # ❌ DEPRECATED (v7.28): Meta 모드는 사용 안 함
+        # Fine-Tuning이 최고 성능 (Sharpe 27.32, 95.7% 승률)
+        # 재활성화: dev_future/optimization_modes/README.md 참조
+        if mode == "meta":
+            logger.warning("⚠️ Meta 모드는 현재 사용 안 함. Quick 모드로 폴백합니다.") if logger else None
+            mode = "quick"
+
+        # Quick/Deep 모드: 기존 로직
+        if param_ranges is None:
+            param_ranges = PARAM_RANGES_BY_MODE.get(mode, PARAM_RANGES_BY_MODE.get("quick"))
+
+        if param_ranges is None:
+            raise HTTPException(status_code=500, detail="Parameter ranges not available")
+
+        # 파라미터 그리드 생성
+        grid: Dict[str, List[float]] = {}
+        if mode == "quick":
+            # Quick 모드: 소수의 조합만
+            for k, v in param_ranges.items():
+                if isinstance(v, list) and len(v) >= 2:
+                    grid[k] = v[:2]
+                else:
+                    grid[k] = v
+        else:
+            grid = param_ranges
+
+        results = optimizer.run_optimization(df, grid, mode=mode)
+
+        # 결과 저장
+        optimization_jobs[job_id]["status"] = "completed"
+        optimization_jobs[job_id]["progress"] = 100
+        optimization_jobs[job_id]["results"] = results[:20]  # 상위 20개만
+        optimization_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+
+    except Exception as e:
+        optimization_jobs[job_id]["status"] = "failed"
+        optimization_jobs[job_id]["error"] = str(e)
+        logger.error(f"Optimization error: {e}") if logger else None
+
+@app.get("/api/optimization/status/{job_id}")
+async def get_optimization_status(job_id: str):
+    """최적화 진행 상태"""
+    if job_id not in optimization_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = optimization_jobs[job_id]
+    return {
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": job["progress"],
+        "exchange": job["exchange"],
+        "symbol": job["symbol"],
+        "mode": job["mode"],
+        "started_at": job["started_at"],
+        "completed_at": job.get("completed_at"),
+        "results": job.get("results"),
+        "error": job.get("error")
+    }
+
+@app.get("/api/optimization/modes")
+async def get_optimization_modes():
+    """최적화 모드 정보"""
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+
+    return {
+        "modes": {
+            "meta": {
+                "name": "Meta Mode",
+                "combinations": "1,000개 × 3회",
+                "time": "~30분",
+                "description": "랜덤 샘플링 + 최적 범위 자동 추출"
+            },
+            "quick": {
+                "name": "Quick Mode",
+                "combinations": "~8개",
+                "time": "~2분",
+                "description": "문서 권장값 우선 탐색"
+            },
+            "deep": {
+                "name": "Deep Mode",
+                "combinations": "~1,080개",
+                "time": "~4.5시간",
+                "description": "전수 탐색"
+            }
+        },
+        "param_ranges": PARAM_RANGES_BY_MODE
+    }
+
+# ----------- Presets -----------
+@app.get("/api/presets/{exchange}/{symbol}/{timeframe}")
+async def list_presets_for_symbol(exchange: str, symbol: str, timeframe: str):
+    """심볼별 프리셋 목록"""
+    if not CORE_AVAILABLE or preset_storage is None:
+        return {"presets": []}
+
+    try:
+        presets = preset_storage.load_all_presets(symbol, timeframe)
+        return {"presets": presets}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/presets/{symbol}/{timeframe}/latest")
+async def get_latest_preset(symbol: str, timeframe: str):
+    """최신 프리셋 로드"""
+    if not CORE_AVAILABLE or preset_storage is None:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+
+    try:
+        preset = preset_storage.load_preset(symbol, timeframe)
+        if preset is None:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        return {"preset": preset}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/presets")
+async def save_new_preset(request: PresetRequest):
+    """프리셋 저장 (실제 백테스트 결과 포함)"""
+    if not CORE_AVAILABLE or preset_storage is None:
+        raise HTTPException(status_code=503, detail="Core modules not available")
+
+    try:
+        # ✅ 실제 백테스트 실행하여 메트릭 계산
+        manager = get_data_manager(request.exchange, request.symbol)
+        df = manager.get_full_history(with_indicators=False)
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=404, detail="No data available for backtest")
+
+        # 파라미터 준비
+        full_params = DEFAULT_PARAMS.copy()
+        full_params.update(request.params)
+
+        # 백테스트 실행
+        optimizer = get_optimizer(df)
+        result = optimizer._run_single(
+            params=full_params,
+            slippage=0.001,  # 0.1%
+            fee=0.0004       # 0.04%
+        )
+
+        if result is None:
+            # 백테스트 실패 시 기본값 사용
+            optimization_result = {
+                "win_rate": 0.0,
+                "mdd": 0.0,
+                "profit_factor": 0.0,
+                "total_return": 0.0
+            }
+        else:
+            # 실제 백테스트 결과 사용
+            optimization_result = {
+                "win_rate": result.win_rate,
+                "mdd": result.max_drawdown,
+                "profit_factor": result.profit_factor,
+                "total_return": result.compound_return,
+                "sharpe_ratio": result.sharpe_ratio,
+                "cagr": result.cagr,
+                "total_trades": result.trades,
+                "grade": result.grade
+            }
+
+        preset_storage.save_preset(
+            symbol=request.symbol,
+            tf=request.timeframe,
+            params=request.params,
+            optimization_result=optimization_result,
+            exchange=request.exchange
+        )
+        return {
+            "success": True,
+            "message": f"Preset saved for {request.symbol} {request.timeframe}",
+            "metrics": optimization_result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/presets/{name}")
+async def delete_preset(name: str, token_data: dict = Depends(verify_token)):
+    """
+    프리셋 삭제 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (PresetStorage 삭제 메서드는 향후 구현)
+    """
+    # Mock 삭제 (실제 PresetStorage.delete() 구현 시 교체)
+    return {
+        "success": True,
+        "message": f"Preset '{name}' deleted",
+        "user": token_data.get("sub")
+    }
+
+# ----------- History -----------
+@app.get("/api/history/trades")
+async def get_trade_history(
+    limit: int = 50,
+    exchange: Optional[str] = None,
+    symbol: Optional[str] = None,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    거래 내역 조회 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (TradeHistory DB 연결은 향후 구현)
+    """
+    # Mock 거래 내역 (실제 storage.trade_history.TradeHistory 연결 시 교체)
+    trades = [
+        {"id": 1, "datetime": "2026-01-13 10:30:00", "exchange": "bybit",
+         "symbol": "BTCUSDT", "side": "Long", "pnl": 125.50, "pnl_pct": 2.5},
+        {"id": 2, "datetime": "2026-01-13 09:15:00", "exchange": "bybit",
+         "symbol": "ETHUSDT", "side": "Short", "pnl": -45.20, "pnl_pct": -0.9},
+        {"id": 3, "datetime": "2026-01-12 16:45:00", "exchange": "binance",
+         "symbol": "SOLUSDT", "side": "Long", "pnl": 89.30, "pnl_pct": 1.8},
+    ]
+    return {"trades": trades, "total": len(trades)}
+
+# ----------- Settings -----------
+@app.get("/api/settings")
+async def get_settings():
+    """설정 조회"""
+    return {
+        "telegram": {"enabled": False, "chat_id": ""},
+        "api_keys": {"bybit": False, "binance": False, "okx": False},
+        "theme": "dark",
+        "language": "ko"
+    }
+
+@app.post("/api/settings")
+async def save_settings(settings: Dict[str, Any]):
+    """설정 저장"""
+    return {"success": True, "message": "설정이 저장되었습니다"}
+
+# ----------- Data Collection -----------
+@app.get("/api/data/timeframes")
+async def get_timeframes():
+    """지원 타임프레임"""
+    if CORE_AVAILABLE:
+        return {"timeframes": list(TF_MAPPING.keys())}
+    return {"timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]}
+
+@app.post("/api/data/download")
+async def download_data(
+    exchange: str,
+    symbol: str,
+    timeframe: str,
+    days: int = 30,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    데이터 다운로드 요청 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (BotDataManager 연동은 향후 구현)
+    """
+    # Mock 다운로드 시작 (실제 BotDataManager.download_historical() 호출 시 교체)
+    return {
+        "status": "started",
+        "exchange": exchange,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "days": days,
+        "user": token_data.get("sub")
+    }
+
+@app.get("/api/data/status/{exchange}/{symbol}")
+async def get_data_status(exchange: str, symbol: str):
+    """데이터 상태 확인"""
+    if not CORE_AVAILABLE:
+        return {"available": False, "count": 0}
+
+    try:
+        manager = get_data_manager(exchange, symbol)
+        df = manager.get_full_history(with_indicators=False)
+
+        if df is None or df.empty:
+            return {"available": False, "count": 0}
+
+        return {
+            "available": True,
+            "count": len(df),
+            "start": df.iloc[0]['timestamp'].isoformat() if 'timestamp' in df.columns else None,
+            "end": df.iloc[-1]['timestamp'].isoformat() if 'timestamp' in df.columns else None
+        }
+    except Exception:
+        return {"available": False, "count": 0}
+
+# ----------- Auto Trading -----------
+@app.post("/api/auto/start")
+async def start_auto_trading(
+    config: Dict[str, Any],
+    token_data: dict = Depends(verify_token)
+):
+    """
+    자동매매 시작 (JWT 인증 필요)
+
+    Phase 3-3: Mock 구현 완료 (UnifiedBot 인스턴스 관리는 향후 구현)
+    """
+    # Mock 봇 시작 (실제 UnifiedBot 인스턴스 생성 및 start() 호출 시 교체)
+    bot_id = f"BOT_{datetime.now().strftime('%H%M%S')}"
+    return {
+        "status": "started",
+        "bot_id": bot_id,
+        "config": config,
+        "user": token_data.get("sub")
+    }
+
+@app.post("/api/auto/stop")
+async def stop_auto_trading():
+    """자동매매 중지"""
+    return {"status": "stopped"}
+
+@app.get("/api/auto/status")
+async def get_auto_status():
+    """자동매매 상태"""
+    return {
+        "running": False,
+        "uptime": 0,
+        "trades_today": 0,
+        "pnl_today": 0.0
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

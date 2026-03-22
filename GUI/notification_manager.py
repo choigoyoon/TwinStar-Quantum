@@ -22,10 +22,12 @@ class NotificationSettings:
     sound_enabled: bool = True
     sound_volume: int = 50
     
-    notify_on_signal: bool = True
-    notify_on_entry: bool = True
-    notify_on_exit: bool = True
-    notify_on_error: bool = True
+    notify_signal: bool = True
+    notify_entry: bool = True
+    notify_exit: bool = True
+    notify_error: bool = True
+    notify_daily: bool = True
+    daily_report_time: str = "09:00"
 
 
 class NotificationManager:
@@ -137,10 +139,12 @@ class NotificationManager:
         if level in ["signal", "entry", "exit"]:
             self.play_sound(level)
     
-    def test_telegram(self) -> bool:
+    def test_telegram(self) -> tuple:
         """텔레그램 테스트"""
-        return self.send_telegram("🔔 테스트 알림입니다.")
-    
-    def test_discord(self) -> bool:
+        success = self.send_telegram("🔔 테스트 알림입니다.")
+        return success, ("전송 성공" if success else "전송 실패 (토큰/Chat ID를 확인하세요)")
+        
+    def test_discord(self) -> tuple:
         """디스코드 테스트"""
-        return self.send_discord("🔔 테스트 알림입니다.")
+        success = self.send_discord("🔔 테스트 알림입니다.")
+        return success, ("전송 성공" if success else "전송 실패 (웹훅 링크를 확인하세요)")

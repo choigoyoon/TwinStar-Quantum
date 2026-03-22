@@ -22,7 +22,7 @@ class SymbolCache:
     CACHE_FILE = "symbol_cache.json"
     CACHE_EXPIRY_DAYS = 7  # 캐시 유효기간
     
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[str] = None):
         if cache_dir:
             self.cache_dir = Path(cache_dir)
         else:
@@ -75,19 +75,19 @@ class SymbolCache:
     
     def get_symbols(self, exchange: str, market_type: str = 'swap') -> List[str]:
         """캐시된 심볼 목록 반환 (심볼 이름만)
-        
+
         Args:
             exchange: 거래소 이름 (bybit, binance)
             market_type: 'swap' (선물) 또는 'spot' (현물)
         """
         if self._is_cache_valid(exchange):
             symbols = self._cache['exchanges'][exchange].get('symbols', [])
-            
+
             # market_type 필터링
-            filtered = []
+            filtered: List[str] = []
             for s in symbols:
                 sym_type = s.get('type', 'spot')
-                
+
                 if market_type == 'swap':
                     # 선물: swap, future 타입
                     if sym_type in ['swap', 'future', 'linear']:
@@ -96,15 +96,40 @@ class SymbolCache:
                     # 현물: spot 타입
                     if sym_type == 'spot':
                         filtered.append(s.get('id', s['symbol']))
-            
+
             return filtered
         return []
-    
+
+    def _get_symbol_dicts(self, exchange: str, market_type: str = 'swap') -> List[Dict]:
+        """캐시된 심볼 정보 반환 (dict 리스트)
+
+        Args:
+            exchange: 거래소 이름 (bybit, binance)
+            market_type: 'swap' (선물) 또는 'spot' (현물)
+        """
+        if self._is_cache_valid(exchange):
+            symbols = self._cache['exchanges'][exchange].get('symbols', [])
+
+            # market_type 필터링
+            filtered: List[Dict] = []
+            for s in symbols:
+                sym_type = s.get('type', 'spot')
+
+                if market_type == 'swap':
+                    if sym_type in ['swap', 'future', 'linear']:
+                        filtered.append(s)
+                else:
+                    if sym_type == 'spot':
+                        filtered.append(s)
+
+            return filtered
+        return []
+
     def get_listing_date(self, exchange: str, symbol: str) -> Optional[str]:
         """심볼 상장일 반환"""
-        symbols = self.get_symbols(exchange)
+        symbols = self._get_symbol_dicts(exchange)
         for s in symbols:
-            if s['symbol'] == symbol or s['id'] == symbol:
+            if s.get('symbol') == symbol or s.get('id') == symbol:
                 return s.get('listing_date')
         return None
     
@@ -197,7 +222,7 @@ class SymbolCache:
         """동기 버전"""
         return asyncio.run(self.update_exchange_async(exchange))
     
-    async def update_all_async(self, exchanges: List[str] = None):
+    async def update_all_async(self, exchanges: Optional[List[str]] = None):
         """모든 거래소 업데이트"""
         if exchanges is None:
             exchanges = ['bybit', 'binance']
@@ -206,25 +231,25 @@ class SymbolCache:
             await self.update_exchange_async(ex)
             await asyncio.sleep(1)  # Rate limit
     
-    def get_popular_symbols(self, exchange: str, limit: int = 20) -> List[dict]:
+    def get_popular_symbols(self, exchange: str, limit: int = 20) -> List[Dict]:
         """인기 심볼 반환 (USDT 페어 우선)"""
-        symbols = self.get_symbols(exchange)
-        
+        symbols = self._get_symbol_dicts(exchange)
+
         # USDT 선물 필터
-        usdt_perps = [s for s in symbols 
-                      if s['quote'] == 'USDT' 
-                      and s['type'] in ['swap', 'future']
-                      and s['active']]
-        
+        usdt_perps = [s for s in symbols
+                      if s.get('quote') == 'USDT'
+                      and s.get('type') in ['swap', 'future']
+                      and s.get('active', True)]
+
         # 주요 코인 우선 정렬
         priority = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC']
-        
-        def sort_key(s):
-            base = s['base']
+
+        def sort_key(s: Dict) -> int:
+            base = s.get('base', '')
             if base in priority:
                 return priority.index(base)
             return 100
-        
+
         usdt_perps.sort(key=sort_key)
         return usdt_perps[:limit]
     

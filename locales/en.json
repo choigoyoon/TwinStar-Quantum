@@ -12,6 +12,7 @@
         "data": "Data",
         "backtest": "Backtest",
         "optimization": "Optimization",
+        "indicator_comparison": "Indicators",
         "results": "Results",
         "betting": "Betting"
     },

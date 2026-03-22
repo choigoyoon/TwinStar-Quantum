@@ -479,7 +479,7 @@ if __name__ == "__main__":
     logger.info("\n✅ Test PASSED!")
 
 
-def get_backtest_params(preset_name: str = None) -> Dict:
+def get_backtest_params(preset_name: str | None = None) -> Dict:
     """백테스트/실매매용 통합 파라미터 로드
     
     우선순위:

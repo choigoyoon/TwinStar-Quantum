@@ -5,19 +5,13 @@
 - 프로파일 기반 유사도 계산
 """
 
-import os
-import sys
-from typing import Dict, List, Optional, Tuple
-
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
-# 상위 경로 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from typing import Any, Dict, List, Optional, Tuple
 
 from utils.chart_profiler import ChartProfiler
 from utils.preset_storage import PresetStorage
+from utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 class ChartMatcher:
@@ -27,7 +21,7 @@ class ChartMatcher:
     DEFAULT_THRESHOLD = 0.75  # 75% 이상 유사해야 매칭
     MIN_DATA_DAYS = 7  # 최소 7일 데이터 필요
     
-    def __init__(self, storage: PresetStorage = None, profiler: ChartProfiler = None):
+    def __init__(self, storage: Optional[PresetStorage] = None, profiler: Optional[ChartProfiler] = None):
         """
         Args:
             storage: 프리셋 저장소
@@ -45,8 +39,8 @@ class ChartMatcher:
             'candle_ratio': 0.10     # 양봉 비율
         }
     
-    def find_similar_preset(self, new_coin_df, symbol: str, tf: str,
-                           threshold: float = None) -> Optional[Dict]:
+    def find_similar_preset(self, new_coin_df: Any, symbol: str, tf: str,
+                           threshold: Optional[float] = None) -> Optional[Dict]:
         """
         신규 코인에 유사한 프리셋 찾기
         
@@ -206,7 +200,7 @@ class ChartMatcher:
         
         return None
     
-    def check_data_sufficiency(self, df, min_rows: int = None) -> Tuple[bool, str]:
+    def check_data_sufficiency(self, df: Any, min_rows: Optional[int] = None) -> Tuple[bool, str]:
         """
         데이터 충분성 체크
         
@@ -262,8 +256,8 @@ class ChartMatcher:
             'top_matches': [
                 {
                     'symbol': m.get('symbol'),
-                    'similarity': f"{m.get('similarity')*100:.1f}%",
-                    'win_rate': f"{m.get('win_rate'):.1f}%"
+                    'similarity': f"{(m.get('similarity') or 0)*100:.1f}%",
+                    'win_rate': f"{(m.get('win_rate') or 0):.1f}%"
                 }
                 for m in top_matches
             ]
@@ -288,24 +282,3 @@ class ChartMatcher:
             result.update({'recommendation': "❌ 유사 프리셋 없음, 자체 최적화 필요"})
         
         return result
-
-
-# 테스트용
-if __name__ == "__main__":
-    import pandas as pd
-    import numpy as np
-    
-    matcher = ChartMatcher()
-    
-    # 더미 데이터
-    dummy_df = pd.DataFrame({
-        'open': np.random.uniform(100, 110, 100),
-        'high': np.random.uniform(105, 115, 100),
-        'low': np.random.uniform(95, 105, 100),
-        'close': np.random.uniform(100, 110, 100),
-        'volume': np.random.uniform(1000, 5000, 100)
-    })
-    
-    # 분석 테스트
-    result = matcher.analyze_new_coin('NEWCOIN', '4h', dummy_df)
-    logger.info(f"분석 결과: {result}")

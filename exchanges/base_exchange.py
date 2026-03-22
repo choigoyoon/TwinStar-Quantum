@@ -4,11 +4,113 @@
 모든 거래소는 이 인터페이스를 구현해야 함
 """
 
+import os
+import json
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 import pandas as pd
+
+# [NEW] 로컬 거래 DB 연동
+try:
+    from storage.local_trade_db import get_local_db, Execution
+except ImportError:
+    get_local_db = None
+    Execution = None
+
+# ✅ P1-3: API Rate Limiter 통합
+try:
+    from core.api_rate_limiter import APIRateLimiter
+except ImportError:
+    APIRateLimiter = None
+
+
+@dataclass
+class OrderResult:
+    """
+    주문 실행 결과 (통일된 반환 타입)
+
+    Phase B Track 1: API 반환값 통일
+    - 모든 거래소 어댑터는 OrderResult를 반환해야 함
+    - bool 타입으로 평가 가능 (Truthy 체크 지원)
+
+    Examples:
+        >>> result = OrderResult(success=True, order_id="12345")
+        >>> if result:  # Truthy 체크
+        ...     print(f"Order placed: {result.order_id}")
+
+        >>> result = OrderResult.from_bool(False, error="Insufficient balance")
+        >>> if not result:  # Falsy 체크
+        ...     print(f"Order failed: {result.error}")
+    """
+    success: bool                           # 주문 성공 여부
+    order_id: str | None = None             # 주문 ID
+    filled_price: float | None = None       # 체결 가격 (평균 체결가)
+    filled_qty: float | None = None         # 체결 수량
+    error: str | None = None                # 에러 메시지
+    timestamp: datetime | None = None       # 체결 시간 (UTC)
+
+    # Legacy compatibility fields (기존 코드 호환성)
+    price: float | None = None              # filled_price 별칭
+    qty: float | None = None                # filled_qty 별칭
+
+    def __post_init__(self):
+        """Legacy 필드 자동 동기화"""
+        if self.filled_price is not None and self.price is None:
+            self.price = self.filled_price
+        if self.filled_qty is not None and self.qty is None:
+            self.qty = self.filled_qty
+
+    @classmethod
+    def from_bool(cls, success: bool, error: str | None = None) -> 'OrderResult':
+        """
+        bool → OrderResult 변환 (하위 호환성)
+
+        Args:
+            success: 주문 성공 여부
+            error: 에러 메시지 (실패 시)
+
+        Returns:
+            OrderResult 인스턴스
+
+        Examples:
+            >>> result = OrderResult.from_bool(True)
+            >>> result = OrderResult.from_bool(False, error="Rate limit exceeded")
+        """
+        return cls(success=success, error=error)
+
+    @classmethod
+    def from_order_id(cls, order_id: str) -> 'OrderResult':
+        """
+        order_id → OrderResult 변환 (하위 호환성)
+
+        Args:
+            order_id: 주문 ID
+
+        Returns:
+            성공 OrderResult (success=True, order_id 포함)
+
+        Examples:
+            >>> result = OrderResult.from_order_id("12345")
+            >>> assert result.success
+        """
+        return cls(success=True, order_id=order_id)
+
+    def __bool__(self) -> bool:
+        """
+        Truthy 체크 지원
+
+        Returns:
+            success 필드 값
+
+        Examples:
+            >>> result = OrderResult(success=True)
+            >>> if result:  # True
+            ...     print("Success!")
+        """
+        return self.success
 
 
 @dataclass
@@ -22,7 +124,7 @@ class Position:
     initial_sl: float
     risk: float
     be_triggered: bool = False
-    entry_time: datetime = None
+    entry_time: Optional[datetime] = None
     # ATR Trailing Fields
     atr: float = 0.0
     extreme_price: float = 0.0
@@ -81,7 +183,7 @@ class Signal:
     pattern: str  # 'W', 'M', 'Triangle'
     stop_loss: float
     atr: float
-    timestamp: datetime = None
+    timestamp: Optional[datetime] = None
 
 
 class BaseExchange(ABC):
@@ -99,28 +201,37 @@ class BaseExchange(ABC):
         }
         """
         self.config = config
-        self.symbol = config.get('symbol', 'BTCUSDT')
+        self.symbol = str(config.get('symbol', 'BTCUSDT') or 'BTCUSDT')
         self.leverage = config.get('leverage', 3)
         self.amount_usd = config.get('amount_usd', 100)
         self.timeframe = config.get('timeframe', '4h')
         self.direction = config.get('direction', 'Both')  # [NEW] 방향 설정
         self.position: Optional[Position] = None
         self.capital = self.amount_usd
-        
+
         # [NEW] 통화 통합 시스템 - 서브클래스에서 override
         self.quote_currency = 'USDT'  # 기준 통화 (USDT / KRW)
         self.market_type = 'futures'   # 시장 유형 (futures / spot)
+
+        # ✅ P1-3: API Rate Limiter 초기화
+        self.rate_limiter: Any = None  # APIRateLimiter 인스턴스 (Optional)
+        if APIRateLimiter:
+            try:
+                # 거래소 이름은 서브클래스의 name 속성에서 가져옴
+                exchange_name = getattr(self, 'name', 'unknown')
+                self.rate_limiter = APIRateLimiter(exchange=exchange_name)
+                logging.debug(f"[{exchange_name}] Rate limiter initialized")
+            except Exception as e:
+                logging.warning(f"Rate limiter init failed: {e}")
     
     @property
     @abstractmethod
     def name(self) -> str:
         """거래소 이름"""
-        pass
     
     @abstractmethod
     def connect(self) -> bool:
         """API 연결"""
-        pass
     
     @abstractmethod
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
@@ -129,15 +240,13 @@ class BaseExchange(ABC):
         interval: '1', '5', '15', '60' (분 단위)
         returns: DataFrame with columns [timestamp, open, high, low, close, volume]
         """
-        pass
     
     @abstractmethod
     def get_current_price(self) -> float:
         """현재 가격"""
-        pass
     
     @abstractmethod
-    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """
         시장가 주문
         side: 'Long' or 'Short'
@@ -145,32 +254,36 @@ class BaseExchange(ABC):
         stop_loss: 손절가
         take_profit: 익절가
         """
-        pass
     
     @abstractmethod
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정"""
-        pass
-    
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
+
     @abstractmethod
-    def close_position(self) -> bool:
-        """포지션 청산"""
-        pass
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
 
     @abstractmethod
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입 (불타기)"""
-        pass
     
     @abstractmethod
     def get_balance(self) -> float:
         """잔고 조회"""
-        pass
     
     @abstractmethod
     def sync_time(self) -> bool:
         """서버 시간 동기화"""
-        pass
     
     # ========== 공통 메서드 ==========
     
@@ -203,7 +316,62 @@ class BaseExchange(ABC):
     def is_spot_exchange(self) -> bool:
         """현물 거래소 여부"""
         return self.market_type == 'spot'
-    
+
+    def _acquire_rate_limit(self, tokens: int = 1) -> bool:
+        """
+        ✅ P1-3: API Rate Limiter 토큰 획득
+
+        API 요청 전 호출하여 레이트 리미트 준수
+
+        Args:
+            tokens: 필요한 토큰 수 (기본 1)
+
+        Returns:
+            True (항상 성공, 블로킹 모드)
+
+        Example:
+            >>> self._acquire_rate_limit()  # 토큰 획득 (대기 가능)
+            >>> response = self.exchange.get_klines(...)
+        """
+        if self.rate_limiter:
+            return self.rate_limiter.acquire(tokens=tokens, blocking=True)
+        return True  # Rate limiter 없으면 즉시 통과
+
+    def _validate_api_keys(self, api_key: str | None, api_secret: str | None) -> bool:
+        """
+        MEDIUM #1 FIX (v7.27): API 키 검증 강화
+
+        빈 문자열, None, 공백만 있는 키를 검증합니다.
+
+        Args:
+            api_key: API 키
+            api_secret: API 시크릿
+
+        Returns:
+            True: 유효한 키
+            False: 무효한 키 (None, 빈 문자열, 공백)
+
+        Raises:
+            ValueError: API 키가 무효할 때
+
+        Example:
+            >>> if not self._validate_api_keys(api_key, api_secret):
+            ...     raise ValueError("Invalid API credentials")
+        """
+        # None 체크
+        if api_key is None or api_secret is None:
+            return False
+
+        # 빈 문자열 체크
+        if not api_key or not api_secret:
+            return False
+
+        # 공백만 있는지 체크
+        if not api_key.strip() or not api_secret.strip():
+            return False
+
+        return True
+
     def is_krw_exchange(self) -> bool:
         """KRW 거래소 여부"""
         return self.quote_currency == 'KRW'
@@ -260,8 +428,8 @@ class BaseExchange(ABC):
                 tr.append(max(tr1, tr2, tr3))
             
             if len(tr) >= period:
-                return np.mean(tr[-period:])
-            return np.mean(tr) if tr else 0
+                return float(np.mean(tr[-period:]))
+            return float(np.mean(tr)) if tr else 0.0
     
     def calculate_position_size(self, price: float) -> float:
         """포지션 크기 계산"""
@@ -289,7 +457,7 @@ class BaseExchange(ABC):
     def get_realized_pnl(self, limit: int = 100) -> float:
         """누적 실현 손익 조회"""
         trades = self.get_trade_history(limit=limit)
-        return sum(t.get('pnl', 0) for t in trades)
+        return float(sum(t.get('pnl', 0) for t in trades))
     
     def get_compounded_capital(self, initial_capital: float) -> float:
         """복리 자본 조회 (초기 자본 + 누적 수익)"""
@@ -300,7 +468,7 @@ class BaseExchange(ABC):
         min_capital = initial_capital * 0.1
         return max(compounded, min_capital)
     
-    def save_trade_history_to_log(self, trades: list = None):
+    def save_trade_history_to_log(self, trades: Optional[list] = None):
         """매매 내역을 로컬 로그 파일에 보관 (공통)"""
         import os, json
         
@@ -340,4 +508,51 @@ class BaseExchange(ABC):
         except Exception as e:
             import logging
             logging.error(f"Trade log save error: {e}")
+
+    # ========== [NEW] LocalTradeDB 전용 훅 메서드 ==========
+
+    def _record_execution(self, side: str, price: float, amount: float, fee: float = 0.0, order_id: str = ""):
+        """체결 내역 로컬 DB 기록"""
+        if get_local_db is None or Execution is None:
+            return
+            
+        try:
+            db = get_local_db()
+            exe = Execution(
+                exchange=self.name,
+                symbol=self.symbol,
+                side='BUY' if side == 'Long' else 'SELL',
+                price=price,
+                amount=amount,
+                fee=fee,
+                order_id=order_id
+            )
+            db.add_execution(exe)
+        except Exception as e:
+            logging.error(f"[BaseExchange] Execution record error: {e}")
+
+    def _record_trade_close(self, exit_price: float, exit_amount: float, exit_side: str, fee: float = 0.0):
+        """청산 내역 및 PnL 계산 (FIFO)"""
+        if get_local_db is None:
+            return
+            
+        try:
+            db = get_local_db()
+            exit_time = datetime.now().isoformat()
+            
+            # FIFO PnL 계산 및 저장
+            trade = db.calculate_pnl_fifo(
+                exchange=self.name,
+                symbol=self.symbol,
+                exit_price=exit_price,
+                exit_amount=exit_amount,
+                exit_side='SELL' if exit_side == 'Long' else 'BUY', # Long 청산은 SELL 실행
+                exit_time=exit_time,
+                fee=fee
+            )
+            
+            if trade:
+                logging.info(f"📈 [PnL] {trade.symbol} {trade.side} Closed: {trade.pnl_pct:.2f}% (${trade.pnl:.2f})")
+        except Exception as e:
+            logging.error(f"[BaseExchange] Trade close record error: {e}")
 

@@ -1,0 +1,22 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "strategy": "macd",
+        "version": "2.0.0",
+        "name": "aggressive_preset",
+        "description": "공격형 프리셋 - CAGR ≥1000% + MDD ≤20% 목표",
+        "preset_type": "aggressive"
+    },
+    "params": {
+        "atr_mult": 1.5,
+        "trail_start": 0.8,
+        "trail_dist": 0.05,
+        "tolerance": 0.2,
+        "adx_min": 5,
+        "stoch_long_max": 60,
+        "stoch_short_min": 40,
+        "use_downtrend_filter": false
+    }
+}

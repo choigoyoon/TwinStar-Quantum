@@ -7,26 +7,31 @@
 
 import sys
 import os
-from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QTabWidget, QWidget, QGroupBox, QTextEdit,
-    QMessageBox, QFrame, QGridLayout, QComboBox
+import json
+from pathlib import Path
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit,
+    QTabWidget, QWidget, QGroupBox, QMessageBox, QFrame,
+    QComboBox, QCheckBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from typing import Any, cast
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class LoginDialog(QDialog):
     """로그인/결제 다이얼로그"""
-    
+
     login_successful = pyqtSignal(dict)  # 로그인 성공 시 사용자 정보 전달
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.user_info = None
+        self.saved_email_file = Path('data/saved_email.json')
         self._init_ui()
+        self._load_saved_email()
     
     def _init_ui(self):
         self.setWindowTitle("🔐 TwinStar Quantum - Login")
@@ -88,14 +93,14 @@ class LoginDialog(QDialog):
         
         # 헤더
         header = QLabel("🚀 TwinStar Quantum")
-        header.setFont(QFont("Arial", 24, QFont.Bold))
-        header.setAlignment(Qt.AlignCenter)
+        header.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
         
         subtitle = QLabel("Professional Trading Bot")
         subtitle.setFont(QFont("Arial", 12))
         subtitle.setStyleSheet("color: #787b86;")
-        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
         
         # 탭
@@ -106,7 +111,7 @@ class LoginDialog(QDialog):
         
         # 라이선스 상태
         self.license_status = QLabel()
-        self.license_status.setAlignment(Qt.AlignCenter)
+        self.license_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.license_status.setStyleSheet("color: #787b86; font-size: 12px;")
         layout.addWidget(self.license_status)
     
@@ -116,7 +121,7 @@ class LoginDialog(QDialog):
         layout = QVBoxLayout(widget)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 30, 20, 20)
-        
+
         # 이메일
         layout.addWidget(QLabel("이메일"))
         self.login_email = QLineEdit()
@@ -124,20 +129,25 @@ class LoginDialog(QDialog):
         if self.user_info and self.user_info.get('email'):
             self.login_email.setText(self.user_info.get('email'))
         layout.addWidget(self.login_email)
-        
+
+        # ID 저장 체크박스
+        self.remember_email_checkbox = QCheckBox("이메일 저장")
+        self.remember_email_checkbox.setStyleSheet("color: #787b86;")
+        layout.addWidget(self.remember_email_checkbox)
+
         # 정보 (비밀번호 없음 / HW 인증)
         info_label = QLabel("ℹ️ 이메일 입력 시 기기 정보(HW_ID)로 자동 인증됩니다.")
         info_label.setStyleSheet("color: #787b86; font-size: 11px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
-        
+
         # 로그인 버튼
         login_btn = QPushButton("로그인")
         login_btn.clicked.connect(self._do_login)
         layout.addWidget(login_btn)
-        
+
         layout.addStretch()
-        
+
         return widget
     
     def _create_register_tab(self) -> QWidget:
@@ -177,28 +187,34 @@ class LoginDialog(QDialog):
     def _do_login(self):
         """로그인 처리 (check)"""
         email = self.login_email.text().strip()
-        
+
         if not email:
             QMessageBox.warning(self, "입력 오류", "이메일을 입력하세요.")
             return
-        
+
         try:
             from license_manager import get_license_manager
             lm = get_license_manager()
-            
+
             # 서버 확인
             result = lm.check(email)
-            
+
             if result.get('success'):
                 self.user_info = {
                     'email': email,
                     'tier': result.get('tier'),
                     'days_left': result.get('days_left'),
-                    'is_active': True 
+                    'is_active': True
                 }
-                
+
+                # 이메일 저장 체크박스 확인
+                if self.remember_email_checkbox.isChecked():
+                    self._save_email(email)
+                else:
+                    self._clear_saved_email()
+
                 QMessageBox.information(
-                    self, "로그인 성공", 
+                    self, "로그인 성공",
                     f"환영합니다, {email}님!\n"
                     f"등급: {result.get('tier')}\n"
                     f"남은 기간: {result.get('days_left')}일"
@@ -208,7 +224,7 @@ class LoginDialog(QDialog):
             else:
                 error = result.get('error', '인증 실패')
                 QMessageBox.warning(self, "로그인 실패", f"{error}\n\n등록되지 않은 이메일이거나\n다른 기기에서 사용 중일 수 있습니다.")
-                
+
         except Exception as e:
             QMessageBox.critical(self, "오류", f"로그인 중 오류 발생: {e}")
     
@@ -249,11 +265,44 @@ class LoginDialog(QDialog):
     def _do_auto_login(self, email):
         self.login_email.setText(email)
         self._do_login()
+
+    def _load_saved_email(self):
+        """저장된 이메일 로드"""
+        try:
+            if self.saved_email_file.exists():
+                with open(self.saved_email_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    email = data.get('email', '')
+                    if email:
+                        self.login_email.setText(email)
+                        self.remember_email_checkbox.setChecked(True)
+        except Exception as e:
+            print(f"이메일 로드 실패: {e}")
+
+    def _save_email(self, email: str):
+        """이메일 저장"""
+        try:
+            # data 디렉토리 생성
+            self.saved_email_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # 이메일 저장
+            with open(self.saved_email_file, 'w', encoding='utf-8') as f:
+                json.dump({'email': email}, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"이메일 저장 실패: {e}")
+
+    def _clear_saved_email(self):
+        """저장된 이메일 삭제"""
+        try:
+            if self.saved_email_file.exists():
+                self.saved_email_file.unlink()
+        except Exception as e:
+            print(f"이메일 삭제 실패: {e}")
     
     def _show_payment_dialog(self, user: dict):
         """결제 안내 다이얼로그"""
         dialog = PaymentDialog(user, self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             # 결제 확인됨
             self.login_successful.emit(user)
             self.accept()
@@ -294,7 +343,7 @@ class PaymentDialog(QDialog):
         
         # 헤더
         header = QLabel("🔑 평생 라이선스 결제")
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         layout.addWidget(header)
         
         # 가격 정보
@@ -302,7 +351,10 @@ class PaymentDialog(QDialog):
             from core.crypto_payment import get_crypto_payment
             cp = get_crypto_payment()
             price = cp.get_price_usd()
-            payment_info = cp.get_payment_info(self.user.get('user_id'), self.user.get('email'))
+            payment_info = cp.get_payment_info(
+                cast(int, self.user.get('user_id', 0)), 
+                cast(str, self.user.get('email', ''))
+            )
         except Exception as e:
             price = 100.0
             payment_info = None
@@ -354,7 +406,7 @@ class PaymentDialog(QDialog):
                 addr = QLabel(f"주소: {opt['address']}")
                 addr.setStyleSheet("color: white; font-family: monospace; font-size: 11px;")
                 addr.setWordWrap(True)
-                addr.setTextInteractionFlags(Qt.TextSelectableByMouse)
+                addr.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
                 crypto_layout.addWidget(addr)
                 
                 payment_layout.addWidget(crypto_frame)
@@ -442,7 +494,7 @@ class PaymentDialog(QDialog):
             cp = get_crypto_payment()
             
             result = cp.verify_payment_manual(
-                user_id=self.user.get('user_id'),
+                user_id=cast(int, self.user.get('user_id', 0)),
                 tx_hash=tx_hash,
                 crypto_type=crypto_type
             )
@@ -460,10 +512,10 @@ class PaymentDialog(QDialog):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     dialog = LoginDialog()
     dialog.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

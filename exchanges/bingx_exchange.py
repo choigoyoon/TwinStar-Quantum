@@ -1,28 +1,42 @@
 # exchanges/bingx_exchange.py
 """
-BingX 거래소 어댑터
-- Perpetual (영구 선물) 거래 지원
-- API: ccxt (공식 SDK 없음)
+BingX 거래소 어댑터 (하이브리드 구조 v2.0)
+- 수집 API: CCXT (편의성)
+- 매매 API: REST API 직접 호출 (안정성 + 속도)
 - 심볼 형식: BTC-USDT
-- 특이사항: recvWindow 설정 필요
+- 특이사항: 공식 SDK 없음, 직접 구현
 """
 
 import time
 import logging
+import hmac
+import hashlib
+import requests
+import json
 import pandas as pd
+from typing import Any, cast, Optional, Dict, List
 from datetime import datetime
-from typing import Optional
+from urllib.parse import urlencode
 
-from .base_exchange import BaseExchange, Position
+from .base_exchange import BaseExchange, Position, OrderResult
 
+# ============================================
+# CCXT (수집용)
+# ============================================
 try:
     import ccxt
 except ImportError:
     ccxt = None
 
+# ============================================
+# BingX 直接 API 설정
+# ============================================
+USE_DIRECT_API = True  # False로 변경하면 CCXT로 폴백
 
 class BingXExchange(BaseExchange):
-    """BingX 거래소 어댑터"""
+    """BingX 거래소 어댑터 (하이브리드 구조)"""
+    
+    BASE_URL = "https://open-api.bingx.com"
     
     @property
     def name(self) -> str:
@@ -33,20 +47,22 @@ class BingXExchange(BaseExchange):
         self.api_key = config.get('api_key', '')
         self.api_secret = config.get('api_secret', '')
         self.testnet = config.get('testnet', False)
-        self.exchange = None
-        self.time_offset = 0
-        self.hedge_mode = False
         
-        # [FIX] BingX 심볼 형식 정규화 - 내부 저장은 BTCUSDT, _convert_symbol에서 BTC/USDT:USDT로 변환
+        # CCXT 클라이언트 (수집용)
+        self.exchange: Optional[Any] = None
+        
+        self.time_offset = 0
+        self.hedge_mode = False  # BingX는 기본적으로 One-Way 모드 중심
+        
+        # [FIX] BingX 심볼 형식 정규화 - 내부 저장은 BTCUSDT
         self.symbol = self.symbol.replace('/', '').replace('-', '').replace(':USDT', '').upper()
 
-    
     def connect(self) -> bool:
-        """API 연결"""
+        """API 연결 (CCXT 초기화 및 테스트)"""
         if ccxt is None:
-            logging.error("ccxt not installed!")
+            logging.error("[BingX] ccxt not installed!")
             return False
-        
+            
         try:
             self.exchange = ccxt.bingx({
                 'apiKey': self.api_key,
@@ -62,114 +78,234 @@ class BingXExchange(BaseExchange):
             # 시간 동기화
             self.sync_time()
             
+            # 마켓 정보 로드
             self.exchange.load_markets()
             
-            logging.info(f"BingX connected. Time offset: {self.time_offset}ms")
-            return True
+            logging.info(f"[BingX] 연결 완료 (CCXT 수집용). Time offset: {self.time_offset}ms")
             
+            # 직접 API 테스트 (간단한 잔고 조회)
+            if USE_DIRECT_API:
+                balance = self.get_balance()
+                logging.info(f"[BingX] 직접 API 연결 테스트 완료. 잔고: {balance} USDT")
+                
+            return True
         except Exception as e:
-            logging.error(f"BingX connect error: {e}")
+            logging.error(f"[BingX] 연결 에러: {e}")
             return False
+
+    # ============================================
+    # REST API 直接 호출 유틸리티
+    # ============================================
     
-    def _convert_symbol(self, symbol: str) -> str:
-        """심볼 변환 (BTCUSDT -> BTC/USDT:USDT)"""
+    def _generate_signature(self, params: Dict[str, Any]) -> str:
+        """BingX API 서명 생성 (HMAC-SHA256)"""
+        # 파라미터를 키 순서대로 정렬하여 쿼리 스트링 생성
+        sorted_params = sorted(params.items())
+        query_string = urlencode(sorted_params)
+        
+        signature = hmac.new(
+            self.api_secret.encode('utf-8'),
+            query_string.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        
+        return signature
+
+    def _request(self, method: str, path: str, params: Dict[str, Any] = {}) -> Dict[str, Any]:
+        """직접 API 요청 실행"""
+        try:
+            url = f"{self.BASE_URL}{path}"
+            
+            # 필구 파라미터 추가
+            params['timestamp'] = int(time.time() * 1000)
+            params['recvWindow'] = 60000
+            
+            # 서명 생성 및 추가
+            params['signature'] = self._generate_signature(params)
+            
+            headers = {
+                'X-BX-APIKEY': self.api_key,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            if method.upper() == 'GET':
+                response = requests.get(url, params=params, headers=headers, timeout=10)
+            else:
+                response = requests.post(url, data=params, headers=headers, timeout=10)
+                
+            result = response.json()
+            
+            if result.get('code') != 0:
+                logging.error(f"[BingX-Direct] API Error: {result.get('msg')} (Code: {result.get('code')}) Path: {path}")
+                
+            return result
+        except Exception as e:
+            logging.error(f"[BingX-Direct] Request Exception: {e} Path: {path}")
+            return {'code': -1, 'msg': str(e)}
+
+    def _convert_symbol_direct(self, symbol: str) -> str:
+        """심볼 변환 (BTCUSDT -> BTC-USDT)"""
         base = symbol.replace('USDT', '')
-        return f"{base}/USDT:USDT"
+        return f"{base}-USDT"
+
+    # ============================================
+    # 수집 API (CCXT 유지)
+    # ============================================
     
     def get_klines(self, interval: str, limit: int = 200) -> Optional[pd.DataFrame]:
-        """캔들 데이터 조회"""
+        """캔들 데이터 조회 (CCXT)"""
+        if self.exchange is None: return None
         try:
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
             tf_map = {'1': '1m', '5': '5m', '15': '15m', '60': '1h', '240': '4h'}
             timeframe = tf_map.get(interval, interval)
             
-            symbol = self._convert_symbol(self.symbol)
+            symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df = pd.DataFrame(ohlcv, columns=cast(Any, ['timestamp', 'open', 'high', 'low', 'close', 'volume']))
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
             
             return df
-            
         except Exception as e:
-            logging.error(f"Kline fetch error: {e}")
+            logging.error(f"[BingX] Kline fetch error: {e}")
             return None
-    
+
     def get_current_price(self) -> float:
-        """현재 가격"""
+        """
+        현재 가격 조회 (CCXT)
+
+        Raises:
+            RuntimeError: API 호출 실패 또는 가격 조회 불가
+        """
+        if self.exchange is None:
+            raise RuntimeError("Exchange not initialized")
+
         try:
-            symbol = self._convert_symbol(self.symbol)
+            # ✅ P1-3: Rate limiter 토큰 획득
+            self._acquire_rate_limit()
+            symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
             ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker['last'])
+            price = float(ticker.get('last', 0) or 0)
+
+            if price <= 0:
+                raise RuntimeError(f"Invalid price: {price}")
+
+            return price
+
+        except RuntimeError:
+            raise  # RuntimeError는 그대로 전파
         except Exception as e:
-            logging.error(f"Price fetch error: {e}")
-            return 0
+            raise RuntimeError(f"Price fetch failed: {e}") from e
+
+    # ============================================
+    # 매매 API (直接 REST API 호출)
+    # ============================================
     
-    def place_market_order(self, side: str, size: float, stop_loss: float) -> bool:
+    def place_market_order(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
         """시장가 주문"""
+        if USE_DIRECT_API:
+            return self._place_order_direct(side, size, stop_loss, take_profit, client_order_id)
+        else:
+            return self._place_order_ccxt(side, size, stop_loss, take_profit, client_order_id)
+
+    def _place_order_direct(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
+        """BingX 직접 API 주문"""
         max_retries = 3
         
         for attempt in range(max_retries):
             try:
-                symbol = self._convert_symbol(self.symbol)
-                order_side = 'buy' if side == 'Long' else 'sell'
+                symbol = self._convert_symbol_direct(self.symbol)
+                order_side = 'BUY' if side == 'Long' else 'SELL'
+
+                # ✅ P1-3: Rate limiter 토큰 획득
+                self._acquire_rate_limit()
+
+                params = {
+                    'symbol': symbol,
+                    'side': order_side,
+                    'type': 'MARKET',
+                    'quantity': str(size)
+                }
                 
-                params = {'recvWindow': 60000}
+                if client_order_id:
+                    params['newClientOrderId'] = client_order_id
                 
-                # [NEW] Hedge Mode Check (BingX usually One-Way, but if Hedge enabled:)
-                # BingX Standard Params for Hedge: positionSide=LONG/SHORT
+                # Hedge Mode 대응 (지원 시)
                 if self.hedge_mode:
-                     params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                    cast(Dict[str, Any], params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+
+                res = self._request('POST', '/openApi/swap/v2/trade/order', params)
                 
-                order = self.exchange.create_order(
-                    symbol=symbol,
-                    type='market',
-                    side=order_side,
-                    amount=size,
-                    params=params
-                )
-                
-                if order:
-                    price = self.get_current_price()
+                if res.get('code') == 0:
+                    order_data = res.get('data', {})
+                    order_id = str(order_data.get('orderId', ''))
+
+                    try:
+                        price = self.get_current_price()
+                    except RuntimeError as e:
+                        logging.error(f"[BingX] Price fetch failed: {e}")
+                        return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
+                    logging.info(f"[BingX-Direct] Order SUCCESS: {side} {size} @ {price} (ID: {order_id})")
                     
-                    # SL 설정
+                    # 2. SL 설정 (Trigger Order)
                     if stop_loss > 0:
                         try:
-                            sl_side = 'sell' if side == 'Long' else 'buy'
+                            sl_side = 'SELL' if side == 'Long' else 'BUY'
                             sl_params = {
-                                'stopPrice': stop_loss,
-                                'reduceOnly': True
+                                'symbol': symbol,
+                                'side': sl_side,
+                                'type': 'STOP_MARKET',
+                                'stopPrice': str(stop_loss),
+                                'quantity': str(size),
+                                'reduceOnly': 'true'
                             }
-                            # [FIX] Hedge Mode Support (BingX using positionSide)
                             if self.hedge_mode:
-                                sl_params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
-
-                            self.exchange.create_order(
-                                symbol=symbol,
-                                type='stop_market',
-                                side=sl_side,
-                                amount=size,
-                                params=sl_params
-                            )
+                                cast(Dict[str, Any], sl_params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                                
+                            sl_res = self._request('POST', '/openApi/swap/v2/trade/order', sl_params)
+                            
+                            if sl_res.get('code') != 0:
+                                raise Exception(f"SL Setting API Fail: {sl_res}")
+                                
+                            logging.info(f"[BingX-Direct] Stop Loss set: {stop_loss}")
+                            
                         except Exception as sl_err:
                             # 🔴 CRITICAL: SL 실패 시 즉시 청산
-                            logging.error(f"[BingX] ❌ SL Setting FAILED! Closing position immediately: {sl_err}")
-                            try:
-                                close_params = {'reduceOnly': True}
-                                if self.hedge_mode:
-                                    close_params['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
-                                self.exchange.create_order(
-                                    symbol=symbol,
-                                    type='market',
-                                    side=sl_side,
-                                    amount=size,
-                                    params=close_params
-                                )
-                                logging.warning("[BingX] ⚠️ Emergency Close Done.")
-                            except Exception as close_err:
-                                logging.critical(f"[BingX] 🚨 EMERGENCY CLOSE FAILED! CHECK BINGX APP: {close_err}")
-                            return False
-
+                            logging.error(f"[BingX] ❌ SL FAIL! Emergency Close: {sl_err}")
+                            close_params = {
+                                'symbol': symbol,
+                                'side': 'SELL' if side == 'Long' else 'BUY',
+                                'type': 'MARKET',
+                                'quantity': str(size),
+                                'reduceOnly': 'true'
+                            }
+                            if self.hedge_mode:
+                                cast(Dict[str, Any], close_params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                            self._request('POST', '/openApi/swap/v2/trade/order', close_params)
+                            return OrderResult(success=False, order_id=None, price=price, qty=size, error=f"SL setting failed: {sl_err}")
                     
+                    # 3. TP 설정
+                    if take_profit > 0:
+                        try:
+                            tp_side = 'SELL' if side == 'Long' else 'BUY'
+                            tp_params = {
+                                'symbol': symbol,
+                                'side': tp_side,
+                                'type': 'TAKE_PROFIT_MARKET',
+                                'stopPrice': str(take_profit),
+                                'quantity': str(size),
+                                'reduceOnly': 'true'
+                            }
+                            if self.hedge_mode:
+                                cast(Dict[str, Any], tp_params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                            self._request('POST', '/openApi/swap/v2/trade/order', tp_params)
+                            logging.info(f"[BingX-Direct] Take Profit set: {take_profit}")
+                        except Exception as tp_err:
+                            logging.warning(f"[BingX] TP Set Warning: {tp_err}")
+
                     self.position = Position(
                         symbol=self.symbol,
                         side=side,
@@ -179,337 +315,464 @@ class BingXExchange(BaseExchange):
                         initial_sl=stop_loss,
                         risk=abs(price - stop_loss),
                         be_triggered=False,
-                        entry_time=datetime.now()
+                        entry_time=datetime.now(),
+                        order_id=order_id
                     )
-                    
-                    logging.info(f"[BingX] Order placed: {side} {size} @ {price}")
-                    return True
-                    
-            except Exception as e:
-                logging.error(f"[BingX] Order error: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(2)
-        
-        return False
-    
-    def update_stop_loss(self, new_sl: float) -> bool:
-        """손절가 수정"""
-        try:
-            symbol = self._convert_symbol(self.symbol)
-            
-            # 기존 스탑 주문 취소
-            try:
-                orders = self.exchange.fetch_open_orders(symbol)
-                for order in orders:
-                    if order.get('type') in ['stop_market', 'stop']:
-                        oid = order.get('id') if isinstance(order, dict) else None
-                    if oid:
-                        self.exchange.cancel_order(oid, symbol)
-            except Exception as e:
-                logging.debug(f'무시된 예외: {e}')
-            
-            # 새 스탑 주문
-            if self.position:
-                sl_side = 'sell' if self.position.side == 'Long' else 'buy'
-                params = {
-                    'stopPrice': new_sl,
-                    'reduceOnly': True
-                }
-                # [FIX] Hedge Mode Support (BingX using positionSide)
-                if self.hedge_mode:
-                    params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+                    return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
                 
-                self.exchange.create_order(
-                    symbol=symbol,
-                    type='stop_market',
-                    side=sl_side,
-                    amount=self.position.size,
-                    params=params
-                )
-                self.position.stop_loss = new_sl
-                logging.info(f"[BingX] SL updated: {new_sl}")
-                return True
-            
-            return False
-            
+                else:
+                    logging.error(f"[BingX-Direct] Order FAILED: {res}")
+                    if attempt < max_retries - 1: time.sleep(2)
+                    
+            except Exception as e:
+                logging.error(f"[BingX] Order Exception: {e}")
+                if attempt < max_retries - 1: time.sleep(2)
+
+        return OrderResult(success=False, order_id=None, price=None, qty=size, error="Max retries exceeded")
+
+    def _place_order_ccxt(self, side: str, size: float, stop_loss: float, take_profit: float = 0, client_order_id: Optional[str] = None) -> OrderResult:
+        """CCXT 폴백 주문 (기존 로직)"""
+        if self.exchange is None:
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error="Exchange not initialized")
+
+        try:
+            symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
+            order_side = 'buy' if side == 'Long' else 'sell'
+            params = {'recvWindow': 60000}
+            if self.hedge_mode:
+                 cast(Dict[str, Any], params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+
+            order = self.exchange.create_order(symbol, 'market', order_side, size, params=params)
+            if order:
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[BingX] Price fetch failed: {e}")
+                    return OrderResult(success=False, order_id=None, price=None, qty=size, error=f"Price unavailable: {e}")
+
+                order_id = str(order.get('id', ''))
+
+                if stop_loss > 0:
+                    try:
+                        sl_params = {'stopPrice': stop_loss, 'reduceOnly': True}
+                        if self.hedge_mode: cast(Dict[str, Any], sl_params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                        self.exchange.create_order(symbol, 'stop_market', 'sell' if side == 'Long' else 'buy', size, params=sl_params)
+                    except Exception as sl_err:
+                        self.close_position()
+                        return OrderResult(success=False, order_id=order_id, price=price, qty=size, error=f"SL setting failed: {sl_err}")
+
+                self.position = Position(self.symbol, side, price, size, stop_loss, stop_loss, abs(price - stop_loss), False, datetime.now())
+                return OrderResult(success=True, order_id=order_id, price=price, qty=size, error=None)
         except Exception as e:
-            logging.error(f"[BingX] SL update error: {e}")
-            return False
-    
-    def close_position(self) -> bool:
-        """포지션 청산"""
+            logging.error(f"[BingX-CCXT] Error: {e}")
+            return OrderResult(success=False, order_id=None, price=None, qty=size, error=str(e))
+
+        return OrderResult(success=False, order_id=None, price=None, qty=size, error="Order creation failed")
+
+    def update_stop_loss(self, new_sl: float) -> OrderResult:
+        """
+        손절가 수정
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, error)
+        """
+        if USE_DIRECT_API:
+            return self._update_sl_direct(new_sl)
+        else:
+            return self._update_sl_ccxt(new_sl)
+
+    def _update_sl_direct(self, new_sl: float) -> OrderResult:
+        """직접 API SL 수정 (기존 취소 후 재설정)
+
+        Phase B Track 1: API 반환값 통일
+        """
         try:
             if not self.position:
-                return True
-            
-            symbol = self._convert_symbol(self.symbol)
-            close_side = 'sell' if self.position.side == 'Long' else 'buy'
-            
-            params = {'reduceOnly': True}
-            # [FIX] Hedge Mode Support (BingX using positionSide)
+                return OrderResult.from_bool(False, error="No position to update SL")
+
+            symbol = self._convert_symbol_direct(self.symbol)
+
+            # 1. 모든 열린 알고 주문 취소 (BingX v2 필터 기능 활용 또는 전체 취소)
+            # 안전하게 전체 취소 후 재설정
+            self._request('POST', '/openApi/swap/v2/trade/allOpenOrders', {'symbol': symbol})
+
+            # 2. 새 SL 주문
+            sl_side = 'SELL' if self.position.side == 'Long' else 'BUY'
+            params = {
+                'symbol': symbol,
+                'side': sl_side,
+                'type': 'STOP_MARKET',
+                'stopPrice': str(new_sl),
+                'quantity': str(self.position.size),
+                'reduceOnly': 'true'
+            }
             if self.hedge_mode:
                 params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
 
-            order = self.exchange.create_order(
-                symbol=symbol,
-                type='market',
-                side=close_side,
-                amount=self.position.size,
-                params=params
-            )
-            
-            if order:
-                price = self.get_current_price()
-                if self.position.side == 'Long':
-                    pnl = (price - self.position.entry_price) / self.position.entry_price * 100
-                else:
-                    pnl = (self.position.entry_price - price) / self.position.entry_price * 100
-                
-                profit_usd = self.capital * self.leverage * (pnl / 100)
-                self.capital += profit_usd
-                
-                logging.info(f"[BingX] Position closed: PnL {pnl:.2f}%")
-                self.position = None
-                return True
-            
-            return False
-            
+            res = self._request('POST', '/openApi/swap/v2/trade/order', params)
+            if res.get('code') == 0:
+                order_data = res.get('data', {})
+                order_id = str(order_data.get('orderId', ''))
+                self.position.stop_loss = new_sl
+                logging.info(f"[BingX-Direct] SL Updated: {new_sl} (ID: {order_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
+            else:
+                error_msg = res.get('msg', 'Unknown error')
+                logging.error(f"[BingX-Direct] SL Update Failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"BingX API error: {error_msg}")
         except Exception as e:
-            logging.error(f"[BingX] Close error: {e}")
-            return False
-    
+            logging.error(f"[BingX-Direct] SL Update Error: {e}")
+            return OrderResult.from_bool(False, error=str(e))
+
+    def _update_sl_ccxt(self, new_sl: float) -> OrderResult:
+        """CCXT 폴백 SL 수정
+
+        Phase B Track 1: API 반환값 통일
+        """
+        if self.exchange is None:
+            return OrderResult.from_bool(False, error="Exchange not initialized")
+
+        try:
+            symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
+            try:
+                self.exchange.cancel_all_orders(symbol)
+            except: pass
+
+            if self.position:
+                params = {'stopPrice': new_sl, 'reduceOnly': True}
+                if self.hedge_mode:
+                    params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+                order = self.exchange.create_order(symbol, 'stop_market', 'sell' if self.position.side == 'Long' else 'buy', self.position.size, params=params)
+                self.position.stop_loss = new_sl
+                order_id = str(order.get('id', '')) if order else ''
+                logging.info(f"[BingX-CCXT] SL Updated: {new_sl} (ID: {order_id})")
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=new_sl,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="No position to update SL")
+
+        except Exception as e:
+            logging.error(f"[BingX-CCXT] SL Update Error: {e}")
+            return OrderResult.from_bool(False, error=str(e))
+
+    def close_position(self) -> OrderResult:
+        """
+        포지션 청산
+
+        Phase B Track 1: API 반환값 통일
+        - Returns: OrderResult (success, order_id, filled_price, error)
+        """
+        if USE_DIRECT_API:
+            return self._close_position_direct()
+        else:
+            return self._close_position_ccxt()
+
+    def _close_position_direct(self) -> OrderResult:
+        """직접 API 청산
+
+        Phase B Track 1: API 반환값 통일
+        """
+        try:
+            if not self.position:
+                return OrderResult.from_bool(True)  # No position to close
+
+            symbol = self._convert_symbol_direct(self.symbol)
+
+            params = {
+                'symbol': symbol,
+                'side': 'SELL' if self.position.side == 'Long' else 'BUY',
+                'type': 'MARKET',
+                'quantity': str(self.position.size),
+                'reduceOnly': 'true'
+            }
+            if self.hedge_mode:
+                params['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+
+            res = self._request('POST', '/openApi/swap/v2/trade/order', params)
+            if res.get('code') == 0:
+                order_data = res.get('data', {})
+                order_id = str(order_data.get('orderId', ''))
+
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[BingX-Direct] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[BingX-Direct] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
+                else:
+                    logging.warning("[BingX-Direct] Position closed but PnL calculation skipped (price=0)")
+
+                self.position = None
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+            else:
+                error_msg = res.get('msg', 'Unknown error')
+                logging.error(f"[BingX-Direct] Close Failed: {error_msg}")
+                return OrderResult.from_bool(False, error=f"BingX API error: {error_msg}")
+        except Exception as e:
+            logging.error(f"[BingX-Direct] Close Error: {e}")
+            return OrderResult.from_bool(False, error=str(e))
+
+    def _close_position_ccxt(self) -> OrderResult:
+        """CCXT 폴백 청산
+
+        Phase B Track 1: API 반환값 통일
+        """
+        if self.exchange is None:
+            return OrderResult.from_bool(False, error="Exchange not initialized")
+
+        try:
+            if not self.position:
+                return OrderResult.from_bool(True)  # No position to close
+
+            symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
+            params = {'reduceOnly': True}
+            if self.hedge_mode:
+                cast(Dict[str, Any], params)['positionSide'] = 'LONG' if self.position.side == 'Long' else 'SHORT'
+            order = self.exchange.create_order(symbol, 'market', 'sell' if self.position.side == 'Long' else 'buy', self.position.size, params=params)
+
+            if order:
+                # 청산 성공 후 가격 조회 (실패해도 청산은 완료됨)
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.warning(f"[BingX-CCXT] Price fetch failed after close, PnL=0: {e}")
+                    price = 0.0
+
+                order_id = str(order.get('id', ''))
+
+                if price > 0:
+                    if self.position.side == 'Long':
+                        pnl = (price - self.position.entry_price) / self.position.entry_price * 100
+                    else:
+                        pnl = (self.position.entry_price - price) / self.position.entry_price * 100
+
+                    profit_usd = self.capital * self.leverage * (pnl / 100)
+                    self.capital += profit_usd
+
+                    logging.info(f"[BingX-CCXT] Position closed: PnL {pnl:.2f}% (ID: {order_id})")
+                else:
+                    logging.warning("[BingX-CCXT] Position closed but PnL calculation skipped (price=0)")
+
+                self.position = None
+                return OrderResult(
+                    success=True,
+                    order_id=order_id,
+                    filled_price=price if price > 0 else None,
+                    timestamp=datetime.now()
+                )
+
+            return OrderResult.from_bool(False, error="Order creation failed")
+
+        except Exception as e:
+            logging.error(f"[BingX-CCXT] Close Error: {e}")
+            return OrderResult.from_bool(False, error=str(e))
+
     def add_position(self, side: str, size: float) -> bool:
         """포지션 추가 진입"""
+        if USE_DIRECT_API:
+            return self._add_position_direct(side, size)
+        else:
+            return self._add_position_ccxt(side, size)
+
+    def _add_position_direct(self, side: str, size: float) -> bool:
+        """직접 API 추가 진입"""
         try:
             if not self.position or side != self.position.side:
                 return False
             
-            symbol = self._convert_symbol(self.symbol)
-            order_side = 'buy' if side == 'Long' else 'sell'
-            
-            order = self.exchange.create_order(
-                symbol=symbol,
-                type='market',
-                side=order_side,
-                amount=size
-            )
-            
-            if order:
-                price = self.get_current_price()
+            symbol = self._convert_symbol_direct(self.symbol)
+            params = {
+                'symbol': symbol,
+                'side': 'BUY' if side == 'Long' else 'SELL',
+                'type': 'MARKET',
+                'quantity': str(size)
+            }
+            if self.hedge_mode:
+                cast(Dict[str, Any], params)['positionSide'] = 'LONG' if side == 'Long' else 'SHORT'
+                
+            res = self._request('POST', '/openApi/swap/v2/trade/order', params)
+            if res.get('code') == 0:
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[BingX] Price fetch failed for add_position: {e}")
+                    return False
+
                 total_size = self.position.size + size
                 avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
                 
                 self.position.size = total_size
                 self.position.entry_price = avg_price
                 
-                logging.info(f"[BingX] Added: {size} @ {price}, Avg: {avg_price:.2f}")
+                logging.info(f"[BingX-Direct] Added: {size} @ {price}, Avg: {avg_price:.2f}")
                 return True
-            
             return False
-            
         except Exception as e:
-            logging.error(f"[BingX] Add position error: {e}")
-            return False
-    
-    def get_balance(self) -> float:
-        """잔고 조회 (Perpetual 선물 계정)"""
-        if self.exchange is None:
-            return 0
-        try:
-            from utils.helpers import safe_float
-            # [FIX] 무기한 선물(Perpetual) 계정 지갑 명시적 조회
-            balance = self.exchange.fetch_balance(params={'type': 'swap'})
-            return safe_float(balance.get('USDT', {}).get('free', 0))
-        except Exception as e:
-            logging.error(f"[BingX] Balance error: {e}")
-            return 0
-
-    def sync_time(self) -> bool:
-        """BingX 서버 시간 동기화"""
-        if self.exchange is None:
-            return False
-        try:
-            server_time = self.exchange.fetch_time()
-            local_time = int(time.time() * 1000)
-            self.time_offset = server_time - local_time
-            logging.info(f"[BingX] Time synced. Offset: {self.time_offset}ms")
-            return True
-        except Exception as e:
-            logging.error(f"[BingX] sync_time error: {e}")
+            logging.error(f"[BingX-Direct] Add Error: {e}")
             return False
 
-    def get_positions(self) -> list:
-        """모든 열린 포지션 조회 (긴급청산용)"""
-        if self.exchange is None:
-            return []
+    def _add_position_ccxt(self, side: str, size: float) -> bool:
+        """CCXT 폴백 추가 진입"""
+        if self.exchange is None: return False
         try:
-            positions_data = self.exchange.fetch_positions()
-            
-            positions = []
-            for pos in positions_data:
-                size = abs(float(pos.get('contracts', 0)))
-                if size > 0:
-                    positions.append({
-                        'symbol': pos.get('symbol', '').replace('/USDT:USDT', 'USDT'),
-                        'side': 'Buy' if pos.get('side') == 'long' else 'Sell',
-                        'size': size,
-                        'entry_price': float(pos.get('entryPrice', 0)),
-                        'unrealized_pnl': float(pos.get('unrealizedPnl', 0)),
-                        'leverage': int(pos.get('leverage', 1))
-                    })
-            
-            logging.info(f"[BingX] 열린 포지션: {len(positions)}개")
-            return positions
-            
-        except Exception as e:
-            logging.error(f"포지션 조회 에러: {e}")
-            return []
-    
-    def set_leverage(self, leverage: int) -> bool:
-        """레버리지 설정"""
-        try:
-            symbol = self._convert_symbol(self.symbol)
-            self.exchange.set_leverage(leverage, symbol)
-            self.leverage = leverage
-            logging.info(f"[BingX] Leverage set to {leverage}x")
-            return True
-        except Exception as e:
-            if "leverage not modified" in str(e).lower():
-                self.leverage = leverage
+            if not self.position or side != self.position.side: return False
+            symbol = f"{self.symbol.replace('USDT', '')}/USDT:USDT"
+            order = self.exchange.create_order(symbol, 'market', 'buy' if side == 'Long' else 'sell', size)
+            if order:
+                try:
+                    price = self.get_current_price()
+                except RuntimeError as e:
+                    logging.error(f"[BingX-CCXT] Price fetch failed for add_position: {e}")
+                    return False
+
+                total_size = self.position.size + size
+                avg_price = (self.position.entry_price * self.position.size + price * size) / total_size
+                self.position.size = total_size
+                self.position.entry_price = avg_price
                 return True
-            logging.error(f"[BingX] Leverage error: {e}")
-            return False
-
-# Alias for compatibility
-
-    # ============================================
-    # WebSocket + 자동 시간 동기화 (Phase 2+3)
-    # ============================================
-    
-    async def start_websocket(self, interval='15m', on_candle_close=None, on_price_update=None, on_connect=None):
-        """웹소켓 시작"""
-        try:
-            from exchanges.ws_handler import WebSocketHandler
-            
-            self.ws_handler = WebSocketHandler(
-                exchange='bingx', 
-                symbol=self.symbol,
-                interval=interval
-            )
-            
-            self.ws_handler.on_candle_close = on_candle_close
-            self.ws_handler.on_price_update = on_price_update
-            self.ws_handler.on_connect = on_connect
-            
-            import asyncio
-            asyncio.create_task(self.ws_handler.connect())
-            
-            import logging
-            logging.info(f"[Bingx] WebSocket connected: {{self.symbol}}")
-            return True
-        except Exception as e:
-            import logging
-            logging.error(f"[Bingx] WebSocket failed: {{e}}")
-            return False
-    
-    def stop_websocket(self):
-        """웹소켓 중지"""
-        if hasattr(self, 'ws_handler') and self.ws_handler:
-            self.ws_handler.disconnect()
-    
-    async def restart_websocket(self):
-        """웹소켓 재시작"""
-        self.stop_websocket()
-        import asyncio
-        await asyncio.sleep(1)
-        return await self.start_websocket()
-    
-    def _auto_sync_time(self):
-        """API 호출 전 자동 시간 동기화 (5분마다)"""
-        import time
-        if not hasattr(self, '_last_sync'):
-            self._last_sync = 0
-        
-        if time.time() - self._last_sync > 300:
-            self.sync_time()
-            self._last_sync = time.time()
-    
-    def sync_time(self):
-        """서버 시간 동기화"""
-        import time
-        import logging
-        try:
-            # ccxt 기반 거래소의 경우
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                server_time = self.exchange.fetch_time()
-                local_time = int(time.time() * 1000)
-                self.time_offset = local_time - server_time
-                logging.debug(f"[Bingx] Time synced: offset={{self.time_offset}}ms")
-                return True
-        except Exception as e:
-            logging.debug(f"[Bingx] Time sync failed: {{e}}")
-        self.time_offset = 0
+        except: pass
         return False
-    
-    def fetchTime(self):
-        """서버 시간 조회"""
-        import time
-        try:
-            if hasattr(self, 'exchange') and hasattr(self.exchange, 'fetch_time'):
-                return self.exchange.fetch_time()
-        except Exception as e:
-            logging.debug(f"WS close ignored: {e}")
-        return int(time.time() * 1000)
 
-    # ========== [NEW] 매매 히스토리 API ==========
-    
-    def get_trade_history(self, limit: int = 50) -> list:
-        """API로 청산된 거래 히스토리 조회 (CCXT)"""
-        try:
-            if not self.exchange:
-                return super().get_trade_history(limit)
-            
-            symbol = self._convert_symbol(self.symbol)
-            raw_trades = self.exchange.fetch_my_trades(symbol, limit=limit)
-            
-            trades = []
-            for t in raw_trades:
-                trades.append({
-                    'symbol': self.symbol,
-                    'side': t.get('side', '').upper(),
-                    'qty': float(t.get('amount', 0)),
-                    'entry_price': float(t.get('price', 0)),
-                    'exit_price': float(t.get('price', 0)),
-                    'pnl': float(t.get('info', {}).get('realizedPnl', 0)),
-                    'created_time': str(t.get('timestamp', '')),
-                    'updated_time': str(t.get('timestamp', ''))
-                })
-            
-            logging.info(f"[BingX] Trade history loaded: {len(trades)} trades")
-            return trades
-            
-        except Exception as e:
-            logging.error(f"[BingX] Trade history error: {e}")
-            return []
+    def get_balance(self) -> float:
+        """잔고 조회"""
+        # Phase 1: Rate limiter 추가
+        self._acquire_rate_limit()
 
-    def get_realized_pnl(self, limit: int = 100) -> float:
-        """API로 실현 손익 조회"""
+        if USE_DIRECT_API:
+            return self._get_balance_direct()
+        else:
+            return self._get_balance_ccxt()
+
+    def _get_balance_direct(self) -> float:
+        """직접 API 잔고 조회"""
         try:
-            trades = self.get_trade_history(limit=limit)
-            total_pnl = sum(t.get('pnl', 0) for t in trades)
-            logging.info(f"[BingX] Realized PnL: ${total_pnl:.2f} from {len(trades)} trades")
-            return total_pnl
+            res = self._request('GET', '/openApi/swap/v2/user/balance')
+            if res.get('code') == 0:
+                data = res.get('data', {}).get('balance', {})
+                return float(data.get('availableMargin', 0))
+            return 0.0
         except Exception as e:
-            logging.error(f"[BingX] get_realized_pnl error: {e}")
+            logging.error(f"[BingX-Direct] Balance Error: {e}")
             return 0.0
 
-    def get_compounded_capital(self, initial_capital: float) -> float:
-        """복리 자본 조회 (초기 자본 + 누적 수익)"""
-        realized_pnl = self.get_realized_pnl()
-        compounded = initial_capital + realized_pnl
-        # 최소 자본 보장 (초기의 10%)
-        min_capital = initial_capital * 0.1
-        return max(compounded, min_capital)
+    def _get_balance_ccxt(self) -> float:
+        """CCXT 폴백 잔고 조회"""
+        if self.exchange is None: return 0.0
+        try:
+            balance = self.exchange.fetch_balance({'type': 'swap'})
+            return float(balance.get('USDT', {}).get('free', 0))
+        except Exception: return 0.0
 
+    def sync_time(self) -> bool:
+        """서버 시간 동기화"""
+        if self.exchange is None: return False
+        try:
+            server_time = self.exchange.fetch_time()
+            if server_time:
+                self.time_offset = server_time - int(time.time() * 1000)
+                return True
+            return False
+        except: return False
 
+    def get_positions(self) -> List[Dict[str, Any]]:
+        """열린 포지션 조회"""
+        if USE_DIRECT_API:
+            return self._get_positions_direct()
+        else:
+            return self._get_positions_ccxt()
+
+    def _get_positions_direct(self) -> List[Dict[str, Any]]:
+        """직접 API 포지션 조회"""
+        try:
+            res = self._request('GET', '/openApi/swap/v2/user/positions')
+            if res.get('code') == 0:
+                raw_pos = res.get('data', [])
+                processed = []
+                for p in raw_pos:
+                    size = abs(float(p.get('positionAmt', 0)))
+                    if size > 0:
+                        processed.append({
+                            'symbol': p.get('symbol', '').replace('-', ''),
+                            'side': 'Buy' if float(p.get('positionAmt', 0)) > 0 else 'Sell',
+                            'size': size,
+                            'entry_price': float(p.get('avgPrice', 0)),
+                            'unrealized_pnl': float(p.get('unrealizedProfit', 0)),
+                            'leverage': int(p.get('leverage', 1))
+                        })
+                return processed
+            return []
+        except Exception as e:
+            logging.error(f"[BingX-Direct] Positions Error: {e}")
+            return []
+
+    def _get_positions_ccxt(self) -> List[Dict[str, Any]]:
+        """CCXT 폴백 포지션 조회"""
+        if self.exchange is None: return []
+        try:
+            data = self.exchange.fetch_positions()
+            res = []
+            for p in data:
+                size = abs(float(p.get('contracts', 0)))
+                if size > 0:
+                    res.append({
+                        'symbol': p.get('symbol', '').replace('/USDT:USDT', 'USDT'),
+                        'side': 'Buy' if p.get('side') == 'long' else 'Sell',
+                        'size': size,
+                        'entry_price': float(p.get('entryPrice', 0)),
+                        'unrealized_pnl': float(p.get('unrealizedPnl', 0)),
+                        'leverage': int(p.get('leverage', 1))
+                    })
+            return res
+        except: return []
+
+    def set_leverage(self, leverage: int) -> bool:
+        """레버리지 설정"""
+        if USE_DIRECT_API:
+            try:
+                symbol = self._convert_symbol_direct(self.symbol)
+                res = self._request('POST', '/openApi/swap/v2/trade/leverage', {
+                    'symbol': symbol,
+                    'leverage': str(leverage),
+                    'side': 'BOTH' # One-way인 경우 BOTH
+                })
+                if res.get('code') == 0:
+                    self.leverage = leverage
+                    return True
+                return False
+            except: return False
+        else:
+            if self.exchange:
+                try:
+                    self.exchange.set_leverage(leverage, f"{self.symbol.replace('USDT', '')}/USDT:USDT")
+                    self.leverage = leverage
+                    return True
+                except: return False
+            return False
+
+# Compatibility Alias
 BingxExchange = BingXExchange

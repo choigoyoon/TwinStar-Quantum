@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 # 상위 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
-    from paths import Paths
+    from paths import Paths  # type: ignore[assignment]
 except ImportError:
     # Fallback
-    class Paths:
+    class Paths:  # type: ignore[no-redef]
         USER_CONFIG = "config"
 
 class NewCoinDetector:

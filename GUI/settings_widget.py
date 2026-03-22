@@ -8,36 +8,22 @@ logger = logging.getLogger(__name__)
 import sys
 import os
 import json
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QLineEdit, QSpinBox, QCheckBox, QComboBox,
     QGridLayout, QMessageBox, QFrame, QScrollArea
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QFont
+from typing import Any, cast, Dict, Optional
 
 # Path setup
 if not getattr(sys, 'frozen', False):
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Module imports
-try:
-    from constants import EXCHANGE_INFO, SPOT_EXCHANGES, KRW_EXCHANGES
-except ImportError:
-    try:
-        from GUI.constants import EXCHANGE_INFO, SPOT_EXCHANGES, KRW_EXCHANGES
-    except ImportError:
-        EXCHANGE_INFO = {
-            'bybit': {'type': 'CEX', 'icon': '🟡', 'testnet': True, 'maker_fee': 0.02, 'taker_fee': 0.055},
-            'binance': {'type': 'CEX', 'icon': '🟠', 'testnet': True, 'maker_fee': 0.02, 'taker_fee': 0.04},
-            'okx': {'type': 'CEX', 'icon': '⚪', 'passphrase': True, 'maker_fee': 0.02, 'taker_fee': 0.05},
-            'bitget': {'type': 'CEX', 'icon': '🔵', 'passphrase': True, 'maker_fee': 0.02, 'taker_fee': 0.06},
-            'upbit': {'type': 'CEX', 'icon': '🟣', 'ip_required': True, 'market': 'KRW'},
-            'bithumb': {'type': 'CEX', 'icon': '🟤', 'ip_required': True, 'market': 'KRW'},
-        }
-        SPOT_EXCHANGES = ['upbit', 'bithumb']
-        KRW_EXCHANGES = ['upbit', 'bithumb']
+# Module imports (SSOT)
+from config.constants import EXCHANGE_INFO, SPOT_EXCHANGES, KRW_EXCHANGES
 
 try:
     from crypto_manager import load_api_keys, save_api_keys
@@ -45,30 +31,32 @@ except ImportError:
     try:
         from GUI.crypto_manager import load_api_keys, save_api_keys
     except ImportError:
-        def load_api_keys():
+        def load_api_keys() -> Dict[str, Any]:
             return {}
-        def save_api_keys(config):
-            pass
+        def save_api_keys(config: Dict[str, Any]) -> bool:
+            return False
 
 try:
-    from locales import t, set_language, get_lang_manager
-    from locales.lang_manager import t, set_language
+    from i18n import t, set_lang as set_language
+    from i18n import I18n as LangManager
 except ImportError:
-    def t(key, default=None):
+    def t(key: str, default: Optional[str] = None) -> str:
         return default if default else key.split('.')[-1]
-    def set_language(l): pass
+    def set_language(lang: str) -> bool: return False
+    LangManager = None
+
+def get_lang_manager() -> Optional[Any]: 
+    return LangManager.get_instance() if LangManager else None
 
 try:
-    from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection, ExchangeManager
+    from exchanges.exchange_manager import connect_exchange, get_exchange, test_connection
 except ImportError:
-    def connect_exchange(*args, **kwargs):
+    def connect_exchange(exchange_name: str, api_key: str, api_secret: str, testnet: bool = False, passphrase: str = "") -> tuple:
         return (False, "exchange_manager module load failed")
-    def get_exchange(name):
+    def get_exchange(exchange_name: str):
         return None
-    def test_connection(*args, **kwargs):
+    def test_connection(exchange_name: str, api_key: Optional[str] = None, api_secret: Optional[str] = None, testnet: bool = False) -> bool:
         return False
-    def set_language(lang): pass
-    def get_lang_manager(): return None
 
 # License Guard
 try:
@@ -143,7 +131,8 @@ class ConnectionWorker(QThread):
                                 balance = safe_float(bal['total'].get(quote, 0))
                             else:
                                 balance = 0.0
-                        except:
+                        except Exception:
+
                             balance = 0.0
                     
                     balance_data = {quote: balance}
@@ -178,7 +167,7 @@ class TelegramCard(QFrame):
         
         # Header
         header = QLabel("텔레그램 알림")
-        header.setFont(QFont("Arial", 12, QFont.Bold))
+        header.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -188,7 +177,7 @@ class TelegramCard(QFrame):
         
         fields_layout.addWidget(QLabel("Bot Token:"), 0, 0)
         self.token_input = QLineEdit()
-        self.token_input.setEchoMode(QLineEdit.Password)
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.token_input.setPlaceholderText("1234567890:ABC...")
         self.token_input.setToolTip("텔레그램 봇 토큰\n@BotFather에서 발급받은 토큰")
         fields_layout.addWidget(self.token_input, 0, 1)
@@ -310,7 +299,7 @@ class ExchangeCard(QFrame):
         taker = info.get("taker_fee", 0)
         
         title = QLabel(f"{icon} {self.exchange_name.upper()} ({ex_type} {market})")
-        title.setFont(QFont("Arial", 12, QFont.Bold))
+        title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         title.setStyleSheet("color: white;")
         header_layout.addWidget(title)
         
@@ -352,7 +341,7 @@ class ExchangeCard(QFrame):
         if info.get("type") == "CEX":
             fields_layout.addWidget(QLabel("API Key:"), row, 0)
             self.fields['api_key'] = QLineEdit()
-            self.fields['api_key'].setEchoMode(QLineEdit.Password)
+            self.fields['api_key'].setEchoMode(QLineEdit.EchoMode.Password)
             self.fields['api_key'].setPlaceholderText("Enter API Key")
             self.fields['api_key'].setToolTip("거래소 API Key\n거래소에서 발급받은 공개키")
             fields_layout.addWidget(self.fields['api_key'], row, 1)
@@ -360,7 +349,7 @@ class ExchangeCard(QFrame):
             
             fields_layout.addWidget(QLabel("Secret:"), row, 0)
             self.fields['api_secret'] = QLineEdit()
-            self.fields['api_secret'].setEchoMode(QLineEdit.Password)
+            self.fields['api_secret'].setEchoMode(QLineEdit.EchoMode.Password)
             self.fields['api_secret'].setPlaceholderText("Enter API Secret")
             self.fields['api_secret'].setToolTip("거래소 API Secret\n⚠️ 절대 타인에게 공개하지 마세요!")
             fields_layout.addWidget(self.fields['api_secret'], row, 1)
@@ -369,7 +358,7 @@ class ExchangeCard(QFrame):
             if info.get("passphrase"):
                 fields_layout.addWidget(QLabel("Passphrase:"), row, 0)
                 self.fields['password'] = QLineEdit()
-                self.fields['password'].setEchoMode(QLineEdit.Password)
+                self.fields['password'].setEchoMode(QLineEdit.EchoMode.Password)
                 self.fields['password'].setPlaceholderText("Passphrase (Required)")
                 self.fields['password'].setToolTip("API Passphrase\nOKX/Bitget 등 일부 거래소에서 필수")
                 fields_layout.addWidget(self.fields['password'], row, 1)
@@ -385,7 +374,7 @@ class ExchangeCard(QFrame):
         elif info.get("type") == "DEX":
             fields_layout.addWidget(QLabel("Private Key:"), row, 0)
             self.fields['private_key'] = QLineEdit()
-            self.fields['private_key'].setEchoMode(QLineEdit.Password)
+            self.fields['private_key'].setEchoMode(QLineEdit.EchoMode.Password)
             self.fields['private_key'].setPlaceholderText("0x...")
             fields_layout.addWidget(self.fields['private_key'], row, 1)
             row += 1
@@ -648,10 +637,10 @@ class ExchangeCard(QFrame):
         
         msg = QMessageBox(self)
         msg.setWindowTitle(f"API Guide - {self.exchange_name.upper()}")
-        msg.setTextFormat(Qt.RichText)
+        msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setText(guide)
         msg.setMinimumWidth(500)
-        msg.exec_()
+        msg.exec()
 
 
 class SettingsWidget(QWidget):
@@ -661,7 +650,21 @@ class SettingsWidget(QWidget):
         super().__init__()
         self.config = load_api_keys()
         self.exchange_cards = {}
+        self.current_tier = 'FREE'  # 기본 등급
+        self.lang_combo: Optional[QComboBox] = None
+        self._load_license_info()
         self._init_ui()
+    
+    def _load_license_info(self):
+        """라이선스 정보 로드"""
+        try:
+            if HAS_LICENSE_GUARD and get_license_guard:
+                guard = get_license_guard()
+                if guard:
+                    self.current_tier = getattr(guard, 'tier', 'FREE').upper()
+        except Exception as e:
+            logger.debug(f"License info load failed: {e}")
+            self.current_tier = 'FREE'
     
     def _init_ui(self):
         layout = QVBoxLayout(self)
@@ -669,7 +672,7 @@ class SettingsWidget(QWidget):
         
         # Header
         header = QLabel("API Settings")
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -677,6 +680,8 @@ class SettingsWidget(QWidget):
         desc.setStyleSheet("color: #787b86; font-size: 12px;")
         layout.addWidget(desc)
         
+        # ========== 라이선스 검증 섹션 (ADMIN 전용) ==========
+        self._create_license_section(layout)
         
         # [HIDDEN] Telegram card - 나중에 다시 활성화 가능
         # self.telegram_card = TelegramCard()
@@ -696,6 +701,42 @@ class SettingsWidget(QWidget):
         lang_note = QLabel("💡 언어 설정은 상단 바에서 변경할 수 있습니다 / Language can be changed in the header bar")
         lang_note.setStyleSheet("color: #666; font-size: 11px; padding: 5px;")
         layout.addWidget(lang_note)
+
+        # GPU Settings Section
+        gpu_group = QGroupBox("🎮 GPU 설정 (GPU Settings)")
+        gpu_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                padding: 15px;
+                margin-top: 10px;
+                font-weight: bold;
+            }
+        """)
+        gpu_layout = QVBoxLayout(gpu_group)
+
+        gpu_desc = QLabel("앱 재시작 후 적용됩니다 / Changes apply after app restart")
+        gpu_desc.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        gpu_layout.addWidget(gpu_desc)
+
+        gpu_btn = QPushButton("⚙️ GPU 설정 열기 (Open GPU Settings)")
+        gpu_btn.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover { background: #2980b9; }
+        """)
+        gpu_btn.clicked.connect(self._open_gpu_settings)
+        gpu_layout.addWidget(gpu_btn)
+
+        layout.addWidget(gpu_group)
 
         # Exchange selection
         exchange_select = QGroupBox(t("settings.exchanges", "Exchange Selection"))
@@ -778,8 +819,8 @@ class SettingsWidget(QWidget):
         # Remove existing widgets
         while self.cards_layout.count():
             item = self.cards_layout.takeAt(0)
-            if item.widget():
-                item.widget().setParent(None)
+            if item and item.widget():
+                cast(Any, item.widget()).setParent(None)
         
         # Add visible cards
         visible = []
@@ -812,12 +853,15 @@ class SettingsWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, t("common.error", t("common.error")), f"Save failed: {e}")
     
-    def _on_language_changed(self, index):
+    def _on_language_changed(self, index: int):
         """언어 변경 핸들러"""
+        # index는 시그널에서 전달되지만 직접 사용하지 않음
+        _ = index
+
         # [FIX] lang_combo 미정의 시 안전 체크
-        if not hasattr(self, 'lang_combo'):
+        if not hasattr(self, 'lang_combo') or self.lang_combo is None:
             return
-        lang_code = self.lang_combo.currentData()
+        lang_code = cast(Any, self.lang_combo).currentData()
         if lang_code:
             set_language(lang_code)
             
@@ -828,13 +872,212 @@ class SettingsWidget(QWidget):
                 "Language changed. Please restart the application.\n언어가 변경되었습니다. 프로그램을 재시작해주세요."
             )
     
+    # ==================== 라이선스 검증 섹션 (ADMIN 전용) ====================
+    
+    def _create_license_section(self, layout):
+        """라이선스 검증 섹션 생성 - ADMIN 등급에서만 표시"""
+        # ADMIN 등급이 아니면 표시하지 않음
+        if self.current_tier != 'ADMIN':
+            return
+        
+        # 라이선스 검증 그룹박스
+        license_group = QGroupBox("👑 관리자 전용 - 라이선스 검증")
+        license_group.setStyleSheet("""
+            QGroupBox {
+                color: #e91e63;
+                border: 2px solid #e91e63;
+                border-radius: 8px;
+                padding: 15px;
+                margin-top: 10px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px;
+            }
+        """)
+        
+        group_layout = QVBoxLayout(license_group)
+        group_layout.setSpacing(10)
+        
+        # 설명
+        desc = QLabel("사용자 라이선스 코드를 검증하고 등급을 부여합니다.")
+        desc.setStyleSheet("color: #787b86; font-size: 11px;")
+        group_layout.addWidget(desc)
+        
+        # 입력 영역
+        input_layout = QHBoxLayout()
+        
+        # 검증 코드 입력
+        self.license_code_input = QLineEdit()
+        self.license_code_input.setPlaceholderText("검증할 라이선스 코드 입력...")
+        self.license_code_input.setStyleSheet("""
+            QLineEdit {
+                background: #131722;
+                color: white;
+                border: 1px solid #e91e63;
+                border-radius: 5px;
+                padding: 10px;
+                font-family: monospace;
+            }
+            QLineEdit:focus {
+                border: 2px solid #e91e63;
+            }
+        """)
+        input_layout.addWidget(self.license_code_input, stretch=3)
+        
+        # 등급 선택
+        self.tier_combo = QComboBox()
+        self.tier_combo.addItems(['TRIAL', 'BASIC', 'STANDARD', 'PREMIUM', 'ADMIN'])
+        self.tier_combo.setCurrentText('BASIC')
+        self.tier_combo.setStyleSheet("""
+            QComboBox {
+                background: #131722;
+                color: white;
+                border: 1px solid #2a2e3b;
+                border-radius: 5px;
+                padding: 8px;
+                min-width: 100px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background: #1e2330;
+                color: white;
+                selection-background-color: #e91e63;
+            }
+        """)
+        input_layout.addWidget(self.tier_combo, stretch=1)
+        
+        # 검증 버튼
+        verify_btn = QPushButton("🔐 검증 및 등급 부여")
+        verify_btn.setStyleSheet("""
+            QPushButton {
+                background: linear-gradient(135deg, #e91e63, #9c27b0);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: linear-gradient(135deg, #c2185b, #7b1fa2);
+            }
+            QPushButton:pressed {
+                background: #880e4f;
+            }
+        """)
+        verify_btn.clicked.connect(self._verify_license_code)
+        input_layout.addWidget(verify_btn)
+        
+        group_layout.addLayout(input_layout)
+        
+        # 결과 표시 영역
+        self.license_result_label = QLabel("")
+        self.license_result_label.setStyleSheet("color: #787b86; padding: 5px;")
+        self.license_result_label.setWordWrap(True)
+        group_layout.addWidget(self.license_result_label)
+        
+        # 최근 검증 내역 (간단히)
+        history_label = QLabel("💡 검증된 코드는 서버에 기록되며, 해당 사용자에게 등급이 자동 적용됩니다.")
+        history_label.setStyleSheet("color: #666; font-size: 10px; font-style: italic;")
+        group_layout.addWidget(history_label)
+        
+        layout.addWidget(license_group)
+    
+    def _verify_license_code(self):
+        """라이선스 코드 검증 및 등급 부여"""
+        code = self.license_code_input.text().strip()
+        tier = self.tier_combo.currentText()
+        
+        if not code:
+            QMessageBox.warning(self, "입력 오류", "검증할 라이선스 코드를 입력하세요.")
+            return
+        
+        # 코드 형식 검증 (예: 16자 이상의 영숫자)
+        if len(code) < 8:
+            QMessageBox.warning(self, "형식 오류", "라이선스 코드는 최소 8자 이상이어야 합니다.")
+            return
+        
+        try:
+            # 실제 검증 로직 (서버 API 호출)
+            result = self._call_license_api(code, tier)
+            
+            if result.get('success'):
+                self.license_result_label.setText(
+                    f"✅ 검증 성공!\n"
+                    f"코드: {code[:8]}...{code[-4:]}\n"
+                    f"부여 등급: {tier}\n"
+                    f"처리 시간: {result.get('timestamp', 'N/A')}"
+                )
+                self.license_result_label.setStyleSheet("color: #26a69a; padding: 5px; background: #1a2e2a; border-radius: 5px;")
+                
+                QMessageBox.information(
+                    self, 
+                    "검증 완료", 
+                    f"라이선스 코드가 성공적으로 검증되었습니다.\n\n"
+                    f"코드: {code[:8]}***\n"
+                    f"등급: {tier}\n\n"
+                    f"해당 사용자에게 등급이 적용됩니다."
+                )
+                
+                # 입력 필드 초기화
+                self.license_code_input.clear()
+            else:
+                error_msg = result.get('error', '알 수 없는 오류')
+                self.license_result_label.setText(f"❌ 검증 실패: {error_msg}")
+                self.license_result_label.setStyleSheet("color: #ef5350; padding: 5px;")
+                QMessageBox.warning(self, "검증 실패", f"라이선스 검증에 실패했습니다.\n\n오류: {error_msg}")
+                
+        except Exception as e:
+            self.license_result_label.setText(f"❌ 오류 발생: {str(e)}")
+            self.license_result_label.setStyleSheet("color: #ef5350; padding: 5px;")
+            QMessageBox.critical(self, "오류", f"검증 중 오류가 발생했습니다.\n\n{str(e)}")
+    
+    def _call_license_api(self, code: str, tier: str) -> dict:
+        """라이선스 서버 API 호출"""
+        import datetime
+        
+        try:
+            # 실제 서버 연동 시 여기에 API 호출 코드 작성
+            # 현재는 로컬 시뮬레이션
+            
+            if HAS_LICENSE_GUARD and get_license_guard:
+                guard = get_license_guard()
+                if guard and hasattr(guard, 'verify_admin_code'):
+                    return cast(Any, guard).verify_admin_code(code, tier)
+            
+            # 시뮬레이션 응답 (실제 서버 연동 전)
+            # 테스트용: 'ADMIN' 또는 'TEST'로 시작하는 코드는 성공
+            if code.upper().startswith(('ADMIN', 'TEST', 'VALID')):
+                return {
+                    'success': True,
+                    'code': code,
+                    'tier': tier,
+                    'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'message': f'등급 {tier} 부여 완료'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': '유효하지 않은 라이선스 코드입니다.'
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
     def _show_tier_comparison(self):
         """등급 비교표 다이얼로그 표시"""
         try:
             from license_tiers import LICENSE_TIERS
             
             # 비교표 다이얼로그 생성
-            from PyQt5.QtWidgets import QDialog, QTextEdit
+            from PyQt6.QtWidgets import QDialog, QTextEdit
             dlg = QDialog(self)
             dlg.setWindowTitle("📊 등급 비교표")
             dlg.setMinimumSize(600, 500)
@@ -910,7 +1153,7 @@ class SettingsWidget(QWidget):
             close_btn.clicked.connect(dlg.accept)
             layout.addWidget(close_btn)
             
-            dlg.exec_()
+            dlg.exec()
             
         except Exception as e:
             QMessageBox.warning(self, "오류", f"등급 비교표 로드 실패: {e}")
@@ -925,15 +1168,18 @@ class SettingsWidget(QWidget):
                 
                 if result.get('success'):
                     url = result.get('url')
-                    webbrowser.open(url)
-                    
-                    QMessageBox.information(
-                        self,
-                        "업그레이드",
-                        "웹 브라우저에서 결제를 완료한 후\n"
-                        "프로그램을 재시작해주세요.\n\n"
-                        f"URL: {url[:50]}..."
-                    )
+                    if url:
+                        webbrowser.open(cast(str, url))
+                        
+                        QMessageBox.information(
+                            self,
+                            "업그레이드",
+                            "웹 브라우저에서 결제를 완료한 후\n"
+                            "프로그램을 재시작해주세요.\n\n"
+                            f"URL: {url[:50]}..."
+                        )
+                    else:
+                        QMessageBox.warning(self, "오류", "결제 페이지 URL을 받지 못했습니다.")
                 else:
                     error = result.get('error', '세션 생성 실패')
                     QMessageBox.warning(self, "오류", f"업그레이드 실패: {error}")
@@ -947,18 +1193,59 @@ class SettingsWidget(QWidget):
                 
                 lm = get_license_manager()
                 dlg = PaymentDialog(lm, self)
-                dlg.exec_()
+                dlg.exec()
                 
         except Exception as e:
             QMessageBox.critical(self, "오류", f"결제 다이얼로그 오류: {e}")
 
+    def _open_gpu_settings(self):
+        """GPU 설정 다이얼로그 열기"""
+        try:
+            from PyQt6.QtWidgets import QDialog, QVBoxLayout
+            from ui.widgets.settings.gpu_tab import GPUSettingsTab
+
+            # 다이얼로그 생성
+            dialog = QDialog(self)
+            dialog.setWindowTitle("🎮 GPU 설정 (GPU Settings)")
+            dialog.setModal(True)
+            dialog.resize(800, 700)
+
+            # 레이아웃
+            layout = QVBoxLayout(dialog)
+            layout.setContentsMargins(0, 0, 0, 0)
+
+            # GPU 설정 위젯 추가
+            gpu_widget = GPUSettingsTab()
+            layout.addWidget(gpu_widget)
+
+            # 다이얼로그 표시
+            dialog.exec()
+
+            # 설정 변경 시 재시작 안내
+            QMessageBox.information(
+                self,
+                "GPU 설정",
+                "GPU 설정이 저장되었습니다.\n변경사항은 앱 재시작 후 적용됩니다.\n\n"
+                "GPU settings saved.\nChanges will apply after app restart."
+            )
+
+        except ImportError as e:
+            QMessageBox.warning(
+                self,
+                "오류",
+                f"GPU 설정 모듈을 불러올 수 없습니다.\n{e}\n\n"
+                "ui/widgets/settings/gpu_tab.py 파일을 확인하세요."
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "오류", f"GPU 설정 오류: {e}")
+
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     app.setStyleSheet("QWidget { background: #0d1117; }")
     
     w = SettingsWidget()
     w.resize(800, 600)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

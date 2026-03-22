@@ -2,20 +2,18 @@
 TwinStar Quantum - Main Window
 사람 사고 기반 단계별 UI
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QFrame, QStackedWidget,
-    QSizePolicy, QSpacerItem
+    QLabel, QPushButton, QFrame, QStackedWidget
 )
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont, QIcon
+from PyQt6.QtCore import Qt
 
-from GUI.styles.theme import COLORS, SPACING, FONTS, STYLESHEET
+from GUI.styles.theme import COLORS, STYLESHEET
 from GUI.pages.step1_backtest import BacktestPage
 from GUI.pages.step2_optimize import OptimizePage
 from GUI.pages.step3_trade import TradePage
@@ -30,13 +28,13 @@ class SidebarButton(QPushButton):
         super().__init__(parent)
         self.step = step
         self.title = title
-        self.icon = icon
+        self.icon_str = icon
         self.is_current = False
         self.is_completed = False
         
-        self.setText(f"{icon}  {title}")
+        self.setText(f"{self.icon_str}  {title}")
         self.setFixedHeight(50)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_style()
     
     def set_current(self, is_current: bool):
@@ -297,7 +295,6 @@ class MainWindow(QMainWindow):
     
     def _start_trading_bot(self, config: dict):
         try:
-            from core.unified_bot import UnifiedBot
             logger.info(f"봇 시작: {config}")
         except Exception as e:
             logger.info(f"봇 시작 실패: {e}")
@@ -314,7 +311,7 @@ class MainWindow(QMainWindow):
 
 def main():
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -322,7 +319,7 @@ def main():
     window = MainWindow()
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

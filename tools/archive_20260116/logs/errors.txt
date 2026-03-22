@@ -1,0 +1,500 @@
+Python Python f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:16:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:22:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:200:36 - error: "object" 클래스의 "exchange" 특성에 액세스할 수 없음
+    특성 "exchange" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:232:13 - error: "logger"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:263:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:342:14 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:467:14 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:522:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:735:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\auto_pipeline_widget.py:791:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\backtest_result_widget.py
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:9:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:14:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:15:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:107:47 - error: ‘/’ 연산자는 ‘datetime’ 및 ‘Literal[1000]’ 형식에 대해 지원되지 않습니다. (reportOperatorIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:167:40 - error: "BacktestResultWidget*" 클래스의 "_result" 특성에 할당할 수 없음
+    "None"은 "BacktestResult"에 할당할 수 없습니다. (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:287:20 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:328:74 - error: ‘None’ 형식의 식을 ‘List[Candle]’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "List[Candle]"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:364:20 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:456:53 - error: ‘/’ 연산자는 ‘datetime’ 및 ‘Literal[1000]’ 형식에 대해 지원되지 않습니다. (reportOperatorIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:457:52 - error: ‘/’ 연산자는 ‘datetime’ 및 ‘Literal[1000]’ 형식에 대해 지원되지 않습니다. (reportOperatorIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:484:20 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:488:22 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:532:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:548:25 - error: "int" 형식의 인수를 "__init__" 함수에서 "datetime" 형식의 "signal_time" 매개 변수에 할당할 수 없습니다.
+    "int"은 "datetime"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:552:23 - error: "int" 형식의 인수를 "__init__" 함수에서 "datetime | None" 형식의 "exit_time" 매개 변수에 할당할 수 없습니다.
+    형식 "int"은 형식 "datetime | None"에 할당할 수 없습니다.
+      "int"은 "datetime"에 할당할 수 없습니다.
+      "int"은 "None"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:556:14 - error: 매개 변수 "start_date", "end_date"에 대한 인수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:560:9 - error: 이름이 "start_time"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:561:9 - error: 이름이 "end_time"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:564:9 - error: 이름이 "win_trades"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\backtest_result_widget.py:565:9 - error: 이름이 "lose_trades"인 매개 변수가 없습니다. (reportCallIssue)
+f:\TwinStar-Quantum\GUI\backtest_widget.py
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:10:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:17:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:18:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:23:8 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:36:38 - error: 형식 "() -> PresetManager"을 선언된 형식 "() -> None"에 할당할 수 없습니다.
+    형식 "() -> PresetManager"은 형식 "() -> None"에 할당할 수 없습니다.
+      ‘PresetManager’ 함수 반환 형식은 ‘None’ 형식과 호환되지 않습니다.
+        "PresetManager"은 "None"에 할당할 수 없습니다. (reportAssignmentType)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:36:58 - error: 형식 "(preset_name: str = None) -> Dict[Unknown, Unknown]"을 선언된 형식 "(name: Unknown | None = None) -> dict[Unknown, Unknown]"에 할당할 수 없습니다.
+    형식 "(preset_name: str = None) -> Dict[Unknown, Unknown]"은 형식 "(name: Unknown | None = None) -> dict[Unknown, Unknown]"에 할당할 수 없습니다.
+      매개 변수 이름 불일치: "name" 및 "preset_name"
+      매개 변수 1: "Unknown | None" 형식이 "str" 형식과 호환되지 않음
+        형식 "Unknown | None"은 형식 "str"에 할당할 수 없습니다.
+          "None"은 "str"에 할당할 수 없습니다. (reportAssignmentType)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:36:79 - error: 형식 "(params: Dict[Unknown, Unknown]) -> bool"을 선언된 형식 "(params: Unknown) -> None"에 할당할 수 없습니다.
+    형식 "(params: Dict[Unknown, Unknown]) -> bool"은 형식 "(params: Unknown) -> None"에 할당할 수 없습니다.
+      ‘bool’ 함수 반환 형식은 ‘None’ 형식과 호환되지 않습니다.
+        "bool"은 "None"에 할당할 수 없습니다. (reportAssignmentType)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:37:27 - error: "DEFAULT_PARAMS"은(는) 알 수 없는 가져오기 기호입니다. (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:58:23 - error: 형식 "type[paths.Paths]"을 선언된 형식 "type[GUI.backtest_widget.Paths]"에 할당할 수 없습니다.
+    "paths.Paths"은 "GUI.backtest_widget.Paths"에 할당할 수 없습니다.
+    형식 "type[paths.Paths]"은 형식 "type[GUI.backtest_widget.Paths]"에 할당할 수 없습니다. (reportAssignmentType)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:301:31 - error: "AlphaX7Core" 클래스의 "df_15m" 특성에 할당할 수 없음
+    특성 "df_15m" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:305:31 - error: "AlphaX7Core" 클래스의 "df_15m" 특성에 할당할 수 없음
+    특성 "df_15m" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:762:31 - error: "AlphaX7Core" 클래스의 "df_15m" 특성에 할당할 수 없음
+    특성 "df_15m" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:777:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:926:26 - error: "AlphaX7Core" 클래스의 "df_15m" 특성에 액세스할 수 없음
+    특성 "df_15m" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:926:58 - error: "AlphaX7Core" 클래스의 "df_15m" 특성에 액세스할 수 없음
+    특성 "df_15m" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:994:26 - error: "r"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1015:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1186:27 - error: "AlphaX7Core" 클래스의 "df_15m" 특성에 할당할 수 없음
+    특성 "df_15m" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1492:36 - error: "run"은(는) "None"의 알려진 특성이 아님 (reportOptionalMemberAccess)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1493:18 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1502:18 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1587:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\backtest_widget.py:1649:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\bot_status_widget.py
+  f:\TwinStar-Quantum\GUI\bot_status_widget.py:11:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\bot_status_widget.py:15:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\bot_status_widget.py:154:39 - error: ‘None’ 유형의 개체를 호출할 수 없습니다. (reportOptionalCall)
+  f:\TwinStar-Quantum\GUI\bot_status_widget.py:201:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\cache_manager_widget.py
+  f:\TwinStar-Quantum\GUI\cache_manager_widget.py:4:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\cache_manager_widget.py:169:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\candle_aggregator.py
+  f:\TwinStar-Quantum\GUI\candle_aggregator.py:36:55 - error: ‘None’ 형식의 식을 ‘List[str]’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "List[str]"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\capital_config.py
+  f:\TwinStar-Quantum\GUI\capital_config.py:68:48 - error: ‘None’ 형식의 식을 ‘CapitalConfig’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "CapitalConfig"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\capital_config.py:75:22 - error: ‘None’ 형식의 식을 ‘float’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "float"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\capital_management_widget.py
+  f:\TwinStar-Quantum\GUI\capital_management_widget.py:3:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\capital_management_widget.py:8:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\capital_management_widget.py:197:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\capital_manager.py
+  f:\TwinStar-Quantum\GUI\capital_manager.py:31:48 - error: ‘None’ 형식의 식을 ‘CapitalConfig’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "CapitalConfig"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\chart_items.py
+  f:\TwinStar-Quantum\GUI\chart_items.py:3:8 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\chart_items.py:4:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\chart_items.py:5:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\chart_items.py:199:14 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\chart_items.py:212:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\components\bot_control_card.py
+  f:\TwinStar-Quantum\GUI\components\bot_control_card.py:3:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\bot_control_card.py:10:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\bot_control_card.py:26:23 - error: 형식 "type[paths.Paths]"을 선언된 형식 "type[GUI.components.bot_control_card.Paths]"에 할당할 수 없습니다.
+    "paths.Paths"은 "GUI.components.bot_control_card.Paths"에 할당할 수 없습니다.
+    형식 "type[paths.Paths]"은 형식 "type[GUI.components.bot_control_card.Paths]"에 할당할 수 없습니다. (reportAssignmentType)
+  f:\TwinStar-Quantum\GUI\components\bot_control_card.py:33:33 - error: 형식 "() -> LicenseManager"을 선언된 형식 "() -> None"에 할당할 수 없습니다.
+    형식 "() -> LicenseManager"은 형식 "() -> None"에 할당할 수 없습니다.
+      ‘LicenseManager’ 함수 반환 형식은 ‘None’ 형식과 호환되지 않습니다.
+        "LicenseManager"은 "None"에 할당할 수 없습니다. (reportAssignmentType)
+f:\TwinStar-Quantum\GUI\components\collapsible.py
+  f:\TwinStar-Quantum\GUI\components\collapsible.py:2:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\components\interactive_chart.py
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:1:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:2:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:3:8 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:4:8 - error: 가져오기 "numpy"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:11:12 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:17:10 - error: 가져오기 "matplotlib.backends.backend_qt5agg"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:18:10 - error: 가져오기 "matplotlib.figure"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:50:28 - error: "pg"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:59:23 - error: "Figure"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:60:23 - error: "FigureCanvasQTAgg"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:85:17 - error: ’None’ 유형의 개체는 아래 첨자를 사용할 수 없습니다. (reportOptionalSubscript)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:94:30 - error: "index"은(는) "None"의 알려진 특성이 아님 (reportOptionalMemberAccess)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:94:37 - error: ’None’ 유형의 개체는 아래 첨자를 사용할 수 없습니다. (reportOptionalSubscript)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:166:34 - error: "index"은(는) "None"의 알려진 특성이 아님 (reportOptionalMemberAccess)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:194:27 - error: "Figure"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:195:27 - error: "FigureCanvasQTAgg"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\components\interactive_chart.py:199:32 - error: "pg"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+f:\TwinStar-Quantum\GUI\components\market_status.py
+  f:\TwinStar-Quantum\GUI\components\market_status.py:1:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\components\position_table.py
+  f:\TwinStar-Quantum\GUI\components\position_table.py:1:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\position_table.py:2:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\position_table.py:3:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\position_table.py:110:41 - error: 선언된 반환 형식이 "int"인 함수는 모든 코드 경로에서 값을 반환해야 합니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportReturnType)
+f:\TwinStar-Quantum\GUI\components\status_card.py
+  f:\TwinStar-Quantum\GUI\components\status_card.py:3:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\status_card.py:27:50 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\components\trade_panel.py
+  f:\TwinStar-Quantum\GUI\components\trade_panel.py:4:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\trade_panel.py:9:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\components\trade_panel.py:137:40 - error: ‘_MEIPASS’은(는) ‘sys’ 모듈의 알려진 특성이 아님 (reportAttributeAccessIssue)
+f:\TwinStar-Quantum\GUI\components\workers.py
+  f:\TwinStar-Quantum\GUI\components\workers.py:1:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\constants.py
+  f:\TwinStar-Quantum\GUI\constants.py:36:9 - error: 형식 "(direction: str) -> str"을 선언된 형식 "(d: Unknown) -> Literal['Buy', 'Sell']"에 할당할 수 없습니다.
+    형식 "(direction: str) -> str"은 형식 "(d: Unknown) -> Literal['Buy', 'Sell']"에 할당할 수 없습니다.
+      매개 변수 이름 불일치: "d" 및 "direction"
+      ‘str’ 함수 반환 형식은 ‘Literal['Buy', 'Sell']’ 형식과 호환되지 않습니다.
+        형식 "str"은 형식 "Literal['Buy', 'Sell']"에 할당할 수 없습니다.
+          "str"은 형식 "Literal['Buy']"에 할당할 수 없습니다.
+          "str"은 형식 "Literal['Sell']"에 할당할 수 없습니다. (reportAssignmentType)
+  f:\TwinStar-Quantum\GUI\constants.py:36:27 - error: 형식 "(api_dir: str) -> str"을 선언된 형식 "(d: Unknown) -> Literal['Long', 'Short']"에 할당할 수 없습니다.
+    형식 "(api_dir: str) -> str"은 형식 "(d: Unknown) -> Literal['Long', 'Short']"에 할당할 수 없습니다.
+      매개 변수 이름 불일치: "d" 및 "api_dir"
+      ‘str’ 함수 반환 형식은 ‘Literal['Long', 'Short']’ 형식과 호환되지 않습니다.
+        형식 "str"은 형식 "Literal['Long', 'Short']"에 할당할 수 없습니다.
+          "str"은 형식 "Literal['Long']"에 할당할 수 없습니다.
+          "str"은 형식 "Literal['Short']"에 할당할 수 없습니다. (reportAssignmentType)
+f:\TwinStar-Quantum\GUI\crypto_manager.py
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:20:10 - error: 가져오기 "cryptography.hazmat.primitives.ciphers.aead"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:21:10 - error: 가져오기 "cryptography.hazmat.primitives"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:22:10 - error: 가져오기 "cryptography.hazmat.primitives.kdf.pbkdf2"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:75:11 - error: "PBKDF2HMAC"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:76:19 - error: "hashes"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:90:14 - error: "AESGCM"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\crypto_manager.py:102:14 - error: "AESGCM"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:10:8 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:13:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:18:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:19:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:99:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:430:20 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard\multi_explorer.py:503:39 - error: "AlphaX7Core" 클래스의 "detect_pattern" 특성에 액세스할 수 없음
+    특성 "detect_pattern" 알 수 없음 (reportAttributeAccessIssue)
+f:\TwinStar-Quantum\GUI\dashboard_widgets.py
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:2:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:3:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:4:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:167:14 - error: 가져오기 "matplotlib.backends.backend_qt5agg"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:168:14 - error: 가져오기 "matplotlib.figure"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:169:16 - error: 가져오기 "matplotlib.pyplot"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:197:16 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:235:20 - error: 가져오기 "matplotlib.dates"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\dashboard_widgets.py:238:13 - error: "plt"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+f:\TwinStar-Quantum\GUI\data_cache.py
+  f:\TwinStar-Quantum\GUI\data_cache.py:4:8 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_cache.py:5:8 - error: 가져오기 "numpy"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_cache.py:32:41 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:141:59 - error: "int" 형식의 인수를 "load" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    "int"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:154:53 - error: "int" 형식의 인수를 "load" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    "int"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:158:59 - error: "int" 형식의 인수를 "load" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    "int"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:178:36 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:178:58 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:179:56 - error: ‘None’ 형식의 식을 ‘int’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:213:40 - error: ‘>=’ 연산자는 ‘int’ 및 ‘Unknown | None’ 형식에 대해 지원되지 않습니다.
+    ‘>=’ 연산자는 ‘int’ 및 ‘None’ 형식에 대해 지원되지 않습니다. (reportOperatorIssue)
+  f:\TwinStar-Quantum\GUI\data_cache.py:220:75 - error: "None"에 대해 연산자 "/"이(가) 지원되지 않습니다. (reportOptionalOperand)
+  f:\TwinStar-Quantum\GUI\data_cache.py:228:19 - error: "int | None" 형식의 인수를 "_fetch_ohlcv" 함수에서 "int" 형식의 "since" 매개 변수에 할당할 수 없습니다.
+    형식 "int | None"은 형식 "int"에 할당할 수 없습니다.
+      "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:328:16 - error: 형식 "None"을 형식 "str"에 반환하도록 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportReturnType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:341:78 - error: ‘None’ 형식의 식을 ‘int’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:344:20 - error: 가져오기 "pyupbit"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_cache.py:431:35 - error: ‘None’ 형식의 식을 ‘int’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:435:20 - error: 가져오기 "ccxt"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_cache.py:457:24 - error: 예외가 이미 처리되었으므로 Except 절에 연결할 수 없습니다.
+    "Exception"은(는) "Exception"의 서브클래스입니다. (reportUnusedExcept)
+  f:\TwinStar-Quantum\GUI\data_cache.py:636:32 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:636:54 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:655:37 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_cache.py:655:59 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\data_collector_widget.py
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:6:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:16:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:17:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:450:9 - error: 메서드 선언 "_toggle_date_edit"이(가) 동일한 이름의 선언으로 가려집니다. (reportRedeclaration)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:558:16 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:584:16 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:605:16 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:631:16 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:691:16 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:810:16 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:843:20 - error: 가져오기 "ccxt"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:917:55 - error: ‘WindowsSelectorEventLoopPolicy’은(는) ‘asyncio’ 모듈의 알려진 특성이 아님 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:946:20 - error: 가져오기 "ccxt"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:1080:36 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_collector_widget.py:1112:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\data_download_widget.py
+  f:\TwinStar-Quantum\GUI\data_download_widget.py:4:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_download_widget.py:9:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_download_widget.py:185:20 - error: 가져오기 "ccxt"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_download_widget.py:269:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\data_loader.py
+  f:\TwinStar-Quantum\GUI\data_loader.py:5:8 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_loader.py:53:35 - error: "DEFAULT_PARAMS"은(는) 알 수 없는 가져오기 기호입니다. (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\data_loader.py:94:24 - error: "Unknown | None" 형식의 인수를 "load_data" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    형식 "Unknown | None"은 형식 "str"에 할당할 수 없습니다.
+      "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_loader.py:95:22 - error: "Unknown | None" 형식의 인수를 "load_data" 함수에서 "str" 형식의 "end_date" 매개 변수에 할당할 수 없습니다.
+    형식 "Unknown | None"은 형식 "str"에 할당할 수 없습니다.
+      "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\data_manager.py
+  f:\TwinStar-Quantum\GUI\data_manager.py:4:8 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_manager.py:5:8 - error: 가져오기 "numpy"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_manager.py:32:41 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:141:59 - error: "int" 형식의 인수를 "load" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    "int"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:154:53 - error: "int" 형식의 인수를 "load" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    "int"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:158:59 - error: "int" 형식의 인수를 "load" 함수에서 "str" 형식의 "start_date" 매개 변수에 할당할 수 없습니다.
+    "int"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:178:36 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:178:58 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:179:56 - error: ‘None’ 형식의 식을 ‘int’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:213:40 - error: ‘>=’ 연산자는 ‘int’ 및 ‘Unknown | None’ 형식에 대해 지원되지 않습니다.
+    ‘>=’ 연산자는 ‘int’ 및 ‘None’ 형식에 대해 지원되지 않습니다. (reportOperatorIssue)
+  f:\TwinStar-Quantum\GUI\data_manager.py:220:75 - error: "None"에 대해 연산자 "/"이(가) 지원되지 않습니다. (reportOptionalOperand)
+  f:\TwinStar-Quantum\GUI\data_manager.py:228:19 - error: "int | None" 형식의 인수를 "_fetch_ohlcv" 함수에서 "int" 형식의 "since" 매개 변수에 할당할 수 없습니다.
+    형식 "int | None"은 형식 "int"에 할당할 수 없습니다.
+      "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:328:16 - error: 형식 "None"을 형식 "str"에 반환하도록 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportReturnType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:341:78 - error: ‘None’ 형식의 식을 ‘int’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:344:20 - error: 가져오기 "pyupbit"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_manager.py:431:35 - error: ‘None’ 형식의 식을 ‘int’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:435:20 - error: 가져오기 "ccxt"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\data_manager.py:457:24 - error: 예외가 이미 처리되었으므로 Except 절에 연결할 수 없습니다.
+    "Exception"은(는) "Exception"의 서브클래스입니다. (reportUnusedExcept)
+  f:\TwinStar-Quantum\GUI\data_manager.py:637:32 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:637:54 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:656:37 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\data_manager.py:656:59 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\developer_mode_widget.py
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:6:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:11:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:125:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:264:20 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:265:40 - error: "PyQt5"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:270:20 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:305:17 - error: 이름이 "macd_fast"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:306:17 - error: 이름이 "macd_slow"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:307:17 - error: 이름이 "macd_signal"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:308:17 - error: 이름이 "swing_length"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:309:17 - error: 이름이 "atr_period"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:310:17 - error: 이름이 "atr_multiplier"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:311:17 - error: 이름이 "be_trigger_mult"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:312:17 - error: 이름이 "pattern_tolerance"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:355:14 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\developer_mode_widget.py:527:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:10:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:12:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:105:20 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:170:35 - error: "WebSocketManager"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:181:22 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:292:20 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:353:20 - error: 가져오기 "pyqtgraph"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:386:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\enhanced_chart_widget.py:389:28 - error: "StarUTheme"은(는) 알 수 없는 가져오기 기호입니다. (reportAttributeAccessIssue)
+f:\TwinStar-Quantum\GUI\exchange_selector_widget.py
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:4:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:12:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:23:60 - error: ‘None’ 형식의 식을 ‘ExchangeManager’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "ExchangeManager"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:115:27 - error: "ExchangeManager" 클래스의 "get_overseas_exchanges" 특성에 액세스할 수 없음
+    특성 "get_overseas_exchanges" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:119:27 - error: "ExchangeManager" 클래스의 "get_domestic_exchanges" 특성에 액세스할 수 없음
+    특성 "get_domestic_exchanges" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:138:26 - error: "ExchangeManager" 클래스의 "get_supported_exchanges" 특성에 액세스할 수 없음
+    특성 "get_supported_exchanges" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:172:27 - error: "ExchangeManager" 클래스의 "get_symbols" 특성에 액세스할 수 없음
+    특성 "get_symbols" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:210:26 - error: "ExchangeManager" 클래스의 "get_ticker" 특성에 액세스할 수 없음
+    특성 "get_ticker" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\exchange_selector_widget.py:230:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\experimental_main_window.py
+  f:\TwinStar-Quantum\GUI\experimental_main_window.py:5:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\experimental_main_window.py:14:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\experimental_main_window.py:16:30 - error: "COLORS"은(는) 알 수 없는 가져오기 기호입니다. (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\experimental_main_window.py:16:38 - error: "STYLESHEET"은(는) 알 수 없는 가져오기 기호입니다. (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\experimental_main_window.py:314:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\glossary_popup.py
+  f:\TwinStar-Quantum\GUI\glossary_popup.py:4:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\glossary_popup.py:8:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\glossary_popup.py:211:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\help_dialog.py
+  f:\TwinStar-Quantum\GUI\help_dialog.py:12:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\help_dialog.py:16:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\help_dialog.py:157:18 - error: 가져오기 "referral_links"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\help_dialog.py:226:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\help_popup.py
+  f:\TwinStar-Quantum\GUI\help_popup.py:5:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\help_popup.py:200:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\help_widget.py
+  f:\TwinStar-Quantum\GUI\help_widget.py:3:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\help_widget.py:7:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\help_widget.py:277:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\history_widget.py
+  f:\TwinStar-Quantum\GUI\history_widget.py:10:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\history_widget.py:16:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\history_widget.py:17:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\history_widget.py:121:20 - error: 가져오기 "matplotlib"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\history_widget.py:123:18 - error: 가져오기 "matplotlib.backends.backend_qt5agg"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\history_widget.py:124:18 - error: 가져오기 "matplotlib.figure"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\history_widget.py:509:25 - error: "str | Any" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    형식 "str | Any"은 형식 "int"에 할당할 수 없습니다.
+      "str"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:513:25 - error: "str | Any" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    형식 "str | Any"은 형식 "int"에 할당할 수 없습니다.
+      "str"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:519:29 - error: "Literal['Long']" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    "Literal['Long']"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:521:29 - error: "Literal['Short']" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    "Literal['Short']"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:523:29 - error: "str | Any" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    형식 "str | Any"은 형식 "int"에 할당할 수 없습니다.
+      "str"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:528:29 - error: "float" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    "float"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:534:29 - error: "float" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    "float"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:540:25 - error: "str | Any" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    형식 "str | Any"은 형식 "int"에 할당할 수 없습니다.
+      "str"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:546:29 - error: "float" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    "float"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:553:29 - error: "float" 형식의 인수를 "__setitem__" 함수에서 "int" 형식의 "value" 매개 변수에 할당할 수 없습니다.
+    "float"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\history_widget.py:672:33 - error: "Paths"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\history_widget.py:711:13 - error: "logger"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+  f:\TwinStar-Quantum\GUI\history_widget.py:988:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\i18n.py
+  f:\TwinStar-Quantum\GUI\i18n.py:210:41 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\i18n.py:222:32 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\indicator_generator.py
+  f:\TwinStar-Quantum\GUI\indicator_generator.py:2:8 - error: 가져오기 "pandas"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\login.py
+  f:\TwinStar-Quantum\GUI\login.py:7:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login.py:10:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login.py:11:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login.py:18:10 - error: 가져오기 "trc20_payment"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login.py:334:32 - error: "stop"은(는) "None"의 알려진 특성이 아님 (reportOptionalMemberAccess)
+f:\TwinStar-Quantum\GUI\login_dialog.py
+  f:\TwinStar-Quantum\GUI\login_dialog.py:10:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login_dialog.py:15:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login_dialog.py:16:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\login_dialog.py:305:48 - error: "Unknown | None" 형식의 인수를 "get_payment_info" 함수에서 "int" 형식의 "user_id" 매개 변수에 할당할 수 없습니다.
+    형식 "Unknown | None"은 형식 "int"에 할당할 수 없습니다.
+      "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\login_dialog.py:305:74 - error: "Unknown | None" 형식의 인수를 "get_payment_info" 함수에서 "str" 형식의 "email" 매개 변수에 할당할 수 없습니다.
+    형식 "Unknown | None"은 형식 "str"에 할당할 수 없습니다.
+      "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\login_dialog.py:445:25 - error: "Unknown | None" 형식의 인수를 "verify_payment_manual" 함수에서 "int" 형식의 "user_id" 매개 변수에 할당할 수 없습니다.
+    형식 "Unknown | None"은 형식 "int"에 할당할 수 없습니다.
+      "None"은 "int"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\login_dialog.py:463:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\multi_session_popup.py
+  f:\TwinStar-Quantum\GUI\multi_session_popup.py:6:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_session_popup.py:15:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_session_popup.py:16:6 - error: 가져오기 "PyQt6.QtGui"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_session_popup.py:241:16 - error: 형식 "str | None"을 형식 "str"에 반환하도록 할당할 수 없습니다.
+    형식 "str | None"은 형식 "str"에 할당할 수 없습니다.
+      "None"은 "str"에 할당할 수 없습니다. (reportReturnType)
+  f:\TwinStar-Quantum\GUI\multi_session_popup.py:247:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\multi_system_widget.py
+  f:\TwinStar-Quantum\GUI\multi_system_widget.py:16:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_system_widget.py:21:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_system_widget.py:299:26 - error: 매개 변수 "config"에 대한 인수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\multi_system_widget.py:299:26 - error: "BybitExchange"은(는) 바인딩되지 않은 것일 수 있습니다. (reportPossiblyUnboundVariable)
+  f:\TwinStar-Quantum\GUI\multi_system_widget.py:299:40 - error: 이름이 "symbol"인 매개 변수가 없습니다. (reportCallIssue)
+  f:\TwinStar-Quantum\GUI\multi_system_widget.py:316:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\multi_trade_widget.py
+  f:\TwinStar-Quantum\GUI\multi_trade_widget.py:10:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_trade_widget.py:15:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\multi_trade_widget.py:227:64 - error: ‘None’ 형식의 식을 ‘list[Unknown]’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "list[Unknown]"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\multi_trade_widget.py:227:87 - error: ‘None’ 형식의 식을 ‘dict[Unknown, Unknown]’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "dict[Unknown, Unknown]"에 할당할 수 없습니다. (reportArgumentType)
+f:\TwinStar-Quantum\GUI\notification_manager.py
+  f:\TwinStar-Quantum\GUI\notification_manager.py:75:20 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+  f:\TwinStar-Quantum\GUI\notification_manager.py:98:20 - warning: 원본에서 가져오기 "requests"을(를) 확인할 수 없습니다. (reportMissingModuleSource)
+f:\TwinStar-Quantum\GUI\notification_widget.py
+  f:\TwinStar-Quantum\GUI\notification_widget.py:3:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:8:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:268:44 - error: "NotificationSettings" 클래스의 "notify_entry" 특성에 액세스할 수 없음
+    특성 "notify_entry" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:269:43 - error: "NotificationSettings" 클래스의 "notify_exit" 특성에 액세스할 수 없음
+    특성 "notify_exit" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:270:44 - error: "NotificationSettings" 클래스의 "notify_error" 특성에 액세스할 수 없음
+    특성 "notify_error" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:271:44 - error: "NotificationSettings" 클래스의 "notify_daily" 특성에 액세스할 수 없음
+    특성 "notify_daily" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:273:24 - error: "NotificationSettings" 클래스의 "daily_report_time" 특성에 액세스할 수 없음
+    특성 "daily_report_time" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:292:28 - error: "bool" 반복할 수 없습니다.
+    "__iter__" 메서드가 정의되지 않았습니다. (reportGeneralTypeIssues)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:304:28 - error: "bool" 반복할 수 없습니다.
+    "__iter__" 메서드가 정의되지 않았습니다. (reportGeneralTypeIssues)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:313:35 - error: "NotificationManager" 클래스의 "update_settings" 특성에 액세스할 수 없음
+    특성 "update_settings" 알 수 없음 (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\notification_widget.py:337:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\nowcast_widget.py
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:11:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:16:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:256:73 - error: ‘None’ 형식의 식을 ‘str’ 형식의 매개 변수에 할당할 수 없습니다.
+    "None"은 "str"에 할당할 수 없습니다. (reportArgumentType)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:291:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:295:28 - error: "StarUTheme"은(는) 알 수 없는 가져오기 기호입니다. (reportAttributeAccessIssue)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:317:47 - error: "logger"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:318:51 - error: "logger"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:319:46 - error: "logger"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+  f:\TwinStar-Quantum\GUI\nowcast_widget.py:320:49 - error: "logger"이(가) 정의되지 않았습니다. (reportUndefinedVariable)
+f:\TwinStar-Quantum\GUI\onboarding_dialog.py
+  f:\TwinStar-Quantum\GUI\onboarding_dialog.py:9:6 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\onboarding_dialog.py:13:6 - error: 가져오기 "PyQt6.QtCore"을(를) 확인할 수 없습니다. (reportMissingImports)
+  f:\TwinStar-Quantum\GUI\onboarding_dialog.py:249:10 - error: 가져오기 "PyQt6.QtWidgets"을(를) 확인할 수 없습니다. (reportMissingImports)
+f:\TwinStar-Quantum\GUI\optimization\common.py

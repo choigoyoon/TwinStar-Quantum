@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, Optional
 
@@ -13,6 +14,10 @@ class CoinStatus(Enum):
     WATCHING = "🟡 주시"
     READY = "🟢 준비"
     IN_POSITION = "🔴 보유"
+    # multi_sniper.py에서 사용하는 추가 상태
+    EXCLUDED = "⛔ 제외"
+    WATCH = "👀 감시"
+    WAIT = "⏳ 대기"
 
 @dataclass
 class CoinState:
@@ -23,7 +28,13 @@ class CoinState:
     seed: float = 0.0        # 할당 시드 금액
     entry_price: float = 0.0 # 진입 가격
     stop_loss: float = 0.0   # 손절 가격
-    params: Dict[str, Any] = field(default_factory=dict) # 전략 파라미터
+    params: Dict[str, Any] = field(default_factory=dict)  # 전략 파라미터
+    # multi_sniper.py에서 사용하는 추가 필드
+    initial_seed: float = 0.0          # 초기 시드
+    current_seed: float = 0.0          # 현재 시드
+    backtest_winrate: float = 0.0      # 백테스트 승률
+    position: Optional[Dict[str, Any]] = None  # 현재 포지션 정보
+    last_update: Optional[datetime] = None     # 마지막 업데이트 시간
 
 # 거래소별 웹소켓 구독 제한 (공통 상수)
 WS_LIMITS: Dict[str, int] = {

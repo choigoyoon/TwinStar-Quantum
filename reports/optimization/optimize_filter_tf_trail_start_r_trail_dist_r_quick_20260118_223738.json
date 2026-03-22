@@ -1,0 +1,148 @@
+{
+  "timestamp": "2026-01-18T22:37:38.284801",
+  "version": "v7.25",
+  "mode": "quick",
+  "param_names": [
+    "filter_tf",
+    "trail_start_r",
+    "trail_dist_r"
+  ],
+  "top_20": [
+    {
+      "params": {
+        "filter_tf": "8h",
+        "trail_start_r": 0.8,
+        "trail_dist_r": 0.05
+      },
+      "simple_return": 114.74,
+      "compound_return": 149.28,
+      "avg_pnl": 0.8693,
+      "mdd": 41.33,
+      "safe_leverage": 0.24195499637067505,
+      "sharpe_ratio": 4.49,
+      "win_rate": 56.06,
+      "total_trades": 132.0,
+      "pf": 1.54,
+      "grade": "✅✅⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "8h",
+        "trail_start_r": 0.8,
+        "trail_dist_r": 0.1
+      },
+      "simple_return": 90.23,
+      "compound_return": 97.8,
+      "avg_pnl": 0.6835,
+      "mdd": 46.12,
+      "safe_leverage": 0.2168256721595837,
+      "sharpe_ratio": 3.63,
+      "win_rate": 55.3,
+      "total_trades": 132.0,
+      "pf": 1.42,
+      "grade": "✅⚠⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "4h",
+        "trail_start_r": 0.8,
+        "trail_dist_r": 0.05
+      },
+      "simple_return": 87.08,
+      "compound_return": 82.5,
+      "avg_pnl": 0.5375,
+      "mdd": 63.15,
+      "safe_leverage": 0.1583531274742676,
+      "sharpe_ratio": 2.87,
+      "win_rate": 55.56,
+      "total_trades": 162.0,
+      "pf": 1.32,
+      "grade": "✅⚠⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "4h",
+        "trail_start_r": 0.8,
+        "trail_dist_r": 0.1
+      },
+      "simple_return": 58.9,
+      "compound_return": 39.67,
+      "avg_pnl": 0.3636,
+      "mdd": 67.44,
+      "safe_leverage": 0.14827995255041518,
+      "sharpe_ratio": 2.0,
+      "win_rate": 54.94,
+      "total_trades": 162.0,
+      "pf": 1.21,
+      "grade": "✅⚠⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "8h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "simple_return": 15.21,
+      "compound_return": -0.8,
+      "avg_pnl": 0.1161,
+      "mdd": 57.06,
+      "safe_leverage": 0.17525411847178407,
+      "sharpe_ratio": 0.72,
+      "win_rate": 43.51,
+      "total_trades": 131.0,
+      "pf": 1.08,
+      "grade": "✅⚠⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "8h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.1
+      },
+      "simple_return": -8.1,
+      "compound_return": -20.81,
+      "avg_pnl": -0.0618,
+      "mdd": 61.65,
+      "safe_leverage": 0.16220600162206003,
+      "sharpe_ratio": -0.39,
+      "win_rate": 39.69,
+      "total_trades": 131.0,
+      "pf": 0.96,
+      "grade": "✅⚠⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.05
+      },
+      "simple_return": -34.71,
+      "compound_return": -41.68,
+      "avg_pnl": -0.2156,
+      "mdd": 77.58,
+      "safe_leverage": 0.1288992008249549,
+      "sharpe_ratio": -1.37,
+      "win_rate": 41.61,
+      "total_trades": 161.0,
+      "pf": 0.87,
+      "grade": "✅⚠⚠"
+    },
+    {
+      "params": {
+        "filter_tf": "4h",
+        "trail_start_r": 0.4,
+        "trail_dist_r": 0.1
+      },
+      "simple_return": -61.91,
+      "compound_return": -55.21,
+      "avg_pnl": -0.3845,
+      "mdd": 80.29,
+      "safe_leverage": 0.12454851164528583,
+      "sharpe_ratio": -2.5,
+      "win_rate": 39.13,
+      "total_trades": 161.0,
+      "pf": 0.78,
+      "grade": "✅⚠⚠"
+    }
+  ]
+}

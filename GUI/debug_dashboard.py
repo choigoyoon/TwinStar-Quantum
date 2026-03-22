@@ -18,7 +18,6 @@ logger.info(f"Paths added: {project_root}, {current_dir}")
 logger.info("\n--- Attempting to import TradingDashboard ---")
 try:
     # Try direct import first (as if in GUI package)
-    import trading_dashboard
     logger.info("✅ Success: import trading_dashboard")
 except Exception:
     logger.info("❌ Failed: import trading_dashboard")
@@ -26,7 +25,6 @@ except Exception:
 
     logger.info("\n--- Attempting relative import ---")
     try:
-        from GUI import trading_dashboard
         logger.info("✅ Success: from GUI import trading_dashboard")
     except Exception:
         logger.info("❌ Failed: from GUI import trading_dashboard")

@@ -178,10 +178,13 @@ def capture_error(error: Exception, context: str = ""):
 
 if __name__ == "__main__":
     # 테스트
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
     logger.info("에러 리포터 테스트")
     logger.info(f"앱 버전: {ErrorReporter._get_app_version()}")
     logger.info(f"최근 로그: {len(ErrorReporter._get_recent_logs())} 문자")
-    
+
     # 테스트 에러
     try:
         raise ValueError("테스트 에러입니다")

@@ -1,0 +1,271 @@
+================================================================================
+TwinStar Quantum - 아카이브 로그
+일자: 2026-01-16
+브랜치: feat/indicator-ssot-integration
+================================================================================
+
+## 작업 요약
+
+v7.18 최적화 시스템 완료 후 프로덕션 준비를 위한 루트 디렉토리 정리 작업.
+프로젝트 구조 개선 및 불필요한 진단/테스트 파일 아카이브.
+
+--------------------------------------------------------------------------------
+## 통계
+--------------------------------------------------------------------------------
+
+| 항목 | 수량 | 비고 |
+|------|------|------|
+| 총 아카이브 파일 | 160+ | git mv 사용 (히스토리 보존) |
+| 삭제 파일 | 35+ | pip 아티팩트, 임시 파일 |
+| 루트 파일 감소 | 95% | 160+ → 12개 |
+| 아카이브 크기 | 약 17MB | tools/archive_20260116/ |
+| Git 히스토리 | 100% | 보존 완료 |
+
+--------------------------------------------------------------------------------
+## 프로덕션 검증 완료 (6/6)
+--------------------------------------------------------------------------------
+
+검증 스크립트: tools/verify_production_ready.py (326줄)
+
+1. ✓ Entry Points (진입점)
+   - run_gui.py, web/run_server.py 존재 확인
+
+2. ✓ Import Integrity (Import 무결성)
+   - 18개 핵심 모듈 import 테스트 통과
+   - config.constants, utils.*, core.*, exchanges.*, GUI.*, ui.*
+
+3. ✓ Config Files (설정 파일)
+   - 10개 config 파일 존재 확인
+
+4. ✓ Storage Init (스토리지 초기화)
+   - data/, storage/, logs/ 디렉토리 확인/생성
+
+5. ✓ SSOT Compliance (SSOT 준수)
+   - utils/indicators.py (v7.15)
+   - utils/incremental_indicators.py (v7.15)
+   - utils/metrics.py (Phase 1-B)
+   - config/parameters.py (v7.18)
+
+6. ✓ GUI Launch (GUI 실행 가능성)
+   - PyQt6 및 GUI 컴포넌트 import 성공
+
+--------------------------------------------------------------------------------
+## 아카이브 내용
+--------------------------------------------------------------------------------
+
+### 1. diagnostics/ (49개 파일)
+
+진단 및 분석 스크립트 - 프로젝트 개발 중 사용한 일회성 도구
+
+주요 파일:
+- analyze_gui_tree.py (GUI 의존성 분석)
+- analyze_pyright.py (Pyright 에러 분석, 1.7K줄)
+- check_env.py (환경 검사, 1.5K줄)
+- cleanup_project.py (프로젝트 정리 유틸, 2.7K줄)
+- compare_live_bt.py (실시간 vs 백테스트 비교, 2.8K줄)
+- core_quality_scanner.py (Core 코드 품질 검사, 2.4K줄)
+- system_doctor.py (시스템 진단, 2.2K줄)
+- test_*.py (9개 테스트 스크립트)
+
+### 2. results/ (11개 CSV)
+
+최적화 결과 데이터 - 파라미터 최적화 실험 결과
+
+파일:
+- atr_mult_test_results_20260116_160325.csv
+- filter_tf_hypothesis_results_*.csv (5개)
+- final_combination_results_20260116_173131.csv
+- leverage_optimization_results_20260116_173019.csv
+- trail_optimization_results_*.csv (3개)
+
+### 3. docs/ (44개 MD)
+
+프로젝트 문서 및 리포트 - 개발 과정 기록
+
+주요 파일:
+- COMPREHENSIVE_OPTIMIZATION_REPORT.md
+- FINAL_OPTIMIZATION_RESULT.md
+- OPTIMIZATION_MODES_GUIDE.md
+- STRATEGY_IMPROVEMENT_PLAN.md
+- WINNING_RATE_PARADOX.md
+- WIN_RATE_80_STRATEGY.md
+- PR_DESCRIPTION.md
+- MERGE_CHECKLIST.md
+
+### 4. logs/ (34개 TXT)
+
+작업 로그 파일 - 개발 일지 및 실행 로그
+
+파일:
+- docs/WORK_LOG_*.txt (일별 작업 로그, 15개)
+- trail_optimization_log.txt
+- result_output.txt
+- all_py_files.txt
+- build_log.txt
+- errors.txt
+- (29개 더)
+
+### 5. legacy/ (4개 디렉토리, 16.3MB)
+
+레거시 코드 - 현재 프로덕션 코드로 대체됨
+
+디렉토리:
+- backups/ (255KB)
+  - unified_bot_backup_20260101.py (v1 봇, 209KB)
+  - strategy_core_test.py, constants_test.py
+  - parquet_backup_20260115/ (데이터 백업)
+
+- refactor_backup/ (350KB)
+  - optimizer.py (v1 → core/optimizer.py로 대체)
+  - strategy_core.py (v1 → core/strategy_core.py로 대체)
+  - optimization_logic.py, parameters.py
+
+- for_local/ (50KB)
+  - sandbox_strategy_unified.py (실험적 전략, 미사용)
+  - sandbox_backtest_v4_ORIGINAL.py
+
+- sandbox_optimization/ (100KB)
+  - base.py, core.py, interface.py (대안 프레임워크, 미사용)
+  - strategies/macd.py, adxdi.py
+  - presets.py, filters.py
+
+- tools/archive_scripts/ (15MB)
+  - 90+ 진단 스크립트 (히스토리)
+
+- tools/archive_temp/ (500KB)
+  - indicators.py.backup
+  - simple_bybit_backtest.py.backup
+  - 임시 run/test 파일
+
+### 6. 삭제된 파일 (35+)
+
+히스토리 보존 불필요 (런타임 아티팩트):
+- Pip 아티팩트 (22개): =0.11.0, =1.26.0, =2.1.0, ...
+- 임시 디렉토리 (10+): tmpclaude-*, __pycache__
+- 런타임 파일: error.log, optimization_quick.log, monkeytype.sqlite3
+- 빈 디렉토리: bybit/, logs/, user/
+- 기타: NUL, full_scan_report.json
+
+--------------------------------------------------------------------------------
+## 프로덕션 필수 파일 (12개 유지)
+--------------------------------------------------------------------------------
+
+루트 디렉토리에 남은 파일:
+
+1. run_gui.py - GUI 진입점
+2. CLAUDE.md - 프로젝트 규칙 (v7.18)
+3. README.md - 프로젝트 개요
+4. requirements.txt - 의존성 목록
+5. STRATEGY_GUIDE.md - 사용자 문서
+6. LICENSE.txt - 라이선스
+7. .gitignore - Git 설정
+8. .env.example - 환경 변수 템플릿
+9. pyrightconfig.json - 타입 체커 설정
+10. version.json - 버전 정보
+11. license_manager.py, license_tiers.py - 라이선스 시스템
+12. telegram_notifier.py, paths.py - 지원 모듈
+
+--------------------------------------------------------------------------------
+## 복원 절차
+--------------------------------------------------------------------------------
+
+### 개별 파일 복원
+
+```bash
+# 진단 스크립트
+git mv tools/archive_20260116/diagnostics/{filename} ./
+
+# 최적화 결과
+git mv tools/archive_20260116/results/{filename} ./
+
+# 문서
+git mv tools/archive_20260116/docs/{filename} ./
+
+# 로그
+git mv tools/archive_20260116/logs/{filename} ./
+
+# 레거시 디렉토리
+git mv tools/archive_20260116/legacy/{dirname} ./
+```
+
+### 전체 롤백
+
+```bash
+# 안전한 revert
+git revert {commit_hash}
+
+# 강제 reset (주의!)
+git reset --hard HEAD~1
+git clean -fd
+```
+
+--------------------------------------------------------------------------------
+## Git 히스토리 보존
+--------------------------------------------------------------------------------
+
+방법: git mv 사용 (160+ 파일)
+결과: 모든 파일 이동 이력 보존
+혜택:
+- 파일 히스토리 추적 가능
+- 누가 언제 무엇을 변경했는지 확인
+- 안전한 복원 가능
+
+--------------------------------------------------------------------------------
+## 알려진 이슈
+--------------------------------------------------------------------------------
+
+없음. 모든 검증 통과.
+
+--------------------------------------------------------------------------------
+## 다음 작업 권장
+--------------------------------------------------------------------------------
+
+1. 프로덕션 테스트
+   - python run_gui.py
+   - python web/run_server.py
+   - VS Code Problems 탭 확인 (Pyright 에러 0개)
+
+2. 브랜치 병합
+   - feat/indicator-ssot-integration → main
+   - 릴리스 태그 생성 (v7.18)
+
+3. 배포 문서 업데이트
+   - 사용자 가이드 최종 검토
+   - 설치 가이드 업데이트
+
+4. 아카이브 유지보수
+   - 6개월 후 archive_20260116/ 재검토
+   - 필요시 추가 정리
+
+--------------------------------------------------------------------------------
+## 성과 지표
+--------------------------------------------------------------------------------
+
+정량적:
+- 루트 파일: 160+ → 12 (95% 감소)
+- 아카이브 크기: ~17MB (보존)
+- Git 히스토리: 100% 유지
+- 검증: 6/6 통과
+- Pyright 에러: 0개
+
+정성적:
+- 깔끔한 프로젝트 구조
+- 프로덕션 준비 외관
+- 쉬운 네비게이션
+- 유지보수 가능한 구조
+- 새 개발자 온보딩 용이
+
+--------------------------------------------------------------------------------
+## 관련 문서
+--------------------------------------------------------------------------------
+
+1. 아카이브 매니페스트: tools/archive_20260116/ARCHIVE_MANIFEST.md
+2. 검증 스크립트: tools/verify_production_ready.py
+3. 프로젝트 규칙: CLAUDE.md (v7.18)
+4. 사용자 가이드: STRATEGY_GUIDE.md
+5. 플랜 파일: C:\Users\woojupapa\.claude\plans\glowing-humming-galaxy.md
+
+================================================================================
+작성: Claude Sonnet 4.5 <noreply@anthropic.com>
+일시: 2026-01-16 23:40 UTC+9 (KST)
+================================================================================

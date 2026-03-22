@@ -51,7 +51,7 @@ class TradeExecutor:
         self.positions = {}
     
     def place_market_order(self, symbol: str, side: str, qty: float, 
-                           stop_loss: float = None, take_profit: float = None):
+                           stop_loss: Optional[float] = None, take_profit: Optional[float] = None):
         """시장가 주문"""
         logger.info(f"[TradeExecutor] 시장가 주문: {symbol} {side} {qty}")
         return {"orderId": "stub_order_001", "status": "ok"}

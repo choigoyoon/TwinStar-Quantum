@@ -9,12 +9,11 @@
 import sys
 import os
 import webbrowser
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTabWidget, QWidget, QTextBrowser, QScrollArea, QFrame,
-    QGroupBox, QMessageBox
+    QTabWidget, QWidget, QTextBrowser, QScrollArea, QGroupBox
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -81,7 +80,7 @@ class HelpDialog(QDialog):
         # 닫기 버튼
         close_btn = QPushButton("닫기")
         close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
     
     def _create_quick_start_tab(self) -> QWidget:
         """빠른 시작 탭"""
@@ -89,7 +88,7 @@ class HelpDialog(QDialog):
         layout = QVBoxLayout(widget)
         
         try:
-            from user_guide import get_quick_start
+            from tools.archive_20260116.diagnostics.user_guide import get_quick_start
             content = get_quick_start()
         except ImportError:
             content = "사용법 정보를 불러올 수 없습니다."
@@ -123,7 +122,7 @@ class HelpDialog(QDialog):
         self.method_browser = QTextBrowser()
         
         try:
-            from user_guide import get_trading_method
+            from tools.archive_20260116.diagnostics.user_guide import get_trading_method
             content = get_trading_method("futures").get("strategy", "")
         except ImportError:
             content = "매매법 정보를 불러올 수 없습니다."
@@ -136,7 +135,7 @@ class HelpDialog(QDialog):
     def _show_method(self, method_type: str):
         """매매법 표시"""
         try:
-            from user_guide import get_trading_method
+            from tools.archive_20260116.diagnostics.user_guide import get_trading_method
             content = get_trading_method(method_type).get("strategy", "")
             self.method_browser.setText(content)
         except Exception as e:
@@ -155,7 +154,7 @@ class HelpDialog(QDialog):
         scroll_layout = QVBoxLayout(scroll_content)
         
         try:
-            from referral_links import REFERRAL_LINKS
+            from referral_links import REFERRAL_LINKS # type: ignore
             
             for exchange, info in REFERRAL_LINKS.items():
                 group = QGroupBox(f"{info.get('guide', exchange).split(chr(10))[0]}")
@@ -210,7 +209,7 @@ class HelpDialog(QDialog):
         layout = QVBoxLayout(widget)
         
         try:
-            from user_guide import get_faq
+            from tools.archive_20260116.diagnostics.user_guide import get_faq
             content = get_faq()
         except ImportError:
             content = "FAQ 정보를 불러올 수 없습니다."
@@ -224,8 +223,8 @@ class HelpDialog(QDialog):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     dialog = HelpDialog()
     dialog.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

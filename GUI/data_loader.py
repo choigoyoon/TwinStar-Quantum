@@ -4,6 +4,7 @@ import os
 import sys
 import pandas as pd
 from datetime import datetime
+from typing import Any, cast
 
 # Logging
 import logging
@@ -24,7 +25,7 @@ def load_data_and_trades(symbol="BTCUSDT", exchange="bybit", timeframe="1h"):
         df: 원본 DataFrame
     """
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         
         # 캐시에서 데이터 로드
@@ -50,15 +51,15 @@ def load_data_and_trades(symbol="BTCUSDT", exchange="bybit", timeframe="1h"):
         
         # MACD 계산 (파라미터화)
         try:
-            from constants import DEFAULT_PARAMS
-            mf = DEFAULT_PARAMS.get('macd_fast', 12)
-            ms = DEFAULT_PARAMS.get('macd_slow', 26)
-            mg = DEFAULT_PARAMS.get('macd_signal', 9)
+            from constants import DEFAULT_PARAMS # type: ignore
+            mf = cast(Any, DEFAULT_PARAMS).get('macd_fast', 12)
+            ms = cast(Any, DEFAULT_PARAMS).get('macd_slow', 26)
+            mg = cast(Any, DEFAULT_PARAMS).get('macd_signal', 9)
         except ImportError:
             mf, ms, mg = 12, 26, 9
 
         if len(df) > ms:
-            exp1 = df['close'].ewm(span=mf, adjust=False).mean()
+            exp1 = cast(Any, df['close']).ewm(span=mf, adjust=False).mean()
             exp2 = df['close'].ewm(span=ms, adjust=False).mean()
             macd = exp1 - exp2
             signal = macd.ewm(span=mg, adjust=False).mean()
@@ -84,7 +85,7 @@ def load_ohlcv_df(symbol="BTCUSDT", exchange="bybit", timeframe="15m",
     OHLCV DataFrame 로드
     """
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         dm = DataManager()
         
         df = dm.load_data(
@@ -107,7 +108,7 @@ def download_and_save(symbol, exchange, timeframe, days=180):
     거래소에서 데이터 다운로드 후 저장
     """
     try:
-        from data_manager import DataManager
+        from GUI.data_cache import DataManager
         from datetime import timedelta
         
         dm = DataManager()

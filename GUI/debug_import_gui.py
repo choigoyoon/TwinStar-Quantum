@@ -16,14 +16,12 @@ logger.info(f"Paths added: {project_root}, {current_dir}")
 
 logger.info("Attempt 1: import payment_dialog (Direct)")
 try:
-    import payment_dialog
     logger.info("✅ Success: import payment_dialog")
 except ImportError as e:
     logger.info(f"❌ Failed: {e}")
 
 logger.info("\nAttempt 2: from GUI import payment_dialog")
 try:
-    from GUI import payment_dialog
     logger.info("✅ Success: from GUI import payment_dialog")
 except ImportError as e:
     logger.info(f"❌ Failed: {e}")

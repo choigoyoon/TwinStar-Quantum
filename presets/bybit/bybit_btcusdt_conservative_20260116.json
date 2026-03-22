@@ -1,0 +1,13 @@
+{
+  "name": "Bybit BTC/USDT - 보수형 - 안정성 최우선",
+  "description": "보수형 - 안정성 최우선",
+  "created_at": "2026-01-16T22:27:51.857502",
+  "params": {
+    "filter_tf": "1d",
+    "atr_mult": 1.5,
+    "trail_start_r": 1.0,
+    "trail_dist_r": 0.015,
+    "entry_validity_hours": 72.0,
+    "leverage": 2.0
+  }
+}

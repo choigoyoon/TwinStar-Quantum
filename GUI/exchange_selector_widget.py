@@ -1,7 +1,7 @@
 # exchange_selector_widget.py
 """Exchange Selector Widget - Exchange/Market/Symbol Selection"""
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QRadioButton, QButtonGroup, QCompleter, QFrame
 )
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, pyqtSignal, QStringListModel
+from PyQt6.QtCore import Qt, pyqtSignal, QStringListModel
 
 from exchanges.exchange_manager import ExchangeManager
 
@@ -20,7 +20,7 @@ class ExchangeSelectorWidget(QWidget):
     # Signal: (exchange_id, market_type, symbol)
     symbol_changed = pyqtSignal(str, str, str)
     
-    def __init__(self, exchange_manager: ExchangeManager = None):
+    def __init__(self, exchange_manager: ExchangeManager | None = None):
         super().__init__()
         self.em = exchange_manager if exchange_manager else ExchangeManager()
         
@@ -78,13 +78,13 @@ class ExchangeSelectorWidget(QWidget):
         lbl_sym.setFixedWidth(70)
         self.combo_symbol = QComboBox()
         self.combo_symbol.setEditable(True)
-        self.combo_symbol.setInsertPolicy(QComboBox.NoInsert)
+        self.combo_symbol.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.combo_symbol.currentIndexChanged.connect(self.on_symbol_changed)
         
         # Auto-complete
         self.completer = QCompleter()
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.setFilterMode(Qt.MatchContains)
+        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.combo_symbol.setCompleter(self.completer)
         
         sym_layout.addWidget(lbl_sym)
@@ -112,8 +112,10 @@ class ExchangeSelectorWidget(QWidget):
         self.combo_exchange.clear()
         
         # Overseas exchanges
+        tier1 = ['okx', 'bingx', 'bitget']
         for ex in self.em.get_overseas_exchanges():
-            self.combo_exchange.addItem(f"[Global] {ex.name}", ex.id)
+            prefix = "[Direct API]" if ex.id in tier1 else "[Global]"
+            self.combo_exchange.addItem(f"{prefix} {ex.name}", ex.id)
             
         # Domestic exchanges
         for ex in self.em.get_domestic_exchanges():
@@ -209,15 +211,23 @@ class ExchangeSelectorWidget(QWidget):
         """Update price and 24h change display"""
         ticker = self.em.get_ticker(self.current_exchange, self.current_symbol)
         if ticker:
-            price = ticker['price']
-            change = ticker['change_24h']
+            price = ticker.get('price')
+            change = ticker.get('change_24h')
             
-            self.lbl_price.setText(f"Price: {price:,.4f}")
+            if price is not None:
+                self.lbl_price.setText(f"Price: {float(price):,.4f}")
+            else:
+                self.lbl_price.setText("Price: -")
             
-            color = "#ff4d4d" if change < 0 else "#00cc00" if change > 0 else "#c9d1d9"
-            sign = "+" if change > 0 else ""
-            self.lbl_change.setText(f"24h: {sign}{change:.2f}%")
-            self.lbl_change.setStyleSheet(f"color: {color}; font-weight: bold;")
+            if change is not None:
+                change = float(change)
+                color = "#ff4d4d" if change < 0 else "#00cc00" if change > 0 else "#c9d1d9"
+                sign = "+" if change > 0 else ""
+                self.lbl_change.setText(f"24h: {sign}{change:.2f}%")
+                self.lbl_change.setStyleSheet(f"color: {color}; font-weight: bold;")
+            else:
+                self.lbl_change.setText("24h: -")
+                self.lbl_change.setStyleSheet("color: #c9d1d9;")
         else:
             self.lbl_price.setText("Price: -")
             self.lbl_change.setText("24h: -")
@@ -227,7 +237,7 @@ class ExchangeSelectorWidget(QWidget):
 # Test code
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -256,4 +266,4 @@ if __name__ == "__main__":
     window.resize(400, 200)
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

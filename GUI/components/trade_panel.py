@@ -1,13 +1,14 @@
 """프리미엄 트레이딩 패널"""
 
-import json
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QComboBox, QSpinBox, QDoubleSpinBox,
-    QPushButton, QGroupBox
+    QPushButton
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from typing import Dict, Any
+from PyQt6.QtCore import pyqtSignal, Qt
+from ui.design_system.tokens import Colors, Spacing, Typography, Radius, Size
 
 class TradePanel(QWidget):
     """단일 트레이딩 패널 (싱글/멀티 공용)"""
@@ -28,122 +29,202 @@ class TradePanel(QWidget):
     def _init_ui(self, title):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        
+        layout.setSpacing(Spacing.i_space_3)
+
         # 헤더
         header = QHBoxLayout()
-        
+
         title_label = QLabel(f"{'🎯' if self.mode == 'single' else '🔍'} {title}")
-        title_label.setStyleSheet("font-size: 16px; font-weight: 600; color: #00d4aa;")
-        
+        title_label.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {Colors.accent_primary};")
+
         self.status_label = QLabel("대기 중")
-        self.status_label.setStyleSheet("color: #8b949e;")
-        
+        self.status_label.setStyleSheet(f"color: {Colors.text_secondary};")
+
         header.addWidget(title_label)
         header.addStretch()
         header.addWidget(self.status_label)
-        
+
         layout.addLayout(header)
-        
-        # 설정 그리드
-        settings = QGridLayout()
-        settings.setSpacing(12)
-        
-        # Row 0: 거래소 & 심볼
-        settings.addWidget(QLabel("거래소"), 0, 0)
+
+        # 설정 그리드 (세로형 컴팩트)
+        settings = QVBoxLayout()
+        settings.setSpacing(Spacing.i_space_4)
+
+        # Helper to create compact rows
+        def create_row(icon: str, label: str, widget: QWidget):
+            row = QVBoxLayout()
+            row.setSpacing(Spacing.i_space_1)
+            lbl_layout = QHBoxLayout()
+            lbl = QLabel(f"{icon} {label}")
+            lbl.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_muted}; font-weight: 600;")
+            lbl_layout.addWidget(lbl)
+            lbl_layout.addStretch()
+            row.addLayout(lbl_layout)
+            row.addWidget(widget)
+            widget.setMinimumHeight(Size.input_md)
+            return row
+
+        # 1. 거래소
         self.exchange_combo = QComboBox()
         self.exchange_combo.addItems(["Bybit", "Binance", "OKX", "Bitget"])
         self.exchange_combo.currentTextChanged.connect(self._load_presets)
-        settings.addWidget(self.exchange_combo, 0, 1)
+        settings.addLayout(create_row("🌐", "EXCHANGE", self.exchange_combo))
+
+        # 2. 심볼 (싱글 모드만)
+        if self.mode == "single":
+            self.symbol_combo = QComboBox()
+            self.symbol_combo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"])
+            self.symbol_combo.setEditable(True)
+            self.symbol_combo.currentTextChanged.connect(self._load_presets)
+            settings.addLayout(create_row("💎", "SYMBOL", self.symbol_combo))
+        else:
+            # 멀티 모드: 자동 선택 안내
+            info_layout = QVBoxLayout()
+            info_layout.setSpacing(Spacing.i_space_1)
+            info_label_header = QLabel("💎 TARGET")
+            info_label_header.setStyleSheet(f"font-size: {Typography.text_xs}; color: {Colors.text_muted}; font-weight: 600;")
+            info_label_desc = QLabel("📊 Top N by 24h Volume")
+            info_label_desc.setStyleSheet(f"font-size: {Typography.text_sm}; color: {Colors.text_secondary}; padding: 8px; background: {Colors.bg_base}; border-radius: {Radius.radius_sm};")
+            info_label_desc.setMinimumHeight(Size.input_md)
+            info_layout.addWidget(info_label_header)
+            info_layout.addWidget(info_label_desc)
+            settings.addLayout(info_layout)
+
+            # 멀티 모드에서는 symbol_combo를 None으로 설정 (후속 코드 호환성)
+            self.symbol_combo = None
+
+        # 3. 레버리지 & 시드 (HBoxLayout in a row)
+        lev_seed_row = QHBoxLayout()
         
-        settings.addWidget(QLabel("심볼"), 0, 2)
-        self.symbol_combo = QComboBox()
-        self.symbol_combo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"])
-        self.symbol_combo.setEditable(True)
-        self.symbol_combo.currentTextChanged.connect(self._load_presets)
-        settings.addWidget(self.symbol_combo, 0, 3)
-        
-        # Row 1: 레버리지 & 시드
-        settings.addWidget(QLabel("레버리지"), 1, 0)
+        lev_col = QVBoxLayout()
         self.leverage_spin = QSpinBox()
         self.leverage_spin.setRange(1, 125)
         self.leverage_spin.setValue(10)
         self.leverage_spin.setSuffix("x")
-        settings.addWidget(self.leverage_spin, 1, 1)
+        lev_col.addLayout(create_row("⚡", "LEV", self.leverage_spin))
         
-        settings.addWidget(QLabel("시드"), 1, 2)
+        seed_col = QVBoxLayout()
         self.seed_spin = QDoubleSpinBox()
         self.seed_spin.setRange(10, 100000)
         self.seed_spin.setValue(100)
         self.seed_spin.setPrefix("$")
-        settings.addWidget(self.seed_spin, 1, 3)
+        seed_col.addLayout(create_row("💰", "SEED", self.seed_spin))
         
-        # Row 2: 자본모드 & 프리셋(전략)
-        settings.addWidget(QLabel("자본"), 2, 0)
+        lev_seed_row.addLayout(lev_col)
+        lev_seed_row.addLayout(seed_col)
+        settings.addLayout(lev_seed_row)
+        
+        # 4. 자본 & 프리셋
         self.capital_combo = QComboBox()
         self.capital_combo.addItems(["복리", "고정"])
-        settings.addWidget(self.capital_combo, 2, 1)
+        settings.addLayout(create_row("📈", "CAPITAL", self.capital_combo))
         
-        settings.addWidget(QLabel("전략(Preset)"), 2, 2)
         self.preset_combo = QComboBox()
-        self.preset_combo.setToolTip("config/presets 폴더의 JSON 파일 선택")
-        settings.addWidget(self.preset_combo, 2, 3)
+        settings.addLayout(create_row("📜", "STRATEGY", self.preset_combo))
         
         # 멀티 모드 전용
-        row_idx = 3
         if self.mode == "multi":
-            settings.addWidget(QLabel("감시"), row_idx, 0)
+            multi_row = QHBoxLayout()
+            
+            watch_col = QVBoxLayout()
             self.watch_spin = QSpinBox()
             self.watch_spin.setRange(5, 100)
             self.watch_spin.setValue(50)
-            self.watch_spin.setSuffix("개")
-            settings.addWidget(self.watch_spin, row_idx, 1)
+            watch_col.addLayout(create_row("🔭", "WATCH", self.watch_spin))
             
-            settings.addWidget(QLabel("동시"), row_idx, 2)
+            conc_col = QVBoxLayout()
             self.concurrent_spin = QSpinBox()
             self.concurrent_spin.setRange(1, 5)
             self.concurrent_spin.setValue(1)
-            self.concurrent_spin.setSuffix("개")
-            settings.addWidget(self.concurrent_spin, row_idx, 3)
+            conc_col.addLayout(create_row("👯", "MAX", self.concurrent_spin))
+            
+            multi_row.addLayout(watch_col)
+            multi_row.addLayout(conc_col)
+            settings.addLayout(multi_row)
         
         layout.addLayout(settings)
+        layout.addSpacing(20)
         
         # 버튼
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(12)
-        
-        self.start_btn = QPushButton("▶ 시작")
-        self.start_btn.setObjectName("startBtn")
+        btn_layout.setSpacing(Spacing.i_space_3)
+
+        self.start_btn = QPushButton("▶ START SNIPING")
+        self.start_btn.setFixedHeight(Size.button_xl)
+        self.start_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.start_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.accent_primary};
+                color: {Colors.text_inverse};
+                border-radius: {Radius.radius_md};
+                font-weight: 800;
+                font-size: {Typography.text_base};
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.accent_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.accent_pressed};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.bg_overlay};
+                color: {Colors.text_muted};
+            }}
+        """)
         self.start_btn.clicked.connect(self._on_start)
-        
-        self.stop_btn = QPushButton("⏹ 정지")
-        self.stop_btn.setObjectName("stopBtn")
+
+        self.stop_btn = QPushButton("⏹ STOP")
+        self.stop_btn.setFixedHeight(Size.button_lg)
+        self.stop_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.stop_btn.setEnabled(False)
+        self.stop_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {Colors.danger};
+                border: 1px solid {Colors.danger};
+                border-radius: {Radius.radius_md};
+                font-weight: 700;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.danger};
+                color: white;
+            }}
+            QPushButton:disabled {{
+                border-color: {Colors.border_muted};
+                color: {Colors.text_muted};
+            }}
+        """)
         self.stop_btn.clicked.connect(self._on_stop)
         
-        btn_layout.addWidget(self.start_btn)
-        btn_layout.addWidget(self.stop_btn)
-        
-        layout.addLayout(btn_layout)
+        layout.addWidget(self.start_btn)
+        layout.addWidget(self.stop_btn)
+        layout.addStretch()
 
     def _load_presets(self):
         """config/presets 폴더에서 JSON 로드"""
         self.preset_combo.clear()
-        
+
         preset_dir = Path("config/presets")
         if not preset_dir.exists():
             # [FALLBACK] 빌드 환경 고려
             import sys
             if getattr(sys, 'frozen', False):
-                 preset_dir = Path(sys._MEIPASS) / "config/presets"
-        
+                 base_path = getattr(sys, '_MEIPASS', '.')
+                 preset_dir = Path(base_path) / "config/presets"
+
         if not preset_dir.exists():
             self.preset_combo.addItem("기본값 (Default)", None)
             return
 
         exchange = self.exchange_combo.currentText()
-        symbol = self.symbol_combo.currentText()
-        symbol_clean = symbol.lower().replace('/', '').replace('-', '')
+
+        # 멀티 모드에서는 symbol_combo가 None이므로 체크
+        if self.symbol_combo is not None:
+            symbol = self.symbol_combo.currentText()
+            symbol_clean = symbol.lower().replace('/', '').replace('-', '')
+        else:
+            # 멀티 모드: 심볼 무관 프리셋만 로드
+            symbol_clean = ""
         
         presets = []
         try:
@@ -170,14 +251,14 @@ class TradePanel(QWidget):
     def _on_start(self):
         config = {
             'exchange': self.exchange_combo.currentText().lower(),
-            'symbol': self.symbol_combo.currentText(),
+            'symbol': self.symbol_combo.currentText() if self.symbol_combo is not None else '',
             'leverage': self.leverage_spin.value(),
             'seed': self.seed_spin.value(),
             'capital_mode': 'compound' if self.capital_combo.currentIndex() == 0 else 'fixed',
             'preset_file': self.preset_combo.currentData(),
             'strategy': 'custom_preset' # 식별자
         }
-        
+
         if self.mode == "multi":
             config['watch_count'] = self.watch_spin.value()
             config['max_positions'] = self.concurrent_spin.value()
@@ -186,8 +267,8 @@ class TradePanel(QWidget):
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.status_label.setText("실행 중")
-        self.status_label.setStyleSheet("color: #3fb950;")
-        
+        self.status_label.setStyleSheet(f"color: {Colors.success};")
+
         self.start_signal.emit(config)
     
     def _on_stop(self):
@@ -195,6 +276,6 @@ class TradePanel(QWidget):
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.status_label.setText("정지됨")
-        self.status_label.setStyleSheet("color: #f85149;")
-        
+        self.status_label.setStyleSheet(f"color: {Colors.danger};")
+
         self.stop_signal.emit()

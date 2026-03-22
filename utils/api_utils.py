@@ -35,15 +35,15 @@ def retry_api_call(
     Raises:
         마지막 시도에서 발생한 예외
     """
-    last_exception = None
-    
+    last_exception: Exception | None = None
+
     for attempt in range(max_retries):
         try:
             return func()
         except exceptions as e:
             last_exception = e
             wait_time = delay * (backoff ** attempt)
-            
+
             if attempt < max_retries - 1:
                 logging.warning(
                     f"[API] 호출 실패 ({attempt + 1}/{max_retries}): {e}. "
@@ -52,8 +52,10 @@ def retry_api_call(
                 time.sleep(wait_time)
             else:
                 logging.error(f"[API] 최종 실패 ({max_retries}회 시도): {e}")
-    
-    raise last_exception
+
+    if last_exception:
+        raise last_exception
+    raise RuntimeError("API 호출 실패: 알 수 없는 오류")
 
 
 def retry_decorator(
@@ -73,15 +75,15 @@ def retry_decorator(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
-            last_exception = None
-            
+            last_exception: Exception | None = None
+
             for attempt in range(max_retries):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
                     last_exception = e
                     wait_time = delay * (backoff ** attempt)
-                    
+
                     if attempt < max_retries - 1:
                         logging.warning(
                             f"[API] {func.__name__} 실패 ({attempt + 1}/{max_retries}): {e}. "
@@ -90,8 +92,10 @@ def retry_decorator(
                         time.sleep(wait_time)
                     else:
                         logging.error(f"[API] {func.__name__} 최종 실패: {e}")
-            
-            raise last_exception
+
+            if last_exception:
+                raise last_exception
+            raise RuntimeError(f"{func.__name__} 호출 실패: 알 수 없는 오류")
         return wrapper
     return decorator
 
@@ -153,42 +157,43 @@ if __name__ == "__main__":
     import random
     
     logging.basicConfig(level=logging.DEBUG)
-    
+    logger = logging.getLogger(__name__)
+
     # 테스트: 재시도 함수
     call_count = 0
-    
+
     def flaky_api():
         global call_count
         call_count += 1
         if call_count < 3:
             raise ConnectionError("Network error")
         return "Success!"
-    
+
     logger.info("=== Retry Test ===")
     try:
         result = retry_api_call(flaky_api, max_retries=3, delay=0.5)
         logger.info(f"Result: {result}")
     except Exception as e:
         logger.info(f"Failed: {e}")
-    
+
     # 테스트: 데코레이터
     logger.info("\n=== Decorator Test ===")
-    
+
     @retry_decorator(max_retries=2, delay=0.3)
     def another_api():
         if random.random() < 0.7:
             raise TimeoutError("Timeout")
         return "OK"
-    
+
     try:
         logger.info(f"Result: {another_api()}")
     except Exception as e:
         logger.info(f"Failed: {e}")
-    
+
     # 테스트: Rate Limiter
     logger.info("\n=== Rate Limiter Test ===")
     limiter = RateLimiter(calls_per_second=5)
-    
+
     for i in range(5):
         with limiter:
             logger.info(f"Call {i+1} at {time.time():.3f}")

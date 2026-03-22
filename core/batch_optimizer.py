@@ -13,7 +13,7 @@ import json
 import time
 from pathlib import Path
 from datetime import datetime
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Any
 from dataclasses import dataclass, asdict
 
 # Logging
@@ -61,7 +61,7 @@ class BatchOptimizer:
     def __init__(
         self,
         exchange: str = 'bybit',
-        timeframes: List[str] = None,
+        timeframes: Optional[List[str]] = None,
         min_win_rate: float = 70.0,
         min_trades: int = 30,
         max_mdd: float = 20.0
@@ -101,9 +101,9 @@ class BatchOptimizer:
         try:
             if get_exchange_manager:
                 em = get_exchange_manager()
-                exchange = em.get_exchange(self.exchange)
-                if exchange and hasattr(exchange, 'exchange'):
-                    tickers = exchange.exchange.fetch_tickers()
+                adapter: Any = em.get_exchange(self.exchange)
+                if adapter and hasattr(adapter, 'exchange') and adapter.exchange:
+                    tickers = adapter.exchange.fetch_tickers()
                     self.symbols = [
                         s.replace('/', '').replace(':USDT', '')
                         for s in tickers.keys() 
@@ -133,11 +133,20 @@ class BatchOptimizer:
             self._update_status(f"최적화 실패 ({symbol}): {e}")
         return None
 
-    def save_preset(self, symbol: str, timeframe: str, result: dict) -> str:
-        """프리셋 저장"""
+    def save_preset(self, symbol: str, timeframe: str, result: dict, mode: str = 'standard') -> str:
+        """프리셋 저장 (v2.0 - 타임스탬프 포함)"""
         if get_preset_manager:
+            from config.constants import generate_preset_filename
+
             pm = get_preset_manager()
-            name = f"{self.exchange}_{symbol}_{timeframe}"
+            # 타임스탬프 포함된 파일명 생성
+            name = generate_preset_filename(
+                exchange=self.exchange,
+                symbol=symbol,
+                timeframe=timeframe,
+                mode=mode,
+                use_timestamp=True
+            ).replace('.json', '')  # preset_manager는 확장자 제외
             
             preset_data = {
                 '_meta': {
@@ -184,18 +193,19 @@ class BatchOptimizer:
         self.is_running = True
         self.is_paused = False
         
-        # 심볼 조회
+        # 1. 심볼 조회
         if not self.symbols:
             self._update_status("🔍 심볼 조회 중...")
             self.fetch_symbols()
         
-        # 상태 복구 또는 신규 시작
+        # 2. 상태 복구 또는 신규 시작
         start_idx = 0
-        if resume and self.load_state():
+        if resume and self.load_state() and self.state:
             try:
                 start_idx = self.symbols.index(self.state.current_symbol)
                 self._update_status(f"♻️ {self.state.current_symbol}부터 재개 ({start_idx}/{len(self.symbols)})")
             except ValueError:
+                self.state = self.state # Type narrowing
                 start_idx = self.state.completed
         else:
             self.state = OptimizationState(
@@ -213,6 +223,9 @@ class BatchOptimizer:
                 max_mdd=self.max_mdd
             )
         
+        # Type check for Pyright
+        if not self.state: return {}
+
         self._update_status(
             f"🚀 배치 최적화 시작: {len(self.symbols)}개 심볼 "
             f"(WR>={self.min_win_rate}%, MDD<={self.max_mdd}%, TR>={self.min_trades})"
@@ -230,6 +243,8 @@ class BatchOptimizer:
                     break
             
             symbol = self.symbols[idx]
+            if not self.state: break
+            
             self.state.current_symbol = symbol
             self.state.completed = idx
             

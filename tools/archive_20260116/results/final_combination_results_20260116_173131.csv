@@ -1,0 +1,6 @@
+﻿name,leverage,win_rate,mdd,profit_factor,total_trades,trades_per_day,filter_tf,atr_mult,trail_start_r,entry_validity_hours,trail_dist_r
+Phase5 최적 (1x),1,79.46,3.92,4.64,3700,1.7436380772855797,4h,1.5,1.0,6.0,0.02
+Phase5 최적 (2x),2,79.46,7.73,4.64,3700,1.7436380772855797,4h,1.5,1.0,6.0,0.02
+Phase5 최적 (3x),3,79.46,11.44,4.64,3700,1.7436380772855797,4h,1.5,1.0,6.0,0.02
+DEFAULT_PARAMS (1x),1,68.88,7.89,2.73,3644,1.7172478793590953,4h,1.25,0.8,6.0,0.1
+DEFAULT_PARAMS (2x),2,68.88,15.23,2.73,3644,1.7172478793590953,4h,1.25,0.8,6.0,0.1

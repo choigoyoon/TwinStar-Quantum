@@ -78,7 +78,7 @@ class TradeHistory:
         """거래 추가"""
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        
+
         c.execute('''
             INSERT INTO trades (
                 symbol, exchange, side, entry_price, exit_price,
@@ -90,14 +90,14 @@ class TradeHistory:
             trade.pnl, trade.pnl_percent, trade.entry_time, trade.exit_time,
             trade.reason
         ))
-        
-        trade_id = c.lastrowid
+
+        trade_id = c.lastrowid or 0
         conn.commit()
         conn.close()
-        
+
         return trade_id
-    
-    def get_trades(self, days: int = 30, exchange: str = None) -> List[TradeRecord]:
+
+    def get_trades(self, days: int = 30, exchange: Optional[str] = None) -> List[TradeRecord]:
         """거래 내역 조회"""
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()

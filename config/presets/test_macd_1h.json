@@ -1,0 +1,37 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "strategy": "macd",
+        "optimized_at": "2026-01-13T05:46:54.500108",
+        "version": "2.0.0",
+        "verified": true,
+        "verified_date": "2026-01-13",
+        "verification_stats": {
+            "passed": true,
+            "win_rate": 83.8
+        },
+        "name": "test_macd_1h",
+        "updated": "2026-01-13 05:46:54"
+    },
+    "_result": {
+        "trades": 2216,
+        "win_rate": 83.8,
+        "simple_pnl": 2077.1,
+        "compound_pnl": 74231605074.3,
+        "max_drawdown": 10.9,
+        "profit_factor": 5.2,
+        "grade": "A"
+    },
+    "params": {
+        "atr_mult": 1.5,
+        "trail_start": 1.2,
+        "trail_dist": 0.03,
+        "tolerance": 0.1,
+        "adx_min": 10,
+        "stoch_long_max": 50,
+        "stoch_short_min": 50,
+        "use_downtrend_filter": true
+    }
+}

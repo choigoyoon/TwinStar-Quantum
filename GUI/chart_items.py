@@ -1,8 +1,8 @@
 # chart_items.py - PyQtGraph 차트 아이템들
 
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QRectF, QPointF
-from PyQt5.QtGui import QPainter, QPicture
+from PyQt6.QtCore import Qt, QRectF, QPointF
+from PyQt6.QtGui import QPainter, QPicture
 
 
 class CandlestickItem(pg.GraphicsObject):
@@ -10,12 +10,12 @@ class CandlestickItem(pg.GraphicsObject):
     
     def __init__(self, data=None):
         pg.GraphicsObject.__init__(self)
-        self.data = data  # [(timestamp, open, high, low, close), ...]
+        self.ohlc_data = data if data is not None else []
         self.picture = QPicture()
         self.generatePicture()
     
     def setData(self, data):
-        self.data = data
+        self.ohlc_data = data
         self.generatePicture()
         self.update()
     
@@ -23,13 +23,13 @@ class CandlestickItem(pg.GraphicsObject):
         self.picture = QPicture()
         p = QPainter(self.picture)
         
-        if self.data is None or len(self.data) == 0:
+        if not self.ohlc_data:
             p.end()
             return
         
         w = 0.3  # 캔들 너비의 절반
         
-        for i, (t, o, h, l, c) in enumerate(self.data):
+        for i, (t, o, h, l, c) in enumerate(self.ohlc_data):
             if c >= o:
                 # 양봉 (상승)
                 p.setPen(pg.mkPen('#26a69a'))
@@ -51,13 +51,13 @@ class CandlestickItem(pg.GraphicsObject):
         p.drawPicture(0, 0, self.picture)
     
     def boundingRect(self):
-        if self.data is None or len(self.data) == 0:
+        if not self.ohlc_data:
             return QRectF()
         
-        min_price = min(d[3] for d in self.data)  # low
-        max_price = max(d[2] for d in self.data)  # high
+        min_price = min(d[3] for d in self.ohlc_data)  # low
+        max_price = max(d[2] for d in self.ohlc_data)  # high
         
-        return QRectF(-1, min_price, len(self.data) + 2, max_price - min_price)
+        return QRectF(-1, min_price, len(self.ohlc_data) + 2, max_price - min_price)
 
 
 class VolumeItem(pg.GraphicsObject):
@@ -65,12 +65,12 @@ class VolumeItem(pg.GraphicsObject):
     
     def __init__(self, data=None):
         pg.GraphicsObject.__init__(self)
-        self.data = data  # [(timestamp, open, close, volume), ...]
+        self.bar_data = data if data is not None else []
         self.picture = QPicture()
         self.generatePicture()
     
     def setData(self, data):
-        self.data = data
+        self.bar_data = data
         self.generatePicture()
         self.update()
     
@@ -78,13 +78,13 @@ class VolumeItem(pg.GraphicsObject):
         self.picture = QPicture()
         p = QPainter(self.picture)
         
-        if self.data is None or len(self.data) == 0:
+        if not self.bar_data:
             p.end()
             return
         
         w = 0.35
         
-        for i, (t, o, c, v) in enumerate(self.data):
+        for i, (t, o, c, v) in enumerate(self.bar_data):
             if c >= o:
                 p.setPen(pg.mkPen('#26a69a'))
                 p.setBrush(pg.mkBrush('#26a69a80'))
@@ -100,10 +100,10 @@ class VolumeItem(pg.GraphicsObject):
         p.drawPicture(0, 0, self.picture)
     
     def boundingRect(self):
-        if self.data is None or len(self.data) == 0:
+        if not self.bar_data:
             return QRectF()
-        max_vol = max(d[3] for d in self.data)
-        return QRectF(-1, 0, len(self.data) + 2, max_vol)
+        max_vol = max(d[3] for d in self.bar_data)
+        return QRectF(-1, 0, len(self.bar_data) + 2, max_vol)
 
 
 class Crosshair:
@@ -112,8 +112,8 @@ class Crosshair:
     def __init__(self, plot_widget):
         self.pw = plot_widget
         
-        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.DashLine))
-        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.DashLine))
+        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.PenStyle.DashLine))
+        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#787b86', width=1, style=Qt.PenStyle.DashLine))
         
         plot_widget.addItem(self.vLine, ignoreBounds=True)
         plot_widget.addItem(self.hLine, ignoreBounds=True)
@@ -196,7 +196,7 @@ class TradeLabelItem(pg.GraphicsObject):
         else:
             points = [QPointF(x, y + size), QPointF(x - size/2, y), QPointF(x + size/2, y)]
         
-        from PyQt5.QtGui import QPolygonF
+        from PyQt6.QtGui import QPolygonF
         p.drawPolygon(QPolygonF(points))
     
     def paint(self, p, *args):
@@ -209,7 +209,7 @@ class TradeLabelItem(pg.GraphicsObject):
 # 테스트용
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     
     app = QApplication(sys.argv)
     
@@ -220,11 +220,11 @@ if __name__ == "__main__":
     win.setWindowTitle('Chart Items Test')
     win.resize(800, 600)
     
-    plot = win.addPlot()
+    plot = win.addPlot() # type: ignore[attr-defined]
     candles = CandlestickItem(data)
     plot.addItem(candles)
     
     crosshair = Crosshair(plot)
     
     win.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

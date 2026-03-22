@@ -2,14 +2,14 @@
 Step 2: 파라미터 찾기 (최적화)
 "최적의 설정값은?"
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QComboBox, QProgressBar, QFrame,
-    QTableWidget, QTableWidgetItem, QHeaderView,
-    QSpinBox, QDoubleSpinBox, QCheckBox
+    QPushButton, QProgressBar, QFrame, QTableWidget,
+    QTableWidgetItem, QHeaderView, QSpinBox,
+    QDoubleSpinBox, QCheckBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QThread
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import pyqtSignal, QThread
+from typing import Any, cast
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -33,10 +33,16 @@ class OptimizeWorker(QThread):
     
     def run(self):
         try:
-            from core.optimizer import OptimizationEngine
+            from GUI.data_cache import DataManager
+            dm = DataManager()
+            cache_files = list(dm.cache_dir.glob(f"*{self.symbol}*.parquet"))
+            if not cache_files:
+                raise Exception(f"{self.symbol} 데이터 파일이 없습니다.")
             
-            self.progress.emit(5, "최적화 엔진 준비 중...")
-            
+            latest = max(cache_files, key=lambda p: p.stat().st_mtime)
+            import pandas as pd
+            df = pd.read_parquet(latest)
+            from core.optimization_logic import OptimizationEngine
             engine = OptimizationEngine()
             
             def on_progress(current, total, best_score):
@@ -48,9 +54,15 @@ class OptimizeWorker(QThread):
             
             self.progress.emit(10, "파라미터 조합 생성 중...")
             
-            result = engine.optimize(
-                symbol=self.symbol,
-                progress_callback=on_progress
+            # [FIX] optimize -> run_staged_optimization
+            # stage_callback 형식에 맞춰 래퍼 생성
+            def stage_wrap(stage: int, msg: str, params: Any = None):
+                self.progress.emit(int(stage * 25), msg)
+                
+            result = engine.run_staged_optimization(
+                df=df,
+                stage_callback=stage_wrap,
+                mode=self.config.get('mode', 'standard')
             )
             
             if self._stop:
@@ -220,7 +232,8 @@ class OptimizePage(QWidget):
         table = QTableWidget()
         table.setColumnCount(4)
         table.setHorizontalHeaderLabels(["파라미터", "최소", "최대", "사용"])
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        if header := table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;
@@ -240,12 +253,20 @@ class OptimizePage(QWidget):
         for i, (name, min_val, max_val) in enumerate(params):
             table.setItem(i, 0, QTableWidgetItem(name))
             
-            min_spin = QDoubleSpinBox() if isinstance(min_val, float) else QSpinBox()
-            min_spin.setValue(min_val)
+            is_float = isinstance(min_val, float)
+            min_spin = QDoubleSpinBox() if is_float else QSpinBox()
+            if is_float:
+                cast(Any, min_spin).setValue(float(min_val))
+            else:
+                cast(Any, min_spin).setValue(int(min_val))
             table.setCellWidget(i, 1, min_spin)
             
-            max_spin = QDoubleSpinBox() if isinstance(max_val, float) else QSpinBox()
-            max_spin.setValue(max_val)
+            is_float_max = isinstance(max_val, float)
+            max_spin = QDoubleSpinBox() if is_float_max else QSpinBox()
+            if is_float_max:
+                cast(Any, max_spin).setValue(float(max_val))
+            else:
+                cast(Any, max_spin).setValue(int(max_val))
             table.setCellWidget(i, 2, max_spin)
             
             checkbox = QCheckBox()
@@ -353,7 +374,8 @@ class OptimizePage(QWidget):
         self.params_table = QTableWidget()
         self.params_table.setColumnCount(2)
         self.params_table.setHorizontalHeaderLabels(["파라미터", "값"])
-        self.params_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        if header := self.params_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.params_section.add_widget(self.params_table)
         layout.addWidget(self.params_section)
         
@@ -470,4 +492,3 @@ class OptimizePage(QWidget):
     
     def set_backtest_result(self, result: dict):
         """이전 단계 결과 수신"""
-        pass

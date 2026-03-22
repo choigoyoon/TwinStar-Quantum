@@ -1,8 +1,37 @@
 """
 TwinStar Quantum - TradingView 스타일 테마
+
+[DEPRECATED] 이 모듈은 ui.design_system으로 대체되었습니다.
+
+마이그레이션:
+    # Before
+    from GUI.legacy_styles import COLORS, MAIN_STYLE, apply_style
+    
+    # After
+    from ui.design_system import Colors, ThemeGenerator
+    
+    # 색상 접근
+    bg = Colors.bg_base  # 대신 COLORS['bg_main'] 사용하던 것
+    
+    # 스타일 적용
+    app.setStyleSheet(ThemeGenerator.generate())
+
+참고: TradingView 스타일의 파란색(#2962ff)은 
+새 디자인 시스템의 민트색(#00d4aa)으로 통합되었습니다.
 """
 
-# TradingView 색상 팔레트
+import warnings
+
+
+def _deprecation_warning():
+    warnings.warn(
+        "GUI.legacy_styles is deprecated. Use ui.design_system instead.",
+        DeprecationWarning,
+        stacklevel=3
+    )
+
+
+# [DEPRECATED] TradingView 색상 팔레트
 COLORS = {
     # 배경
     'bg_main': '#131722',        # 메인 배경 (TV 다크)
@@ -430,16 +459,37 @@ QRadioButton::indicator:checked {{
 
 
 def apply_style(app):
-    """앱에 스타일 적용"""
+    """
+    [DEPRECATED] 앱에 스타일 적용
+    
+    대신 사용:
+        from ui.design_system import ThemeGenerator
+        app.setStyleSheet(ThemeGenerator.generate())
+    """
+    _deprecation_warning()
     app.setStyleSheet(MAIN_STYLE)
     return True
 
 
 def get_style():
-    """스타일시트 반환"""
+    """
+    [DEPRECATED] 스타일시트 반환
+    
+    대신 사용:
+        from ui.design_system import ThemeGenerator
+        ThemeGenerator.generate()
+    """
+    _deprecation_warning()
     return MAIN_STYLE
 
 
 def get_colors():
-    """색상 딕셔너리 반환"""
+    """
+    [DEPRECATED] 색상 딕셔너리 반환
+    
+    대신 사용:
+        from ui.design_system import Colors
+        Colors.bg_base, Colors.accent_primary, etc.
+    """
+    _deprecation_warning()
     return COLORS

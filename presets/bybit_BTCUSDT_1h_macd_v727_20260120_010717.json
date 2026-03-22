@@ -1,0 +1,35 @@
+{
+  "meta_info": {
+    "exchange": "bybit",
+    "symbol": "BTCUSDT",
+    "timeframe": "1h",
+    "strategy_type": "macd",
+    "optimization_method": "coarse_to_fine",
+    "created_at": "2026-01-20 01:07:17",
+    "version": "v7.27"
+  },
+  "best_params": {
+    "atr_mult": 1.438,
+    "filter_tf": "4h",
+    "entry_validity_hours": 48.0,
+    "trail_start_r": 0.4,
+    "trail_dist_r": 0.022,
+    "leverage": 1,
+    "macd_fast": 6,
+    "macd_slow": 18,
+    "macd_signal": 7,
+    "tolerance": 0.05,
+    "use_adx_filter": false
+  },
+  "best_metrics": {
+    "sharpe_ratio": 31.964041619352397,
+    "win_rate": 97.44845360824742,
+    "mdd": 3.940402420608135,
+    "total_pnl": 3846.412005907465,
+    "total_trades": 3880,
+    "profit_factor": 39.75929120643416,
+    "stability": "AAA",
+    "avg_pnl": 0.9913433004916148,
+    "compound_return": 10000000000.0
+  }
+}

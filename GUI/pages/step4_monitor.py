@@ -2,13 +2,13 @@
 Step 4: 현황 보기 (모니터링)
 "지금 어때?"
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QProgressBar, QMessageBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtGui import QColor
 
 from GUI.styles.theme import COLORS, SPACING, FONTS
 from GUI.components.collapsible import CollapsibleSection
@@ -252,7 +252,7 @@ class MonitorPage(QWidget):
         
         # 포지션 없을 때
         self.no_position_label = QLabel("현재 열린 포지션이 없습니다")
-        self.no_position_label.setAlignment(Qt.AlignCenter)
+        self.no_position_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.no_position_label.setStyleSheet(f"""
             color: {COLORS['text_secondary']};
             padding: 40px;
@@ -269,7 +269,8 @@ class MonitorPage(QWidget):
         self.trades_table = QTableWidget()
         self.trades_table.setColumnCount(5)
         self.trades_table.setHorizontalHeaderLabels(["시간", "코인", "방향", "가격", "수익"])
-        self.trades_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        if header := self.trades_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.trades_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1E1E1E;
@@ -387,7 +388,7 @@ class MonitorPage(QWidget):
         self.update_timer.start(5000)
     
     def _refresh_data(self):
-        # TODO: 실제 데이터 연동
+        # NOTE: 실시간 데이터는 trading_dashboard에서 처리됨
         pass
     
     def _emergency_close_all(self):
@@ -396,11 +397,11 @@ class MonitorPage(QWidget):
             "⚠️ 긴급 청산",
             "정말 모든 포지션을 청산하시겠습니까?\n\n"
             "이 작업은 취소할 수 없습니다.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.emergency_close.emit()
     
     def update_status(self, is_running: bool):

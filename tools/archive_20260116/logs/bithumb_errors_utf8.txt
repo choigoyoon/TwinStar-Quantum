@@ -1,0 +1,28 @@
+﻿L  12 | reportMissingImports      | Import "pandas" could not be resolved
+L  32 | reportMissingImports      | Import "pybithumb" could not be resolved
+L  37 | reportMissingImports      | Import "ccxt" could not be resolved
+L  99 | reportOptionalMemberAccess | "Bithumb" is not a known attribute of "None"
+L 113 | reportOptionalMemberAccess | "bithumb" is not a known attribute of "None"
+L 119 | reportOptionalMemberAccess | "load_markets" is not a known attribute of "None"
+L 127 | reportIncompatibleMethodOverride | Method "get_klines" overrides class "BaseExchange" in an incompatible manner
+  Parameter 2 name mismatch: base parameter is named "interval", override parameter is named "symbol"
+  Parameter 3 name mismatch: base parameter is named "limit", override parameter is named "interval"
+L 139 | reportMissingImports      | Import "pyupbit" could not be resolved
+L 210 | reportMissingModuleSource | Import "requests" could not be resolved from source
+L 261 | reportOptionalMemberAccess | "get_candlestick" is not a known attribute of "None"
+L 278 | reportOptionalMemberAccess | "fetch_ohlcv" is not a known attribute of "None"
+L 295 | reportOptionalMemberAccess | "get_current_price" is not a known attribute of "None"
+L 321 | reportOptionalMemberAccess | "buy_market_order" is not a known attribute of "None"
+L 323 | reportOptionalMemberAccess | "sell_market_order" is not a known attribute of "None"
+L 340 | reportReturnType          | Type "str" is not assignable to return type "bool"
+  "str" is not assignable to "bool"
+L 350 | reportOptionalMemberAccess | "create_order" is not a known attribute of "None"
+L 372 | reportReturnType          | Type "str" is not assignable to return type "bool"
+  "str" is not assignable to "bool"
+L 425 | reportOptionalMemberAccess | "create_order" is not a known attribute of "None"
+L 428 | reportOptionalMemberAccess | "buy_market_order" is not a known attribute of "None"
+L 430 | reportOptionalMemberAccess | "sell_market_order" is not a known attribute of "None"
+L 447 | reportReturnType          | Type "str" is not assignable to return type "bool"
+  "str" is not assignable to "bool"
+L 520 | reportIncompatibleMethodOverride | Method "get_realized_pnl" overrides class "BaseExchange" in an incompatible manner
+  Parameter 2 name mismatch: base parameter is named "limit", override parameter is named "symbol"

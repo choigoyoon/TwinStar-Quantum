@@ -1,12 +1,18 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtCore import pyqtSignal
+from typing import Any, List, cast
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from PyQt6.QtCore import pyqtSignal
 import pandas as pd
 import numpy as np
 import logging
+from ui.design_system.tokens import Colors
 
 logger = logging.getLogger(__name__)
 
 # PyQtGraph 또는 Matplotlib 사용 여부에 따라 import
+pg: Any = None
+FigureCanvasQTAgg: Any = None
+Figure: Any = None
+
 try:
     import pyqtgraph as pg
     HAS_PYQTGRAPH = True
@@ -14,7 +20,11 @@ except ImportError:
     HAS_PYQTGRAPH = False
 
 try:
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+    # PyQt6 호환: backend_qtagg 우선, fallback으로 backend_qt5agg
+    try:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg # type: ignore
+    except ImportError:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg # type: ignore
     from matplotlib.figure import Figure
     HAS_MATPLOTLIB = True
 except ImportError:
@@ -51,15 +61,17 @@ class InteractiveChart(QWidget):
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.setLabel('left', 'Price')
         self.plot_widget.setLabel('bottom', 'Time')
-        self.plot_widget.setBackground('#1a1a2e')
-        self.layout().addWidget(self.plot_widget)
+        self.plot_widget.setBackground(Colors.bg_base)
+        if (layout := self.layout()) is not None:
+            layout.addWidget(self.plot_widget)
     
     def _init_matplotlib(self):
         """Matplotlib 기반 차트"""
         self.figure = Figure(figsize=(10, 6))
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.ax = self.figure.add_subplot(111)
-        self.layout().addWidget(self.canvas)
+        if (layout := self.layout()) is not None:
+            layout.addWidget(self.canvas)
     
     def set_data(self, df: pd.DataFrame):
         """OHLCV 데이터 설정"""
@@ -77,29 +89,37 @@ class InteractiveChart(QWidget):
             self._render_matplotlib_candles()
     
     def _render_pyqtgraph_candles(self):
-        """PyQtGraph 캔들스틱"""
+        """PyQtGraph 캔들스틱 처리"""
+        if self.df is None or self.df.empty:
+            return
+            
         self.plot_widget.clear()
         
         # 간단한 라인 차트 (성능을 위해 전체 데이터는 라인으로 표시)
-        # TODO: 추후 줌 레벨에 따라 캔들스틱/라인 전환 로직 추가 가능
-        close = self.df['close'].values
+        # NOTE: 성능을 위해 라인 차트 사용 (줌 레벨별 캔들스틱 전환은 선택적 개선사항)
+        close = cast(Any, self.df['close'].values)
         x = np.arange(len(close))
         self.plot_widget.plot(x, close, pen='w')
     
     def _render_matplotlib_candles(self):
         """Matplotlib 캔들스틱"""
+        if self.df is None or self.df.empty:
+            return
+
         self.ax.clear()
-        
+
         # 간단한 라인 차트
         self.ax.plot(self.df.index, self.df['close'], 'w-', linewidth=0.8)
-        self.ax.set_facecolor('#1a1a2e')
-        self.figure.patch.set_facecolor('#1a1a2e')
-        
+        self.ax.set_facecolor(Colors.bg_base)
+        self.figure.patch.set_facecolor(Colors.bg_base)
+
         self.canvas.draw()
     
     def add_trades(self, trades: list):
         """거래 마커 추가"""
         self.trades = trades
+        # 차트를 다시 렌더링 (캔들스틱 + 마커)
+        self._render_candlestick()
         self._render_trade_markers()
     
     def _render_trade_markers(self):
@@ -128,15 +148,15 @@ class InteractiveChart(QWidget):
                 if e_idx is not None and e_idx < len(self.df):
                     entry_x.append(e_idx)
                     entry_y.append(trade.get('entry_price', trade.get('entry', 0)))
-                    entry_brush.append('#00e676' if trade.get('type') == 'Long' else '#ff5252')
-                
+                    entry_brush.append(Colors.success if trade.get('type') == 'Long' else Colors.danger)
+
                 # Exit
                 x_idx = trade.get('exit_idx')
                 if x_idx is not None and x_idx < len(self.df):
                     exit_x.append(x_idx)
                     exit_y.append(trade.get('exit_price', trade.get('exit', 0)))
                     pnl = trade.get('pnl', 0)
-                    exit_brush.append('#00e676' if pnl > 0 else '#ff5252')
+                    exit_brush.append(Colors.success if pnl > 0 else Colors.danger)
 
             if entry_x:
                 self.plot_widget.plot(entry_x, entry_y, pen=None, symbol='t', symbolBrush=entry_brush, symbolSize=10, name="Entries")
@@ -159,19 +179,112 @@ class InteractiveChart(QWidget):
     
     def add_indicator(self, name: str, data: pd.Series, color: str = 'yellow'):
         """지표 오버레이 추가"""
+        if self.df is None:
+            return
+            
         if HAS_PYQTGRAPH:
             x = np.arange(len(data))
-            self.plot_widget.plot(x, data.values, pen=color, name=name)
+            self.plot_widget.plot(x, cast(Any, data.values), pen=color, name=name)
         elif HAS_MATPLOTLIB:
             self.ax.plot(self.df.index, data, color=color, label=name, alpha=0.7)
             self.ax.legend()
             self.canvas.draw()
     
+    def highlight_trade(self, trade: dict, margin: int = 20):
+        """특정 거래를 하이라이트하고 차트 범위 조정
+
+        Args:
+            trade: 거래 정보 딕셔너리
+            margin: 진입/익절 시점 전후 표시할 캔들 개수
+        """
+        if self.df is None or self.df.empty:
+            return
+
+        entry_idx = trade.get('entry_idx')
+        exit_idx = trade.get('exit_idx')
+
+        if entry_idx is None or exit_idx is None:
+            return
+
+        # 차트를 다시 렌더링 (기존 하이라이트 제거)
+        self._render_candlestick()
+        self._render_trade_markers()
+
+        # 차트 범위 조정
+        start_idx = max(0, entry_idx - margin)
+        end_idx = min(len(self.df), exit_idx + margin)
+
+        if HAS_PYQTGRAPH:
+            # 범위 설정
+            self.plot_widget.setXRange(start_idx, end_idx, padding=0.05)
+
+            # 진입/익절 수평선 표시
+            entry_price = trade.get('entry_price', 0)
+            exit_price = trade.get('exit_price', 0)
+
+            # 진입 가격 수평선 (녹색/빨간색)
+            side = trade.get('type', 'Long')
+            entry_color = Colors.success if side == 'Long' else Colors.danger
+            entry_line = pg.InfiniteLine(
+                pos=entry_price,
+                angle=0,
+                pen=pg.mkPen(entry_color, width=2, style=pg.QtCore.Qt.PenStyle.DashLine)
+            )
+            self.plot_widget.addItem(entry_line)
+
+            # 익절 가격 수평선 (수익/손실에 따라 색상)
+            pnl = trade.get('pnl', 0)
+            exit_color = Colors.success if pnl > 0 else Colors.danger
+            exit_line = pg.InfiniteLine(
+                pos=exit_price,
+                angle=0,
+                pen=pg.mkPen(exit_color, width=2, style=pg.QtCore.Qt.PenStyle.DotLine)
+            )
+            self.plot_widget.addItem(exit_line)
+
+            # 진입/익절 시점 수직선
+            entry_vline = pg.InfiniteLine(
+                pos=entry_idx,
+                angle=90,
+                pen=pg.mkPen(entry_color, width=1, style=pg.QtCore.Qt.PenStyle.DashLine)
+            )
+            self.plot_widget.addItem(entry_vline)
+
+            exit_vline = pg.InfiniteLine(
+                pos=exit_idx,
+                angle=90,
+                pen=pg.mkPen(exit_color, width=1, style=pg.QtCore.Qt.PenStyle.DotLine)
+            )
+            self.plot_widget.addItem(exit_vline)
+
+        elif HAS_MATPLOTLIB and hasattr(self, 'ax'):
+            # 범위 설정
+            self.ax.set_xlim(start_idx, end_idx)
+
+            # 진입/익절 마커
+            entry_price = trade.get('entry_price', 0)
+            exit_price = trade.get('exit_price', 0)
+            side = trade.get('type', 'Long')
+            pnl = trade.get('pnl', 0)
+
+            entry_color = 'g' if side == 'Long' else 'r'
+            exit_color = 'g' if pnl > 0 else 'r'
+
+            # 수평선
+            self.ax.axhline(y=entry_price, color=entry_color, linestyle='--', linewidth=2, alpha=0.7)
+            self.ax.axhline(y=exit_price, color=exit_color, linestyle=':', linewidth=2, alpha=0.7)
+
+            # 수직선
+            self.ax.axvline(x=entry_idx, color=entry_color, linestyle='--', linewidth=1, alpha=0.5)
+            self.ax.axvline(x=exit_idx, color=exit_color, linestyle=':', linewidth=1, alpha=0.5)
+
+            self.canvas.draw()
+
     def clear(self):
         """차트 클리어"""
         self.df = None
         self.trades = []
-        
+
         if HAS_PYQTGRAPH:
             self.plot_widget.clear()
         elif HAS_MATPLOTLIB:
@@ -197,20 +310,20 @@ class EquityCurveChart(QWidget):
             layout.addWidget(self.canvas)
         elif HAS_PYQTGRAPH:
             self.plot_widget = pg.PlotWidget()
-            self.plot_widget.setBackground('#1a1a2e')
+            self.plot_widget.setBackground(Colors.bg_base)
             self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
-            self.layout().addWidget(self.plot_widget)
+            layout.addWidget(self.plot_widget)
 
-    def set_equity(self, equity: list):
+    def set_equity(self, equity: List[float]):
         """에쿼티 커브 설정"""
         if HAS_MATPLOTLIB:
             self.ax.clear()
-            self.ax.fill_between(range(len(equity)), equity, alpha=0.3, color='cyan')
-            self.ax.plot(equity, 'cyan', linewidth=1)
-            self.ax.set_facecolor('#1a1a2e')
-            self.ax.set_title('Equity Curve', color='white')
-            self.ax.tick_params(colors='white')
-            self.figure.patch.set_facecolor('#1a1a2e')
+            self.ax.fill_between(range(len(equity)), equity, alpha=0.3, color=Colors.accent_primary)
+            self.ax.plot(equity, color=Colors.accent_primary, linewidth=1)
+            self.ax.set_facecolor(Colors.bg_base)
+            self.ax.set_title('Equity Curve', color=Colors.text_primary)
+            self.ax.tick_params(colors=Colors.text_primary)
+            self.figure.patch.set_facecolor(Colors.bg_base)
             self.canvas.draw()
         elif HAS_PYQTGRAPH:
             self.plot_widget.clear()

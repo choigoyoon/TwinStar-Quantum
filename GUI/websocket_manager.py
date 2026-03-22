@@ -303,7 +303,7 @@ class WebSocketThread:
         
         widget: update_candle(candle) 메서드 필요
         """
-        from PyQt5.QtCore import QTimer
+        from PyQt6.QtCore import QTimer
         
         def process_data():
             self.manager._process_queue()

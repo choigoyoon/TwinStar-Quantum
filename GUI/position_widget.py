@@ -7,15 +7,15 @@
 
 import sys
 import os
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QGridLayout, QProgressBar
+from PyQt6.QtWidgets import (
+    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QGridLayout, QProgressBar
 )
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from locales.lang_manager import t
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -27,13 +27,13 @@ class PositionCard(QFrame):
     close_clicked = pyqtSignal(str)  # symbol
     
     def __init__(self, symbol: str, side: str, entry_price: float,
-                 current_price: float, stop_loss: float, size: float):
+                 current_price: float, stop_loss: float, pos_size: float):
         super().__init__()
         self.symbol = symbol
         self.side = side
         self.entry_price = entry_price
         self.stop_loss = stop_loss
-        self.size = size
+        self.pos_size = pos_size
         self._init_ui(current_price)
     
     def _init_ui(self, current_price: float):
@@ -98,7 +98,7 @@ class PositionCard(QFrame):
             (t("dashboard.entry_price", "진입가"), f"${self.entry_price:,.2f}"),
             (t("dashboard.current_price", "현재가"), f"${current_price:,.2f}"),
             (t("dashboard.stop_loss_price", "손절가"), f"${self.stop_loss:,.2f}"),
-            (t("dashboard.quantity", "수량"), f"{self.size:.4f}"),
+            (t("dashboard.quantity", "수량"), f"{self.pos_size:.4f}"),
         ]
         
         for i, (label, value) in enumerate(labels):
@@ -119,7 +119,7 @@ class PositionCard(QFrame):
             font-size: 24px;
             font-weight: bold;
         """)
-        self.pnl_label.setAlignment(Qt.AlignCenter)
+        self.pnl_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.pnl_label)
         
         # 손절까지 거리 프로그레스바
@@ -143,7 +143,7 @@ class PositionCard(QFrame):
         
         sl_label = QLabel(t("dashboard.distance_to_sl", "손절까지 {0}%").format(f"{sl_distance:.2f}"))
         sl_label.setStyleSheet("color: #787b86; font-size: 10px;")
-        sl_label.setAlignment(Qt.AlignCenter)
+        sl_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(sl_label)
     
     def update_price(self, current_price: float):
@@ -163,8 +163,20 @@ class PositionStatusWidget(QFrame):
     
     def __init__(self):
         super().__init__()
-        self.positions = {}  # symbol -> PositionCard
+        self.positions: dict[str, PositionCard] = {}  # symbol -> PositionCard
         self._init_ui()
+    
+    @property
+    def cards(self) -> dict[str, PositionCard]:
+        """positions 속성의 별칭 (하위 호환성)"""
+        return self.positions
+    
+    def clear_all(self) -> None:
+        """모든 포지션 카드 제거"""
+        for symbol in list(self.positions.keys()):
+            self.remove_position(symbol)
+        self.empty_label.show()
+        self._update_status()
     
     def _init_ui(self):
         self.setStyleSheet("""
@@ -201,7 +213,7 @@ class PositionStatusWidget(QFrame):
         # 빈 상태 표시
         self.empty_label = QLabel(t("dashboard.no_positions", "🔍 포지션 없음\n\n신호 대기 중..."))
         self.empty_label.setStyleSheet("color: #787b86; font-size: 13px;")
-        self.empty_label.setAlignment(Qt.AlignCenter)
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.positions_layout.addWidget(self.empty_label)
         
         layout.addStretch()
@@ -241,14 +253,14 @@ class PositionStatusWidget(QFrame):
     
     def _on_close_position(self, symbol: str):
         """포지션 청산 요청"""
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
         reply = QMessageBox.question(
             self, t("dashboard.close_position_title", "포지션 청산"),
             t("dashboard.close_position_ask", "{0} 포지션을 청산하시겠습니까?").format(symbol),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             # 실제 청산 로직 연결
             try:
                 from exchanges.exchange_manager import get_exchange_manager
@@ -304,10 +316,10 @@ class PositionStatusWidget(QFrame):
                 if not closed:
                     QMessageBox.warning(self, t("common.error", "청산 실패"), f"{symbol} " + t("dashboard.close_fail_no_exchange", "청산에 실패했습니다 (연결된 거래소 없음)"))
                     
-            except Exception as e:
-                QMessageBox.critical(self, t("common.error", "오류"), t("dashboard.close_error", "청산 오류") + f": {e}")
             except ImportError:
                 logger.info(f"[Close] {symbol} 청산 요청 (exchange_manager 미사용)")
+            except Exception as e:
+                QMessageBox.critical(self, t("common.error", "오류"), t("dashboard.close_error", "청산 오류") + f": {e}")
             
             self.remove_position(symbol)
     
@@ -324,7 +336,7 @@ class PositionStatusWidget(QFrame):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     widget = PositionStatusWidget()
@@ -342,4 +354,4 @@ if __name__ == "__main__":
     )
     
     widget.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

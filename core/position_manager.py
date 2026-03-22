@@ -11,7 +11,11 @@ core/position_manager.py
 
 import logging
 import pandas as pd
-from typing import Optional, Dict, Callable
+from typing import Any, Optional, Dict, Callable, cast
+
+# Core 및 Utils (Phase 2)
+from core.strategy_core import AlphaX7Core
+from utils.indicators import calculate_rsi
 
 # Logging
 from utils.logger import get_module_logger
@@ -30,12 +34,12 @@ class PositionManager:
     """
     
     def __init__(
-        self, 
-        exchange,
-        strategy_params: dict = None,
-        strategy_core = None,
+        self,
+        exchange: Any,
+        strategy_params: Optional[Dict[str, Any]] = None,
+        strategy_core: Optional[AlphaX7Core] = None,
         dry_run: bool = False,
-        state_manager = None
+        state_manager: Any = None
     ):
         """
         Args:
@@ -51,21 +55,20 @@ class PositionManager:
         self.state_manager = state_manager
         
         # 콜백 함수
-        self.on_sl_hit: Callable = None
-        self.on_trailing_update: Callable = None
-        self.on_add_triggered: Callable = None
+        self.on_sl_hit: Optional[Callable[..., Any]] = None
+        self.on_trailing_update: Optional[Callable[..., Any]] = None
+        self.on_add_triggered: Optional[Callable[..., Any]] = None
     
     @property
     def strategy(self):
-        """AlphaX7Core 지연 로드"""
+        """AlphaX7Core 반환 (Phase 2 정적 임포트)"""
         if self._strategy_core is None:
-            from .strategy_core import AlphaX7Core
             self._strategy_core = AlphaX7Core(use_mtf=True)
         return self._strategy_core
     
     # ========== RSI 계산 ==========
     
-    def _calculate_rsi(self, df_entry: pd.DataFrame, period: int = None) -> float:
+    def _calculate_rsi(self, df_entry: Optional[pd.DataFrame], period: Optional[int] = None) -> float:
         """
         RSI 계산 (utils/indicators 위임)
         
@@ -77,27 +80,51 @@ class PositionManager:
             RSI 값 (기본 50)
         """
         if period is None:
-            period = self.strategy_params.get('rsi_period', 14)
-        
+            period = int(self.strategy_params.get('rsi_period', 14) or 14)
+
         if df_entry is None or len(df_entry) < period + 10:
             return 50.0
         
         try:
-            from utils.indicators import calculate_rsi
-            return calculate_rsi(df_entry['close'].values, period=period)
+            close_data = df_entry['close']
+            # DataFrame['close']는 Series를 반환하므로 타입 체크
+            if isinstance(close_data, pd.DataFrame):
+                close_series = cast(Any, close_data).iloc[:, 0]
+            else:
+                close_series = pd.Series(close_data)
+
+            rsi_result = calculate_rsi(close_series, period=period, return_series=False)
+            # Series인 경우 마지막 값, 아니면 그대로 float 반환
+            if isinstance(rsi_result, pd.Series):
+                return float(rsi_result.iloc[-1])
+            return rsi_result  # 이미 float
         except Exception:
             # 폴백: 인라인 계산
             try:
-                closes = df_entry['close'].tail(period + 10)
+                close_data = df_entry['close'].tail(period + 10)
+                closes = pd.Series(close_data) if not isinstance(close_data, pd.Series) else close_data
                 delta = closes.diff()
-                gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-                rs = gain / loss.replace(0, 1e-10)
+                gain_calc = delta.where(delta > 0, 0)
+                loss_calc = -delta.where(delta < 0, 0)
+                gain = gain_calc.rolling(window=period).mean()
+                loss = loss_calc.rolling(window=period).mean()
+                loss_safe = loss.replace(0, 1e-10)
+                rs = gain / loss_safe
                 rsi_series = 100 - (100 / (1 + rs))
-                return float(rsi_series.iloc[-1]) if not rsi_series.empty else 50.0
+                if isinstance(rsi_series, pd.Series) and not rsi_series.empty:
+                    return float(rsi_series.iloc[-1])
+                return 50.0
             except Exception:
                 return 50.0
     
+    # ========== 유틸리티 ==========
+    
+    def _get_val(self, obj: Any, key: str, default: Any = None) -> Any:
+        """객체 속성 또는 딕셔너리 키 값 반환"""
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
     # ========== SL 히트 체크 ==========
     
     def check_sl_hit(self, position, high: float, low: float) -> bool:
@@ -115,8 +142,8 @@ class PositionManager:
         if position is None:
             return False
         
-        sl = getattr(position, 'stop_loss', 0)
-        side = getattr(position, 'side', '')
+        sl = self._get_val(position, 'stop_loss', 0)
+        side = self._get_val(position, 'side', '')
         
         if side == 'Long' and low <= sl:
             return True
@@ -127,33 +154,49 @@ class PositionManager:
     
     # ========== 트레일링 SL 업데이트 ==========
     
-    def update_trailing_sl(self, new_sl: float) -> bool:
+    def update_trailing_sl(self, new_sl: float, max_retries: int = 3) -> bool:
         """
         트레일링 SL 업데이트 (거래소 API 호출)
-        
+
         Args:
             new_sl: 새 손절가
-            
+            max_retries: 최대 재시도 횟수 (기본: 3)
+
         Returns:
             성공 여부
         """
         if self.dry_run:
             logging.info(f"[POSITION] (DRY) SL would be updated to {new_sl:.2f}")
             return True
-        
-        try:
-            result = self.exchange.update_stop_loss(new_sl)
-            if result:
-                logging.info(f"[POSITION] ✅ Trailing SL updated: {new_sl:.2f}")
-                if self.on_trailing_update:
-                    self.on_trailing_update(new_sl)
-                return True
-            else:
-                logging.warning("[POSITION] ⚠️ SL update API returned False")
-                return False
-        except Exception as e:
-            logging.error(f"[POSITION] SL update error: {e}")
-            return False
+
+        # ✅ P0-8: SL 업데이트 재시도 로직 (최대 3회)
+        import time
+        for attempt in range(max_retries):
+            try:
+                result = self.exchange.update_stop_loss(new_sl)
+                if result:
+                    logging.info(f"[POSITION] ✅ Trailing SL updated: {new_sl:.2f}")
+                    if self.on_trailing_update:
+                        self.on_trailing_update(new_sl)
+                    return True
+                else:
+                    logging.warning(f"[POSITION] ⚠️ SL update failed (Attempt {attempt+1}/{max_retries})")
+
+                    # 재시도 전 대기 (백오프)
+                    if attempt < max_retries - 1:
+                        delay = 1.0 * (attempt + 1)
+                        time.sleep(delay)
+
+            except Exception as e:
+                logging.error(f"[POSITION] SL update error (Attempt {attempt+1}/{max_retries}): {e}")
+
+                # 재시도 전 대기 (백오프)
+                if attempt < max_retries - 1:
+                    delay = 1.0 * (attempt + 1)
+                    time.sleep(delay)
+
+        logging.error(f"[POSITION] ❌ All {max_retries} SL update attempts failed")
+        return False
     
     # ========== 추가 진입 조건 체크 ==========
     
@@ -174,7 +217,7 @@ class PositionManager:
             return False
         
         max_adds = params.get('max_adds', 1)
-        current_adds = getattr(position, 'add_count', 0)
+        current_adds = self._get_val(position, 'add_count', 0)
         
         if current_adds >= max_adds:
             return False
@@ -182,7 +225,7 @@ class PositionManager:
         pullback_long = params.get('pullback_rsi_long', 45)
         pullback_short = params.get('pullback_rsi_short', 55)
         
-        side = getattr(position, 'side', '')
+        side = self._get_val(position, 'side', '')
         
         if side == 'Long' and current_rsi < pullback_long:
             return True
@@ -197,7 +240,7 @@ class PositionManager:
         self,
         bt_state: dict,
         candle: dict,
-        df_entry: pd.DataFrame = None
+        df_entry: Optional[pd.DataFrame] = None
     ) -> Optional[Dict]:
         """
         실시간 포지션 관리 (트레일링, SL 히트, 추가 진입)
@@ -257,25 +300,42 @@ class PositionManager:
             pullback_rsi_short=params.get('pullback_rsi_short', 60)
         )
         
-        # 1. SL Hit 처리
+        # 1. SL Hit 처리 (P1-009: 청산 실패 시 상태 일관성 유지)
         if result.get('sl_hit'):
             sl_price = result.get('sl_price', current_sl)
             logging.info(f"[POSITION] 🔴 SL HIT: {direction} @ {sl_price:.2f}")
-            
+
+            close_success = True  # 청산 성공 여부
             if not self.dry_run:
                 try:
-                    self.exchange.close_position()
+                    close_result = self.exchange.close_position()
+                    # OrderResult 또는 bool 체크
+                    if hasattr(close_result, 'success'):
+                        close_success = close_result.success
+                    else:
+                        close_success = bool(close_result)
+
+                    if not close_success:
+                        logging.error(f"[POSITION] ❌ SL Close Failed: Position may still exist on exchange")
+                        # 청산 실패 시 재시도 로직 추가 (선택 사항)
+                        # return None  # 상태 변경하지 않고 다음 틱에서 재시도
                 except Exception as e:
-                    logging.error(f"[POSITION] ❌ SL Close Error: {e}")
-            
-            # 상태 클리어
-            bt_state['position'] = None
-            bt_state['positions'] = []
-            
-            if self.on_sl_hit:
-                self.on_sl_hit(direction, sl_price)
-            
-            return {'action': 'CLOSE', 'direction': direction, 'price': sl_price, 'reason': 'SL_HIT'}
+                    logging.error(f"[POSITION] ❌ SL Close Exception: {e}")
+                    close_success = False
+
+            # P1-009: 청산 성공한 경우에만 상태 클리어
+            if close_success or self.dry_run:
+                bt_state['position'] = None
+                bt_state['positions'] = []
+
+                if self.on_sl_hit:
+                    self.on_sl_hit(direction, sl_price)
+
+                return {'action': 'CLOSE', 'direction': direction, 'price': sl_price, 'reason': 'SL_HIT'}
+            else:
+                # 청산 실패: 상태 유지하고 경고
+                logging.warning(f"[POSITION] ⚠️ SL Close failed, keeping position state for retry")
+                return None
         
         # 2. Extreme price 업데이트
         new_extreme = result.get('new_extreme')
@@ -305,8 +365,8 @@ class PositionManager:
             should_add = self.strategy.should_add_position_realtime(
                 direction=direction,
                 current_rsi=current_rsi,
-                pullback_rsi_long=params.get('pullback_rsi_long', 40),
-                pullback_rsi_short=params.get('pullback_rsi_short', 60)
+                add_count=current_adds,
+                max_adds=max_adds
             )
             if should_add:
                 if self.on_add_triggered:
@@ -322,7 +382,7 @@ class PositionManager:
         bt_state: dict,
         candle: dict,
         trading_conditions: dict,
-        df_entry: pd.DataFrame = None
+        df_entry: Optional[pd.DataFrame] = None
     ) -> Optional[Dict]:
         """
         신규 진입 체크

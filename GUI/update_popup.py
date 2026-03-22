@@ -2,11 +2,11 @@
 업데이트 확인 팝업 (Silent Install 방식)
 Setup.exe 다운로드 후 자동 설치
 """
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QProgressBar, QMessageBox, QApplication
 )
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 
 class DownloadWorker(QThread):
@@ -181,10 +181,10 @@ class UpdatePopup(QDialog):
             "⚠️ 설치 중 프로그램이 자동으로 종료되고\n"
             "설치 완료 후 다시 시작됩니다.\n\n"
             "계속할까요?",
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return
         
         # UI 상태 변경
@@ -254,9 +254,9 @@ class UpdatePopup(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
     app = QApplication(sys.argv)
     popup = UpdatePopup()
     popup.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

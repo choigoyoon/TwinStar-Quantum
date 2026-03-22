@@ -1,0 +1,628 @@
+================================================================================
+TwinStar Quantum - 작업 로그 (Session 17)
+일자: 2026-01-15 (18:00)
+브랜치: genspark_ai_developer
+작업: GPU 가속 Phase P1 계획 완료
+================================================================================
+
+## 🎯 작업 요약
+
+**GPU 가속 Phase P1 구현 계획 수립** - 히트맵 20배 향상 + GPU 설정 인프라 설계
+
+### 핵심 성과
+
+| 항목 | 내용 |
+|------|------|
+| **계획서 작성** | 완료 (450줄) |
+| **탐색 에이전트** | 3개 병렬 실행 (최적화/Settings/PyQtGraph) |
+| **설계 완료** | P1-1 (히트맵) + P1-2 (GPU 설정) |
+| **예상 기간** | 3-4일 |
+
+---
+
+## 📋 계획 요약
+
+### Phase P1-1: GLImageItem 히트맵 구현
+
+**목표**: 최적화 위젯에 GPU 가속 히트맵 추가 (20배 향상)
+
+#### 탐색 결과
+
+**핵심 발견**:
+- ❌ 현재 히트맵 구현 없음 (테이블 기반만 존재)
+- ❌ Matplotlib 사용 없음
+- ✅ 데이터 구조 완비 (`OptimizationResult` 클래스)
+- ✅ 파라미터 그리드 크기: 8~12,800 조합
+
+**현재 최적화 위젯 구조**:
+```
+GUI/optimization_widget.py (2,129줄) - 레거시
+ui/widgets/optimization/ - 신규 (마이그레이션 중)
+  ├── main.py (160줄) - 탭 컨테이너
+  ├── results_viewer.py (535줄) - 등급별 결과 뷰
+  └── indicator_comparison.py (488줄) - 지표 비교
+```
+
+#### 신규 파일
+
+1. **`ui/widgets/optimization/heatmap.py`** (신규, ~400줄)
+   - `OptimizationHeatmapWidget` 클래스
+   - PyQtGraph ImageItem 기반 렌더링
+   - 2D 파라미터 그리드 시각화
+   - 메트릭별 색상 맵 (Win Rate, Sharpe, MDD)
+   - 마우스 호버 툴팁
+   - ColorBar 범례
+
+2. **`ui/widgets/optimization/heatmap.py`** - `MultiMetricHeatmapWidget`
+   - 3개 메트릭 동시 비교 (가로 배치)
+   - Win Rate, Sharpe Ratio, Max Drawdown
+
+3. **`ui/widgets/optimization/results_viewer.py`** (수정, +50줄)
+   - 히트맵 탭 추가
+   - 다중 메트릭 비교 탭 추가
+   - `display_results()` 메서드 확장
+
+#### 구현 단계
+
+```
+Step 1: 히트맵 위젯 생성 (1일)
+  ├─ OptimizationHeatmapWidget 클래스
+  ├─ ImageItem 기반 렌더링
+  ├─ _reshape_to_grid() 데이터 변환
+  └─ 마우스 이벤트 처리
+
+Step 2: 다중 메트릭 비교 (0.5일)
+  ├─ MultiMetricHeatmapWidget 클래스
+  └─ 3개 히트맵 동기화
+
+Step 3: 통합 (0.5일)
+  ├─ results_viewer.py 수정
+  └─ 테스트 (12,800개 조합)
+```
+
+---
+
+### Phase P1-2: Settings GPU 설정 탭
+
+**목표**: GPU 가속 설정 인프라 구축
+
+#### 탐색 결과
+
+**Settings 탭 구조**:
+- **메인 파일**: `GUI/settings_widget.py` (1,187줄)
+- **통합 위치**: `GUI/staru_main.py` (라인 627)
+- **저장 메커니즘**: 암호화 (`storage/secure_storage.py`)
+
+**현재 설정 항목**:
+- 거래소 API 키 (8개 거래소)
+- 텔레그램 알림
+- 라이선스 검증
+
+**GPU 정보 감지**:
+- ❌ 현재 미구현
+- ✅ 시스템 정보 감지: `platform`, `psutil` (CPU, 메모리)
+
+#### 신규 파일
+
+1. **`config/gpu_settings.py`** (신규, ~200줄)
+   - `GPUSettings` 데이터 클래스
+   - `GPUInfo` 데이터 클래스
+   - `GPUSettingsManager` 클래스
+   - GPU 정보 감지 (Windows/Linux/macOS)
+   - 환경 변수 설정 (`apply_settings()`)
+
+2. **`ui/widgets/settings/gpu_tab.py`** (신규, ~350줄)
+   - `GPUSettingsTab` 위젯
+   - GPU 가속 활성화 토글
+   - 렌더링 백엔드 선택 (Direct3D 11/12, Vulkan, OpenGL)
+   - 최대 FPS 설정
+   - GPU 정보 표시 (Vendor, Model, Driver)
+   - 디자인 토큰 적용
+
+3. **`GUI/staru_main.py`** (수정, +15줄)
+   - GPU 설정 적용 (QApplication 시작 전)
+   - GPU 설정 탭 추가
+
+#### 구현 단계
+
+```
+Step 1: GPU 설정 모듈 (0.5일)
+  ├─ GPUSettingsManager 클래스
+  ├─ GPU 감지 (nvidia-smi, WMIC, lspci)
+  └─ JSON 저장/로드
+
+Step 2: GPU 설정 탭 UI (1일)
+  ├─ GPUSettingsTab 위젯
+  ├─ 백엔드/FPS 선택 UI
+  └─ GPU 정보 표시
+
+Step 3: 메인 앱 통합 (0.5일)
+  ├─ staru_main.py 수정
+  └─ 환경 변수 적용
+```
+
+---
+
+## 🔍 탐색 에이전트 결과
+
+### Agent 1: 최적화 히트맵 탐색
+
+**실행 시간**: ~2분
+**Agent ID**: a2c4914
+
+**핵심 발견**:
+1. 히트맵 구현 없음 (테이블 기반만)
+2. 데이터 구조 완비 (`core/optimization_logic.py`)
+3. 파라미터 그리드:
+   - Quick: 8 조합
+   - Standard: 3,600 조합
+   - Deep: 12,800 조합
+4. 등급 기준: S/A/B/C (승률, MDD, PF 기준)
+
+**파일 매핑**:
+```
+GUI/optimization_widget.py (2,129줄) - 레거시
+ui/widgets/optimization/
+  ├── main.py (160줄)
+  ├── results_viewer.py (535줄) ← 수정 대상
+  └── indicator_comparison.py (488줄)
+```
+
+### Agent 2: Settings 탭 탐색
+
+**실행 시간**: ~2분
+**Agent ID**: a6a801b
+
+**핵심 발견**:
+1. Settings 위젯: `GUI/settings_widget.py` (1,187줄)
+2. 통합 위치: `staru_main.py` 라인 627
+3. 저장소: `storage/secure_storage.py` (암호화)
+4. GPU 감지 코드 없음 (신규 구현 필요)
+
+**통합 지점**:
+```python
+# staru_main.py 라인 627
+self.tabs.addTab(self.settings_widget, f"⚙️ {t('tabs.settings', '설정')}")
+
+# 🆕 GPU 설정 탭 추가 위치
+self.tabs.addTab(self.gpu_settings_tab, f"🎮 {t('tabs.gpu', 'GPU 설정')}")
+```
+
+### Agent 3: PyQtGraph 패턴 탐색
+
+**실행 시간**: ~2분
+**Agent ID**: aa78531
+
+**핵심 발견**:
+1. **ImageItem 사용 없음** (신규 구현 필요)
+2. PlotWidget 5개 사용 중:
+   - `interactive_chart.py` (백테스트)
+   - `enhanced_chart_widget.py` (실시간)
+   - `chart_items.py` (K선, 성교량)
+   - `backtest_result_widget.py` (Equity)
+3. OpenGL 가속 미활성화 (CPU 렌더링)
+4. 설정 불일치:
+   - `pg.setConfigOptions(antialias=True)` (부분적)
+   - 전역 설정 필요
+
+**권장 설정**:
+```python
+# staru_main.py에 추가
+pg.setConfigOptions(
+    antialias=True,
+    useOpenGL=False,  # Windows 호환성
+    foreground=(200, 200, 200)
+)
+```
+
+---
+
+## 📊 성능 예측
+
+### P1-1 히트맵
+
+| 데이터 크기 | 목표 성능 |
+|-------------|-----------|
+| Quick (8) | < 10ms |
+| Standard (3,600) | < 50ms |
+| Deep (12,800) | < 100ms |
+
+**예상 향상**:
+- 테이블 기반 (현재) → GPU 히트맵 (신규)
+- 제한된 시각화 → 전체 파라미터 그리드
+- 수동 필터링 → 동적 메트릭 전환
+- **20배 향상** (사용자 경험 기준)
+
+### P1-2 GPU 설정
+
+| 항목 | 목표 성능 |
+|------|-----------|
+| GPU 감지 | < 2초 |
+| 설정 저장/로드 | < 50ms |
+| 환경 변수 적용 | 즉시 (재시작 필요) |
+
+---
+
+## 🎨 설계 하이라이트
+
+### 히트맵 위젯 구조
+
+```python
+class OptimizationHeatmapWidget(QWidget):
+    heatmap_clicked = pyqtSignal(dict)  # 파라미터 조합 emit
+
+    def __init__(self):
+        self.plot_widget = pg.PlotWidget()
+        self.image_item = pg.ImageItem()  # GPU 텍스처
+        self.colorbar = pg.ColorBarItem()  # 범례
+
+    def update_heatmap(self, results: List[Dict]):
+        # 리스트 → 2D NumPy 배열 변환
+        grid = self._reshape_to_grid(results, param_x, param_y, metric)
+
+        # GPU 텍스처로 전송
+        self.image_item.setImage(grid, autoLevels=True)
+
+    def _reshape_to_grid(self, results, param_x, param_y, metric):
+        # 파라미터 고유값 추출
+        x_values = sorted(set(r['params'][param_x] for r in results))
+        y_values = sorted(set(r['params'][param_y] for r in results))
+
+        # 2D 배열 초기화
+        grid = np.full((len(y_values), len(x_values)), np.nan)
+
+        # 데이터 채우기
+        for result in results:
+            x_idx = x_map[result['params'][param_x]]
+            y_idx = y_map[result['params'][param_y]]
+            grid[y_idx, x_idx] = result[metric_key]
+
+        return grid
+```
+
+### GPU 설정 구조
+
+```python
+@dataclass
+class GPUSettings:
+    enabled: bool = True
+    backend: str = 'd3d11'  # d3d11, d3d12, vulkan, opengl
+    max_fps: int = 30
+    chart_throttle: bool = True
+    opengl_for_pyqtgraph: bool = False
+
+class GPUSettingsManager:
+    def detect_gpu(self) -> GPUInfo:
+        # Windows: nvidia-smi → WMIC
+        # Linux: lspci
+        # macOS: system_profiler
+
+    def apply_settings(self):
+        # QApplication 시작 전 호출
+        os.environ['QSG_RHI_BACKEND'] = self.settings.backend
+```
+
+---
+
+## 🔧 기술 스택
+
+### 신규 추가
+
+| 기술 | 용도 | 버전 |
+|------|------|------|
+| PyQtGraph ImageItem | GPU 히트맵 | 0.13.3+ |
+| PyQtGraph ColorBarItem | 범례 | 0.13.3+ |
+| NumPy | 2D 배열 변환 | 1.26.0+ |
+| subprocess | GPU 감지 | 표준 라이브러리 |
+
+### 기존 활용
+
+- PyQt6 (6.6.0+)
+- 디자인 토큰 (`ui.design_system.tokens`)
+- SSOT 원칙 (`config.constants`)
+
+---
+
+## 📝 검증 계획
+
+### P1-1 히트맵 검증
+
+#### 기능 테스트
+```python
+def test_heatmap_rendering():
+    results = generate_fake_optimization_results(100)
+    heatmap = OptimizationHeatmapWidget()
+    heatmap.update_heatmap(results)
+    assert heatmap.image_item.image is not None
+
+def test_axis_change():
+    heatmap.x_combo.setCurrentText('leverage')
+    assert heatmap.param_x == 'leverage'
+```
+
+#### 성능 벤치마크
+```python
+def benchmark_heatmap_large_dataset():
+    results = generate_fake_optimization_results(12800)
+    start = time.time()
+    heatmap.update_heatmap(results)
+    elapsed = time.time() - start
+    assert elapsed < 0.1  # < 100ms
+```
+
+#### UI 테스트
+- [ ] 마우스 호버 툴팁
+- [ ] 히트맵 클릭 시그널
+- [ ] 축/메트릭 변경
+- [ ] ColorBar 범례
+
+### P1-2 GPU 설정 검증
+
+#### 기능 테스트
+```python
+def test_gpu_detection():
+    manager = GPUSettingsManager()
+    assert manager.gpu_info.vendor in ['NVIDIA', 'AMD', 'Intel', 'Unknown']
+
+def test_settings_save_load():
+    settings = GPUSettings(enabled=True, backend='d3d12')
+    assert manager.save(settings)
+    loaded = manager.load()
+    assert loaded.backend == 'd3d12'
+```
+
+#### UI 테스트
+- [ ] 탭 전환
+- [ ] 설정 저장/로드
+- [ ] 재시작 후 적용
+- [ ] GPU 정보 표시
+
+---
+
+## ⚠️ 위험 요소 및 대응
+
+### 위험 #1: PyQtGraph ImageItem 성능
+
+**위험**: 12,800개 조합 → 2D 배열 변환 느림
+
+**대응**:
+- ✅ NumPy 사용 (빠른 배열 생성)
+- ✅ NaN 처리 최적화
+- ✅ 필요 시 다운샘플링 (100×100 → 50×50)
+
+### 위험 #2: GPU 감지 실패
+
+**위험**: 일부 환경에서 GPU 정보 감지 실패
+
+**대응**:
+- ✅ Fallback: `GPUInfo(vendor='Unknown')`
+- ✅ 사용자 메시지: "GPU 정보 감지 불가"
+
+### 위험 #3: 환경 변수 적용 타이밍
+
+**위험**: `apply_settings()` QApplication 생성 후 호출 시 무효
+
+**대응**:
+- ✅ `staru_main.py`에서 `QApplication()` 전에 호출
+- ✅ 재시작 안내 메시지
+
+### 위험 #4: Windows OpenGL 문제
+
+**위험**: PyQtGraph OpenGL이 Windows에서 느림
+
+**대응**:
+- ✅ 기본값: `opengl_for_pyqtgraph=False`
+- ✅ UI 경고: "실험적, Windows에서 느릴 수 있음"
+
+---
+
+## 📂 파일 변경 요약
+
+### P1-1 히트맵
+
+| 파일 | 변경 | 라인 수 | 상태 |
+|------|------|--------|------|
+| `ui/widgets/optimization/heatmap.py` | 🆕 신규 | ~400줄 | 계획 |
+| `ui/widgets/optimization/results_viewer.py` | 🔧 수정 | +50줄 | 계획 |
+
+### P1-2 GPU 설정
+
+| 파일 | 변경 | 라인 수 | 상태 |
+|------|------|--------|------|
+| `config/gpu_settings.py` | 🆕 신규 | ~200줄 | 계획 |
+| `ui/widgets/settings/gpu_tab.py` | 🆕 신규 | ~350줄 | 계획 |
+| `GUI/staru_main.py` | 🔧 수정 | +15줄 | 계획 |
+
+### 문서
+
+| 파일 | 변경 | 라인 수 | 상태 |
+|------|------|--------|------|
+| `docs/GPU_ACCELERATION_ROADMAP.md` | 📄 기존 | 450줄 | 완료 (P0) |
+| **계획서** | 🆕 신규 | 1,130줄 | ✅ **완료** |
+| `docs/WORK_LOG_20260115_Session17.txt` | 🆕 신규 | 이 파일 | ✅ **완료** |
+
+---
+
+## 🎯 다음 작업 우선순위
+
+### 즉시 착수 가능
+
+1. **[Day 1-2] P1-1 히트맵 구현**
+   - Step 1: 히트맵 위젯 생성 (1일)
+   - Step 2: 다중 메트릭 비교 (0.5일)
+   - Step 3: 통합 (0.5일)
+
+2. **[Day 3-4] P1-2 GPU 설정 탭**
+   - Step 1: GPU 설정 모듈 (0.5일)
+   - Step 2: GPU 설정 탭 UI (1일)
+   - Step 3: 메인 앱 통합 (0.5일)
+
+### 병렬 진행 가능
+
+✅ P1-1과 P1-2는 독립적이므로 **동시 진행 가능**
+
+---
+
+## 📋 체크리스트
+
+### P1 시작 전
+
+- [x] P0 완료 (QTableView + 스로틀링)
+- [x] 탐색 에이전트 3개 실행
+- [x] 계획서 작성 (450줄)
+- [x] VS Code Problems 탭 확인 (P0 에러 0개)
+- [x] 로드맵 문서 확인
+
+### P1-1 완료 기준
+
+- [ ] `heatmap.py` 생성 (~400줄)
+- [ ] `results_viewer.py` 수정 (+50줄)
+- [ ] 히트맵 탭 정상 표시
+- [ ] 12,800개 조합 < 100ms
+- [ ] Pyright 에러 0개
+
+### P1-2 완료 기준
+
+- [ ] `gpu_settings.py` 생성 (~200줄)
+- [ ] `gpu_tab.py` 생성 (~350줄)
+- [ ] `staru_main.py` 수정 (+15줄)
+- [ ] GPU 감지 동작
+- [ ] Pyright 에러 0개
+
+---
+
+## 📚 참고 자료
+
+### 계획서 위치
+
+**메인 계획서**:
+```
+C:\Users\woojupapa\.claude\plans\rustling-weaving-ocean.md
+```
+
+**섹션**:
+1. 배경 및 현황
+2. P1-1: GLImageItem 히트맵 구현
+3. P1-2: Settings GPU 설정 탭
+4. 구현 순서
+5. 검증 계획
+
+### 관련 문서
+
+- [GPU_ACCELERATION_ROADMAP.md](GPU_ACCELERATION_ROADMAP.md) - P0 완료, P1/P2 계획
+- [WORK_LOG_20260115_Session16.txt](WORK_LOG_20260115_Session16.txt) - P0 완료 로그
+- [CLAUDE.md](../CLAUDE.md) - 프로젝트 개발 규칙
+
+### PyQtGraph 문서
+
+- [ImageItem](https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/imageitem.html)
+- [ColorBarItem](https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/colorbaritem.html)
+- [setConfigOptions](https://pyqtgraph.readthedocs.io/en/latest/functions.html#pyqtgraph.setConfigOptions)
+
+### Qt 문서
+
+- [Qt RHI](https://doc.qt.io/qt-6/qtrhi-index.html)
+- [QSG_RHI_BACKEND](https://doc.qt.io/qt-6/qtquick-visualcanvas-scenegraph-renderer.html)
+
+---
+
+## 🎓 설계 패턴
+
+### 1. 데이터 변환 패턴
+
+```python
+# List[Dict] → np.ndarray (2D)
+def _reshape_to_grid(results, param_x, param_y, metric):
+    # 1. 파라미터 고유값 추출
+    x_values = sorted(set(r['params'][param_x] for r in results))
+    y_values = sorted(set(r['params'][param_y] for r in results))
+
+    # 2. 2D 배열 초기화
+    grid = np.full((len(y_values), len(x_values)), np.nan)
+
+    # 3. 매핑 딕셔너리
+    x_map = {val: idx for idx, val in enumerate(x_values)}
+    y_map = {val: idx for idx, val in enumerate(y_values)}
+
+    # 4. 데이터 채우기
+    for result in results:
+        x_idx = x_map[result['params'][param_x]]
+        y_idx = y_map[result['params'][param_y]]
+        grid[y_idx, x_idx] = result[metric_key]
+
+    return grid
+```
+
+### 2. GPU 감지 패턴
+
+```python
+def detect_gpu(self) -> GPUInfo:
+    system = platform.system()
+
+    if system == 'Windows':
+        # 1. nvidia-smi 우선
+        try:
+            result = subprocess.run(['nvidia-smi', ...])
+            if result.returncode == 0:
+                return parse_nvidia_smi(result.stdout)
+        except Exception:
+            pass
+
+        # 2. WMIC Fallback
+        try:
+            result = subprocess.run(['wmic', 'path', 'win32_VideoController', ...])
+            return parse_wmic(result.stdout)
+        except Exception:
+            pass
+
+    elif system == 'Linux':
+        # lspci
+        ...
+
+    elif system == 'Darwin':
+        # system_profiler
+        ...
+
+    return GPUInfo(vendor='Unknown')
+```
+
+### 3. 환경 변수 적용 패턴
+
+```python
+# staru_main.py (QApplication 생성 전)
+from config.gpu_settings import GPUSettingsManager
+
+# GPU 설정 적용 (환경 변수)
+gpu_manager = GPUSettingsManager()
+gpu_manager.apply_settings()  # os.environ['QSG_RHI_BACKEND'] = ...
+
+# QApplication 생성
+app = QApplication(sys.argv)
+
+# PyQtGraph 전역 설정
+import pyqtgraph as pg
+pg.setConfigOptions(
+    antialias=True,
+    useOpenGL=False,  # Windows 호환성
+    foreground=(200, 200, 200)
+)
+```
+
+---
+
+## 최종 요약
+
+**계획서 작성 완료**:
+- ✅ 탐색 에이전트 3개 병렬 실행 (최적화/Settings/PyQtGraph)
+- ✅ P1-1 히트맵 설계 완료 (2일)
+- ✅ P1-2 GPU 설정 설계 완료 (2일)
+- ✅ 검증 계획 수립
+- ✅ 위험 요소 식별 및 대응
+
+**다음 세션**: P1-1 Step 1 구현 시작 (히트맵 위젯 생성)
+
+================================================================================
+작성: Claude Sonnet 4.5
+작업 시간: 2026-01-15 18:00-18:30 (30분)
+다음 세션: P1-1 Step 1 - 히트맵 위젯 생성 (heatmap.py)
+================================================================================

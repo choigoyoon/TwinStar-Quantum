@@ -7,15 +7,14 @@ Unified Backtest Engine (v2.1)
 import logging
 logger = logging.getLogger(__name__)
 
-import pandas as pd
 import numpy as np
 import traceback
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from datetime import datetime
+from typing import List, Optional
 from dataclasses import dataclass
 
 from core.strategy_core import AlphaX7Core
-from core.multi_symbol_backtest import MultiSymbolBacktest, Signal
+from core.multi_symbol_backtest import MultiSymbolBacktest
 from utils.preset_manager import get_preset_manager
 
 # Logging
@@ -44,14 +43,15 @@ class UnifiedBacktest:
         self.max_positions = max_positions
         self.capital_mode = capital_mode.lower() # "compound" or "fixed"
         
-        self.equity = 1000.0 # Initial Equity
+        self.initial_capital = 1000.0  # Fixed mode 기준 자본
+        self.equity = 1000.0  # Initial Equity
         self.max_equity = 1000.0
-        self.equity_history = []
-        self.trade_history = []
-        
-        self.active_position = None # {symbol, entry_price, size, direction, sl, tp}
+        self.equity_history: List[float] = []
+        self.trade_history: List[dict] = []
+
+        self.active_position: Optional[dict] = None  # {symbol, entry_price, size, direction, sl, tp}
     
-    def run(self, progress_callback=None) -> UnifiedResult:
+    def run(self, progress_callback=None) -> Optional[UnifiedResult]:
         """Run unified backtest simulation"""
         try:
             # 1. Load Verified Presets
@@ -97,18 +97,18 @@ class UnifiedBacktest:
                 symbol_data_map[symbol] = df_15m
                 
                 # Detect Signals
-                signals = self.strategy.detect_signal(
+                signal = self.strategy.detect_signal(
                     df_1h, df_15m,
                     rsi_period=params.get('rsi_period', 14),
                     atr_period=params.get('atr_period', 14)
                 )
-                
-                # Append to global list
-                for sig in signals:
+
+                # Append to global list (single signal)
+                if signal is not None:
                     all_signals.append({
-                        'timestamp': sig.timestamp,
+                        'timestamp': signal.timestamp,
                         'symbol': symbol,
-                        'signal': sig,
+                        'signal': signal,
                         'params': params
                     })
             
@@ -260,26 +260,34 @@ class UnifiedBacktest:
                         exit_reason = 'TP'
                         
                 if exit_price:
+                    # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
+                    from config.constants.trading import BACKTEST_EXIT_COST
+                    exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
+
                     # Calculate PnL
                     pnl = (exit_price - entry_price) / entry_price
                     if direction == 'sell': pnl = -pnl
-                    
+
                     return {
                         'symbol': symbol,
                         'entry_time': entry_time,
                         'exit_time': c_ts,
-                        'pnl_percent': pnl * 100,
+                        'pnl_percent': pnl * 100 - exit_fee_pct,
                         'exit_reason': exit_reason
                     }
                     
             # End of Data (Force Close)
+            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
+            from config.constants.trading import BACKTEST_EXIT_COST
+            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
+
             last = future.iloc[-1]
             pnl = (last['close'] - entry_price) / entry_price
             if direction == 'sell': pnl = -pnl
             return {
                 'entry_time': entry_time,
                 'exit_time': last.name,
-                'pnl_percent': pnl * 100,
+                'pnl_percent': pnl * 100 - exit_fee_pct,
                 'exit_reason': 'Force'
             }
             

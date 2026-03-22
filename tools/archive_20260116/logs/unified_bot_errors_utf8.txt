@@ -1,0 +1,23 @@
+﻿L  18 | reportMissingModuleSource | Import "requests" could not be resolved from source
+L 168 | reportArgumentType        | Argument of type "Any | None" cannot be assigned to parameter "preset_name" of type "str" in function "get_backtest_params"
+  Type "Any | None" is not assignable to type "str"
+    "None" is not assignable to "str"
+L 226 | reportArgumentType        | Argument of type "bool" cannot be assigned to parameter "strategy_core" of type "AlphaX7Core | None" in function "__init__"
+  Type "bool" is not assignable to type "AlphaX7Core | None"
+    "bool" is not assignable to "AlphaX7Core"
+    "bool" is not assignable to "None"
+L 272 | reportOptionalMemberAccess | "get_stats" is not a known attribute of "None"
+L 375 | reportArgumentType        | Argument of type "dict[str, Unknown]" cannot be assigned to parameter "exit_price" of type "float" in function "execute_close"
+  "dict[str, Unknown]" is not assignable to "float"
+L 461 | reportAttributeAccessIssue | Cannot assign to attribute "preset_params" for class "BybitExchange"
+  Attribute "preset_params" is unknown
+L 461 | reportAttributeAccessIssue | Cannot assign to attribute "preset_params" for class "LighterExchange"
+  Attribute "preset_params" is unknown
+L 461 | reportAttributeAccessIssue | Cannot assign to attribute "preset_params" for class "CCXTExchange"
+  Attribute "preset_params" is unknown
+L 463 | reportAttributeAccessIssue | Cannot assign to attribute "preset_name" for class "BybitExchange"
+  Attribute "preset_name" is unknown
+L 463 | reportAttributeAccessIssue | Cannot assign to attribute "preset_name" for class "LighterExchange"
+  Attribute "preset_name" is unknown
+L 463 | reportAttributeAccessIssue | Cannot assign to attribute "preset_name" for class "CCXTExchange"
+  Attribute "preset_name" is unknown

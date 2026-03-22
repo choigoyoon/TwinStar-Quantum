@@ -191,4 +191,5 @@ if __name__ == "__main__":
     logger.info("\n📋 Discovered Strategies:")
     for sid in loader.list_all():
         info = loader.get_strategy_info(sid)
-        logger.info(f"  - {sid}: {info.name} (v{info.version})")
+        if info:
+            logger.info(f"  - {sid}: {info.name} (v{info.version})")

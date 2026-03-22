@@ -8,7 +8,7 @@
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, cast
 
 # Logging
 import logging
@@ -55,102 +55,102 @@ class ChartProfiler:
     
     def _calc_volatility(self, df: pd.DataFrame) -> float:
         """ATR 기반 변동성 계산 (0~1 정규화)"""
-        high = df['high'].values
-        low = df['low'].values
-        close = df['close'].values
-        
+        high = np.asarray(df['high'].values)
+        low = np.asarray(df['low'].values)
+        close = np.asarray(df['close'].values)
+
         # True Range
         tr1 = high - low
-        tr2 = np.abs(high - np.roll(close, 1))
-        tr3 = np.abs(low - np.roll(close, 1))
+        tr2 = cast(Any, np.abs(high - np.roll(close, 1)))  # type: ignore
+        tr3 = cast(Any, np.abs(low - np.roll(close, 1)))  # type: ignore
         tr = np.maximum(tr1, np.maximum(tr2, tr3))[1:]
-        
+
         # ATR (14일)
-        atr = np.mean(tr[-14:]) if len(tr) >= 14 else np.mean(tr)
-        
+        atr = float(np.mean(tr[-14:])) if len(tr) >= 14 else float(np.mean(tr))
+
         # 가격 대비 비율로 정규화
-        avg_price = np.mean(close[-14:])
-        volatility = (atr / avg_price) if avg_price > 0 else 0
-        
+        avg_price = float(np.mean(close[-14:]))
+        volatility = (atr / avg_price) if avg_price > 0 else 0.0
+
         # 0~1 범위로 클리핑 (10% 변동성 = 1.0)
-        return min(volatility / 0.1, 1.0)
+        return float(min(volatility / 0.1, 1.0))
     
     def _calc_trend_strength(self, df: pd.DataFrame) -> float:
         """RSI + MA 기반 추세 강도 (0~1)"""
-        close = df['close'].values
-        
+        close = np.asarray(df['close'].values)
+
         # RSI 계산
         delta = np.diff(close)
         gain = np.where(delta > 0, delta, 0)
         loss = np.where(delta < 0, -delta, 0)
-        
-        avg_gain = np.mean(gain[-14:]) if len(gain) >= 14 else np.mean(gain)
-        avg_loss = np.mean(loss[-14:]) if len(loss) >= 14 else np.mean(loss)
-        
+
+        avg_gain = float(np.mean(gain[-14:])) if len(gain) >= 14 else float(np.mean(gain))
+        avg_loss = float(np.mean(loss[-14:])) if len(loss) >= 14 else float(np.mean(loss))
+
         if avg_loss == 0:
-            rsi = 100
+            rsi = 100.0
         else:
             rs = avg_gain / avg_loss
-            rsi = 100 - (100 / (1 + rs))
-        
+            rsi = 100.0 - (100.0 / (1.0 + rs))
+
         # RSI를 0~1로 변환 (50 = 0.5, 극단값 = 0 or 1)
-        rsi_normalized = abs(rsi - 50) / 50
-        
+        rsi_normalized = abs(rsi - 50.0) / 50.0
+
         # MA 기울기
         if len(close) >= 20:
-            ma20 = np.mean(close[-20:])
-            ma5 = np.mean(close[-5:])
-            ma_slope = (ma5 - ma20) / ma20 if ma20 > 0 else 0
+            ma20 = float(np.mean(close[-20:]))
+            ma5 = float(np.mean(close[-5:]))
+            ma_slope = (ma5 - ma20) / ma20 if ma20 > 0 else 0.0
             ma_strength = min(abs(ma_slope) / 0.05, 1.0)  # 5% 기울기 = 1.0
         else:
             ma_strength = 0.5
-        
+
         # 평균
-        return (rsi_normalized + ma_strength) / 2
+        return float((rsi_normalized + ma_strength) / 2.0)
     
     def _calc_volume_pattern(self, df: pd.DataFrame) -> float:
         """거래량 변화율 (0~1)"""
         if 'volume' not in df.columns:
             return 0.5
-        
-        volume = df['volume'].values
+
+        volume = np.asarray(df['volume'].values)
         if len(volume) < 20:
             return 0.5
-        
-        recent_vol = np.mean(volume[-5:])
-        avg_vol = np.mean(volume[-20:])
-        
+
+        recent_vol = float(np.mean(volume[-5:]))
+        avg_vol = float(np.mean(volume[-20:]))
+
         if avg_vol == 0:
             return 0.5
-        
+
         ratio = recent_vol / avg_vol
         # 0.5~2.0 범위를 0~1로 매핑
-        return min(max((ratio - 0.5) / 1.5, 0), 1.0)
+        return float(min(max((ratio - 0.5) / 1.5, 0.0), 1.0))
     
     def _calc_price_range(self, df: pd.DataFrame) -> float:
         """가격 범위 (고가-저가 비율, 0~1)"""
-        high = df['high'].values[-20:]
-        low = df['low'].values[-20:]
-        
-        max_high = np.max(high)
-        min_low = np.min(low)
-        
+        high = np.asarray(df['high'].values[-20:])
+        low = np.asarray(df['low'].values[-20:])
+
+        max_high = float(np.max(high))
+        min_low = float(np.min(low))
+
         if min_low == 0:
             return 0.5
-        
+
         range_ratio = (max_high - min_low) / min_low
         # 20% 범위 = 1.0
-        return min(range_ratio / 0.2, 1.0)
+        return float(min(range_ratio / 0.2, 1.0))
     
     def _calc_candle_ratio(self, df: pd.DataFrame) -> float:
         """양봉 비율 (0~1)"""
-        open_prices = df['open'].values
-        close_prices = df['close'].values
-        
-        bullish = np.sum(close_prices > open_prices)
+        open_prices = np.asarray(df['open'].values)
+        close_prices = np.asarray(df['close'].values)
+
+        bullish = int(np.sum(close_prices > open_prices))
         total = len(close_prices)
-        
-        return bullish / total if total > 0 else 0.5
+
+        return float(bullish / total) if total > 0 else 0.5
     
     def _empty_profile(self) -> Dict[str, float]:
         """빈 프로파일 반환"""

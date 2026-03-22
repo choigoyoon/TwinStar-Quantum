@@ -7,21 +7,16 @@ Extracted from trading_dashboard.py for Phase 10.2.2
 import logging
 logger = logging.getLogger(__name__)
 
-import os
-import sys
 import requests
-from typing import Optional, Dict, List
-from datetime import datetime
 
 
-from PyQt5.QtWidgets import (
-    QLabel, QPushButton, QComboBox, QSpinBox,
-    QGroupBox, QTableWidget, QTableWidgetItem, QHeaderView,
-    QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, 
-    QProgressBar, QAbstractItemView
+from PyQt6.QtWidgets import (
+    QLabel, QPushButton, QComboBox, QGroupBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout,
+    QVBoxLayout
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont, QColor
+from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtGui import QColor
 from locales.lang_manager import t
 
 # Fallback imports
@@ -36,7 +31,6 @@ except ImportError:
     }
 
 try:
-    from core.multi_sniper import MultiCoinSniper
     HAS_MULTI_SNIPER = True
 except ImportError:
     HAS_MULTI_SNIPER = False
@@ -102,7 +96,7 @@ class MultiExplorer(QGroupBox):
         # Row 2: 진행 상태
         progress_layout = QHBoxLayout()
         
-        from PyQt5.QtWidgets import QProgressBar
+        from PyQt6.QtWidgets import QProgressBar
         self.progress_bar = QProgressBar()
         self.progress_bar.setStyleSheet("""
             QProgressBar {
@@ -151,8 +145,10 @@ class MultiExplorer(QGroupBox):
             t("multi_explorer.header_candles", "캔들"),
             t("multi_explorer.header_action", "액션")
         ])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.result_table.verticalHeader().setVisible(False)
+        if header := self.result_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        if v_header := self.result_table.verticalHeader():
+            v_header.setVisible(False)
         self.result_table.setMinimumHeight(200)
         self.result_table.setStyleSheet("""
             QTableWidget {
@@ -278,9 +274,9 @@ class MultiExplorer(QGroupBox):
         while parent:
             if hasattr(parent, '_start_sniper') and hasattr(parent, '_stop_sniper'):
                 # 현재 상태 확인
-                if hasattr(parent, '_sniper') and parent._sniper and getattr(parent._sniper, 'running', False):
+                if hasattr(parent, '_sniper') and parent._sniper and getattr(parent._sniper, 'running', False): # type: ignore
                     # 종료
-                    parent._stop_sniper()
+                    parent._stop_sniper() # type: ignore
                     self.sniper_btn.setText(t("multi_explorer.btn_sniper", "🎯 Sniper"))
                     self.sniper_btn.setStyleSheet("""
                         QPushButton {
@@ -294,7 +290,7 @@ class MultiExplorer(QGroupBox):
                 else:
                     # 시작
                     exchange = self.exchange_combo.currentText().lower()
-                    parent._start_sniper(exchange=exchange, total_seed=1000)
+                    parent._start_sniper(exchange=exchange, total_seed=1000) # type: ignore
                     self.sniper_btn.setText(t("multi_explorer.btn_stop_sniper", "⏹ Sniper 종료"))
                     self.sniper_btn.setStyleSheet("""
                         QPushButton {
@@ -436,7 +432,7 @@ class MultiExplorer(QGroupBox):
             import pandas as pd
             from pathlib import Path
             from paths import Paths
-            from GUI.data_manager import DataManager
+            from GUI.data_cache import DataManager
             
             exchange = self.exchange_combo.currentText().lower()
             symbol_clean = symbol.lower().replace('/', '').replace('-', '')
@@ -502,11 +498,19 @@ class MultiExplorer(QGroupBox):
             try:
                 from core.strategy_core import AlphaX7Core
                 
+                df_1h = dm.resample(df, '1h') if hasattr(dm, 'resample') else df
                 strategy = AlphaX7Core()
-                signal = None
                 
-                if hasattr(strategy, 'detect_pattern'):
-                    signal = strategy.detect_pattern(df)
+                # [수정] AlphaX7Core에는 detect_pattern 대신 detect_signal이 있음
+                if hasattr(strategy, 'detect_signal'):
+                    # detect_signal(df_1h, df_15m, ...)
+                    signal_obj = strategy.detect_signal(df_1h, df)
+                    if signal_obj:
+                        # signal_obj는 TradeSignal 객체임
+                        signal = {
+                            'direction': getattr(signal_obj, 'signal_type', None),
+                            'strength': 80
+                        }
                 
                 # 시그널 처리
                 if signal:
@@ -527,7 +531,7 @@ class MultiExplorer(QGroupBox):
                         logger.info(f"[MultiExplorer] ✅ {symbol}: {direction}")
             
             except Exception as e:
-                pass  # 분석 실패 시 조용히 스킵
+                pass  # Error silenced
             
             self.stats_analyzed.setText(t("multi_explorer.stat_analyzed", "🔍 분석: {n}").replace("{n}", str(self.current_idx + 1)))
         except Exception as e:

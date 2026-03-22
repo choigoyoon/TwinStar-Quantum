@@ -5,7 +5,8 @@ def fix_logger_file(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-    except:
+    except Exception:
+
         return False
     
     modified = False

@@ -8,9 +8,9 @@
 from locales.lang_manager import t
 import sys
 import os
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QLineEdit, QCheckBox, QMessageBox, QGroupBox
+from PyQt6.QtWidgets import (
+    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QLineEdit, QCheckBox, QMessageBox, QGroupBox
 )
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -108,7 +108,7 @@ class TelegramSettingsWidget(QFrame):
         
         self.token_input = QLineEdit()
         self.token_input.setPlaceholderText("123456789:ABCdefGHIjklMNO...")
-        self.token_input.setEchoMode(QLineEdit.Password)
+        self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
         token_layout.addWidget(self.token_input)
         
         settings_layout.addLayout(token_layout)
@@ -192,7 +192,11 @@ class TelegramSettingsWidget(QFrame):
             self.notifier.enabled = self.enabled_check.isChecked()
             self.notifier.bot_token = self.token_input.text().strip()
             self.notifier.chat_id = self.chat_input.text().strip()
-            self.notifier.save_config()
+            self.notifier.save_config(
+                bot_token=self.token_input.text().strip(),
+                chat_id=self.chat_input.text().strip(),
+                enabled=self.enabled_check.isChecked()
+            )
             
             QMessageBox.information(self, t("common.success"), "Settings saved!")
     
@@ -225,10 +229,10 @@ class TelegramSettingsWidget(QFrame):
 
 # 테스트
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     
     widget = TelegramSettingsWidget()
     widget.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

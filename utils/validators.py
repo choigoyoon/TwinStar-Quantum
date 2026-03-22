@@ -4,7 +4,7 @@ utils/validators.py - 입력 검증 유틸리티
 """
 import re
 import os
-from typing import Optional, Tuple
+from typing import Tuple, Union
 
 # Logging
 import logging
@@ -62,10 +62,10 @@ def validate_exchange(exchange: str) -> Tuple[bool, str]:
 
 def validate_number(
     value,
-    min_val: float = None,
-    max_val: float = None,
+    min_val: float | None = None,
+    max_val: float | None = None,
     name: str = "value"
-) -> Tuple[bool, float]:
+) -> Tuple[bool, Union[float, str]]:
     """
     숫자 범위 검증
     
@@ -92,27 +92,27 @@ def validate_number(
     return True, num
 
 
-def validate_leverage(leverage) -> Tuple[bool, int]:
+def validate_leverage(leverage) -> Tuple[bool, Union[int, str]]:
     """레버리지 검증 (1~125)"""
     valid, result = validate_number(leverage, 1, 125, "레버리지")
     if valid:
-        return True, int(result)
-    return False, result
+        return True, int(result)  # type: ignore[arg-type]
+    return False, str(result)
 
 
-def validate_amount(amount) -> Tuple[bool, float]:
+def validate_amount(amount) -> Tuple[bool, Union[float, str]]:
     """금액 검증 (0 초과)"""
     return validate_number(amount, 0.0001, 1000000000, "금액")
 
 
-def validate_percentage(value, name: str = "비율") -> Tuple[bool, float]:
+def validate_percentage(value, name: str = "비율") -> Tuple[bool, Union[float, str]]:
     """퍼센트 검증 (0~100)"""
     return validate_number(value, 0, 100, name)
 
 
 # ========== 경로 검증 ==========
 
-def validate_path(path: str, base_dir: str = None) -> Tuple[bool, str]:
+def validate_path(path: str, base_dir: str | None = None) -> Tuple[bool, str]:
     """
     파일 경로 검증 (path traversal 방지)
     

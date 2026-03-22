@@ -1,0 +1,74 @@
+[
+  {
+    "name": "standard_preset_1",
+    "params": {
+      "filter_tf": "6h",
+      "entry_validity_hours": 12,
+      "atr_mult": 2.0,
+      "trail_start_r": 1.0,
+      "trail_dist_r": 0.2,
+      "trend_interval": "1h",
+      "entry_tf": "15m",
+      "leverage": 1,
+      "direction": "Both",
+      "max_mdd": 100.0
+    },
+    "metrics": {
+      "score": 75.33,
+      "win_rate": 79.06,
+      "mdd": 3.85,
+      "trades_per_day": 1.579641847313855,
+      "simple_return": 1093.97,
+      "compound_return": 5096513.12,
+      "profit_factor": 3.72
+    }
+  },
+  {
+    "name": "standard_preset_2",
+    "params": {
+      "filter_tf": "6h",
+      "entry_validity_hours": 12,
+      "atr_mult": 2.0,
+      "trail_start_r": 1.5,
+      "trail_dist_r": 0.2,
+      "trend_interval": "1h",
+      "entry_tf": "15m",
+      "leverage": 1,
+      "direction": "Both",
+      "max_mdd": 100.0
+    },
+    "metrics": {
+      "score": 74.53,
+      "win_rate": 77.16,
+      "mdd": 4.09,
+      "trades_per_day": 1.5183788878416589,
+      "simple_return": 1627.52,
+      "compound_return": 948729985.21,
+      "profit_factor": 3.69
+    }
+  },
+  {
+    "name": "standard_preset_3",
+    "params": {
+      "filter_tf": "6h",
+      "entry_validity_hours": 6,
+      "atr_mult": 2.0,
+      "trail_start_r": 1.0,
+      "trail_dist_r": 0.2,
+      "trend_interval": "1h",
+      "entry_tf": "15m",
+      "leverage": 1,
+      "direction": "Both",
+      "max_mdd": 100.0
+    },
+    "metrics": {
+      "score": 74.46,
+      "win_rate": 79.58,
+      "mdd": 4.82,
+      "trades_per_day": 1.4698397737983036,
+      "simple_return": 1046.9,
+      "compound_return": 3202270.13,
+      "profit_factor": 3.88
+    }
+  }
+]

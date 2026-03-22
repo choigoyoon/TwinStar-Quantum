@@ -1,0 +1,10 @@
+﻿param_value,win_rate,total_return,mdd,sharpe,trades,profit_factor,success,error
+5,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+7,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+9,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+11,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+14,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+17,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+21,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+25,0,0,100,0,0,0,False,'list' object has no attribute 'get'
+30,0,0,100,0,0,0,False,'list' object has no attribute 'get'

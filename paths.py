@@ -143,9 +143,9 @@ class Paths:
         ]
         
         if exchange:
-            dirs.append(cls.exchange_dir(exchange))
+            dirs.append(Path(cls.exchange_dir(exchange)))
         if exchange and symbol:
-            dirs.append(cls.symbol_dir(exchange, symbol))
+            dirs.append(Path(cls.symbol_dir(exchange, symbol)))
         
         for d in dirs:
             os.makedirs(d, exist_ok=True)

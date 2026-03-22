@@ -1,0 +1,22 @@
+{
+    "_meta": {
+        "symbol": "BTCUSDT",
+        "exchange": "bybit",
+        "timeframe": "1h",
+        "strategy": "macd",
+        "version": "2.0.0",
+        "name": "conservative_preset",
+        "description": "보수형 프리셋 - MDD ≤5% + Sharpe ≥15 목표",
+        "preset_type": "conservative"
+    },
+    "params": {
+        "atr_mult": 3.5,
+        "trail_start": 2.0,
+        "trail_dist": 0.02,
+        "tolerance": 0.05,
+        "adx_min": 25,
+        "stoch_long_max": 30,
+        "stoch_short_min": 70,
+        "use_downtrend_filter": true
+    }
+}

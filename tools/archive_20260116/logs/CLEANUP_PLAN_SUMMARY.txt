@@ -1,0 +1,67 @@
+# TwinStar-Quantum 프로젝트 구조 정리 계획서
+
+## 1. 권장 모듈 트리 (Proposed Module Tree)
+프로젝트의 유지보수성과 확장성을 위해 다음과 같은 구조를 제안합니다.
+
+```
+TwinStar-Quantum/
+├── core/                # 핵심 로직 (전략, 최적화, 백테스트 엔진)
+│   ├── strategy_core.py
+│   ├── optimizer.py
+│   └── multi_symbol_backtest.py
+├── ui/                  # PyQt6 기반 UI (Legacy GUI/ 통합)
+│   ├── widgets/
+│   ├── design_system/
+│   └── trading_dashboard.py
+├── exchanges/          # 거래소 API 연동 모듈들
+├── utils/              # 공통 유틸리티 (메트릭, 로깅, 데이터 매니저)
+├── data/               # SQLite DB, 캐시(Parquet), 설정 파일 등
+├── tests/              # 단위 테스트 및 검증 스크립트 (정리된 상태 유지)
+├── docs/               # 설계 문서 및 매뉴얼
+├── scripts/            # 유틸리티 스크립트 (루트의 일회성 .py 이동)
+├── run_gui.py          # 메인 엔트리 스크립트
+├── requirements.txt    # 의존성 목록
+└── README.md           # 프로젝트 개요
+```
+
+---
+
+## 2. 삭제 대상 목록 (Deletion Candidate List)
+다음 파일들은 일회성 로그, 임시 결과물 또는 중복된 데이터로 판단되어 삭제를 권장합니다.
+
+### 2.1 루트 디렉토리 (Root) - 로그 및 임시 파일
+- all_out.txt, all_py_files.txt
+- bithumb_errors*.txt, gui_errors_utf8.txt
+- build_log.txt, debug_log.txt, output.txt
+- compile_error.txt, errors.txt, final_check.txt
+- project_tree_full.txt, remaining_prints.txt
+- sim_result.txt, spec_dump.txt
+- test_err*.txt, test_output.txt, test_result.txt, test_stderr.txt, test_stdout.txt
+- verify_final.txt
+- strategy_core_errors*.txt, unified_bot_errors*.txt
+
+### 2.2 테스트 디렉토리 (tests/)
+- data_integrity_result.json, deep_verify_result.json
+- last_test_output.txt, mdd_result.txt
+- spec_verify_result.txt, staru_main_verify.json
+- ui_auto_test_result.json, ui_function_result.json
+- verification_result.txt, verify_result.json
+- gui_report/ 하위 전체 (오래된 이미지 및 리포트)
+- screenshots/ 하위의 개별 날짜가 포함된 .png 파일들
+
+### 2.3 문서 디렉토리 (docs/)
+- optimization_impact_*.md (개별 세션 영향 평가 결과)
+- tmpclaude-* (클로드 작업 시 생성된 임시 폴더)
+- validation_report_*.txt
+- WORK_LOG_20260114*.txt (노후 로그)
+- WORK_LOG_20260115_Session11.txt ~ Session16*.txt (최신 17 제외 세션 로그)
+
+---
+
+## 3. 향후 작업 권장 사항
+- **GUI/ 제거**: `GUI/` 디렉토리의 잔여물을 모두 `ui/`로 이전 완료 후 삭제.
+- **scripts/ 활용**: 루트에 산재한 독립 실행 스크립트들을 `scripts/` 폴더로 모아 관리.
+- **자동화**: 정기적으로 `logs/` 및 `temp/`를 비우는 cleanup 스크립트 유지보수.
+
+---
+*본 내용은 Anti-Graffiti 내부 웹뷰 에러와 무관하게 코드 레벨에서 확인 가능하도록 텍스트로 작성되었습니다.*

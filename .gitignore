@@ -18,9 +18,16 @@ installer/
 
 # Backup
 _backup*/
+refactor_backup/
 *.bak
 
 # Temp
+*.txt
+!requirements.txt
+!LICENSE.txt
+*.csv
+*.bat
+*_result*.txt
 
 # Data & Cache
 *.db
@@ -33,6 +40,10 @@ data/cache/
 keys.dat*
 
 # ========== 민감 정보 (추가) ==========
+.env
+.env.*
+!.env.example
+!.env.pyright
 user/
 credentials/
 encrypted_keys.dat
@@ -41,3 +52,15 @@ api_keys*.json
 *.pem
 *.secret
 
+# ========== 암호화된 모듈 ==========
+# 서버에서 배포하거나 별도 관리
+encrypted_modules/
+*.enc
+
+
+# Claude temp
+tmpclaude-*/
+venv*/
+.venv/
+nul
+NUL

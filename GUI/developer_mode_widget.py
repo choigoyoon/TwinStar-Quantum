@@ -3,12 +3,13 @@
 from locales.lang_manager import t
 import sys
 import os
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QTextEdit, QGridLayout, QSpinBox, QDoubleSpinBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 )
-from PyQt5.QtGui import QFont
+from PyQt6.QtGui import QFont
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -27,7 +28,7 @@ class DeveloperModeWidget(QWidget):
         
         # 헤더
         header = QLabel("🔧 Developer Mode")
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -122,7 +123,7 @@ class DeveloperModeWidget(QWidget):
         layout.addWidget(param_group)
         
         # 진행률 막대
-        from PyQt5.QtWidgets import QProgressBar
+        from PyQt6.QtWidgets import QProgressBar
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         self.progress_bar.setStyleSheet("""
@@ -188,7 +189,8 @@ class DeveloperModeWidget(QWidget):
         self.result_table.setHorizontalHeaderLabels([
             "Rank", "Score", "Trades", "Win Rate", "Total PnL", "Max DD", "PF"
         ])
-        self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        if header := self.result_table.horizontalHeader():
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.result_table.setStyleSheet("""
             QTableWidget {
                 background: #131722;
@@ -261,8 +263,8 @@ class DeveloperModeWidget(QWidget):
         info_text.append(f"Architecture: {platform.machine()}")
         
         try:
-            import PyQt5.QtCore
-            info_text.append(f"PyQt5: {PyQt5.QtCore.QT_VERSION_STR}")
+            import PyQt6.QtCore
+            info_text.append(f"PyQt6: {PyQt6.QtCore.QT_VERSION_STR}")
         except ImportError:
             pass
         
@@ -352,7 +354,7 @@ class DeveloperModeWidget(QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         QApplication.processEvents()
         
         try:
@@ -524,10 +526,10 @@ class DeveloperModeWidget(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication, QMessageBox
+    from PyQt6.QtWidgets import QApplication, QMessageBox
     from datetime import datetime
     app = QApplication(sys.argv)
     w = DeveloperModeWidget()
     w.resize(900, 700)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

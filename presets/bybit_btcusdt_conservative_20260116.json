@@ -1,0 +1,56 @@
+{
+  "name": "bybit_btcusdt_conservative_20260116",
+  "description": "보수적 실전 매매용 (레버리지 3x) - 예상 MDD 10.3%",
+  "version": "1.0",
+  "created_at": "2026-01-16T17:30:00Z",
+  "based_on": "bybit_btcusdt_optimized_20260116",
+  "backtest_performance": {
+    "win_rate": 79.46,
+    "mdd_10x": 34.47,
+    "mdd_3x_expected": 10.3,
+    "profit_factor": 4.64,
+    "total_trades": 3700,
+    "trades_per_day": 1.74,
+    "suitability_score": 65.6
+  },
+  "parameters": {
+    "exchange": "bybit",
+    "symbol": "BTCUSDT",
+    "strategy": "wm_pattern",
+    "leverage": 3,
+    "trend_interval": "1h",
+    "filter_tf": "4h",
+    "atr_mult": 1.5,
+    "trail_start_r": 1.0,
+    "entry_validity_hours": 6.0,
+    "trail_dist_r": 0.02,
+    "macd_fast": 6,
+    "macd_slow": 18,
+    "macd_signal": 7,
+    "tolerance": 0.12,
+    "use_adx_filter": false,
+    "adx_threshold": 25,
+    "max_mdd": 20.0
+  },
+  "risk_profile": "conservative",
+  "target_audience": "실전 매매 (초보~중급)",
+  "advantages": [
+    "MDD 10.3% (목표 20% 이하 달성)",
+    "승률 79.46% (높은 신뢰도)",
+    "Profit Factor 4.64 (우수한 수익성)",
+    "거래 빈도 1.74회/일 (적정 수준)"
+  ],
+  "recommended_settings": {
+    "initial_capital": 1000.0,
+    "max_position_size": 0.5,
+    "stop_loss_enabled": true,
+    "trailing_stop_enabled": true,
+    "emergency_stop_mdd": 15.0
+  },
+  "usage_notes": [
+    "실전 매매 전 데모 계좌에서 1개월 테스트 권장",
+    "레버리지 3x는 보수적 수준 (암호화폐 기준)",
+    "MDD 15% 도달 시 거래 일시 중단 (emergency_stop)",
+    "주말 포지션 보유 주의 (Bybit는 주말 거래 가능)"
+  ]
+}

@@ -45,7 +45,7 @@ class ExampleStrategy(BaseStrategy):
     2. check_signal(): 진입 로직 구현
     """
     
-    def __init__(self, params: ExampleParams = None):
+    def __init__(self, params: Optional[ExampleParams] = None):
         self.params = params or ExampleParams()
         super().__init__()
     

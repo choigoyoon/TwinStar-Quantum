@@ -3,18 +3,18 @@
 from locales.lang_manager import t
 import sys
 import os
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QComboBox, QDateEdit, QSpinBox, QProgressBar,
-    QTextEdit, QGridLayout, QMessageBox, QCheckBox, QListWidget,
-    QListWidgetItem, QTabWidget, QLineEdit
+    QGroupBox, QComboBox, QDateEdit, QProgressBar, QTextEdit,
+    QMessageBox, QCheckBox, QListWidget, QListWidgetItem, QTabWidget,
+    QLineEdit
 )
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-from PyQt5.QtCore import Qt, QDate, QThread, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal
+from PyQt6.QtGui import QFont
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -61,7 +61,7 @@ class DownloadThread(QThread):
     def run(self):
         try:
             logger.info(f"[Download] 시작: {len(self.symbols)}개 심볼")
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             total = len(self.symbols)
@@ -89,7 +89,7 @@ class DownloadThread(QThread):
                         self.progress.emit(sub_progress, msg)
                     
                     # 지표 생성기 로드
-                    from indicator_generator import IndicatorGenerator
+                    from utils.indicators import IndicatorGenerator
                     
                     df = dm.download(
                         symbol=symbol,
@@ -155,7 +155,7 @@ class DataCollectorWidget(QWidget):
         
         # 헤더
         header = QLabel("📥 " + t("data.title"))
-        header.setFont(QFont("Arial", 18, QFont.Bold))
+        header.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         header.setStyleSheet("color: white;")
         layout.addWidget(header)
         
@@ -447,10 +447,6 @@ class DataCollectorWidget(QWidget):
         # 심볼 재로드
         self._load_symbols()
 
-    def _toggle_date_edit(self, checked):
-        """상장일부터 체크 시 시작 날짜 비활성화"""
-        self.start_date.setEnabled(not checked)
-    
     def _create_status_tab(self):
         """캐시 상태 탭"""
         widget = QWidget()
@@ -481,11 +477,13 @@ class DataCollectorWidget(QWidget):
     
     def _select_all(self):
         for i in range(self.symbol_list.count()):
-            self.symbol_list.item(i).setCheckState(Qt.Checked)
+            if item := self.symbol_list.item(i):
+                item.setCheckState(Qt.CheckState.Checked)
     
     def _select_none(self):
         for i in range(self.symbol_list.count()):
-            self.symbol_list.item(i).setCheckState(Qt.Unchecked)
+            if item := self.symbol_list.item(i):
+                item.setCheckState(Qt.CheckState.Unchecked)
     
     def _select_top10(self):
         """거래량 기준 Top 10 선택 (Async)"""
@@ -516,8 +514,8 @@ class DataCollectorWidget(QWidget):
             self.log_text.append(f"📊 거래량 Top 10: {', '.join(top10[:5])}...")
             
             for i in range(self.symbol_list.count()):
-                item = self.symbol_list.item(i)
-                item.setCheckState(Qt.Checked if item.text() in top10 else Qt.Unchecked)
+                if item := self.symbol_list.item(i):
+                    item.setCheckState(Qt.CheckState.Checked if item.text() in top10 else Qt.CheckState.Unchecked)
             
             self.status_label.setText(f"✅ 거래량 Top 10 선택됨")
             self.log_text.append(f"✅ Top 10 선택 완료!")
@@ -668,8 +666,8 @@ class DataCollectorWidget(QWidget):
             self.log_text.append(f"📊 거래량 Top {n}: {len(top_symbols)}개")
             
             for i in range(self.symbol_list.count()):
-                item = self.symbol_list.item(i)
-                item.setCheckState(Qt.Checked if item.text() in top_symbols else Qt.Unchecked)
+                if item := self.symbol_list.item(i):
+                    item.setCheckState(Qt.CheckState.Checked if item.text() in top_symbols else Qt.CheckState.Unchecked)
             
             self.status_label.setText(f"✅ 거래량 Top {n} 선택됨")
             self.log_text.append(f"✅ Top {n} 선택 완료!")
@@ -723,7 +721,7 @@ class DataCollectorWidget(QWidget):
                 sorted_pairs = sorted(tickers, key=lambda x: float(x.get("quoteVolume", 0)), reverse=True)
                 return [t["symbol"].replace("_UMCBL", "") for t in sorted_pairs[:n]]
         except Exception:
-            pass
+            pass  # Error silenced
         return []
     
     def _select_new_listings(self):
@@ -738,7 +736,8 @@ class DataCollectorWidget(QWidget):
             
             self._select_none()
             for i in range(total - new_count, total):
-                self.symbol_list.item(i).setCheckState(Qt.Checked)
+                if item := self.symbol_list.item(i):
+                    item.setCheckState(Qt.CheckState.Checked)
             
             self.status_label.setText(f"✅ 신규 상장 {new_count}개 선택됨")
             self.log_text.append(f"✅ 신규 상장 코인 선택 완료!")
@@ -756,8 +755,8 @@ class DataCollectorWidget(QWidget):
         def on_success(gainers):
             if gainers:
                 for i in range(self.symbol_list.count()):
-                    item = self.symbol_list.item(i)
-                    item.setCheckState(Qt.Checked if item.text() in gainers else Qt.Unchecked)
+                    if item := self.symbol_list.item(i):
+                        item.setCheckState(Qt.CheckState.Checked if item.text() in gainers else Qt.CheckState.Unchecked)
                 
                 self.status_label.setText(f"✅ 급등 코인 {len(gainers)}개 선택됨")
                 self.log_text.append(f"✅ 급등 코인: {', '.join(gainers[:5])}...")
@@ -786,8 +785,8 @@ class DataCollectorWidget(QWidget):
         def on_success(losers):
             if losers:
                 for i in range(self.symbol_list.count()):
-                    item = self.symbol_list.item(i)
-                    item.setCheckState(Qt.Checked if item.text() in losers else Qt.Unchecked)
+                    if item := self.symbol_list.item(i):
+                        item.setCheckState(Qt.CheckState.Checked if item.text() in losers else Qt.CheckState.Unchecked)
                 
                 self.status_label.setText(f"✅ 급락 코인 {len(losers)}개 선택됨")
                 self.log_text.append(f"✅ 급락 코인: {', '.join(losers[:5])}...")
@@ -834,7 +833,7 @@ class DataCollectorWidget(QWidget):
                 )
                 return [t["symbol"] for t in sorted_pairs[:n] if t["symbol"].endswith("USDT")]
         except Exception:
-            pass
+            pass  # Error silenced
         return []
     
     def _load_symbols(self):
@@ -886,8 +885,8 @@ class DataCollectorWidget(QWidget):
             self.symbol_list.clear()
             for sym in symbols:
                 item = QListWidgetItem(sym)
-                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Unchecked)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Unchecked)
                 self.symbol_list.addItem(item)
             
             quote = "KRW" if is_krw_exchange else "USDT"
@@ -899,8 +898,8 @@ class DataCollectorWidget(QWidget):
             self.symbol_list.clear()
             for sym in self.POPULAR_SYMBOLS:
                 item = QListWidgetItem(sym)
-                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Unchecked)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Unchecked)
                 self.symbol_list.addItem(item)
     
     def _refresh_symbols(self):
@@ -935,8 +934,8 @@ class DataCollectorWidget(QWidget):
         symbol = self.custom_symbol.currentText().strip().upper()
         if symbol and symbol not in self.POPULAR_SYMBOLS:
             item = QListWidgetItem(symbol)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Checked)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked)
             self.symbol_list.addItem(item)
             self.log_text.append(f"[Added] {symbol}")
             
@@ -965,9 +964,9 @@ class DataCollectorWidget(QWidget):
     def _get_selected_symbols(self):
         symbols = []
         for i in range(self.symbol_list.count()):
-            item = self.symbol_list.item(i)
-            if item.checkState() == Qt.Checked:
-                symbols.append(item.text())
+            if item := self.symbol_list.item(i):
+                if item.checkState() == Qt.CheckState.Checked:
+                    symbols.append(item.text())
         return symbols
     
     def _toggle_date_edit(self, checked):
@@ -1046,9 +1045,9 @@ class DataCollectorWidget(QWidget):
         self.log_text.append(f"✅ {symbol}: {count:,} candles 완료")
         self.download_finished.emit(symbol, count)
         # 스크롤 아래로
-        self.log_text.verticalScrollBar().setValue(
-            self.log_text.verticalScrollBar().maximum()
-        )
+        v_bar = self.log_text.verticalScrollBar()
+        if v_bar:
+            v_bar.setValue(v_bar.maximum())
     
     def _on_error(self, symbol, error):
         self.log_text.append(f"❌ {symbol}: {error}")
@@ -1056,7 +1055,7 @@ class DataCollectorWidget(QWidget):
     def _refresh_cache_status(self):
         """캐시 상태 새로고침"""
         try:
-            from data_manager import DataManager
+            from GUI.data_cache import DataManager
             dm = DataManager()
             
             cache_dir = dm.cache_dir
@@ -1101,17 +1100,17 @@ class DataCollectorWidget(QWidget):
         """심볼 리스트 필터링"""
         text = text.upper().strip()
         for i in range(self.symbol_list.count()):
-            item = self.symbol_list.item(i)
-            if text == "" or text in item.text():
-                item.setHidden(False)
-            else:
-                item.setHidden(True)
+            if item := self.symbol_list.item(i):
+                if text == "" or text in item.text():
+                    item.setHidden(False)
+                else:
+                    item.setHidden(True)
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     app = QApplication(sys.argv)
     w = DataCollectorWidget()
     w.resize(700, 700)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

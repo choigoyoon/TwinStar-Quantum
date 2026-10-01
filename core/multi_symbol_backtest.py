@@ -6,6 +6,7 @@
 - 복리 적용
 """
 
+import numpy as np
 import pandas as pd
 import requests
 from pathlib import Path
@@ -232,13 +233,31 @@ class MultiSymbolBacktest:
             # 시그널 추출
             tolerance = self.preset_params.get('pattern_tolerance', 0.03)
             validity_hours = self.preset_params.get('validity_hours', 24.0)
+            df = df.reset_index(drop=True)
             extracted = strategy._extract_all_signals(
                 df_1h=df,
                 tolerance=tolerance,
                 validity_hours=validity_hours
             )
-            
+
+            # 신호에는 가격 정보가 없으므로 직접 계산:
+            # 진입가 = 신호 확정 봉(bar_idx) 다음 봉의 시가, ATR = 확정 봉에서 마감된 값
+            from utils.indicators import calculate_atr
+            atr_series = calculate_atr(df, period=self.preset_params.get('atr_period', 14), return_series=True)
+            atr_mult = float(self.preset_params.get('atr_mult', 1.5))
+            opens = df['open'].to_numpy(dtype=float)
+
             for sig in extracted:
+                bar_idx = sig.get('bar_idx')
+                if bar_idx is None or bar_idx + 1 >= len(df):
+                    continue  # 다음 봉이 아직 없으면 진입 불가
+                atr_val = float(atr_series.iloc[bar_idx])
+                if not np.isfinite(atr_val) or atr_val <= 0:
+                    continue
+                direction = sig.get('direction') or sig.get('type', 'Long')
+                entry_price = float(opens[bar_idx + 1])
+                sl_price = entry_price - atr_val * atr_mult if direction == 'Long' else entry_price + atr_val * atr_mult
+
                 timestamp = sig.get('time') or sig.get('timestamp')
                 if timestamp is None:
                     continue
@@ -251,10 +270,10 @@ class MultiSymbolBacktest:
                 signals.append(Signal(
                     symbol=symbol,
                     timestamp=timestamp,
-                    direction=sig.get('direction', 'Long'),
-                    entry_price=float(sig.get('entry_price', 0)),
-                    sl_price=float(sig.get('sl_price', 0)),
-                    atr=float(sig.get('atr', 0)),
+                    direction=direction,
+                    entry_price=entry_price,
+                    sl_price=sl_price,
+                    atr=atr_val,
                     pattern_score=float(sig.get('score', 80)),
                     volume_24h=volume_24h,
                     timeframe=timeframe

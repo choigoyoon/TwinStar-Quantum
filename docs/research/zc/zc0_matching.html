@@ -1,0 +1,61 @@
+<title>ZC0부터 그림 매칭</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#18212b;--muted:#5b6876;--line:#d6dce3;--grid:#e6eaef;--accent:#2563a0;--s1:#2a78d6;--s2:#eb6834;
+--f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;--f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d141c;--panel:#131c26;--ink:#e3eaf1;--muted:#8b9aab;--line:#253241;--grid:#1c2734;--accent:#6aaee8;--s1:#3987e5;--s2:#d95926;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d141c;--panel:#131c26;--ink:#e3eaf1;--muted:#8b9aab;--line:#253241;--grid:#1c2734;--accent:#6aaee8;--s1:#3987e5;--s2:#d95926;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding-inline:16px;padding-block:24px 40px;display:flex;flex-direction:column;gap:18px}
+.crumb{font-family:var(--f-data);font-size:12px;color:var(--accent);letter-spacing:.04em}
+h1{font-size:23px;margin:0;text-wrap:balance}h2{font-size:17px;margin:0;font-weight:600}
+p{margin:0;max-width:70ch}.muted{color:var(--muted);font-size:13px}
+.verdict{border-left:3px solid var(--accent);padding:4px 12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:720px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}.sw{width:14px;height:3px;border-radius:2px}
+svg text{font-family:var(--f-data);font-size:10.5px;fill:var(--muted)}
+.tbl{overflow-x:auto}table{border-collapse:collapse;font-size:13px;width:100%;min-width:560px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-weight:600;font-size:12px}
+td{font-family:var(--f-data);font-variant-numeric:tabular-nums}td:first-child{font-family:var(--f-body)}
+footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+</style>
+<div class="wrap">
+  <div class="crumb">TWIN / ZC0부터 그림 매칭 · BTCUSDT 1H MACD · 3,965개 파동</div>
+  <h1>ZC0부터 그려지는 경로로 그림 맞히기</h1>
+  <p>파동이 시작(ZC0)되는 순간부터 지금까지 그려진 경로를, 과거 파동들의 “같은 시점까지의 경로”와 비교했습니다. 기억에는 지금보다 먼저 ZC2가 끝나 그림이 정해진 파동만 씁니다. 가장 닮은 과거 50개 중 어느 그림이 많은지로 순위를 매깁니다.</p>
+  <p class="verdict">파동이 진행될수록 그림이 좁혀집니다. 대표 그림 4개 기준으로 ZC1에서 60%, 극점2 3시간 뒤 87%, ZC2에서 91%를 1등으로 맞힙니다. 27칸 기준으로는 ZC2에서 52%(3등 안 80%)입니다. “닮았다”고 손드는 그림은 27칸 중 6~8개, 4개 중 1.3~1.5개뿐입니다 (서로 경쟁 없이 반경으로만 판정하면 28개 중 21.9개가 손을 들던 것과 대비).</p>
+  <div class="grid">
+    <section class="card"><h2>대표 그림 4개</h2><div class="legend"><span><i class="sw" style="background:var(--s1)"></i>1등 적중</span><span><i class="sw" style="background:var(--s2)"></i>3등 안</span></div><svg id="c4" viewBox="0 0 420 220" role="img" aria-label="4개 그림 적중률"></svg></section>
+    <section class="card"><h2>그림 27칸</h2><div class="legend"><span><i class="sw" style="background:var(--s1)"></i>1등 적중</span><span><i class="sw" style="background:var(--s2)"></i>3등 안</span></div><svg id="c27" viewBox="0 0 420 220" role="img" aria-label="27칸 적중률"></svg></section>
+  </div>
+  <section class="card"><h2>시점별 숫자</h2>
+    <div class="tbl"><table><thead><tr><th>시점</th><th>ZC0 뒤 시간(중앙)</th><th>4개: 1등</th><th>4개: 3등 안</th><th>4개: 닮음 수</th><th>27칸: 1등</th><th>27칸: 3등 안</th><th>27칸: 닮음 수</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <p class="muted">찍기(가장 흔한 그림만 말하기): 4개 34%, 27칸 14%. ZC0+1시간은 시간 경로로, ZC1부터는 기준점(ZC0·첫 극점·ZC1·지금까지의 극점·지금)을 맞춘 그림 좌표로 비교합니다. 과거 파동은 “ZC1 뒤 같은 시간”의 그림과 비교해, 지금이 극점인지 같은 미래 정보는 쓰지 않습니다.</p>
+  </section>
+  <footer><span>파일: research/zc_prefix.py (paths · match · anchored · match_anchored). 체크포인트는 결과를 나눠 보는 구분일 뿐, 매칭 입력은 언제나 그 시각까지의 5분봉입니다.</span></footer>
+</div>
+<script>
+const R=[
+ ['ZC0+1시간',1,0.315,0.811,1.97,0.137,0.315,10.1],
+ ['ZC1',11,0.601,0.993,1.51,0.310,0.602,7.7],
+ ['극점2',18,0.724,0.997,1.37,0.384,0.693,6.4],
+ ['극점2+3시간',21,0.868,0.999,1.34,0.476,0.769,6.3],
+ ['ZC2',24,0.912,1.000,1.33,0.516,0.803,6.4]];
+const P=v=>Math.round(v*100)+'%';
+document.querySelector('#tb').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}시간</td><td>${P(r[2])}</td><td>${P(r[3])}</td><td>${r[4]}</td><td>${P(r[5])}</td><td>${P(r[6])}</td><td>${r[7]}</td></tr>`).join('');
+function chart(id,i1,i3,chance){const W=420,H=220,L=38,Rr=12,T=12,B=34,X=k=>L+k/(R.length-1)*(W-L-Rr),Y=v=>T+(1-v)*(H-T-B);let s='';
+ [0,.25,.5,.75,1].forEach(v=>{s+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${v*100}%</text>`});
+ s+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(chance)}" y2="${Y(chance)}" stroke="var(--muted)" stroke-dasharray="3 3"/><text x="${W-Rr}" y="${Y(chance)-4}" text-anchor="end">찍기 ${P(chance)}</text>`;
+ R.forEach((r,k)=>{s+=`<text x="${X(k)}" y="${H-12}" text-anchor="middle">${r[0].replace('시간','h')}</text>`});
+ [[i3,'--s2'],[i1,'--s1']].forEach(([i,c])=>{s+=`<polyline fill="none" stroke="var(${c})" stroke-width="2" points="${R.map((r,k)=>X(k)+','+Y(r[i])).join(' ')}"/>`;
+  R.forEach((r,k)=>{s+=`<circle cx="${X(k)}" cy="${Y(r[i])}" r="4" fill="var(${c})" stroke="var(--panel)" stroke-width="2"><title>${r[0]} ${P(r[i])}</title></circle>`});});
+ const k=R.length-1; s+=`<text x="${X(k)-6}" y="${Y(R[k][i1])+15}" text-anchor="end" style="fill:var(--ink)">${P(R[k][i1])}</text>`;
+ document.querySelector(id).innerHTML=s;}
+chart('#c4',2,3,0.341); chart('#c27',5,6,0.143);
+</script>

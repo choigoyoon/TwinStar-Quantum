@@ -404,3 +404,16 @@ def test_zc_playbook_choice_ignores_unfinished_events():
     from research.zc_playbook import choose
     assert choose(P[P['zc3_time'] < cut], 'sit', min_n=3) == choose(Q[Q['zc3_time'] < cut], 'sit', min_n=3)
     del y
+
+
+def test_zc_prefix_anchored_uses_only_bars_before_q():
+    from research.zc_prefix import paths, anchored
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=7)
+    P = paths(df5)
+    V = anchored(df5, P)
+    j = next(k for k in range(len(P) // 2, len(P)) if P['ck'].iat[k]['ZC2'] - P['ck'].iat[k]['ZC1'] > 4)
+    ck = P['ck'].iat[j]
+    s = 3                                                              # ZC2 전 (구간이 아직 진행 중)
+    q = P['zc0'].iat[j] + pd.Timedelta(hours=ck['ZC1'] + 1 + s)
+    Vc = anchored(df5[df5.index < q], P.iloc[[j]].reset_index(drop=True))
+    np.testing.assert_allclose(Vc[0, s], V[j, s])                       # q 뒤 데이터를 지워도 같음

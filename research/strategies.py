@@ -101,6 +101,13 @@ _BASE = [
                         for h in (3, 6, 12, 24, 48) for t in (0.52, 0.55, 0.58, 0.62)]),
 ]
 
+# ZC0-HL-ZC1-LH-ZC2 패턴 기억 학습기 (1h 권장: --tf 1h)
+_BASE.append(Strategy('zc_memory', __import__('research.zc_pattern', fromlist=['zc_memory']).zc_memory,
+                      [{'k': k, 'threshold': t, 'exit': 'zc'} for k in (20, 50) for t in (0.5, 0.55)],
+                      pooled=True,
+                      fine_grid=[{'k': k, 'threshold': t, 'exit': e} for k in (10, 20, 30, 50, 80)
+                                 for t in (0.45, 0.5, 0.55, 0.6) for e in ('zc', 6, 12, 24)]))
+
 # 실패 학습 필터를 씌운 버전 (meta_donchian 등): 기본 그리드 × 필터 기준 3개
 REGISTRY: Dict[str, Strategy] = {s.name: s for s in _BASE + [
     Strategy(f'meta_{b.name}', _meta(b.name), _with_meta(b.grid), pooled=True,

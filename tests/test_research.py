@@ -170,3 +170,31 @@ def test_failure_report_runs():
     rep = failure_report(trade_table(parts, {'AAA': df}))
     assert {'거래', '승률', '평균', '합계'} <= set(rep.columns)
     assert any(i.startswith('mom_24=') for i in rep.index)
+
+
+def test_zc_windows_geometry():
+    from research.zc_pattern import find_windows
+    df = _ohlcv(n=1500, freq='1h')
+    w = find_windows(df)
+    assert len(w) > 20
+    for _, r in w.sample(10, random_state=0).iterrows():
+        a = df.iloc[int(r['zc0']):int(r['zc1'])]
+        b = df.iloc[int(r['zc1']):int(r['zc2'])]
+        if r['dir'] > 0:      # 구간 A 양 → A 고점, B 저점
+            assert r['ea'] == a['high'].max() and r['eb'] == b['low'].min()
+        else:
+            assert r['ea'] == a['low'].min() and r['eb'] == b['high'].max()
+
+
+def test_zc_learning_uses_only_finished_patterns():
+    from research.zc_pattern import learn
+    data = {'AAA': _ohlcv(n=2500, freq='1h'), 'BBB': _ohlcv(n=2500, freq='1h', seed=4)}
+    W = learn(data, k=20, min_memory=30)
+    bar = pd.Timedelta(hours=1)
+    for i in W.index[W['p_success'].notna()][::25]:
+        dt = W.at[i, 'decide_time'] + bar
+        expected = int(((W['known_time'] <= dt) & W['known_time'].notna()).sum())
+        assert W.at[i, 'n_memory'] <= expected     # 결과 확정 전 패턴은 기억에 없음
+    st = REGISTRY['zc_memory']
+    for p in st.grid[:2] + [{'k': 20, 'threshold': 0.5, 'exit': 12}]:
+        rv.check_causal(data, st, p, n_cuts=6)

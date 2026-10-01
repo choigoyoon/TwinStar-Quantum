@@ -55,7 +55,7 @@ def failure_report(t: pd.DataFrame, min_trades: int = 5) -> pd.DataFrame:
     for f in FEATURES:
         x = t[f]
         if x.notna().sum() >= 10 and x.nunique() > 5:
-            parts.append(_group(t, pd.qcut(x, 5, labels=['매우낮음', '낮음', '중간', '높음', '매우높음'],
+            parts.append(_group(t, pd.qcut(x.rank(method='first'), 5, labels=['매우낮음', '낮음', '중간', '높음', '매우높음'],
                                            duplicates='drop').astype(str), f))
     rep = pd.concat(parts)
     return rep[rep['거래'] >= min_trades].sort_values('합계')

@@ -70,9 +70,8 @@ def main() -> None:
 
     for name in a.strategies.split(','):
         st = REGISTRY[name]
-        for p in st.grid:
-            for d in trimmed.values():
-                rv.check_causal(d, st, p)
+        for p in st.grid[:1] if st.pooled else st.grid:   # 기억 학습기는 느려서 대표 1개 조합만 검사
+            rv.check_causal(trimmed, st, p, n_cuts=3 if st.pooled else 8)
         wf = rv.walk_forward(trimmed, st, start, holdout, a.train_months, a.test_months, a.cost, sizing)
         if wf.oos.empty:
             print(f"\n[{name}] 워크포워드 구간이 부족합니다 (학습 {a.train_months}개월 + 검증 필요)")

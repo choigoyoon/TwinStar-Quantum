@@ -10,23 +10,41 @@ from research import backtest as bt
 from research.strategies import Strategy
 
 
-def check_causal(df: pd.DataFrame, strategy: Strategy, params: Dict, n_cuts: int = 8, seed: int = 0) -> None:
-    """앞부분만 잘라 계산한 신호가 전체 데이터로 계산한 신호와 같아야 한다. 다르면 AssertionError."""
-    full = strategy.fn(df, **params)
+def signals(data: Dict[str, pd.DataFrame], strategy: Strategy, params: Dict) -> Dict[str, pd.Series]:
+    if strategy.pooled:
+        return strategy.fn(data, **params)
+    return {s: strategy.fn(d, **params) for s, d in data.items()}
+
+
+def check_causal(data: Dict[str, pd.DataFrame] | pd.DataFrame, strategy: Strategy, params: Dict,
+                 n_cuts: int = 8, seed: int = 0) -> None:
+    """
+    어떤 시각 T 이후 데이터를 모두 지우고 계산한 신호가, 전체 데이터로 계산한 T 이전 신호와 같아야 한다.
+    다르면 AssertionError (미래 데이터 사용).
+    """
+    if isinstance(data, pd.DataFrame):
+        data = {'_': data}
+    full = signals(data, strategy, params)
+    times = next(iter(data.values())).index
     rng = np.random.default_rng(seed)
-    for k in rng.integers(len(df) // 4, len(df), n_cuts):
-        part = strategy.fn(df.iloc[:k], **params)
-        if not np.allclose(full.iloc[:k].to_numpy(), part.to_numpy(), equal_nan=True):
-            bad = full.index[:k][~np.isclose(full.iloc[:k], part, equal_nan=True)][0]
-            raise AssertionError(f"{strategy.name} {params}: {bad} 신호가 이후 데이터에 따라 바뀜 (미래 데이터 사용)")
+    for k in rng.integers(len(times) // 4, len(times), n_cuts):
+        cut = times[k]
+        part = signals({s: d[d.index < cut] for s, d in data.items()}, strategy, params)
+        for s in data:
+            a = full[s][full[s].index < cut].to_numpy()
+            b = part[s].to_numpy()
+            if not np.allclose(a, b, equal_nan=True):
+                bad = full[s].index[:len(a)][~np.isclose(a, b, equal_nan=True)][0]
+                raise AssertionError(f"{strategy.name} {params}: {s} {bad} 신호가 이후 데이터에 따라 바뀜 (미래 데이터 사용)")
 
 
 def run_strategy(data: Dict[str, pd.DataFrame], strategy: Strategy, params: Dict,
                  cost: float, sizing: Optional[Dict]) -> pd.DataFrame:
     """심볼별 백테스트 → 동일 비중 포트폴리오"""
     res = {}
+    sigs = signals(data, strategy, params)
     for sym, df in data.items():
-        sig = strategy.fn(df, **params)
+        sig = sigs[sym]
         if sizing:
             sig = bt.vol_target(sig, df, **sizing)
         res[sym] = bt.run(df, sig, cost)

@@ -75,3 +75,48 @@ def test_walk_forward_tests_only_after_training():
         assert f.result.index.min() >= f.test_period[0] and f.result.index.max() < f.test_period[1]
     assert wf.oos.index.is_monotonic_increasing
     assert np.isfinite(wf.metrics.sharpe)
+
+
+def test_knn_memory_is_causal_and_pooled():
+    from research.memory import knn_scores
+    data = {'AAA': _ohlcv(n=2500), 'BBB': _ohlcv(n=2500, seed=2)}
+    st = REGISTRY['knn_memory']
+    rv.check_causal(data, st, {'k': 25, 'horizon': 6, 'threshold': 0.55}, n_cuts=3)
+
+    scores = knn_scores(data, k=25, horizon=6, min_memory=300)
+    s = scores['AAA']
+    assert s['p_up'].notna().sum() > 1000
+    # 두 심볼의 장면을 함께 기억 → 기억 크기가 한 심볼 길이보다 커짐
+    assert s['n_memory'].max() > len(data['AAA'])
+
+
+def test_knn_memory_learns_a_real_pattern():
+    """다음 봉 방향이 특징(mom_1 부호)으로 정해지는 데이터에서는 기억이 그 규칙을 찾아야 한다"""
+    from research.memory import knn_memory
+    rng = np.random.default_rng(5)
+    n = 4000
+    r = np.zeros(n)
+    for i in range(1, n):
+        r[i] = 0.6 * r[i - 1] + rng.normal(0, 0.01)        # 강한 모멘텀(자기상관)
+    close = 100 * np.exp(np.cumsum(r))
+    idx = pd.date_range('2020-01-01', periods=n, freq='4h')
+    df = pd.DataFrame({'open': np.r_[close[0], close[:-1]], 'close': close, 'volume': rng.uniform(10, 100, n)}, index=idx)
+    df['high'] = df[['open', 'close']].max(axis=1) * 1.001
+    df['low'] = df[['open', 'close']].min(axis=1) * 0.999
+    sig = knn_memory({'X': df}, k=50, horizon=1, threshold=0.55, min_memory=500)['X']
+    res = bt.run(df, sig, cost_per_side=0.0)
+    assert bt.metrics(res).sharpe > 1.0
+
+
+def test_knn_memory_never_uses_unfinished_outcomes():
+    """봉마다 기억을 갱신할 때, 잘린 데이터와 전체 데이터의 기억 크기·판단값이 모든 컷에서 같아야 한다"""
+    from research.memory import knn_scores
+    data = {'AAA': _ohlcv(n=1500)}
+    full = knn_scores(data, k=25, horizon=6, refresh='4h', min_memory=200)['AAA']
+    idx = data['AAA'].index
+    for k in range(1100, 1500, 37):
+        cut = idx[k]
+        part = knn_scores({'AAA': data['AAA'][idx < cut]}, k=25, horizon=6, refresh='4h', min_memory=200)['AAA']
+        f = full[full.index < cut]
+        assert (f['n_memory'].to_numpy() == part['n_memory'].to_numpy()).all()
+        np.testing.assert_allclose(f['mean_ret'].to_numpy(), part['mean_ret'].to_numpy(), equal_nan=True)

@@ -313,3 +313,13 @@ def test_zc_picture_classes_follow_fixed_cuts():
     X = np.vstack(A['vec'].to_numpy())
     lv = np.digitize(X[:, 3 * SEG - 1], CUTS['b'])
     assert ((A['pic'].to_numpy() - 1) // 3 % 3 == lv).all()     # 같은 B 깊이 → 같은 행
+
+
+def test_zc_moves_start_after_zc2_and_use_known_labels():
+    from research.zc_behavior import after_moves, MOVES
+    df5 = _ohlcv(n=12 * 1200, freq='5min', seed=3)
+    M = after_moves(df5)
+    assert len(M) > 20 and M['move'].isin(MOVES).all()
+    assert (M['zc3'] > M['zc2']).all()
+    assert (M.loc[M['broke'], 'move'].isin(['깨고복귀', '깨고하락'])).all()
+    assert (M.loc[~M['broke'] & (M['up'] >= 0.5), 'move'] == '크게감').all()

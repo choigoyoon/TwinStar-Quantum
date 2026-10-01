@@ -389,3 +389,18 @@ def test_zc_lh_raw_features_use_only_past_bars():
     a = S.join(raw_features(df5, S))[S['e3_time'] < cut].set_index(['zc2', 't'])[RAW]
     b = Sc.join(raw_features(dc, Sc)).set_index(['zc2', 't'])[RAW].reindex(a.index)
     pd.testing.assert_frame_equal(a, b)
+
+
+def test_zc_playbook_choice_ignores_unfinished_events():
+    from research.zc_playbook import method_returns, run, METHODS
+    df5 = _ohlcv(n=12 * 2400, freq='5min', seed=6)
+    P = method_returns(df5)
+    assert len(P) > 50 and (P['zc3_time'] > P['zc2']).all()
+    P['sit'] = (P.index % 3)
+    y = int(P['zc2'].dt.year.iloc[len(P) // 2]) if P['zc2'].dt.year.nunique() > 1 else None
+    cut = P['zc2'].iloc[len(P) // 2]
+    Q = P.copy()
+    Q.loc[Q['zc3_time'] >= cut, METHODS] = 0.05                       # 아직 안 끝난 사건 결과를 바꿔도
+    from research.zc_playbook import choose
+    assert choose(P[P['zc3_time'] < cut], 'sit', min_n=3) == choose(Q[Q['zc3_time'] < cut], 'sit', min_n=3)
+    del y

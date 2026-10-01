@@ -417,3 +417,41 @@ def test_zc_prefix_anchored_uses_only_bars_before_q():
     q = P['zc0'].iat[j] + pd.Timedelta(hours=ck['ZC1'] + 1 + s)
     Vc = anchored(df5[df5.index < q], P.iloc[[j]].reset_index(drop=True))
     np.testing.assert_allclose(Vc[0, s], V[j, s])                       # q 뒤 데이터를 지워도 같음
+
+
+def test_zc_shape_json_partial_grid_ignores_future_and_composite_has_bands():
+    import copy
+    from research.zc_shape_json import events, grid, composite, compare, FS, LAYERS, SEG
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=8)
+    E = events(df5)
+    assert len(E) > 20
+    e = next(x for x in E if x['n'] - x['m'] > 40)
+    q = e['m'] + 30
+    g1 = grid(e, q, 0.5)
+    e2 = copy.deepcopy(e)
+    for l in LAYERS:
+        e2['L'][l][q:] = 999.0                                         # q 뒤 값을 바꿔도
+    g2 = grid(e2, q, 0.5)
+    for l in LAYERS:
+        np.testing.assert_allclose(g1[l], g2[l])                       # 현재 그림은 그대로
+        assert np.isnan(g1[l][3 * SEG + SEG // 2:]).all()              # 넷째 구간은 f만큼만
+    shp = composite(E[:15], 'X')
+    lo, ce, hi = (np.array(shp['shape']['price'][k]) for k in ('low', 'center', 'high'))
+    assert (lo <= ce + 1e-9).all() and (ce <= hi + 1e-9).all() and shp['n_events'] == 15
+    R = compare({f: grid(e, q, f) for f in FS}, {'X': shp, 'Y': composite(E[15:30], 'Y')})
+    assert set(R['shape']) == {'X', 'Y'} and R['dist'].notna().all()
+
+
+def test_zc_shape_tree_folders_and_find(tmp_path):
+    from research.zc_shape_json import events, export_tree, load_shapes, current_json, find
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=8)
+    E = events(df5)
+    for k, e in enumerate(E):
+        e['grp'] = k % 2
+    counts = export_tree(E, 'grp', str(tmp_path), min_events=5)
+    assert set(counts) == {'P00', 'P01'} and sum(counts.values()) == len(E)
+    assert (tmp_path / 'P00' / 'P00.json').exists() and len(list((tmp_path / 'P00' / 'events').glob('*.json'))) == counts['P00']
+    assert set(load_shapes(str(tmp_path))) == {'P00', 'P01'}
+    e = next(x for x in E if x['n'] - x['m'] > 40)
+    R = find(current_json(e, e['m'] + 30), str(tmp_path))
+    assert list(R.columns) == ['shape', 'dist', 'progress_f'] and len(R) == 2

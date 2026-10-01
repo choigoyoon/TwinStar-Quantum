@@ -81,6 +81,21 @@ def _to_dt(ts: Any) -> Optional[pd.Timestamp]:
         return None
 
 
+def _bar_close_times(df: pd.DataFrame) -> pd.Series:
+    """
+    각 봉의 마감 시각 (= 그 봉의 종가로 계산한 값을 실제로 알 수 있는 가장 이른 시각)
+
+    timestamp는 봉 시작 시각(리샘플 label='left')이므로 봉 길이를 더한다.
+    봉 길이는 연속 봉 간격의 최빈값으로 추정한다 (데이터 공백에 영향받지 않도록).
+    """
+    ts = df['timestamp']
+    ts = pd.to_datetime(ts, unit='ms') if pd.api.types.is_numeric_dtype(ts) else pd.to_datetime(ts)
+    ts = ts.reset_index(drop=True)
+    diffs = ts.diff().dropna()
+    bar = diffs.mode().iloc[0] if len(diffs) else pd.Timedelta(hours=1)
+    return ts + bar
+
+
 # ============ MDD 및 메트릭 계산 함수 ============
 # NOTE: calculate_mdd()는 utils.metrics로 이동 (SSOT)
 # NOTE: calculate_backtest_metrics()도 utils.metrics로 통합 (Phase 1-B)
@@ -961,42 +976,6 @@ class AlphaX7Core:
         else:
             signals = self._extract_all_signals(df_pattern, pattern_tolerance, entry_validity_hours, macd_fast, macd_slow, macd_signal)
 
-        # MTF 필터용 trend map 생성
-        trend_map = None
-        if self.USE_MTF_FILTER and filter_tf:
-            df_pattern_sorted = df_pattern.copy()
-            df_pattern_sorted['timestamp'] = pd.to_datetime(df_pattern_sorted['timestamp'])
-            df_pattern_sorted = df_pattern_sorted.set_index('timestamp', drop=False)
-            
-            resample_rule = filter_tf.replace('w', 'W') if isinstance(filter_tf, str) else filter_tf
-            dt_index = pd.DatetimeIndex(df_pattern_sorted.index)
-            if 'W' in str(resample_rule):
-                # PeriodIndex.start_time은 실제로 존재하지만 타입 스텁에 없음
-                period_idx = dt_index.to_period('W')
-                df_pattern_sorted['filter_period'] = period_idx.to_timestamp()  # type: ignore[attr-defined]
-            else:
-                # DatetimeIndex.floor는 타입 스텁에 정의되어 있음
-                df_pattern_sorted['filter_period'] = cast(pd.DatetimeIndex, dt_index).floor(resample_rule)  # type: ignore[arg-type]
-            
-            entry_times = pd.to_datetime(df_entry['timestamp'], unit='ms') if 'timestamp' in df_entry.columns else df_entry.index
-
-            df_filter = df_pattern_sorted.resample(resample_rule).agg({
-                'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'
-            }).dropna()
-            
-            if len(df_filter) > ema_period:
-                close_series = cast(pd.Series, df_filter['close'])
-                ema_calc = close_series.ewm(span=ema_period, adjust=False).mean()
-                df_filter['ema'] = ema_calc
-
-                close_reindexed = close_series.reindex(entry_times, method='ffill')  # type: ignore[arg-type]
-                ema_series = cast(pd.Series, df_filter['ema'])
-                ema_reindexed = ema_series.reindex(entry_times, method='ffill')  # type: ignore[arg-type]
-
-                entry_close = np.asarray(close_reindexed.values, dtype=np.float64)
-                ema_at_entry = np.asarray(ema_reindexed.values, dtype=np.float64)
-                trend_map = pd.Series(np.where(entry_close > ema_at_entry, 'up', 'down'), index=entry_times)
-
         # 거래 결과 저장
         trades = []
         positions = []
@@ -1296,7 +1275,8 @@ class AlphaX7Core:
             macd = exp1 - exp2
             signal_line = macd.ewm(span=macd_signal, adjust=False).mean()
             hist = macd - signal_line
-        
+
+        close_times = _bar_close_times(df_1h)
         points = []
         n = len(hist)
         i = 0
@@ -1308,8 +1288,8 @@ class AlphaX7Core:
                     seg = df_1h.iloc[start:i]
                     if len(seg) > 0:
                         max_idx = seg['high'].idxmax()
-                        # [v7.36 Strict Nowcast] 확정 시점은 '다음 정시' (i번째 봉의 시작점)
-                        points.append({'type': 'H', 'price': df_1h.loc[max_idx, 'high'], 'time': df_1h.loc[max_idx, 'timestamp'], 'confirmed_time': df_1h.iloc[i]['timestamp'] if i < len(df_1h) else df_1h.iloc[i-1]['timestamp'] + pd.Timedelta(hours=1)})
+                        # 확정 시점 = 히스토그램 부호가 바뀐 i번째 봉의 '마감' 시각 (hist[i]는 i봉 종가로 계산됨)
+                        points.append({'type': 'H', 'price': df_1h.loc[max_idx, 'high'], 'time': df_1h.loc[max_idx, 'timestamp'], 'confirmed_time': close_times.iloc[i], 'confirmed_idx': i})
             elif hist.iloc[i] < 0:
                 start = i
                 while i < n and hist.iloc[i] < 0: i += 1
@@ -1317,8 +1297,8 @@ class AlphaX7Core:
                     seg = df_1h.iloc[start:i]
                     if len(seg) > 0:
                         min_idx = seg['low'].idxmin()
-                        # [v7.36 Strict Nowcast] 확정 시점은 '다음 정시' (i번째 봉의 시작점)
-                        points.append({'type': 'L', 'price': df_1h.loc[min_idx, 'low'], 'time': df_1h.loc[min_idx, 'timestamp'], 'confirmed_time': df_1h.iloc[i]['timestamp'] if i < len(df_1h) else df_1h.iloc[i-1]['timestamp'] + pd.Timedelta(hours=1)})
+                        # 확정 시점 = 히스토그램 부호가 바뀐 i번째 봉의 '마감' 시각 (hist[i]는 i봉 종가로 계산됨)
+                        points.append({'type': 'L', 'price': df_1h.loc[min_idx, 'low'], 'time': df_1h.loc[min_idx, 'timestamp'], 'confirmed_time': close_times.iloc[i], 'confirmed_idx': i})
             else: i += 1
         
         signals = []
@@ -1326,14 +1306,11 @@ class AlphaX7Core:
             if points[i-2]['type'] == 'L' and points[i-1]['type'] == 'H' and points[i]['type'] == 'L':
                 L1, L2 = points[i-2], points[i]
                 if abs(L2['price'] - L1['price']) / L1['price'] < tolerance:
-                    # [v7.36 Strict Nowcast] 신호 확정은 봉 마감 직후 정시 (t+1h)
-                    confirm_time = L2['confirmed_time'] 
-                    signals.append({'time': confirm_time, 'type': 'Long', 'pattern': 'W'})
+                    signals.append({'time': L2['confirmed_time'], 'type': 'Long', 'pattern': 'W', 'bar_idx': L2['confirmed_idx']})
             if points[i-2]['type'] == 'H' and points[i-1]['type'] == 'L' and points[i]['type'] == 'H':
                 H1, H2 = points[i-2], points[i]
                 if abs(H2['price'] - H1['price']) / H1['price'] < tolerance:
-                    confirm_time = H2['confirmed_time']
-                    signals.append({'time': confirm_time, 'type': 'Short', 'pattern': 'M'})
+                    signals.append({'time': H2['confirmed_time'], 'type': 'Short', 'pattern': 'M', 'bar_idx': H2['confirmed_idx']})
         signals.sort(key=lambda x: x['time'])
         return signals
 
@@ -1390,17 +1367,10 @@ class AlphaX7Core:
             # Fallback: ADX만 반환된 경우
             return []
 
-        # 3. timestamp → index 매핑
-        df_1h = df_1h.copy()
-        df_1h['timestamp'] = pd.to_datetime(df_1h['timestamp'])
-        ts_to_idx = {ts: i for i, ts in enumerate(df_1h['timestamp'])}
-
-        # 4. ADX 필터 적용
+        # 3. ADX 필터 적용 (신호를 확정한 봉의 ADX = 신호 시각에 이미 마감된 값)
         filtered_signals = []
         for signal in macd_signals:
-            signal_ts = pd.to_datetime(signal['time'])
-            idx = ts_to_idx.get(signal_ts)
-
+            idx = signal.get('bar_idx')
             if idx is None:
                 continue
 

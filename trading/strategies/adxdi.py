@@ -10,11 +10,9 @@ ADX/DI 전략
     - L-H-L 패턴 -> W 패턴 -> Long 진입
     - H-L-H 패턴 -> M 패턴 -> Short 진입
 
-성능 (1h TF, 2020~):
-    - 거래: 2,572건
-    - 승률: 78.8%
-    - PnL: +1,938%
-    - MDD: 11.1%
+주의:
+    이전에 기록된 성능 수치(승률 ~80%, +2,000%)는 극값 봉(pivot) 시점에 진입하는
+    미래 데이터 누수 상태에서 측정된 값이라 무효. 진입은 신호 확정 봉 마감 기준.
 """
 
 import numpy as np
@@ -54,7 +52,7 @@ class ADXDIStrategy(BaseStrategy):
         hl_points = []
         
         # DI 크로스오버에서 H/L 포인트 추출
-        for i in range(30, len(df) - 10):
+        for i in range(30, len(df)):
             if np.isnan(plus_di[i-1]) or np.isnan(minus_di[i-1]):
                 continue
             
@@ -65,7 +63,7 @@ class ADXDIStrategy(BaseStrategy):
                 trough_idx = window_start + int(np.argmin(np.asarray(window_low)))
                 hl_points.append({
                     'type': 'L', 
-                    'idx': trough_idx,
+                    'pivot_idx': trough_idx,
                     'price': low[trough_idx], 
                     'bar_idx': i
                 })
@@ -77,7 +75,7 @@ class ADXDIStrategy(BaseStrategy):
                 peak_idx = window_start + int(np.argmax(np.asarray(window_high)))
                 hl_points.append({
                     'type': 'H', 
-                    'idx': peak_idx,
+                    'pivot_idx': peak_idx,
                     'price': high[peak_idx], 
                     'bar_idx': i
                 })
@@ -86,7 +84,8 @@ class ADXDIStrategy(BaseStrategy):
         for j in range(2, len(hl_points)):
             p1, p2, p3 = hl_points[j-2], hl_points[j-1], hl_points[j]
             bar_idx = p3['bar_idx']
-            idx = p3['idx']
+            # 판단 시점 = 크로스가 확정된 봉(bar_idx)의 마감. 저점/고점 봉(pivot_idx)에서 진입하면 미래 데이터
+            idx = bar_idx
             
             # ADX 필터
             if min_adx > 0 and (np.isnan(adx[bar_idx]) or adx[bar_idx] < min_adx):

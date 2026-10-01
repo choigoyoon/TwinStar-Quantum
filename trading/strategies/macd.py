@@ -10,11 +10,9 @@ MACD 히스토그램 부호 전환을 이용한 W/M 패턴 탐지
     - L-H-L 패턴 → W 패턴 → Long 진입
     - H-L-H 패턴 → M 패턴 → Short 진입
 
-성능 (1h TF, 2020~):
-    - 거래: 2,216건
-    - 승률: 83.8%
-    - PnL: +2,077%
-    - MDD: 10.9%
+주의:
+    이전에 기록된 성능 수치(승률 ~80%, +2,000%)는 극값 봉(pivot) 시점에 진입하는
+    미래 데이터 누수 상태에서 측정된 값이라 무효. 진입은 신호 확정 봉 마감 기준.
 """
 
 import numpy as np
@@ -69,16 +67,18 @@ class MACDStrategy(BaseStrategy):
                 if len(seg_high) > 0:
                     if current_sign > 0:  # 양(+) 구간 종료 → 고점
                         max_idx = segment_start + int(np.argmax(seg_high))
-                        hl_points.append({'type': 'H', 'price': float(high[max_idx]), 'idx': max_idx})
+                        hl_points.append({'type': 'H', 'price': float(high[max_idx]), 'pivot_idx': max_idx, 'idx': i})
                     else:  # 음(-) 구간 종료 → 저점
                         min_idx = segment_start + int(np.argmin(seg_low))
-                        hl_points.append({'type': 'L', 'price': float(low[min_idx]), 'idx': min_idx})
+                        hl_points.append({'type': 'L', 'price': float(low[min_idx]), 'pivot_idx': min_idx, 'idx': i})
                 segment_start = i
                 current_sign = new_sign
         
         # W/M 패턴 매칭
         for j in range(2, len(hl_points)):
             p1, p2, p3 = hl_points[j-2], hl_points[j-1], hl_points[j]
+            # 판단 시점 = 히스토그램 부호가 바뀐 봉(i)의 마감. 극값 봉(pivot_idx)은 그 시점에야 확정되므로
+            # 필터/진입가는 i 기준으로만 계산한다 (pivot_idx 기준은 미래 데이터)
             idx = p3['idx']
             
             # ADX 필터

@@ -365,3 +365,27 @@ def test_zc_lh_extra_features_use_only_past_bars():
     a = S[S['e3_time'] < cut].set_index(['zc2', 't'])[MORE]
     b = Sc.set_index(['zc2', 't'])[MORE].reindex(a.index)
     pd.testing.assert_frame_equal(a, b)
+
+
+def test_zc_lh_exit_rules():
+    from research.zc_lh_exit import _exit
+    o = np.array([100, 100, 101, 103, 104, 99, 100.0])
+    h = np.array([100, 101, 102, 104, 105, 100, 100.0])
+    l = np.array([100, 99.5, 100, 102, 103, 97, 99.0])
+    assert _exit(o, h, l, 1, 6, 1.0, 98.0, 1.0, 'tp1') == (101.0, 'tp')      # 1 ATR 위에서 익절
+    assert _exit(o, h, l, 1, 6, 1.0, 98.0, 1.0, 'zc3') == (98.0, 'stop')     # 고정 손절은 봉5에서
+    px, why = _exit(o, h, l, 1, 6, 1.0, 98.0, 1.0, 'trail1')
+    assert (px, why) == (100.0, 'stop')                                       # 봉1 최고 101 - 1 = 100, 봉2 저가 100에서 닿음
+
+
+def test_zc_lh_raw_features_use_only_past_bars():
+    from research.zc_lh import samples
+    from research.zc_lh_exit import raw_features, RAW
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=5)
+    S = samples(df5, step=6)
+    cut = S['e3_time'].iloc[len(S) // 2]
+    dc = df5[df5.index < cut]
+    Sc = samples(dc, step=6)
+    a = S.join(raw_features(df5, S))[S['e3_time'] < cut].set_index(['zc2', 't'])[RAW]
+    b = Sc.join(raw_features(dc, Sc)).set_index(['zc2', 't'])[RAW].reindex(a.index)
+    pd.testing.assert_frame_equal(a, b)

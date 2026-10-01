@@ -472,7 +472,7 @@ class AlphaX7Core:
                             'type': 'H',
                             'price': df_1h_safe.loc[max_idx, 'high'],
                             'time': df_1h_safe.loc[max_idx, 'timestamp'],
-                            'confirmed_time': df_1h_safe.iloc[i-1]['timestamp']
+                            'confirmed_time': df_1h_safe.iloc[i]['timestamp']  # 부호가 바뀐 봉 (경과시간은 last_time과 같은 '봉 시작' 기준으로 비교)
                         })
             elif hist.iloc[i] < 0:
                 start = i
@@ -486,7 +486,7 @@ class AlphaX7Core:
                             'type': 'L',
                             'price': df_1h_safe.loc[min_idx, 'low'],
                             'time': df_1h_safe.loc[min_idx, 'timestamp'],
-                            'confirmed_time': df_1h_safe.iloc[i-1]['timestamp']
+                            'confirmed_time': df_1h_safe.iloc[i]['timestamp']  # 부호가 바뀐 봉 (경과시간은 last_time과 같은 '봉 시작' 기준으로 비교)
                         })
             else:
                 i += 1
@@ -675,7 +675,7 @@ class AlphaX7Core:
                             'type': 'H',
                             'price': price_buffer[max_price_idx]['high'],
                             'time': timestamp_buffer[max_price_idx],
-                            'confirmed_time': timestamp_buffer[i-1]
+                            'confirmed_time': timestamp_buffer[i]  # 부호가 바뀐 봉 (백테스트와 같은 유효시간 기준)
                         })
             elif hist[i] < 0:
                 # 음수 구간 → Low 포인트
@@ -690,7 +690,7 @@ class AlphaX7Core:
                             'type': 'L',
                             'price': price_buffer[min_price_idx]['low'],
                             'time': timestamp_buffer[min_price_idx],
-                            'confirmed_time': timestamp_buffer[i-1]
+                            'confirmed_time': timestamp_buffer[i]  # 부호가 바뀐 봉 (백테스트와 같은 유효시간 기준)
                         })
             else:
                 i += 1

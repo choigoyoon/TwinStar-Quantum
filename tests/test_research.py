@@ -258,3 +258,22 @@ def test_zc_early_trigger_is_before_or_at_zc2_and_causal():
             if j < z2:   # 인식 봉까지만 있는 히스토그램으로도 같은 봉에서 인식
                 hv_cut = _macd_hist(h['close'].iloc[:j + 1]).to_numpy()
                 assert _trigger(hv_cut, z1, j + 1, wt) == j
+
+
+def test_zc_policy_uses_only_known_same_group_outcomes():
+    from research.zc_policy import ACTIONS, choose_actions
+    t0 = pd.Timestamp('2024-01-01')
+    rows = []
+    for i in range(80):
+        r = {'entry_time': t0 + pd.Timedelta(hours=i), 'group': i % 2}
+        for a in ACTIONS:
+            # 묶음 0의 stop_eb만 이익, 결과는 진입 10시간 뒤 확정
+            r[f'r_{a}'] = 0.01 if (a == 'stop_eb' and i % 2 == 0) else -0.01
+            r[f'known_{a}'] = r['entry_time'] + pd.Timedelta(hours=10)
+        rows.append(r)
+    P = choose_actions(pd.DataFrame(rows), min_n=5, shrink=0.0)
+    g0, g1 = P[P['group'] == 0], P[P['group'] == 1]
+    assert (g1['action'] == 'skip').all()                    # 다른 묶음의 이익은 빌려오지 않음
+    first = g0.iloc[:8]                                      # 확정된 과거 5건이 쌓이기 전엔 건너뜀
+    assert (first['action'] == 'skip').all()
+    assert (g0.iloc[10:]['action'] == 'stop_eb').all()

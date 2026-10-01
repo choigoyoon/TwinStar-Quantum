@@ -126,3 +126,12 @@ def test_rare_groups_are_not_ranked():
     mem.fit_self([current_arrays(s) for s in full])
     sc = mem.score(mem.group_dist(mem.channel_dist(current_arrays(full[0]))))
     assert 'TINY' in mem.rare and list(sc['shape']) == ['BIG']               # 사건 몇 개뿐인 그룹이 1등을 차지하지 못함
+
+
+def test_pct_wave_ignores_time_stretch_and_uses_percent():
+    from twin.shape import stretch, PCT_G
+    y = np.array([0.0, 1.0, 2.5, 1.2, 1.8, 3.0, 0.5])                    # 등하락 %
+    slow = np.interp(np.linspace(0, 6, 37), np.arange(7), y)              # 같은 모양, 시간만 6배 (봉 수 6배)
+    d = np.sqrt(np.mean((stretch(y) - stretch(slow)) ** 2))
+    assert len(stretch(y)) == PCT_G and d < 0.05                          # 시간이 달라도 같은 그림으로 겹침
+    assert np.sqrt(np.mean((stretch(y) - stretch(y * 3)) ** 2)) > 1.0       # 등하락 %가 다르면 다름 (값 정규화 없음)

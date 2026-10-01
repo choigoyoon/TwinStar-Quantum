@@ -24,9 +24,10 @@ from twin.zc import _macd_hist
 SEG = 12                 # JSON에 저장하는 구간당 점 수
 MSEG = 6                 # 비교할 때 쓰는 구간당 점 수
 FS = np.round(np.linspace(0.1, 1.0, 10), 2)
+PCT_G = 1280             # 등하락 % 경로를 늘려 맞추는 칸 수 ≥ 가장 긴 ZC0→ZC2(5분봉 1,248개) → 언제나 짧은 쪽을 긴 쪽에 맞춰 늘림
 PATHS = ('path', 'high', 'low', 'age', 'h1', 'm15', 'm5', 'vol')
 CHANNELS = {             # 채널 → (경로 층, 스칼라 묶음)
-    'wave': (('path', 'high', 'low'), ()),
+    'wave': (('pct',), ()),        # 등하락 % 경로, ZC0부터 지금까지를 긴 쪽에 맞춰 늘려 비교
     'order': ((), ('skel',)),
     'candle': ((), ('candle',)),
     'candidate': (('age',), ('cand',)),
@@ -202,7 +203,8 @@ def state(ev: Dict, q: int) -> Optional[Dict]:
     lead = np.array([*turn(lay['m5']), *turn(lay['m15'])])
     vpk = np.array([np.argmax(lay['vol'][cuts[i]:cuts[i + 1] + 1]) / max(cuts[i + 1] - cuts[i], 1) for i in range(4)])
     volx = np.r_[vpk, np.log(max(lay['vol'][cand], 1e-9))]
-    return {'paths': paths, 'skel': _skel_vec(legs), 'legs': legs, 'prev_legs': prev_legs, 'candle': candle,
+    pct = (c[A0:q] / c[A0] - 1.0) * 100.0 * ev['d']          # ZC0 종가 대비 등하락 % (숏은 뒤집음). 값 정규화 없음
+    return {'pct': pct, 'paths': paths, 'skel': _skel_vec(legs), 'legs': legs, 'prev_legs': prev_legs, 'candle': candle,
             'cand': cand_v, 'ctx': ctx, 'lead': lead, 'volx': volx, 'ups': [(k - M) / aT for k in ups], 'pivots': [(i / aT, v) for i, v in piv],
             'seg_time': [(cuts[i + 1] - cuts[i]) / aT for i in range(4)]}
 
@@ -217,9 +219,16 @@ def _fixed(st: Dict, n: int = MSEG) -> Dict[str, np.ndarray]:
     return out
 
 
+def stretch(y: np.ndarray, n: int = PCT_G) -> np.ndarray:
+    """시간 늘이기/줄이기: 경로를 n칸으로 (짧은 쪽을 긴 쪽에 맞출 때 n ≥ 두 길이)"""
+    return _rs(np.asarray(y, dtype=float), n)
+
+
 def member_arrays(st: Dict, n: int = MSEG) -> Dict[str, np.ndarray]:
     """완성된 소속 사건: 넷째 구간을 f마다 잘라 둔 것 (열린 끝 맞추기용)"""
     out = _fixed(st, n)
+    L = len(st['pct'])
+    out['pct_f'] = np.vstack([stretch(st['pct'][:max(int(round(L * f)), 2)]) for f in FS])   # ZC0부터 f만큼
     for k in PATHS:
         seg = st['paths'][k][3]
         out[k + '_f'] = np.vstack([_rs(seg[:max(int(round(len(seg) * f)), 1)], n) for f in FS])
@@ -228,6 +237,7 @@ def member_arrays(st: Dict, n: int = MSEG) -> Dict[str, np.ndarray]:
 
 def current_arrays(st: Dict, n: int = MSEG) -> Dict[str, np.ndarray]:
     out = _fixed(st, n)
+    out['pct_cur'] = stretch(st['pct'])
     for k in PATHS:
         out[k + '_4'] = _rs(st['paths'][k][3], n)
     return out
@@ -239,7 +249,9 @@ class Memory:
     def __init__(self, members: List[Dict[str, np.ndarray]], groups: List[str]):
         self.groups = np.array(groups)
         self.names = sorted(set(groups))
-        self.M = {k: np.vstack([m[k] for m in members]).astype(np.float32) for k in members[0] if not k.endswith('_f')}
+        self.M = {k: np.vstack([m[k] for m in members]).astype(np.float32) for k in members[0]
+                  if not k.endswith('_f') and k != 'pct_cur'}
+        self.PF = np.stack([m['pct_f'] for m in members]).astype(np.float32)            # [사건, f, PCT_G]
         self.F = {k: np.stack([m[k + '_f'] for m in members]).astype(np.float32) for k in PATHS}
         self.sd = {k: np.nanstd(self.M[k], axis=0) + 0.05 for k in ('skel', 'candle', 'cand', 'ctx', 'lead', 'volx')}
         self.self_fit = None
@@ -255,6 +267,11 @@ class Memory:
         out = {}
         for ch, (lays, scal) in CHANNELS.items():
             parts = []
+            if ch == 'wave':
+                # 등하락 %: 현재(ZC0→q)와 소속 사건(ZC0→f만큼)을 같은 칸 수로 늘려 겹침, 가장 맞는 f
+                e = ((self.PF - cur['pct_cur'][None, None, :]) ** 2).mean(axis=2)
+                parts.append(np.nan_to_num(e.min(axis=1), nan=1e6))
+                lays = ()
             for k in lays:
                 fixed = ((self.M[k] - cur[k][None, :]) ** 2).mean(axis=1)
                 last = ((self.F[k][np.arange(n), fi] - cur[k + '_4'][None, :]) ** 2).mean(axis=1)
@@ -321,7 +338,8 @@ def event_json(ev: Dict, st: Dict, group: str, eid: str) -> Dict:
         'axis': {'anchors': ['ZC0', 'A극점', 'ZC1', '현재후보', 'q'], 'points_per_segment': SEG,
                  'segment_time_ratio': _r(st['seg_time'])},
         'channels': {
-            'wave': {k: _r(np.concatenate([_rs(st['paths'][k][i], SEG) for i in range(4)])) for k in ('path', 'high', 'low')}
+            'wave': {'pct_path': _r(st['pct'], 3)}                        # 5분봉마다 ZC0 대비 등하락 % (원 해상도)
+            | {k: _r(np.concatenate([_rs(st['paths'][k][i], SEG) for i in range(4)])) for k in ('path', 'high', 'low')}
             | {'skeleton': [{x: g[x] for x in ('dir', 'size_vs_prev', 'time_vs_prev')} for g in st['legs']],
                'pivots': [[round(float(t), 4), round(float(v), 4)] for t, v in st['pivots']]},   # [ZC0부터 시간 ÷ A 시간, 값]
             'candle': dict(zip(('body_ratio', 'wick_with', 'wick_against'), [_r(st['candle'][i::3]) for i in range(3)])),
@@ -340,24 +358,26 @@ def event_json(ev: Dict, st: Dict, group: str, eid: str) -> Dict:
 def group_json(name: str, evjs: List[Dict], arrays: List[Dict[str, np.ndarray]], mem: Memory,
                n_var: int = 3) -> Dict:
     W = np.vstack([np.array(e['channels']['wave']['path'], dtype=float) for e in evjs])
-    center = np.nanmedian(W, 0)
+    # 겹친 그림: 등하락 % 경로를 그룹에서 가장 긴 사건 길이에 맞춰 늘려 겹침
+    pcts = [np.array(e['channels']['wave']['pct_path'], dtype=float) for e in evjs]
+    G = max(len(x) for x in pcts)
+    O = np.vstack([stretch(x, G) for x in pcts])
     variants = []
     if len(evjs) >= 2:
         from sklearn.cluster import KMeans
         k = int(min(n_var, max(1, len(evjs) // 20)))
-        lab = KMeans(k, n_init=10, random_state=0).fit_predict(np.nan_to_num(W)) if k > 1 else np.zeros(len(W), int)
+        lab = KMeans(k, n_init=10, random_state=0).fit_predict(np.nan_to_num(O)) if k > 1 else np.zeros(len(O), int)
         for j in range(k):
             idx = np.nonzero(lab == j)[0]
-            mid = idx[np.argmin(((W[idx] - np.nanmedian(W[idx], 0)) ** 2).sum(1))]
+            mid = idx[np.argmin(((O[idx] - np.nanmedian(O[idx], 0)) ** 2).sum(1))]
             variants.append({'event_id': evjs[mid]['event_id'], 'n_like': int(len(idx))})
     seqs = pd.Series([''.join(g['dir'] for g in e['channels']['wave']['skeleton']) for e in evjs]).value_counts(normalize=True)
     ctxh = np.array([e['channels']['context']['A_vs_prev_height_log'] or 0 for e in evjs], dtype=float)
     prev = pd.Series([''.join(e['channels']['context']['prev_skeleton']) or '-' for e in evjs]).value_counts(normalize=True)
     return {
         'shape_id': name, 'n_events': len(evjs),
-        'center': {'wave_path': _r(center)},
-        'band': {'wave_path': {'p10': _r(np.nanpercentile(W, 10, 0)), 'p90': _r(np.nanpercentile(W, 90, 0)),
-                               'support': (~np.isnan(W)).sum(0).astype(int).tolist()}},
+        'overlay_pct': {'length': G, 'center': _r(np.nanmedian(O, 0)), 'p10': _r(np.nanpercentile(O, 10, 0)),
+                        'p90': _r(np.nanpercentile(O, 90, 0)), 'support': len(pcts)},
         'variants': variants,
         'order': [{'seq': s, 'share': round(float(v), 3)} for s, v in seqs.head(5).items()],
         'context': {'A_vs_prev_height_log': _r(np.percentile(ctxh, [10, 50, 90])),

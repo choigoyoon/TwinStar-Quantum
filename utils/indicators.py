@@ -73,9 +73,16 @@ def calculate_rsi(
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
 
-    # Wilder's Smoothing (EWM with com=period-1)
-    avg_gain = gain.ewm(com=period-1, adjust=False).mean()
-    avg_loss = loss.ewm(com=period-1, adjust=False).mean()
+    # Wilder's Smoothing: 첫 평균은 처음 period개 변화량의 단순평균, 이후 (prev*(period-1)+x)/period
+    # (기존: 첫 값 0에서 EWM 시작 → 초반 수백 봉 동안 RSI가 왜곡되고, tail(1000) 경로와 값이 달라짐)
+    def _wilder(x: pd.Series) -> pd.Series:
+        seeded = x.copy()
+        seeded.iloc[:period] = np.nan
+        seeded.iloc[period] = x.iloc[1:period + 1].mean()
+        return seeded.ewm(alpha=1.0 / period, adjust=False).mean()
+
+    avg_gain = _wilder(gain)
+    avg_loss = _wilder(loss)
 
     # RS 및 RSI 계산
     rs = avg_gain / avg_loss.replace(0, np.nan)

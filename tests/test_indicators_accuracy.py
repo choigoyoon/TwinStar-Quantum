@@ -34,9 +34,9 @@ class TestRSIAccuracy:
         # 참고: 첫 14개 값은 워밍업 기간
         last_rsi = rsi.iloc[-1]
 
-        # 예상값: 약 51.78 (Wilder의 계산 결과)
-        # 허용 오차: ±1.0 (EWM 구현 차이 고려)
-        assert 50.0 <= last_rsi <= 53.0, f"RSI 값이 범위를 벗어남: {last_rsi:.2f}"
+        # 예상값: 60.14 (첫 14개 변화량 단순평균으로 시작하는 Wilder 평활을 손으로 계산한 값)
+        # 기존 기대값 51.78은 이 데이터와 맞지 않았음
+        assert abs(last_rsi - 60.14) < 0.01, f"RSI 값이 범위를 벗어남: {last_rsi:.2f}"
 
     def test_rsi_extreme_oversold(self):
         """극단적 과매도 상황 (지속적 하락)"""
@@ -186,10 +186,14 @@ class TestATRAccuracy:
 
     def test_atr_positive_values(self):
         """ATR은 항상 양수여야 함"""
+        # 유효한 OHLC (low <= close <= high). 기존 무작위 데이터는 high < low가 섞여 가끔 실패했음
+        rng = np.random.default_rng(0)
+        low = rng.uniform(90, 100, 30)
+        high = low + rng.uniform(0.1, 10, 30)
         df = pd.DataFrame({
-            'high': np.random.uniform(95, 105, 30),
-            'low': np.random.uniform(90, 100, 30),
-            'close': np.random.uniform(92, 103, 30)
+            'high': high,
+            'low': low,
+            'close': low + (high - low) * rng.uniform(0, 1, 30)
         })
 
         atr = calculate_atr(df, period=14, return_series=True)

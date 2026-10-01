@@ -288,3 +288,19 @@ def test_zc_catalog_signal_timing():
     assert (C['signal_time'] <= C['zc2'] + H).all()          # ZC2 마감 이전 또는 그때
     assert (C['entry_time'] >= C['signal_time']).all()       # 신호 봉 마감 뒤 시가 진입
     assert (C['exit_time'] > C['entry_time']).all()
+
+
+def test_zc_atlas_vector_uses_only_bars_up_to_zc2():
+    from research.zc_atlas import atlas, cluster28, SEG
+    df5 = _ohlcv(n=12 * 1200, freq='5min', seed=3)
+    A = atlas(df5)
+    assert len(A) > 20 and all(len(v) == 4 * SEG for v in A['vec'])
+    for j in range(3, len(A), max(1, len(A) // 6)):
+        z2 = A.iloc[j]['zc2']
+        cut = df5[df5.index < z2 + pd.Timedelta(hours=1)]       # ZC2 1시간봉 마감까지만 남김
+        Ac = atlas(cut)
+        k = int(np.where(Ac['zc2'].to_numpy() == z2)[0][0])
+        np.testing.assert_allclose(Ac.iloc[k]['vec'], A.iloc[j]['vec'])
+    fit_end = A['zc2'].iloc[len(A) // 2]
+    B, C = cluster28(A, fit_end, k=4)
+    assert C.shape == (4, 4 * SEG) and B['grp'].between(0, 3).all() and (B['margin'] >= 0).all()

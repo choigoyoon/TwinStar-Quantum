@@ -113,11 +113,13 @@ def samples(df5: pd.DataFrame, step: int = 3) -> pd.DataFrame:
                 'atr_pct': at / abs(c5[i]),
                 'y': int(L <= final),
                 'L': L, 'd': d, 'atr': at, 'e3': e3, 'e3_time': hclose[z3], 'final': final,
+                'jL': jL, 'm': m, 'a': a, 'a_hi': a_hi, 'rng_a': rng_a,
             })
     return pd.DataFrame(out)
 
 
-def walk_forward(S: pd.DataFrame, years: List[int], seed: int = 0, target: str = 'y') -> pd.Series:
+def walk_forward(S: pd.DataFrame, years: List[int], seed: int = 0, target: str = 'y',
+                 features: Optional[List[str]] = None) -> pd.Series:
     """해마다: 그해 전에 ZC3까지 끝난 구간으로 배우고 그해 표본의 확률을 냄.
     target='y' → 극점 인식, target='r' → '지금 들어가면 비용 뒤 이익인가' (r > 0)"""
     from sklearn.ensemble import HistGradientBoostingClassifier
@@ -130,9 +132,10 @@ def walk_forward(S: pd.DataFrame, years: List[int], seed: int = 0, target: str =
             continue
         clf = HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, max_leaf_nodes=31,
                                              l2_regularization=1.0, random_state=seed)
+        F = features or FEATURES
         lab = S.loc[tr, 'y'] if target == 'y' else (S.loc[tr, target] > 0).astype(int)
-        clf.fit(S.loc[tr, FEATURES], lab)
-        p[te] = clf.predict_proba(S.loc[te, FEATURES])[:, 1]
+        clf.fit(S.loc[tr, F], lab)
+        p[te] = clf.predict_proba(S.loc[te, F])[:, 1]
     return p
 
 
@@ -199,3 +202,75 @@ def trade_labels(df5: pd.DataFrame, S: pd.DataFrame, cost: float = DEFAULT_COST_
             px = o5[e3]
         out[n] = (px / entry - 1) * d - 2 * cost
     return pd.Series(out, index=S.index, name='r')
+
+
+MORE: List[str] = [
+    'h15',          # 15분 히스토그램 (반등 쪽 +) ÷ ATR
+    'h4',           # 마감된 4시간봉 히스토그램 (반등 쪽 +) ÷ ATR  : 큰 흐름이 반등 쪽인가
+    'd1',           # 마감된 하루봉 종가 - 하루 EMA20 (반등 쪽 +) ÷ ATR : 하루 추세
+    'ema50',        # 현재가 - 1h EMA50 (반등 쪽 +) ÷ ATR
+    'sup3d',        # 현재 극점 - 직전 3일(구간 시작 전) 최저 (반등 쪽 기준) ÷ ATR : 지지선 근처인가
+    'climax',       # 극점 5분봉 거래량 ÷ 구간 평균 거래량
+    'wick',         # 극점 5분봉 아래꼬리 ÷ 봉 길이 (반등 쪽 꼬리)
+    'n_new',        # 구간에서 0.25 ATR 이상 새 극점을 만든 횟수
+    'speed',        # A 극점→현재 극점 낙폭 ÷ 걸린 시간 ÷ ATR
+    'hour_s', 'hour_c', 'wday',
+]
+
+
+def _closed_tf(df5: pd.DataFrame, rule: str) -> pd.DataFrame:
+    """큰 봉을 만들고, 5분봉 i 마감 시각에 이미 마감된 큰 봉 값을 쓰도록 마감 시각 열을 붙임"""
+    g = rd.resample(df5, rule)
+    g['close_time'] = g.index + pd.Timedelta(rule)
+    return g
+
+
+def augment(df5: pd.DataFrame, S: pd.DataFrame) -> pd.DataFrame:
+    """samples() 결과에 MORE 특징을 붙임. 모두 표본 시각 t(5분봉 마감)까지 마감된 자료만 씀."""
+    S = S.copy()
+    t5 = df5.index
+    o5, h5, l5, c5 = (df5[k].to_numpy() for k in ('open', 'high', 'low', 'close'))
+    v5 = df5['volume'].to_numpy(dtype=float)
+    d, at, t = S['d'].to_numpy(), S['atr'].to_numpy(), S['t']
+    i, jL, m = S['i'].to_numpy(), S['jL'].to_numpy(), S['m'].to_numpy()
+
+    def last_closed(g: pd.DataFrame, col: pd.Series) -> np.ndarray:
+        k = g['close_time'].searchsorted(t, side='right') - 1
+        v = col.to_numpy()[np.clip(k, 0, None)]
+        return np.where(k >= 0, v, np.nan)
+
+    m15 = _closed_tf(df5, '15min')
+    S['h15'] = last_closed(m15, _macd_hist(m15['close'])) * d / at
+    m4 = _closed_tf(df5, '4h')
+    S['h4'] = last_closed(m4, _macd_hist(m4['close'])) * d / at
+    dd = _closed_tf(df5, '24h')
+    S['d1'] = last_closed(dd, dd['close'] - dd['close'].ewm(span=20, adjust=False).mean()) * d / at
+    h1 = _closed_tf(df5, '1h')
+    S['ema50'] = (c5[i] - last_closed(h1, h1['close'].ewm(span=50, adjust=False).mean())) * d / at
+    # 직전 3일 지지/저항: 구간 B 시작 전 864개 5분봉의 극값
+    lo_s = pd.Series(l5).rolling(864, min_periods=100).min().to_numpy()
+    hi_s = pd.Series(h5).rolling(864, min_periods=100).max().to_numpy()
+    prev = np.where(d > 0, lo_s[np.maximum(m - 1, 0)], -hi_s[np.maximum(m - 1, 0)])
+    S['sup3d'] = (S['L'].to_numpy() - prev) / at
+    vm = np.array([v5[a:b + 1].mean() for a, b in zip(m, i)])
+    S['climax'] = v5[jL] / np.where(vm > 0, vm, np.nan)
+    rng = h5[jL] - l5[jL]
+    tail = np.where(d > 0, np.minimum(o5[jL], c5[jL]) - l5[jL], h5[jL] - np.maximum(o5[jL], c5[jL]))
+    S['wick'] = np.where(rng > 0, tail / np.where(rng > 0, rng, 1), 0.0)
+    n_new = np.zeros(len(S))
+    for r, (mm, ii, dd_, aa) in enumerate(zip(m, i, d, at)):
+        x = l5[mm:ii + 1] if dd_ > 0 else -h5[mm:ii + 1]
+        run = np.minimum.accumulate(x)
+        steps = np.nonzero(np.diff(run) < 0)[0]
+        cnt, last = 0, run[0]
+        for k in steps:
+            if last - run[k + 1] >= 0.25 * aa:
+                cnt += 1
+                last = run[k + 1]
+        n_new[r] = cnt
+    S['n_new'] = n_new
+    S['speed'] = (S['a_hi'] - S['L']) / np.maximum((jL - S['a'].to_numpy()) / 12, 0.25) / at
+    hr = (t - pd.Timedelta(minutes=5)).dt.hour.to_numpy()
+    S['hour_s'], S['hour_c'] = np.sin(hr / 24 * 2 * np.pi), np.cos(hr / 24 * 2 * np.pi)
+    S['wday'] = (t - pd.Timedelta(minutes=5)).dt.dayofweek.to_numpy()
+    return S

@@ -353,3 +353,15 @@ def test_zc_lh_features_use_only_past_bars():
     a = S[S['e3_time'] < cut].set_index(['zc2', 't'])[FEATURES]
     b = Sc.set_index(['zc2', 't'])[FEATURES].reindex(a.index)
     pd.testing.assert_frame_equal(a, b)                      # 끝난 구간의 특징은 그대로
+
+
+def test_zc_lh_extra_features_use_only_past_bars():
+    from research.zc_lh import samples, augment, MORE
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=5)
+    S = augment(df5, samples(df5, step=6))
+    cut = S['e3_time'].iloc[len(S) // 2]
+    dc = df5[df5.index < cut]
+    Sc = augment(dc, samples(dc, step=6))
+    a = S[S['e3_time'] < cut].set_index(['zc2', 't'])[MORE]
+    b = Sc.set_index(['zc2', 't'])[MORE].reindex(a.index)
+    pd.testing.assert_frame_equal(a, b)

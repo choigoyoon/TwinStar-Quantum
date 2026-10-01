@@ -76,6 +76,21 @@ footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:
     <p class="muted" id="tradeNote"></p>
   </section>
 
+  <section class="card" aria-label="단서를 더 넣고 다시 배움">
+    <h2>단서 12개를 더 넣고 다시 배웠습니다</h2>
+    <p class="muted">4시간봉·하루봉 흐름, 15분 히스토그램, 1시간 EMA50과의 거리, 3일 지지선과의 거리, 꼭지점 봉의 거래량 폭발과 꼬리, 새 꼭지점을 만든 횟수, 떨어진 속도, 시간대, 요일.</p>
+    <div class="tbl"><table><thead><tr><th>비교</th><th>단서 15개</th><th>단서 27개</th></tr></thead><tbody>
+      <tr><td>꼭지점 맞히는 힘 (AUC, 0.5 = 찍기, 1 = 완벽)</td><td>0.759</td><td>0.771</td></tr>
+      <tr><td>문턱 0.8: 맞힌 비율 · 늦은 시간</td><td>83% · 2.9시간</td><td>83% · 2.8시간</td></tr>
+      <tr><td>문턱 0.95: 맞힌 비율 · 늦은 시간</td><td>97% · 4.5시간</td><td>97% · 4.6시간</td></tr>
+      <tr><td>“돈이 남나” 맞히는 힘 (AUC)</td><td>0.568</td><td>0.558</td></tr>
+      <tr><td>문턱 0.9로 매매, 비용 뒤</td><td class="neg">−0.211%</td><td class="neg">−0.207%</td></tr>
+      <tr><td>“돈이 남나” 문턱 0.6, 비용 뒤 (238건)</td><td>–</td><td>+0.059% (t 0.35, 2022·23 손해, 24~26 이익)</td></tr>
+    </tbody></table></div>
+    <p class="muted">직전 그림이 “크게 가는 그림”이었던 파동만 골라 문턱 0.9로 매매해도 비용 뒤 −0.003%(789건)로 0 근처였고, 2022년 이후 해마다 손해였습니다.</p>
+    <p>정리: 새 단서는 꼭지점을 조금 더 잘 알아보게 했지만, “더 일찍” 알아보게 하지는 못했습니다. 이 비트코인 5분봉 가격·거래량 안에는 꼭지점이 돌아서기 전에 알려주는 단서가 거의 없습니다.</p>
+  </section>
+
   <footer>
     <span>배우는 법: 2021년을 맞힐 땐 2020년 자료만, 2022년을 맞힐 땐 2021년까지만 … 이렇게 해마다 그해 전에 끝난 파동으로만 배웁니다.</span>
     <span>단서는 모두 그 5분봉이 끝난 순간까지의 가격과, 그때까지 끝난 1시간봉만 씁니다. 파일: research/zc_lh.py</span>

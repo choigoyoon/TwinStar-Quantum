@@ -304,3 +304,12 @@ def test_zc_atlas_vector_uses_only_bars_up_to_zc2():
     fit_end = A['zc2'].iloc[len(A) // 2]
     B, C = cluster28(A, fit_end, k=4)
     assert C.shape == (4, 4 * SEG) and B['grp'].between(0, 3).all() and (B['margin'] >= 0).all()
+
+
+def test_zc_picture_classes_follow_fixed_cuts():
+    from research.zc_atlas import atlas, classify, CUTS, SEG
+    A = classify(atlas(_ohlcv(n=12 * 1200, freq='5min', seed=3)))
+    assert A['pic'].between(1, 27).all()
+    X = np.vstack(A['vec'].to_numpy())
+    lv = np.digitize(X[:, 3 * SEG - 1], CUTS['b'])
+    assert ((A['pic'].to_numpy() - 1) // 3 % 3 == lv).all()     # 같은 B 깊이 → 같은 행

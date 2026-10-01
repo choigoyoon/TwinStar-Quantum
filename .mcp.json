@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "twin": {
+      "command": "python",
+      "args": ["-m", "twin.mcp_server"],
+      "env": { "TWIN_OHLCV": "${TWIN_OHLCV}" }
+    }
+  }
+}

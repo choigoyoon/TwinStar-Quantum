@@ -1,75 +1,19 @@
-# TwinStar Quantum Build Artifacts
-dist/
-build/
-*.spec.bak
 __pycache__/
 *.pyc
-*.pyo
-*.egg-info/
-.eggs/
+.pytest_cache/
 *.log
-logs/
-*.zip
-installer/
 
-# IDE
-.vscode/
-.idea/
-
-# Backup
-_backup*/
-refactor_backup/
-*.bak
-
-# Temp
-*.txt
-!requirements.txt
-!LICENSE.txt
-*.csv
-*.bat
-*_result*.txt
-
-# Data & Cache
-*.db
-*.sqlite
-data/cache/
+# 데이터는 저장소에 넣지 않음 (5분봉 parquet, 원본 사건 CSV)
 *.parquet
+data/
 
-# Executables
-*.exe
-keys.dat*
+# 만들어지는 그림 폴더 (python -m twin.pipeline build 로 재생성)
+shapes/
+shapes_*/
 
-# ========== 민감 정보 (추가) ==========
+# 개인 설정·비밀
 .env
-.env.*
-!.env.example
-!.env.pyright
-user/
-credentials/
-encrypted_keys.dat
-api_keys*.json
-*.key
-*.pem
-*.secret
+.claude/settings.local.json
 
-# ========== 암호화된 모듈 ==========
-# 서버에서 배포하거나 별도 관리
-encrypted_modules/
-*.enc
-
-
-# Claude temp
-tmpclaude-*/
-venv*/
-.venv/
-nul
-NUL
-
-# Backtest outputs (generated locally, contaminated by look-ahead bias before fix)
-reports/
-config/presets/auto/
-config/optimization_results.json
-config/batch_optimizer_state.json
-GUI/backtest_*.csv
-storage/*_history.json
-storage/*_cache.json
+# 옵시디언 개인 작업 상태
+vault/.obsidian/workspace*.json

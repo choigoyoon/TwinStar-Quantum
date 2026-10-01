@@ -396,7 +396,7 @@ def generate_full_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
 
 
 def generate_quick_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
-    """Quick 모드용 최소 Grid (~8개) - 승률 80% & 매매빈도 0.5회/일 목표"""
+    """Quick 모드용 최소 Grid (16개) - 승률 80% & 매매빈도 0.5회/일 목표"""
     from config.parameters import get_param_range_by_mode, DEFAULT_PARAMS
 
     tf_range = TF_AUTO_RANGE.get(trend_tf, TF_AUTO_RANGE['1h'])
@@ -422,7 +422,7 @@ def generate_quick_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
         'entry_validity_hours': entry_validity_hours,                          # 2개 [48, 72]
         'pullback_rsi_long': [40],                                             # 1개 (고정)
         'pullback_rsi_short': [60],                                            # 1개 (고정)
-        # Total: 2×1×1×1×1×2×2×1×1×2×1×1 = 8개 [OK]
+        # Total: 2(filter_tf)×2(atr)×2(trail_s)×2(validity) = 16개
     }
 
 
@@ -451,7 +451,7 @@ def generate_standard_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
     return generate_quick_grid(trend_tf, max_mdd)
 
 def generate_deep_grid(trend_tf: str, max_mdd: float = 20.0) -> Dict:
-    """Deep 모드용 정밀 Grid (~1,080개) - 전수 조사"""
+    """Deep 모드용 정밀 Grid (23,040개) - 전수 조사"""
     from config.parameters import get_param_range_by_mode, DEFAULT_PARAMS
 
     tf_range = TF_AUTO_RANGE.get(trend_tf, TF_AUTO_RANGE['1h'])
@@ -587,10 +587,10 @@ def generate_grid_by_mode(
         Meta 모드 (20초, ~3,000개) - 권장:
             grid = generate_grid_by_mode('1h', 'meta')
 
-        Quick 모드 (2분, ~8개):
+        Quick 모드 (16개):
             grid = generate_grid_by_mode('1h', 'quick')
 
-        Deep 모드 (2분, ~1,080개):
+        Deep 모드 (23,040개):
             grid = generate_grid_by_mode('1h', 'deep')
     """
     mode = mode.lower()

@@ -141,16 +141,11 @@ class TestTimeoutHandling(unittest.TestCase):
 
     def test_timeout_sufficient_for_slow_tasks(self):
         """future.result(timeout=10) 충분성 확인"""
-        import time
         from concurrent.futures import ProcessPoolExecutor, as_completed
 
-        def slow_task(x):
-            """0.5초 걸리는 느린 작업 (대형 DataFrame 백테스트 시뮬레이션)"""
-            time.sleep(0.5)
-            return x * 2
-
+        # 프로세스 풀로 보내는 함수는 모듈 최상위에 있어야 pickle 가능
         with ProcessPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(slow_task, i) for i in range(10)]
+            futures = [executor.submit(_slow_task, i) for i in range(10)]
 
             results = []
             for future in as_completed(futures):
@@ -160,7 +155,14 @@ class TestTimeoutHandling(unittest.TestCase):
 
         # 모든 결과 수집됨 (타임아웃 없음)
         assert len(results) == 10, f"Expected 10 results, got {len(results)}"
-        assert results == [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
+        assert sorted(results) == [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]  # as_completed는 완료 순서
+
+
+def _slow_task(x):
+    """0.5초 걸리는 느린 작업 (대형 DataFrame 백테스트 시뮬레이션)"""
+    import time
+    time.sleep(0.5)
+    return x * 2
 
 
 class TestPythonVersionCompatibility(unittest.TestCase):
@@ -212,17 +214,17 @@ class TestIntegration(unittest.TestCase):
         # 3. Grid 확장
         grid = engine.generate_grid_from_options(grid_options)
 
-        # 조합 수 확인 (Quick: 8개)
-        assert len(grid) > 0, "Quick mode grid must not be empty"
-        assert len(grid) <= 10, f"Quick mode grid too large: {len(grid)}"
+        # 조합 수 확인 (Quick: filter_tf 2 × atr_mult 2 × trail_start_r 2 × entry_validity 2 = 16개)
+        assert len(grid) == 16, f"Quick mode grid size unexpected: {len(grid)}"
 
     def test_full_optimization_flow_standard_mode(self):
         """Standard 모드 전체 최적화 흐름 테스트"""
         from core.optimizer import generate_grid_by_mode
         from core.optimization_logic import OptimizationEngine
 
-        # 1. Grid 생성
-        grid_options = generate_grid_by_mode(trend_tf='1h', mode='standard')
+        # 1. Grid 생성 (Standard는 v7.21에서 제거 → Quick으로 fallback + DeprecationWarning)
+        with self.assertWarns(DeprecationWarning):
+            grid_options = generate_grid_by_mode(trend_tf='1h', mode='standard')
 
         # None 체크
         assert grid_options is not None
@@ -234,9 +236,8 @@ class TestIntegration(unittest.TestCase):
         # 3. Grid 확장
         grid = engine.generate_grid_from_options(grid_options)
 
-        # 조합 수 확인 (Standard: 60개)
-        assert len(grid) > 0, "Standard mode grid must not be empty"
-        assert 50 <= len(grid) <= 150, f"Standard mode grid size unexpected: {len(grid)}"
+        # 조합 수 확인 (Quick과 동일)
+        assert len(grid) == 16, f"Standard mode grid size unexpected: {len(grid)}"
 
     def test_full_optimization_flow_deep_mode(self):
         """Deep 모드 전체 최적화 흐름 테스트"""
@@ -256,9 +257,8 @@ class TestIntegration(unittest.TestCase):
         # 3. Grid 확장
         grid = engine.generate_grid_from_options(grid_options)
 
-        # 조합 수 확인 (Deep: 1,080개)
-        assert len(grid) > 0, "Deep mode grid must not be empty"
-        assert 1000 <= len(grid) <= 1200, f"Deep mode grid size unexpected: {len(grid)}"
+        # 조합 수 확인 (Deep v7.42: 가변 엔진 파라미터 포함 23,040개)
+        assert len(grid) == 23040, f"Deep mode grid size unexpected: {len(grid)}"
 
 
 if __name__ == '__main__':

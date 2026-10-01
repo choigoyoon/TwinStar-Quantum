@@ -83,6 +83,7 @@ class TestTradingFlowIntegration:
 
         # Mock 거래소
         mock_exchange = Mock()
+        mock_exchange.dry_run = False  # Mock 속성은 truthy라 dry_run으로 오인됨
         mock_exchange.place_market_order = Mock(return_value=OrderResult(
             success=True,
             order_id='12345',
@@ -112,6 +113,7 @@ class TestTradingFlowIntegration:
 
         # Mock 거래소
         mock_exchange = Mock()
+        mock_exchange.dry_run = False  # Mock 속성은 truthy라 dry_run으로 오인됨
         mock_exchange.update_stop_loss = Mock(return_value=OrderResult(success=True))
         mock_exchange.close_position = Mock(return_value=OrderResult(success=True))
 
@@ -141,6 +143,7 @@ class TestTradingFlowIntegration:
 
         # Mock 설정
         mock_exchange = Mock()
+        mock_exchange.dry_run = False  # Mock 속성은 truthy라 dry_run으로 오인됨
         mock_exchange.name = 'bybit'
         mock_exchange.get_klines = Mock(return_value=self._create_sample_df())
         mock_exchange.get_position = Mock(return_value=None)
@@ -152,27 +155,18 @@ class TestTradingFlowIntegration:
         mock_exchange.update_stop_loss = Mock(return_value=OrderResult(success=True))
         mock_exchange.close_position = Mock(return_value=OrderResult(success=True))
 
-        # UnifiedBot 생성
-        config = {
-            'symbol': 'BTCUSDT',
-            'timeframe': '15m',
-            'leverage': 5,
-            'seed_capital': 100.0
-        }
+        mock_exchange.symbol = 'BTCUSDT'
+        mock_exchange.direction = 'Both'
+        mock_exchange.leverage = 5
 
-        with patch('core.unified_bot.ExchangeManager') as mock_em:
-            mock_em.return_value.get_exchange.return_value = mock_exchange
-
-            bot = UnifiedBot(config)
-            # UnifiedBot에는 adapter 속성이 없으므로 직접 설정하지 않음
-
+        # UnifiedBot은 거래소 어댑터를 직접 받는다 (구 ExchangeManager/config 생성자는 제거됨)
+        bot = UnifiedBot(mock_exchange, simulation_mode=True)
+        try:
             # 1. 신호 감지
             signal = bot.detect_signal()
-
-            # 신호가 있으면 포지션 진입 테스트 (선택적)
-            # UnifiedBot의 실제 메서드 시그니처에 맞게 수정 필요
-            # 여기서는 신호 감지만 테스트
-            assert signal is None or hasattr(signal, 'signal_type'), "신호 형식이 올바라야 함"
+            assert signal is None or hasattr(signal, 'type'), "신호 형식이 올바라야 함"
+        finally:
+            bot.stop()
 
     def test_websocket_data_continuity(self):
         """WebSocket 데이터 연속성 테스트"""
@@ -221,6 +215,7 @@ class TestTradingFlowIntegration:
 
         # Mock 거래소 (첫 시도 실패, 재시도 성공)
         mock_exchange = Mock()
+        mock_exchange.dry_run = False  # Mock 속성은 truthy라 dry_run으로 오인됨
         call_count = 0
 
         def place_order_side_effect(*_args: Any, **_kwargs: Any) -> OrderResult:
@@ -298,10 +293,12 @@ class TestMultiSymbolIntegration:
                         timestamp=datetime.now(),
                         direction='Long',
                         entry_price=45000.0,
-                        sl_price=44500.0
+                        sl_price=44500.0,
+                        volume_24h=1.0  # collect_all_signals가 정렬에 사용
                     )
                 ]
 
+                bt.is_running = True  # run()이 설정하는 상태 (False면 수집을 바로 중단)
                 bt.collect_all_signals()
 
                 # 검증

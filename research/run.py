@@ -53,6 +53,9 @@ def main() -> None:
     ap.add_argument('--open-holdout', action='store_true', help='홀드아웃 평가 (최종 판단 때 한 번만)')
     ap.add_argument('--cost', type=float, default=bt.DEFAULT_COST_PER_SIDE, help='편도 비용 (기본 0.115%%)')
     ap.add_argument('--vol-target', type=float, default=0.0, help='연 변동성 목표 (0이면 고정 1배)')
+    ap.add_argument('--fine', action='store_true', help='촘촘한 그리드 + 고원(인접값 평균) 선택')
+    ap.add_argument('--diagnose', action='store_true', help='실패 분석표 (검증 구간 거래 기준)')
+    ap.add_argument('--random', type=int, default=0, help='무작위 방향 비교 횟수 (예: 300)')
     ap.add_argument('--out', help='결과 JSON 경로')
     a = ap.parse_args()
 
@@ -72,12 +75,15 @@ def main() -> None:
         st = REGISTRY[name]
         for p in st.grid[:1] if st.pooled else st.grid:   # 기억 학습기는 느려서 대표 1개 조합만 검사
             rv.check_causal(trimmed, st, p, n_cuts=3 if st.pooled else 8)
-        wf = rv.walk_forward(trimmed, st, start, holdout, a.train_months, a.test_months, a.cost, sizing)
+        grid = st.fine_grid if a.fine and st.fine_grid else st.grid
+        wf = rv.walk_forward(trimmed, st, start, holdout, a.train_months, a.test_months, a.cost, sizing,
+                             grid=grid, plateau=a.fine)
         if wf.oos.empty:
             print(f"\n[{name}] 워크포워드 구간이 부족합니다 (학습 {a.train_months}개월 + 검증 필요)")
             continue
         m = wf.metrics
-        print(f"\n[{name}] 검증 구간 {wf.oos.index[0]:%Y-%m}~{wf.oos.index[-1]:%Y-%m}: {m}")
+        print(f"\n[{name}] 조합 {len(grid)}개{' (고원 선택)' if a.fine else ''} | "
+              f"검증 구간 {wf.oos.index[0]:%Y-%m}~{wf.oos.index[-1]:%Y-%m}: {m}")
         for f in wf.folds:
             print(f"   {f.test_period[0]:%Y-%m}~{f.test_period[1]:%Y-%m} "
                   f"{(1 + f.result['net']).prod() - 1:+7.1%}  ← {f.params}")
@@ -86,6 +92,24 @@ def main() -> None:
         entry = {'walk_forward': m.as_dict(), 'regimes': reg.to_dict('records'),
                  'folds': [{'test': [str(f.test_period[0].date()), str(f.test_period[1].date())],
                             'params': f.params, 'train_sharpe': f.train_sharpe} for f in wf.folds]}
+        if a.random:
+            rb = rv.random_baseline(wf.oos_parts, trimmed, n=a.random, cost=a.cost)
+            verdict = '의미 있음' if rb['p_value'] < 0.05 else '운과 구분 안 됨'
+            print(f"   무작위 방향 {a.random}회와 비교: 실제 샤프 {rb['actual_sharpe']:.2f} vs 무작위 중앙 "
+                  f"{rb['random_median']:.2f} (상위5% {rb['random_p95']:.2f}) → p={rb['p_value']:.2f} {verdict}")
+            entry['random_baseline'] = rb
+        if a.diagnose:
+            from research.diagnose import failure_report, trade_table
+            tt = trade_table(wf.oos_parts, trimmed, labels)
+            fr = failure_report(tt)
+            if not fr.empty:
+                print("   실패 분석 (손실 큰 순 상위 8):")
+                for idx, r in fr.head(8).iterrows():
+                    print(f"     {idx:28s} 거래 {int(r['거래']):3d} 승률 {r['승률']:4.0%} 평균 {r['평균']:+6.2%} 합계 {r['합계']:+7.1%}")
+                print("   잘 된 구간 (이익 큰 순 상위 4):")
+                for idx, r in fr.tail(4).iloc[::-1].iterrows():
+                    print(f"     {idx:28s} 거래 {int(r['거래']):3d} 승률 {r['승률']:4.0%} 평균 {r['평균']:+6.2%} 합계 {r['합계']:+7.1%}")
+                entry['failure_report'] = fr.reset_index().rename(columns={'index': '구간'}).to_dict('records')
         if a.open_holdout and a.holdout_months:
             params = wf.folds[-1].params
             r = rv.run_strategy(trimmed, st, params, a.cost, sizing)

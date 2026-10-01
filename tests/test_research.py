@@ -120,3 +120,53 @@ def test_knn_memory_never_uses_unfinished_outcomes():
         f = full[full.index < cut]
         assert (f['n_memory'].to_numpy() == part['n_memory'].to_numpy()).all()
         np.testing.assert_allclose(f['mean_ret'].to_numpy(), part['mean_ret'].to_numpy(), equal_nan=True)
+
+
+def test_meta_filter_is_causal_on_data_edge():
+    """신호 공간 기준으로 거래를 나눠야 데이터 끝에서 진입/건너뜀 판단이 바뀌지 않는다"""
+    data = {'AAA': _ohlcv(n=1500), 'BBB': _ohlcv(n=1500, seed=3)}
+    for name in ('meta_donchian', 'meta_ema_cross'):
+        st = REGISTRY[name]
+        rv.check_causal(data, st, {**st.grid[0], 'threshold': 0.5}, n_cuts=10)
+
+
+def test_meta_filter_skips_only_low_success_trades():
+    from research.meta import meta_filter
+    data = {'AAA': _ohlcv(n=3000)}
+    filt, T = meta_filter(data, 'ema_cross', {'fast': 10, 'slow': 50}, threshold=0.5, min_trades=20, return_scores=True)
+    skipped = T[~T['taken']]
+    assert len(skipped) > 0 and (skipped['p_success'] < 0.5).all()
+    assert (T.loc[T['taken'] & T['p_success'].notna(), 'p_success'] >= 0.5).all()
+    # 건너뛴 거래의 시작 봉 신호는 0
+    for _, r in skipped.iterrows():
+        assert filt['AAA'].iloc[int(r['sig_start'])] == 0
+
+
+def test_plateau_neighbors():
+    grid = [{'n': n, 'lo': lo} for n in (10, 20, 30) for lo in (False, True)]
+    nb = rv._neighbors(grid)
+    key = tuple(sorted({'n': 20, 'lo': False}.items()))
+    assert sorted(dict(k)['n'] for k in nb[key] if dict(k)['lo'] is False) == [10, 30]
+    assert any(dict(k) == {'n': 20, 'lo': True} for k in nb[key])
+    assert len(nb[key]) == 3
+
+
+def test_random_baseline_detects_skill():
+    """미래를 아는 전략은 무작위보다 확실히 좋아야(p 작음) 하고, 무작위 전략은 p가 크게 나와야 한다"""
+    df = _ohlcv(n=1500)
+    data = {'AAA': df}
+    future = np.sign(df['open'].shift(-2) / df['open'].shift(-1) - 1).fillna(0.0)   # 일부러 미래 사용
+    good = {'AAA': bt.run(df, future, 0.0)}
+    assert rv.random_baseline(good, data, n=100, cost=0.0)['p_value'] < 0.05
+    noise = pd.Series(np.random.default_rng(9).choice([-1.0, 1.0], len(df)), index=df.index)
+    bad = {'AAA': bt.run(df, noise, 0.0)}
+    assert rv.random_baseline(bad, data, n=100, cost=0.0)['p_value'] > 0.05
+
+
+def test_failure_report_runs():
+    from research.diagnose import failure_report, trade_table
+    df = _ohlcv(n=3000)
+    parts = {'AAA': bt.run(df, REGISTRY['ema_cross'].fn(df, fast=10, slow=50))}
+    rep = failure_report(trade_table(parts, {'AAA': df}))
+    assert {'거래', '승률', '평균', '합계'} <= set(rep.columns)
+    assert any(i.startswith('mom_24=') for i in rep.index)

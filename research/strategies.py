@@ -7,7 +7,7 @@ signal[i]는 봉 i 마감까지의 데이터만 사용해야 한다 (validate.ch
 파라미터 범위(GRID)는 데이터를 보기 전에 고정한다. 결과를 보고 범위를 넓히지 말 것.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
 import numpy as np
@@ -63,15 +63,45 @@ class Strategy:
     fn: Callable[..., Any]
     grid: List[Dict]
     pooled: bool = False
+    fine_grid: List[Dict] = field(default_factory=list)   # --fine 일 때 (고원 선택과 함께 사용)
+
+
+def _meta(base: str):
+    """기본 전략 + 실패 학습 필터 (pooled)"""
+    def fn(data, k: int = 30, threshold: float = 0.5, **base_params):
+        from research.meta import meta_filter
+        return meta_filter(data, base, base_params, k=k, threshold=threshold)
+    fn.__name__ = f'meta_{base}'
+    return fn
+
+
+def _with_meta(grid: List[Dict]) -> List[Dict]:
+    return [{**g, 'k': 30, 'threshold': t} for g in grid for t in (0.45, 0.50, 0.55)]
 
 
 # 봉 수 기준 (4h봉 가정: 6봉 = 1일). 다른 TF에서도 같은 봉 수를 쓴다.
-REGISTRY: Dict[str, Strategy] = {s.name: s for s in [
-    Strategy('donchian', donchian, [{'n': n, 'long_only': lo} for n in (20, 55, 120) for lo in (False, True)]),
-    Strategy('ema_cross', ema_cross, [{'fast': f, 'slow': s, 'long_only': lo}
-                                      for f, s in ((10, 50), (20, 100), (50, 200)) for lo in (False, True)]),
-    Strategy('tsmom', tsmom, [{'lookback': n, 'long_only': lo} for n in (30, 90, 180) for lo in (False, True)]),
+_BASE = [
+    Strategy('donchian', donchian,
+             [{'n': n, 'long_only': lo} for n in (20, 55, 120) for lo in (False, True)],
+             fine_grid=[{'n': n, 'long_only': lo} for n in (10, 15, 20, 30, 40, 55, 70, 90, 120, 160, 200)
+                        for lo in (False, True)]),
+    Strategy('ema_cross', ema_cross,
+             [{'fast': f, 'slow': s, 'long_only': lo} for f, s in ((10, 50), (20, 100), (50, 200)) for lo in (False, True)],
+             fine_grid=[{'fast': f, 'slow': s, 'long_only': lo} for f in (5, 10, 20, 30, 50) for s in (30, 50, 100, 150, 200)
+                        if s >= 2 * f for lo in (False, True)]),
+    Strategy('tsmom', tsmom,
+             [{'lookback': n, 'long_only': lo} for n in (30, 90, 180) for lo in (False, True)],
+             fine_grid=[{'lookback': n, 'long_only': lo} for n in (12, 24, 48, 72, 120, 180, 240, 360)
+                        for lo in (False, True)]),
     # 상대값 기억 학습기: 비슷한 과거 장면 k개, horizon봉 뒤 결과, 확신 기준 threshold
-    Strategy('knn_memory', knn_memory, [{'k': k, 'horizon': h, 'threshold': t}
-                                        for k in (25, 100) for h in (6, 24) for t in (0.55, 0.60)], pooled=True),
-]}
+    Strategy('knn_memory', knn_memory,
+             [{'k': k, 'horizon': h, 'threshold': t} for k in (25, 100) for h in (6, 24) for t in (0.55, 0.60)],
+             pooled=True,
+             fine_grid=[{'k': k, 'horizon': h, 'threshold': t} for k in (10, 25, 50, 100, 200)
+                        for h in (3, 6, 12, 24, 48) for t in (0.52, 0.55, 0.58, 0.62)]),
+]
+
+# 실패 학습 필터를 씌운 버전 (meta_donchian 등): 기본 그리드 × 필터 기준 3개
+REGISTRY: Dict[str, Strategy] = {s.name: s for s in _BASE + [
+    Strategy(f'meta_{b.name}', _meta(b.name), _with_meta(b.grid), pooled=True,
+             fine_grid=_with_meta(b.fine_grid)) for b in _BASE]}

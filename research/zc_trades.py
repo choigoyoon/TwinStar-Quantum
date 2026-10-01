@@ -1,10 +1,10 @@
 """
-ZC 범위 건별 루프 분석 (1h 구조 + 15m 분할 체결)
+ZC 범위 건별 루프 분석 (1h 구조 + 하위봉(5m/15m) 분할 체결)
 
 범위 하나 = 매매 한 건.
   구조(1h):   ZC0 →(1) EA →(2) ZC1 →(3) EB →(4) ZC2 →(5 매매) ZC3
-  체결(15m):  진입 = ZC2 1h봉 마감 직후 15m 시가, 보유 중 손절/목표는 15m 고저로 판정
-              같은 15m봉에서 손절과 목표가 모두 닿으면 손절 먼저 (보수적)
+  체결(하위봉): 진입 = ZC2 1h봉 마감 직후 하위봉 시가, 보유 중 손절/목표는 하위봉 고저로 판정
+              같은 하위봉에서 손절과 목표가 모두 닿으면 손절 먼저 (보수적)
 
 건마다 기록
   - 구조 5단계의 길이(봉)와 이동폭(ATR 배수)
@@ -28,7 +28,7 @@ RULES: List[str] = ['hold_zc3', 'stop_eb'] + [f'stop_eb_tp{t:g}' for t in TARGET
 
 def _simulate(side: float, entry: float, stop: Optional[float], target: Optional[float],
               hi: np.ndarray, lo: np.ndarray, op: np.ndarray, exit_open: float, cost: float) -> Tuple[float, str, int]:
-    """15m 봉 배열 위에서 한 건 시뮬레이션 → (비용 후 수익, 청산 사유, 청산 15m 인덱스)"""
+    """하위봉 배열 위에서 한 건 시뮬레이션 → (비용 후 수익, 청산 사유, 청산 하위봉 인덱스)"""
     for j in range(len(hi)):
         if stop is not None:
             hit = lo[j] <= stop if side > 0 else hi[j] >= stop
@@ -55,6 +55,7 @@ def ledger(df15: pd.DataFrame, tf: str = '1h', cost: float = 0.00115) -> pd.Data
     atr = tr.rolling(14).mean().to_numpy()
     hc = h['close'].to_numpy()
     t15 = df15.index
+    sub_bar = t15.to_series().diff().mode().iloc[0]           # 체결봉 길이 (5m 또는 15m)
     o15, h15, l15 = df15['open'].to_numpy(), df15['high'].to_numpy(), df15['low'].to_numpy()
 
     rows = []
@@ -97,9 +98,9 @@ def ledger(df15: pd.DataFrame, tf: str = '1h', cost: float = 0.00115) -> pd.Data
         for k, (ret, why, j) in res.items():
             row[f'r_{k}'] = ret
             row[f'why_{k}'] = why
-            # 결과 확정 시각: 청산 체결 15m봉 마감 (ZC3 청산이면 ZC3 다음 15m봉)
+            # 결과 확정 시각: 청산 체결 하위봉 마감 (ZC3 청산이면 ZC3 다음 하위봉)
             jj = min(a + j, len(t15) - 1)
-            row[f'known_{k}'] = t15[jj] + pd.Timedelta(minutes=15)
+            row[f'known_{k}'] = t15[jj] + sub_bar
         # 사후 최적 ('정답지'): 진입 후 최선의 지점에서 청산했다면
         long_best = (hi.max() / entry - 1) - 2 * cost
         short_best = (1 - lo.min() / entry) - 2 * cost

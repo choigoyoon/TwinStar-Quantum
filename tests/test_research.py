@@ -242,3 +242,19 @@ def test_zc_pictures_use_only_bars_up_to_zc2():
         Pc, _ = pictures(hc, wc)
         k = int(np.where(wc['zc2'].to_numpy() == z2)[0][0])
         np.testing.assert_allclose(Pc[k], P[j])
+
+
+def test_zc_early_trigger_is_before_or_at_zc2_and_causal():
+    from research.zc_early import _trigger
+    from research.zc_pattern import _macd_hist, find_windows
+    h = _ohlcv(n=1500, freq='1h')
+    w = find_windows(h)
+    hv = _macd_hist(h['close']).to_numpy()
+    for _, r in w.head(40).iterrows():
+        z1, z2 = int(r['zc1']), int(r['zc2'])
+        for wt in (1, 3):
+            j = _trigger(hv, z1, z2, wt)
+            assert z1 < j <= z2 or j == z2
+            if j < z2:   # 인식 봉까지만 있는 히스토그램으로도 같은 봉에서 인식
+                hv_cut = _macd_hist(h['close'].iloc[:j + 1]).to_numpy()
+                assert _trigger(hv_cut, z1, j + 1, wt) == j

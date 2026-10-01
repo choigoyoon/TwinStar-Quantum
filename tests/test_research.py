@@ -341,3 +341,15 @@ def test_zc_templates_ignore_events_after_fit_end():
     for g in T1:
         np.testing.assert_allclose(T1[g], T2[g])                        # 대표 그림은 그대로
     assert match(P, T1).isin(list(T1)).all()
+
+
+def test_zc_lh_features_use_only_past_bars():
+    from research.zc_lh import samples, FEATURES
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=5)
+    S = samples(df5, step=6)
+    assert len(S) > 100 and S['y'].isin([0, 1]).all()
+    cut = S['e3_time'].iloc[len(S) // 2]                     # 이 시각 뒤 데이터를 지워도
+    Sc = samples(df5[df5.index < cut], step=6)
+    a = S[S['e3_time'] < cut].set_index(['zc2', 't'])[FEATURES]
+    b = Sc.set_index(['zc2', 't'])[FEATURES].reindex(a.index)
+    pd.testing.assert_frame_equal(a, b)                      # 끝난 구간의 특징은 그대로

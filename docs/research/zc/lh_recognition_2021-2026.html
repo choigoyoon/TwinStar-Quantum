@@ -1,0 +1,129 @@
+<title>L·H 인식 학습</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 한 줄 결론 → 인식율-늦음 그래프 → 매매 결과 표 → 무엇을 보고 알아봤나 → 돈 기준 학습 */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d6dce3; --grid:#e6eaef; --accent:#2563a0;
+  --s1:#2a78d6; --s2:#eb6834; --pos:#2f7d4f; --neg:#b0463c;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d141c; --panel:#131c26; --ink:#e3eaf1; --muted:#8b9aab; --line:#253241; --grid:#1c2734; --accent:#6aaee8;
+  --s1:#3987e5; --s2:#d95926; --pos:#6cc08f; --neg:#e0877d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d141c; --panel:#131c26; --ink:#e3eaf1; --muted:#8b9aab; --line:#253241; --grid:#1c2734; --accent:#6aaee8;
+  --s1:#3987e5; --s2:#d95926; --pos:#6cc08f; --neg:#e0877d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.6}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:24px 40px;display:flex;flex-direction:column;gap:18px}
+.crumb{font-family:var(--f-data);font-size:12px;color:var(--accent);letter-spacing:.04em}
+h1{font-size:23px;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:17px;margin:0;font-weight:600;text-wrap:balance}
+p{margin:0;max-width:70ch}
+.muted{color:var(--muted);font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.verdict{border-left:3px solid var(--accent);padding:4px 12px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%}.sq{width:10px;height:10px;transform:rotate(45deg)}
+svg text{font-family:var(--f-data);font-size:11px;fill:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;font-size:13px;width:100%;min-width:620px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:12px}
+td{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+td:first-child{font-family:var(--f-body)}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.imp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;font-size:13px}
+.imp i{display:block;height:12px;background:var(--s1);border-radius:0 4px 4px 0}
+.imp .v{font-family:var(--f-data);font-size:12px;color:var(--muted)}
+#tip{position:fixed;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 9px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);max-width:260px}
+footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+</style>
+
+<div class="wrap">
+  <div class="crumb">TWIN / L·H 실시간 인식 · BTCUSDT 5분봉 · 2021 ~ 2026 해마다 새로 배움</div>
+  <h1>꼭지점(L·H)을 알아보는 학습기 · 맞히는 비율과 늦는 시간</h1>
+  <p id="lead"></p>
+  <p class="verdict" id="verdict"></p>
+
+  <section class="card" aria-label="인식율과 늦는 시간">
+    <h2>더 확실하게 맞히려면 더 기다려야 합니다</h2>
+    <div class="legend"><span><i class="dot" style="background:var(--s1)"></i>학습기 (문턱별)</span><span><i class="sq" style="background:var(--s2)"></i>단순 규칙</span></div>
+    <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="인식율 대 늦은 시간"></svg>
+    <p class="muted">가로: 진짜 꼭지점이 나온 뒤 몇 시간 만에 “여기가 꼭지점”이라고 말했나 (가운데 값). 세로: 그 말이 맞은 비율. 점에 손을 올리면 자세히 보입니다.</p>
+  </section>
+
+  <section class="card" aria-label="매매 결과">
+    <h2>알아본 순간 들어가면</h2>
+    <p class="muted">알아본 다음 5분봉 시가에 들어가고, 꼭지점에서 조금(0.1 ATR) 넘어가면 손절, 다음 다음 교차(ZC3)에서 나옵니다. 왕복 수수료·미끄러짐 0.23% 포함.</p>
+    <div class="tbl"><table><thead><tr><th>방법</th><th>맞힌 비율</th><th>늦은 시간</th><th>이미 돌아온 거리</th><th>매매 수</th><th>비용 전</th><th>비용 뒤</th><th>이긴 비율</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <p class="muted">“이미 돌아온 거리”: 알아본 순간 가격이 꼭지점에서 얼마나 돌아와 있었나 (직전 파동 크기 = 1).</p>
+  </section>
+
+  <section class="card" aria-label="무엇을 보고 알아봤나">
+    <h2>학습기가 무엇을 보고 알아봤나</h2>
+    <p class="muted">2023년까지 배운 학습기에서 한 가지 단서를 일부러 엉망으로 섞었을 때 2024년 이후 맞히는 힘이 얼마나 떨어지나.</p>
+    <div class="imp" id="imp"></div>
+  </section>
+
+  <section class="card" aria-label="돈 기준으로 배운 학습기">
+    <h2>“꼭지점인가” 대신 “지금 들어가면 돈이 남나”를 배우게 해 봤습니다</h2>
+    <div class="tbl"><table><thead><tr><th>문턱</th><th>매매 수</th><th>비용 뒤 평균</th><th>t</th><th>해마다 (비용 뒤 %)</th></tr></thead><tbody id="tb2"></tbody></table></div>
+    <p class="muted" id="tradeNote"></p>
+  </section>
+
+  <footer>
+    <span>배우는 법: 2021년을 맞힐 땐 2020년 자료만, 2022년을 맞힐 땐 2021년까지만 … 이렇게 해마다 그해 전에 끝난 파동으로만 배웁니다.</span>
+    <span>단서는 모두 그 5분봉이 끝난 순간까지의 가격과, 그때까지 끝난 1시간봉만 씁니다. 파일: research/zc_lh.py</span>
+  </footer>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const D = {"curve":[{"th":0.5,"claims":3777.0,"coverage":1.0,"precision":0.591,"late_h":1.083,"bounce":0.406,"n":3775,"net":-0.249,"gross":-0.019,"t":-10.83,"win":0.32,"years":{"2021":-0.22,"2022":-0.27,"2023":-0.28,"2024":-0.26,"2025":-0.23,"2026":-0.23}},{"th":0.6,"claims":3775.0,"coverage":0.999,"precision":0.672,"late_h":1.5,"bounce":0.463,"n":3771,"net":-0.257,"gross":-0.027,"t":-10.23,"win":0.31,"years":{"2021":-0.18,"2022":-0.34,"2023":-0.24,"2024":-0.25,"2025":-0.26,"2026":-0.29}},{"th":0.7,"claims":3772.0,"coverage":0.999,"precision":0.752,"late_h":2.167,"bounce":0.526,"n":3767,"net":-0.246,"gross":-0.016,"t":-9.11,"win":0.3,"years":{"2021":-0.12,"2022":-0.31,"2023":-0.25,"2024":-0.29,"2025":-0.18,"2026":-0.36}},{"th":0.8,"claims":3767.0,"coverage":0.997,"precision":0.833,"late_h":2.917,"bounce":0.587,"n":3765,"net":-0.246,"gross":-0.016,"t":-8.61,"win":0.29,"years":{"2021":-0.15,"2022":-0.34,"2023":-0.21,"2024":-0.28,"2025":-0.2,"2026":-0.33}},{"th":0.85,"claims":3757.0,"coverage":0.995,"precision":0.875,"late_h":3.333,"bounce":0.615,"n":3755,"net":-0.213,"gross":0.017,"t":-7.02,"win":0.29,"years":{"2021":-0.04,"2022":-0.33,"2023":-0.21,"2024":-0.26,"2025":-0.18,"2026":-0.27}},{"th":0.9,"claims":3722.0,"coverage":0.985,"precision":0.92,"late_h":3.833,"bounce":0.643,"n":3722,"net":-0.211,"gross":0.019,"t":-6.73,"win":0.29,"years":{"2021":0.02,"2022":-0.28,"2023":-0.23,"2024":-0.26,"2025":-0.22,"2026":-0.32}},{"th":0.95,"claims":3603.0,"coverage":0.954,"precision":0.966,"late_h":4.5,"bounce":0.678,"n":3603,"net":-0.187,"gross":0.043,"t":-5.5,"win":0.29,"years":{"2021":0.11,"2022":-0.3,"2023":-0.2,"2024":-0.24,"2025":-0.23,"2026":-0.27}},{"th":0.97,"claims":3456.0,"coverage":0.915,"precision":0.984,"late_h":4.667,"bounce":0.71,"n":3456,"net":-0.18,"gross":0.05,"t":-5.03,"win":0.3,"years":{"2021":0.08,"2022":-0.29,"2023":-0.13,"2024":-0.28,"2025":-0.21,"2026":-0.24}}],"rules":[{"rule":"1h히스토그램 절반 복귀","claims":3777.0,"coverage":1.0,"precision":0.791,"late_h":3.583,"bounce":0.558,"n":3777,"net":-0.264,"gross":-0.034,"t":-8.92,"win":0.29,"years":{"2021":-0.17,"2022":-0.4,"2023":-0.24,"2024":-0.3,"2025":-0.17,"2026":-0.32}},{"rule":"5분 히스토그램 반등","claims":3776.0,"coverage":1.0,"precision":0.321,"late_h":0.5,"bounce":0.178,"n":3773,"net":-0.225,"gross":0.005,"t":-12.61,"win":0.27,"years":{"2021":-0.22,"2022":-0.17,"2023":-0.25,"2024":-0.26,"2025":-0.25,"2026":-0.2}},{"rule":"극점 뒤 2시간","claims":3301.0,"coverage":0.874,"precision":0.453,"late_h":2.083,"bounce":0.299,"n":3301,"net":-0.268,"gross":-0.038,"t":-11.37,"win":0.29,"years":{"2021":-0.28,"2022":-0.32,"2023":-0.2,"2024":-0.32,"2025":-0.22,"2026":-0.25}},{"rule":"되돌림 0.3","claims":3494.0,"coverage":0.925,"precision":0.521,"late_h":0.667,"bounce":0.358,"n":3480,"net":-0.291,"gross":-0.061,"t":-12.94,"win":0.31,"years":{"2021":-0.4,"2022":-0.18,"2023":-0.27,"2024":-0.3,"2025":-0.31,"2026":-0.27}}],"imp":{"bounce_atr":0.132,"h1_now":0.0478,"h1_div":0.0169,"mom1h":0.0093,"elapsed":0.0091,"bounce":0.0074,"depth":0.007,"len_a":0.0041,"vol":0.0013,"h5":0.0003,"h5_up":0.0,"h1_since":-0.0004,"since_h":-0.0019,"since_frac":-0.0026,"atr_pct":-0.0053},"trade":[{"th":0.3,"prec":0.548,"n":2317,"net":-0.222,"gross":0.008,"t":-6.6,"win":0.32,"years":{"2021":-0.16,"2022":-0.23,"2023":-0.14,"2024":-0.25,"2025":-0.27,"2026":-0.32}},{"th":0.4,"prec":0.589,"n":1260,"net":-0.138,"gross":0.092,"t":-2.46,"win":0.31,"years":{"2021":0.04,"2022":-0.19,"2023":-0.27,"2024":-0.25,"2025":-0.13,"2026":-0.1}},{"th":0.45,"prec":0.589,"n":924,"net":-0.07,"gross":0.16,"t":-0.99,"win":0.32,"years":{"2021":0.1,"2022":-0.13,"2023":-0.38,"2024":-0.08,"2025":0.0,"2026":0.18}},{"th":0.5,"prec":0.582,"n":668,"net":0.012,"gross":0.242,"t":0.13,"win":0.32,"years":{"2021":0.39,"2022":-0.25,"2023":-0.47,"2024":0.02,"2025":0.28,"2026":0.34}},{"th":0.55,"prec":0.555,"n":483,"net":-0.084,"gross":0.146,"t":-0.8,"win":0.31,"years":{"2021":0.32,"2022":-0.29,"2023":-0.53,"2024":-0.03,"2025":-0.05,"2026":-0.07}}],"zc2":{"n":3777,"net":-0.194,"gross":0.036,"t":-5.66,"win":0.29,"years":{"2021":-0.02,"2022":-0.28,"2023":-0.17,"2024":-0.27,"2025":-0.2,"2026":-0.23}},"n_win":3777};
+const $ = s => document.querySelector(s);
+const pct = (v, d=2) => (v>0?'+':'') + v.toFixed(d) + '%';
+const c80 = D.curve.find(c => c.th === 0.8), c97 = D.curve.find(c => c.th === 0.97);
+$('#lead').textContent = `파동 ${D.n_win.toLocaleString('ko-KR')}개가 진행되는 동안 5분마다 “지금까지 나온 가장 낮은 곳(숏이면 가장 높은 곳)이 이 파동의 진짜 꼭지점일까?”를 맞히게 했습니다. 학습기는 해마다 지난 해까지의 자료로 다시 배웁니다.`;
+$('#verdict').textContent = `꼭지점을 알아보는 건 배울 수 있습니다. 꼭지점이 나오고 약 3시간 뒤에 10번 중 8번 이상(${Math.round(c80.precision*100)}%), 4~5시간 뒤엔 ${Math.round(c97.precision*100)}%까지 맞힙니다. 하지만 그때는 가격이 이미 직전 파동의 60~70%만큼 돌아와 있어서, 그 순간 사면 수수료를 빼고 손해(${pct(c80.net,3)})입니다. 확실해질 때쯤엔 먹을 몫이 이미 지나가 버립니다.`;
+
+// 차트
+(function(){
+  const W=640,H=320,L=48,R=16,T=14,B=40, x0=0,x1=5, y0=0.3,y1=1.0;
+  const X=v=>L+(v-x0)/(x1-x0)*(W-L-R), Y=v=>T+(y1-v)/(y1-y0)*(H-T-B);
+  let s='';
+  for(let v=0.3; v<=1.001; v+=0.1){ s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${Math.round(v*100)}%</text>`; }
+  for(let v=0; v<=5; v++){ s+=`<text x="${X(v)}" y="${H-B+16}" text-anchor="middle">${v}시간</text>`; }
+  s+=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="var(--line)"/>`;
+  s+=`<text x="${(L+W-R)/2}" y="${H-6}" text-anchor="middle">진짜 꼭지점 뒤 몇 시간 만에 알아봤나</text>`;
+  const pts=D.curve.map(c=>[X(c.late_h),Y(c.precision)]);
+  s+=`<polyline fill="none" stroke="var(--s1)" stroke-width="2" points="${pts.map(p=>p.join(',')).join(' ')}"/>`;
+  D.curve.forEach((c,i)=>{ s+=`<circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="5" fill="var(--s1)" stroke="var(--panel)" stroke-width="2" data-t="학습기 문턱 ${c.th}|맞힌 비율 ${Math.round(c.precision*100)}%|늦은 시간 ${c.late_h.toFixed(1)}시간|이미 돌아온 거리 ${c.bounce}|비용 뒤 ${pct(c.net,3)}"/>`; });
+  [0,4,7].forEach(i=>{ const c=D.curve[i]; s+=`<text x="${pts[i][0]-8}" y="${pts[i][1]-9}" text-anchor="end" style="fill:var(--ink)">${Math.round(c.precision*100)}%</text>`; });
+  D.rules.forEach(r=>{ const x=X(r.late_h), y=Y(r.precision);
+    s+=`<rect x="${x-5}" y="${y-5}" width="10" height="10" transform="rotate(45 ${x} ${y})" fill="var(--s2)" stroke="var(--panel)" stroke-width="2" data-t="규칙: ${r.rule}|맞힌 비율 ${Math.round(r.precision*100)}%|늦은 시간 ${r.late_h.toFixed(1)}시간|비용 뒤 ${pct(r.net,3)}"/>`;
+    s+=`<text x="${x+9}" y="${y+4}">${r.rule}</text>`; });
+  $('#chart').innerHTML=s;
+})();
+
+const cls = v => v>0?'pos':'neg';
+const row = (name,c) => `<tr><td>${name}</td><td>${Math.round(c.precision*100)}%</td><td>${c.late_h.toFixed(1)}시간</td><td>${c.bounce}</td><td>${c.n.toLocaleString('ko-KR')}</td><td class="${cls(c.gross)}">${pct(c.gross,3)}</td><td class="${cls(c.net)}">${pct(c.net,3)}</td><td>${Math.round(c.win*100)}%</td></tr>`;
+$('#tb').innerHTML = D.curve.map(c=>row(`학습기 문턱 ${c.th}`,c)).join('') + D.rules.map(r=>row(`규칙: ${r.rule}`,r)).join('') +
+  `<tr><td>비교: ZC2 마감에 들어감</td><td>100%</td><td>–</td><td>–</td><td>${D.zc2.n.toLocaleString('ko-KR')}</td><td class="${cls(D.zc2.gross)}">${pct(D.zc2.gross,3)}</td><td class="${cls(D.zc2.net)}">${pct(D.zc2.net,3)}</td><td>${Math.round(D.zc2.win*100)}%</td></tr>`;
+
+const NAMES = {bounce_atr:'꼭지점에서 돌아온 거리 (ATR 단위)',h1_now:'1시간 히스토그램이 극값에서 얼마나 돌아왔나',h1_div:'이번 히스토그램 극값 ÷ 지난 파동 극값',mom1h:'최근 1시간 움직임',elapsed:'파동 진행 시간 ÷ 지난 파동 시간',bounce:'꼭지점에서 돌아온 거리 (파동 크기 단위)',depth:'지난 파동을 얼마나 되돌렸나',len_a:'지난 파동 길이',vol:'최근 거래량',h5:'5분 히스토그램',h5_up:'5분 히스토그램이 넘어갔나',h1_since:'히스토그램 극값 뒤 시간',since_h:'꼭지점 뒤 시간',since_frac:'꼭지점 뒤 시간 비율',atr_pct:'변동성'};
+const imp = Object.entries(D.imp).filter(([,v])=>v>0.001).slice(0,8), mx = imp[0][1];
+$('#imp').innerHTML = imp.map(([k,v])=>`<span>${NAMES[k]||k}</span><i style="width:${v/mx*100}%"></i><span class="v">${v.toFixed(3)}</span>`).join('');
+
+$('#tb2').innerHTML = D.trade.map(t=>`<tr><td>${t.th}</td><td>${t.n.toLocaleString('ko-KR')}</td><td class="${cls(t.net)}">${pct(t.net,3)}</td><td>${t.t}</td><td>${Object.entries(t.years).map(([y,v])=>`${y} <span class="${cls(v)}">${pct(v)}</span>`).join(' · ')}</td></tr>`).join('');
+$('#tradeNote').textContent = '문턱을 올리면 손해가 줄다가 0.5 근처에서 0에 가까워지지만, 해마다 +와 −가 오가서 믿을 만한 이익은 아닙니다 (t가 ±2를 넘지 못함). 돈이 되는 순간을 미리 알아보는 단서는 지금 가진 단서들 안에는 없었습니다.';
+
+const tip=$('#tip');
+document.addEventListener('pointermove',e=>{const t=e.target.closest?.('[data-t]'); if(!t){tip.hidden=true;return;}
+  tip.innerHTML=t.dataset.t.split('|').join('<br>'); tip.hidden=false;
+  tip.style.left=Math.min(e.clientX+12,innerWidth-tip.offsetWidth-8)+'px'; tip.style.top=(e.clientY+14)+'px';});
+</script>

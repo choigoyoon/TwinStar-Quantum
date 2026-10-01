@@ -198,3 +198,30 @@ def test_zc_learning_uses_only_finished_patterns():
     st = REGISTRY['zc_memory']
     for p in st.grid[:2] + [{'k': 20, 'threshold': 0.5, 'exit': 12}]:
         rv.check_causal(data, st, p, n_cuts=6)
+
+
+def test_zc_trade_simulation_stop_before_target():
+    from research.zc_trades import _simulate
+    hi = np.array([101.0, 103.0, 110.0])
+    lo = np.array([99.0, 95.0, 100.0])
+    op = np.array([100.0, 101.0, 102.0])
+    # 둘째 봉에서 손절(96)과 목표(103)가 함께 닿음 → 손절 먼저
+    ret, why, j = _simulate(1.0, 100.0, 96.0, 103.0, hi, lo, op, exit_open=108.0, cost=0.0)
+    assert why == '손절' and j == 1 and ret == pytest.approx(-0.04)
+    ret, why, _ = _simulate(1.0, 100.0, None, None, hi, lo, op, exit_open=108.0, cost=0.001)
+    assert why == 'ZC3' and ret == pytest.approx(0.08 - 0.002)
+
+
+def test_zc_ledger_entries_follow_zc2_close_and_rule_learning_is_causal():
+    from research.zc_trades import RULES, run
+    df = _ohlcv(n=8000, freq='15min')
+    L = run({'AAA': df})
+    assert len(L) > 20
+    assert (L['entry_time'] > L['zc2']).all() and (L['exit_time'] > L['zc3']).all()
+    for k in RULES:
+        assert (L[f'known_{k}'] > L['entry_time']).all()
+    # 학습 규칙: 각 건의 결정은 그 건 진입 시각까지 확정된 과거만 사용
+    i = len(L) - 1
+    t = L.at[i, 'entry_time']
+    past = L[L['known_hold_zc3'] <= t]
+    assert len(past) < len(L)

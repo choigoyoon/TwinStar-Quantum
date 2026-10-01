@@ -225,3 +225,20 @@ def test_zc_ledger_entries_follow_zc2_close_and_rule_learning_is_causal():
     t = L.at[i, 'entry_time']
     past = L[L['known_hold_zc3'] <= t]
     assert len(past) < len(L)
+
+
+def test_zc_pictures_use_only_bars_up_to_zc2():
+    from research.zc_cluster import pictures
+    from research.zc_pattern import find_windows
+    h = _ohlcv(n=1500, freq='1h')
+    w = find_windows(h)
+    P, T = pictures(h, w)
+    assert P.shape == (len(w), 32) and T.shape == (len(w), 2)
+    assert np.allclose(P[:, 0], 0.0)                         # 모든 그림은 ZC0 = 0에서 시작
+    for j in range(5, len(w), max(1, len(w) // 8)):
+        z2 = int(w.iloc[j]['zc2'])
+        hc = h.iloc[:z2 + 1]                                 # ZC2 봉까지만 남김
+        wc = find_windows(hc)
+        Pc, _ = pictures(hc, wc)
+        k = int(np.where(wc['zc2'].to_numpy() == z2)[0][0])
+        np.testing.assert_allclose(Pc[k], P[j])

@@ -60,117 +60,68 @@ class UnifiedBacktest:
                 logger.info("[UnifiedBacktest] No verified presets found.")
                 return None
             
-            # 2. Collect All Signals (and Candles)
-            # We need a unified timeline.
-            # Strategy:
-            # - Fetch 15m data for all symbols.
-            # - Detect signals for all symbols locally.
-            # - Merge signals into a single timeline: [(ts, symbol, signal), ...]
-            
-            all_signals = []
-            symbol_data_map = {} # Keep 15m DF for price lookup
-            
+            # 2. 심볼별 거래 생성: 검증된 run_backtest 엔진 사용
+            #    (기존: detect_signal을 전체 히스토리에 한 번 호출 → 신호 시각이 datetime.now()라 거래가 생성되지 않음)
+            import pandas as pd
+            from utils.data_utils import resample_data
+            from config.constants.trading import BACKTEST_ENTRY_FEE, BACKTEST_EXIT_COST
+
+            candidates = []
             total_presets = len(presets)
             for i, p in enumerate(presets):
                 symbol = p['symbol']
-                params = p['params']
-                
+                params = dict(p.get('params') or {})
+
                 if progress_callback:
                     progress_callback(i, total_presets * 2, f"Loading Data: {symbol}")
-                
-                # [FIX] 15m 단일 소스 원칙: 15m 로드 → 1H 리샘플
-                from utils.data_utils import resample_data
-                
-                # Fetch 15m Data
+
                 msb = MultiSymbolBacktest(exchange=p['exchange'])
                 df_15m = msb.load_candle_data(symbol, '15m')
-                
-                if df_15m is None or len(df_15m) < 100: continue
-                
-                # Resample 15m → 1H for pattern detection
-                df_1h = resample_data(df_15m, '1h', add_indicators=True)
-                if df_1h is None or len(df_1h) < 50: continue
-                
-                # Align dates if provided
-                # (Skipping date filter for speed/simplicity or implementing basic slice)
-                
-                symbol_data_map[symbol] = df_15m
-                
-                # Detect Signals
-                signal = self.strategy.detect_signal(
-                    df_1h, df_15m,
-                    rsi_period=params.get('rsi_period', 14),
-                    atr_period=params.get('atr_period', 14)
-                )
+                if df_15m is None or len(df_15m) < 100:
+                    continue
+                df_15m = self._normalize_candles(df_15m)
+                df_1h = resample_data(df_15m, '1h', add_indicators=False)
+                if df_1h is None or len(df_1h) < 50:
+                    continue
 
-                # Append to global list (single signal)
-                if signal is not None:
-                    all_signals.append({
-                        'timestamp': signal.timestamp,
+                df_entry = df_15m.copy()
+                df_entry['timestamp'] = (df_entry['timestamp'] - pd.Timestamp('1970-01-01')) // pd.Timedelta(milliseconds=1)
+                core = AlphaX7Core(strategy_type=params.pop('strategy_type', 'macd'))
+                trades = core.run_backtest(df_1h, df_entry,
+                                           slippage=BACKTEST_ENTRY_FEE + BACKTEST_EXIT_COST, **params)
+                for t in trades:
+                    candidates.append({
                         'symbol': symbol,
-                        'signal': signal,
-                        'params': params
+                        'entry_time': pd.Timestamp(t['entry_time']),
+                        'exit_time': pd.Timestamp(t['exit_time']),
+                        'pnl_percent': float(t['pnl']),
+                        'exit_reason': t.get('exit_reason', ''),
                     })
-            
-            # 3. Sort by Timestamp
-            all_signals.sort(key=lambda x: x['timestamp'])
-            
-            # 4. Simulate Loop (Event Driven by Signals)
-            # Note: Ideally we step candle-by-candle for accurate PnL & StopLoss.
-            # But "Signal-Event" loop is faster. 
-            # We need to handle "Active Position" duration. 
-            # Simplified: Signal -> Check Active -> If None, Open -> Simulate Outcome immediately?
-            # NO, "Simulate Outcome immediately" is look-ahead bias if we don't know duration.
-            # BUT for efficient backtest of "Strategy Conflict", immediate calculation is acceptable approximation 
-            # IF we assume the trade holds for X candles or hits SL/TP.
-            # BETTER: Store "Exit Time" of active position. Ignore signals until Exit Time.
-            
+
+            if self.start_date is not None:
+                candidates = [c for c in candidates if c['entry_time'] >= pd.Timestamp(self.start_date)]
+            if self.end_date is not None:
+                candidates = [c for c in candidates if c['entry_time'] <= pd.Timestamp(self.end_date)]
+
+            # 3. 시간순 병합: 단일 포지션 규칙 (보유 중 발생한 다른 거래는 건너뜀)
+            candidates.sort(key=lambda c: (c['entry_time'], c['symbol']))
+
             if progress_callback:
                 progress_callback(total_presets, total_presets * 2, "Simulating Trades...")
-            
-            processed_trades = 0
-            
-            # Position State
-            current_position_end_time = datetime.min
-            
-            for item in all_signals:
-                ts = item['timestamp']
-                symbol = item['symbol']
-                sig = item['signal']
-                
-                # Check Global Position Rule
-                if ts < current_position_end_time:
-                    # Position is occupied
+
+            current_position_end_time = None
+            for outcome in candidates:
+                if current_position_end_time is not None and outcome['entry_time'] < current_position_end_time:
                     continue
-                
-                # Open New Position
-                # Calculate Outcome locally
-                df_15m = symbol_data_map[symbol]
-                outcome = self._calculate_trade_outcome(df_15m, ts, sig, item['params'], symbol)
-                
-                if outcome:
-                    processed_trades += 1
-                    self.trade_history.append(outcome)
-                    
-                    # Update Equity
-                    pnl_pct = outcome['pnl_percent'] * 0.01
-                    
-                    if self.capital_mode == "compound":
-                        pnl_amt = pnl_pct * self.equity
-                    else: # fixed mode
-                        # In fixed mode, the base for PnL calculation is the initial capital.
-                        # The equity still accumulates PnL to show overall performance.
-                        pnl_amt = pnl_pct * self.initial_capital
-                    
-                    self.equity += pnl_amt
-                    self.equity_history.append(self.equity)
-                    self.max_equity = max(self.equity, self.max_equity)
-                    
-                    # Set Busy Timer
-                    # Approximate duration: (Exit Time - Entry Time)
-                    # We get exit_time from outcome
-                    current_position_end_time = outcome['exit_time']
-            
+
+                self.trade_history.append(outcome)
+                pnl_pct = outcome['pnl_percent'] * 0.01
+                base = self.equity if self.capital_mode == "compound" else self.initial_capital
+                self.equity += pnl_pct * base
+                self.equity_history.append(self.equity)
+                self.max_equity = max(self.equity, self.max_equity)
+                current_position_end_time = outcome['exit_time']
+
             return self._finalize_results()
             
         except Exception as e:
@@ -199,100 +150,19 @@ class UnifiedBacktest:
                  })
         return verified
 
-    def _calculate_trade_outcome(self, df, entry_time, signal, params, symbol):
-        """
-        Simulate trade outcome from entry_time using DF.
-        Returns {exit_time, pnl_percent, ...} or None if data insufficient.
-        """
-        try:
-            # Slice DF from entry_time
-            # Find index
-            mask = df.index >= entry_time
-            future = df[mask]
-            
-            if len(future) < 2: return None
-            
-            entry_price = future.iloc[0]['close'] # Or signal price
-            direction = signal.signal_type # 'buy' or 'sell'
-            
-            # SL/TP
-            atr_period = params.get('atr_period', 14)
-            atr_mult = params.get('atr_multiplier', 2.0)
-            
-            # Simple ATR approx (if not in signal)
-            # Signal object usually has sl_price if StrategyCore set it
-            sl_price = signal.stop_loss
-            if not sl_price:
-               # Fallback
-               return None
-            
-            # Calculate Risk %
-            risk_pct = abs(entry_price - sl_price) / entry_price
-            
-            # Target (RR 1.5 default)
-            tp_dist = abs(entry_price - sl_price) * 1.5
-            tp_price = entry_price + tp_dist if direction == 'buy' else entry_price - tp_dist
-            
-            # Iterate Candles for Exit
-            for i in range(1, len(future)):
-                candle = future.iloc[i]
-                c_low = candle['low']
-                c_high = candle['high']
-                c_ts = candle.name # timestamp index
-                
-                # Check Hit
-                exit_price = None
-                exit_reason = ''
-                
-                if direction == 'buy':
-                    if c_low <= sl_price:
-                        exit_price = sl_price
-                        exit_reason = 'SL'
-                    elif c_high >= tp_price:
-                        exit_price = tp_price
-                        exit_reason = 'TP'
-                else: # sell
-                    if c_high >= sl_price:
-                        exit_price = sl_price
-                        exit_reason = 'SL'
-                    elif c_low <= tp_price:
-                        exit_price = tp_price
-                        exit_reason = 'TP'
-                        
-                if exit_price:
-                    # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
-                    from config.constants.trading import BACKTEST_EXIT_COST
-                    exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
-
-                    # Calculate PnL
-                    pnl = (exit_price - entry_price) / entry_price
-                    if direction == 'sell': pnl = -pnl
-
-                    return {
-                        'symbol': symbol,
-                        'entry_time': entry_time,
-                        'exit_time': c_ts,
-                        'pnl_percent': pnl * 100 - exit_fee_pct,
-                        'exit_reason': exit_reason
-                    }
-                    
-            # End of Data (Force Close)
-            # [v7.26] 백테스트 전용 청산 비용: 0.055% (Taker) + 0.01% (Slippage) = 0.065%
-            from config.constants.trading import BACKTEST_EXIT_COST
-            exit_fee_pct = BACKTEST_EXIT_COST * 100  # 0.065%
-
-            last = future.iloc[-1]
-            pnl = (last['close'] - entry_price) / entry_price
-            if direction == 'sell': pnl = -pnl
-            return {
-                'entry_time': entry_time,
-                'exit_time': last.name,
-                'pnl_percent': pnl * 100 - exit_fee_pct,
-                'exit_reason': 'Force'
-            }
-            
-        except Exception:
-            return None
+    @staticmethod
+    def _normalize_candles(df):
+        """timestamp 컬럼(naive datetime)을 가진 오름차순 15m 데이터로 정규화"""
+        import pandas as pd
+        df = df.copy()
+        if 'timestamp' not in df.columns:
+            df = df.reset_index().rename(columns={df.index.name or 'index': 'timestamp'})
+        ts = df['timestamp']
+        ts = pd.to_datetime(ts, unit='ms') if pd.api.types.is_numeric_dtype(ts) else pd.to_datetime(ts)
+        if ts.dt.tz is not None:
+            ts = ts.dt.tz_convert('UTC').dt.tz_localize(None)
+        df['timestamp'] = ts
+        return df.sort_values('timestamp').reset_index(drop=True)
 
     def _finalize_results(self):
         if not self.trade_history:

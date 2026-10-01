@@ -252,6 +252,7 @@ class Memory:
         self.M = {k: np.vstack([m[k] for m in members]).astype(np.float32) for k in members[0]
                   if not k.endswith('_f') and k != 'pct_cur'}
         self.PF = np.stack([m['pct_f'] for m in members]).astype(np.float32)            # [사건, f, PCT_G]
+        self.PF2 = (self.PF.astype(np.float64) ** 2).sum(axis=2)                       # 빠른 거리 계산용 (결과 같음)
         self.F = {k: np.stack([m[k + '_f'] for m in members]).astype(np.float32) for k in PATHS}
         self.sd = {k: np.nanstd(self.M[k], axis=0) + 0.05 for k in ('skel', 'candle', 'cand', 'ctx', 'lead', 'volx')}
         self.self_fit = None
@@ -269,7 +270,9 @@ class Memory:
             parts = []
             if ch == 'wave':
                 # 등하락 %: 현재(ZC0→q)와 소속 사건(ZC0→f만큼)을 같은 칸 수로 늘려 겹침, 가장 맞는 f
-                e = ((self.PF - cur['pct_cur'][None, None, :]) ** 2).mean(axis=2)
+                c = cur['pct_cur'].astype(np.float64)
+                cross = (self.PF.reshape(-1, self.PF.shape[2]) @ c.astype(np.float32)).reshape(self.PF.shape[:2])
+                e = np.maximum(self.PF2 - 2 * cross + c @ c, 0) / self.PF.shape[2]    # = ((PF - c)²).mean
                 parts.append(np.nan_to_num(e.min(axis=1), nan=1e6))
                 lays = ()
             for k in lays:

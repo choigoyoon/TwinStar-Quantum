@@ -302,4 +302,12 @@ def add_indicators_to_df(df: pd.DataFrame,
     atr_df = df[['high', 'low', 'close']].copy()
     result['atr'] = calculate_atr(atr_df, period=params.get('atr_period', 14), return_series=True)
 
+    # ADX / +DI / -DI (MACD·ADX/DI 전략의 필터·패턴 탐지에 필요)
+    from utils.indicators import calculate_adx
+    plus_di, minus_di, adx = calculate_adx(atr_df, period=params.get('adx_period', 14),
+                                           return_series=True, return_di=True)
+    result['plus_di'] = plus_di
+    result['minus_di'] = minus_di
+    result['adx'] = adx
+
     return result

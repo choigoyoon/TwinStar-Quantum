@@ -58,7 +58,10 @@ class BacktestEngine:
         if isinstance(strategy, str):
             strategy = get_strategy(strategy)
         
-        # 데이터 준비 (지표 추가)
+        # 목표 타임프레임으로 리샘플 후 지표 추가 (기존에는 timeframe을 무시하고 원본 TF로 실행됨)
+        if timeframe and 'timestamp' in df.columns:
+            from utils.data_utils import resample_data
+            df = resample_data(df, timeframe, add_indicators=False)
         df_tf = prepare_data(df, None)
         
         if len(df_tf) < 100:

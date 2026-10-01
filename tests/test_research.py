@@ -277,3 +277,14 @@ def test_zc_policy_uses_only_known_same_group_outcomes():
     first = g0.iloc[:8]                                      # 확정된 과거 5건이 쌓이기 전엔 건너뜀
     assert (first['action'] == 'skip').all()
     assert (g0.iloc[10:]['action'] == 'stop_eb').all()
+
+
+def test_zc_catalog_signal_timing():
+    from research.zc_catalog import BEHAVIORS, catalog
+    df = _ohlcv(n=12000, freq='5min')
+    C = catalog(df, settle=6)
+    assert len(C) > 20 and set(C['behavior']) <= set(BEHAVIORS)
+    H = pd.Timedelta(hours=1)
+    assert (C['signal_time'] <= C['zc2'] + H).all()          # ZC2 마감 이전 또는 그때
+    assert (C['entry_time'] >= C['signal_time']).all()       # 신호 봉 마감 뒤 시가 진입
+    assert (C['exit_time'] > C['entry_time']).all()

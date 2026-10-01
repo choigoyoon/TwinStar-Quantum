@@ -323,3 +323,21 @@ def test_zc_moves_start_after_zc2_and_use_known_labels():
     assert (M['zc3'] > M['zc2']).all()
     assert (M.loc[M['broke'], 'move'].isin(['깨고복귀', '깨고하락'])).all()
     assert (M.loc[~M['broke'] & (M['up'] >= 0.5), 'move'] == '크게감').all()
+
+
+def test_zc_templates_ignore_events_after_fit_end():
+    from research.zc_atlas import atlas, classify
+    from research.zc_behavior import after_moves, templates, match, GROUPS
+    df5 = _ohlcv(n=12 * 2400, freq='5min', seed=4)
+    P = classify(atlas(df5)).merge(after_moves(df5), on='zc2')
+    fit_end, check = P['zc2'].iloc[len(P) * 2 // 3], P['zc2'].iloc[len(P) // 3]
+    T1 = templates(P, fit_end, check, min_n=3)
+    Q = P.copy()
+    late = Q['zc2'] >= fit_end
+    Q.loc[late, 'move'] = '깨고하락'                                    # 뒤 기간 결과를 바꿔도
+    Q.loc[late, 'vec'] = pd.Series([v * 0 + 9 for v in Q.loc[late, 'vec']], index=Q.index[late])
+    T2 = templates(Q, fit_end, check, min_n=3)
+    assert T1.keys() == T2.keys() and set(T1) <= set(GROUPS)
+    for g in T1:
+        np.testing.assert_allclose(T1[g], T2[g])                        # 대표 그림은 그대로
+    assert match(P, T1).isin(list(T1)).all()

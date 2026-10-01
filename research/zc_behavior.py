@@ -22,6 +22,7 @@ from research.zc_pattern import find_windows
 
 MOVES = ('크게감', '조금감', '제자리', '깨고복귀', '깨고하락')
 BIG, SMALL = 0.5, 0.2
+POST = 12                                              # ZC2 이후 경로 점 수 (그리기용, 판단에는 안 씀)
 
 
 def after_moves(df5: pd.DataFrame) -> pd.DataFrame:
@@ -56,8 +57,10 @@ def after_moves(df5: pd.DataFrame) -> pd.DataFrame:
             mv = 3 if end > 0 else 4
         else:
             mv = 0 if up >= BIG else (1 if up >= SMALL else 2)
+        y = (c5[b - 1:e] - o5[m]) / rng * d             # ZC2 마감 → ZC3 마감, 아틀라스와 같은 세로 잣대
+        post = np.interp(np.linspace(0, len(y) - 1, POST), np.arange(len(y)), y)
         rows.append({'zc2': h.index[z2], 'zc3': h.index[z3], 'move': MOVES[mv],
-                     'up': round(up, 3), 'end': round(end, 3), 'broke': broke})
+                     'up': round(up, 3), 'end': round(end, 3), 'broke': broke, 'post': post.round(3)})
     return pd.DataFrame(rows)
 
 
@@ -97,3 +100,27 @@ def families(T: pd.DataFrame, overall: Dict, lift: float = 1.4, min_n: int = 30)
         s, m = max(best)
         out[r['pic']] = m if s >= lift else '섞임'
     return pd.Series(out, name='family')
+
+
+GROUPS = ('크게감', '제자리', '깨고하락', '섞임')
+
+
+def templates(P: pd.DataFrame, fit_end: pd.Timestamp, check_from: pd.Timestamp, min_n: int = 20) -> Dict[str, np.ndarray]:
+    """
+    그룹마다 대표 그림 1개 (fit_end 전 사건만 사용).
+    fit_end 전 기간을 check_from에서 둘로 나눠 두 쪽 모두 한 행동이 두드러진 상자를 그 그룹으로 묶고,
+    그룹 사건들의 점별 중앙값을 대표 그림으로 삼음.
+    """
+    E = P[P['zc2'] < fit_end]
+    R = box_table(E, check_from)
+    fam = E['pic'].map(families(R['table'], R['overall'], min_n=min_n))
+    return {g: np.median(np.vstack(E.loc[fam == g, 'vec'].to_numpy()), axis=0)
+            for g in GROUPS if (fam == g).any()}
+
+
+def match(A: pd.DataFrame, T: Dict[str, np.ndarray]) -> pd.Series:
+    """각 사건을 가장 가까운 대표 그림 1개에 맞춤 (48점 거리, ZC2까지의 정보만)"""
+    X = np.vstack(A['vec'].to_numpy())
+    names = list(T)
+    d = np.stack([np.linalg.norm(X - T[g], axis=1) for g in names], axis=1)
+    return pd.Series([names[i] for i in d.argmin(1)], index=A.index, name='match')

@@ -181,6 +181,8 @@ def main() -> None:
     ap.add_argument('--out', default='docs/research/zc')
     ap.add_argument('--cost', type=float, default=0.00115)
     ap.add_argument('--lookback', type=int, default=0, help='학습 규칙이 참고할 최근 건수 (0=전부)')
+    ap.add_argument('--start', help='이 날짜부터 (예: 2020-01-01)')
+    ap.add_argument('--end', help='이 날짜 전까지 (예: 2025-10-01, 홀드아웃 봉인용)')
     a = ap.parse_args()
     p = Path(a.data)
     raw = rd.load_dir(p) if p.is_dir() else {p.stem.split('_')[1].upper() if '_' in p.stem else p.stem: rd.load_ohlcv(p)}
@@ -188,6 +190,13 @@ def main() -> None:
         q = rd.check_quality(d)
         if any('합성' in i for i in q.issues):
             raise SystemExit(f"{s}: 합성/테스트 데이터로 보여 중단")
+    for s in list(raw):
+        d = raw[s]
+        if a.start:
+            d = d[d.index >= pd.Timestamp(a.start)]
+        if a.end:
+            d = d[d.index < pd.Timestamp(a.end)]
+        raw[s] = d
     L = run(raw, cost=a.cost, lookback=a.lookback or None)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -197,6 +206,19 @@ def main() -> None:
     (out / f'trades_{span}.md').write_text(
         f"# ZC 범위 건별 보고 ({span}, {len(L)}건)\n\n" + '\n\n'.join(cards) + '\n', encoding='utf-8')
     print(f"{len(L)}건 → {out}/ledger_{span}.csv, trades_{span}.md")
+    # 연도별 요약 (논문 연도별 섹션용)
+    L['year'] = L['entry_time'].dt.year
+    rows = []
+    for y, g in L.groupby('year'):
+        rows.append({'연도': y, '건수': len(g), '롱': int((g['side'] > 0).sum()), '숏': int((g['side'] < 0).sum()),
+                     'ZC3보유_비용전_평균%': round((g['r_hold_zc3'] + 2 * a.cost).mean() * 100, 3),
+                     'ZC3보유_비용후_합계%': round(g['r_hold_zc3'].sum() * 100, 1),
+                     '학습매매_건수': int(g['learned_rule'].isin(RULES).sum()),
+                     '학습매매_합계%': round(g['learned_ret'].sum() * 100, 1),
+                     '사후최적_평균%': round(g['hind_best'].mean() * 100, 2)})
+    Y = pd.DataFrame(rows)
+    Y.to_csv(out / f'yearly_{span}.csv', index=False)
+    print(Y.to_string(index=False))
 
 
 if __name__ == '__main__':

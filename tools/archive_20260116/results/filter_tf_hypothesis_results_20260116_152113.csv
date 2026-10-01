@@ -1,5 +1,0 @@
-﻿name,filter_tf,entry_validity,win_rate,mdd,profit_factor,total_trades,total_pnl,grade
-Baseline (현재 프리셋),4h,6.0,96.72,6.22,14.84,61,386.4,🏆S
-실험 1 (filter_tf=12h),12h,6.0,95.0,6.22,9.74,40,171.18,🏆S
-실험 2 (filter_tf=1d),1d,6.0,95.0,6.22,9.8,40,173.0,🏆S
-실험 3 (문서 권장),12h,48.0,95.0,6.22,9.74,40,171.18,🏆S

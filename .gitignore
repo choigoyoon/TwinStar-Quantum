@@ -64,3 +64,12 @@ venv*/
 .venv/
 nul
 NUL
+
+# Backtest outputs (generated locally, contaminated by look-ahead bias before fix)
+reports/
+config/presets/auto/
+config/optimization_results.json
+config/batch_optimizer_state.json
+GUI/backtest_*.csv
+storage/*_history.json
+storage/*_cache.json

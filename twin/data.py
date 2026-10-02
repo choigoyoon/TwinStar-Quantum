@@ -98,3 +98,24 @@ def resample(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     counts = df['close'].resample(rule, label='left', closed='left').count()
     need = int(pd.Timedelta(pd.tseries.frequencies.to_offset(rule)) / base)
     return agg[counts >= need].dropna(subset=['open', 'close'])
+
+
+def shuffled_days(df: pd.DataFrame, block: int = 288, seed: int = 7) -> pd.DataFrame:
+    """
+    비교용 가짜 가격: 5분봉을 하루(288봉) 덩어리로 무작위로 섞음.
+    변동성 크기·하루 안 모양은 남고, 날짜 사이 순서(추세·여러 날에 걸친 구조)는 사라짐.
+    같은 인식기를 여기에 돌려 나온 성적 = "시장 구조 없이도 나오는 몫" (기준선).
+    """
+    rng = np.random.default_rng(seed)
+    lr = np.log(df['close']).diff().fillna(0).to_numpy()
+    rel = {k: (df[k] / df['close']).to_numpy() for k in ('open', 'high', 'low')}
+    n = len(df) // block * block
+    order = np.arange(n // block)
+    rng.shuffle(order)
+    idx = np.concatenate([np.arange(b * block, (b + 1) * block) for b in order])
+    c = float(df['close'].iloc[0]) * np.exp(np.cumsum(lr[idx]))
+    out = pd.DataFrame({'open': c * rel['open'][idx], 'high': c * rel['high'][idx], 'low': c * rel['low'][idx],
+                        'close': c, 'volume': df['volume'].to_numpy()[idx]}, index=df.index[:n])
+    out['high'] = out[['open', 'high', 'close']].max(axis=1)
+    out['low'] = out[['open', 'low', 'close']].min(axis=1)
+    return out

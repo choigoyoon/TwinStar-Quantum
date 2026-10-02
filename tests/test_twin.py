@@ -161,3 +161,13 @@ def test_entry_eval_success_needs_after_lh_and_within_pct():
     assert R['res'].iloc[0] == '성공' and R['fails'].iloc[0] == 1 and R['rel_lh'].iloc[0] == 1
     R2 = entry_eval(S, p, o, tau=0.8, retry=False)
     assert R2['res'].iloc[0] == '헛짚음'
+
+
+def test_shuffled_days_keeps_bars_valid_and_breaks_order():
+    df5 = _ohlcv(n=288 * 20, freq='5min', seed=12)
+    f = rd.shuffled_days(df5)
+    assert len(f) == len(df5) and (f['high'] >= f[['open', 'close']].max(axis=1)).all()
+    assert (f['low'] <= f[['open', 'close']].min(axis=1)).all()
+    r0, r1 = np.log(df5['close']).diff().dropna(), np.log(f['close']).diff().dropna()
+    assert abs(r0.std() - r1.std()) / r0.std() < 0.1                     # 변동성 크기는 비슷
+    assert not np.allclose(df5['close'].to_numpy(), f['close'].to_numpy())  # 순서는 바뀜

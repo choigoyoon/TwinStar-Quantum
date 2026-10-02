@@ -135,3 +135,16 @@ def test_pct_wave_ignores_time_stretch_and_uses_percent():
     d = np.sqrt(np.mean((stretch(y) - stretch(slow)) ** 2))
     assert len(stretch(y)) == PCT_G and d < 0.05                          # 시간이 달라도 같은 그림으로 겹침
     assert np.sqrt(np.mean((stretch(y) - stretch(y * 3)) ** 2)) > 1.0       # 등하락 %가 다르면 다름 (값 정규화 없음)
+
+
+def test_lh_samples_use_only_past_bars():
+    from twin.lh import samples, FEATURES
+    df5 = _ohlcv(n=12 * 1200, freq='5min', seed=11)
+    S = samples(df5, step=3)
+    assert len(S) > 100 and S['y'].isin([0, 1]).all()
+    assert (S.loc[S['rel_lh'] >= 0, 'y'] == 1).all()                      # L/H 뒤는 언제나 정답 1
+    cut = S['zc2_close'].iloc[len(S) // 2]
+    Sc = samples(df5[df5.index < cut], step=3)
+    a = S[S['zc2_close'] < cut].set_index(['eid', 'bar'])[FEATURES]
+    b = Sc.set_index(['eid', 'bar'])[FEATURES].reindex(a.index)
+    pd.testing.assert_frame_equal(a, b)                                    # 뒤 데이터를 지워도 단서 같음

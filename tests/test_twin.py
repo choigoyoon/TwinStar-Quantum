@@ -182,3 +182,19 @@ def test_lh_other_timeframe_events_and_multi_training():
     yrs = sorted(S1['t'].dt.year.unique())[1:]
     p = walk_forward(S1, yrs, extra=[S15])
     assert p.notna().any() and p.dropna().between(0, 1).all()
+
+
+def test_prelh_json_uses_only_bars_before_q():
+    import copy
+    from twin.shape import raw_events
+    from twin.prelh import pre_lh, CHANNELS
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=14)
+    e = next(x for x in raw_events(df5) if x['N'] - x['M'] > 60)
+    q = e['M'] + 40
+    a = pre_lh(e, q)
+    e2 = copy.deepcopy(e)
+    for k in ('o', 'hi', 'lo', 'c', 'v', 'm5', 'm15', 'm1h'):
+        e2[k][q:] = e2[k][q:] * 2 + 5                                       # q 뒤(L/H 뒤·ZC2 포함)를 바꿔도
+    b = pre_lh(e2, q)
+    for k in CHANNELS:
+        np.testing.assert_allclose(a[k], b[k])                              # PRE_LH JSON은 그대로

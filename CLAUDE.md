@@ -14,7 +14,9 @@
 
 ## 구조
 - `twin/data.py` 5분봉 읽기·리샘플 · `twin/zc.py` ZC 구간 · `twin/groups.py` 27칸 그룹 규칙
-- `twin/shape.py` 사건 JSON(6채널) · 현재 그림 · 그룹 기억 · 점수
+- `twin/shape.py` 사건 JSON(6채널, ZC0→ZC2 완성 그림) · 현재 그림 · 그룹 기억 · 점수
+- `twin/prelh.py` PRE_LH: ZC0→L/H까지만 자른 그림 JSON (역사 = 실제 L/H에서 자름, 실시간 = 지금 q까지, 같은 계산식). ZC2 이후 값 금지
+- `twin/lh.py` L/H 시점 인식기 (여러 시간봉 학습) · 진입 평가(entry_eval)
 - `twin/pipeline.py` build / replay / now · `twin/mcp_server.py` 에이전트용 MCP 도구 (`.mcp.json`)
 - `vault/` 옵시디언 노트 (원칙·설계·검증·실험 기록) · `archive/research_audit/` 지난 실험 장부(보존, 수정 금지)
 - 에이전트: `.claude/agents/` — shape-builder, lookahead-auditor, replay-validator, research-scribe

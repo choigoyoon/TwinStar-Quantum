@@ -205,3 +205,40 @@ def ledger(S: pd.DataFrame, p: pd.Series) -> pd.DataFrame:
             r[f'ok_{tau}'] = first is not None and 0 <= first <= GRACE
         rows.append(r)
     return pd.DataFrame(rows)
+
+
+def entry_eval(S: pd.DataFrame, p: pd.Series, open5: np.ndarray, tau: float, within_pct: float = 1.0,
+               retry: bool = True) -> pd.DataFrame:
+    """
+    진입만 평가: 인식률 ≥ tau가 된 봉 다음 5분봉 시가에 진입.
+    성공 = L/H 봉 이후 진입 + 진입가가 L/H 가격에서 within_pct% 안 (롱은 위로, 숏은 아래로).
+    retry=True: L/H 전에 선언했다가 그 바닥이 깨지면 실패한 시도로 세고 다시 기다림.
+    결과: 사건마다 res(성공/늦음/못함), fails(성공 전 실패한 시도 수), rel_lh(진입 봉), dist(L/H 대비 %).
+    """
+    S = S.assign(p=p)[p.notna() & (S['p_idx'] < len(open5))].sort_values(['ev', 'bar'])
+    fin = S[S['rel_lh'] == 0].set_index('ev')['run_low']
+    S = S[S['ev'].isin(fin.index)]
+    entry = open5[S['p_idx'].to_numpy()] * S['d'].to_numpy()
+    dist = (entry - S['ev'].map(fin).to_numpy()) / np.abs(S['ev'].map(fin).to_numpy()) * 100
+    S = S.assign(dist=dist, good=(S['rel_lh'] >= 0) & (dist <= within_pct))
+    rows = []
+    for ev, g in S.groupby('ev', sort=False):
+        armed, fails, decl, out = True, 0, None, None
+        for r in g.itertuples():
+            if decl is not None and r.run_low < decl:
+                fails, decl, armed = fails + 1, None, True
+            if armed and r.p >= tau:
+                if r.good:
+                    out = ('성공', r.rel_lh, r.dist)
+                    break
+                if r.rel_lh >= 0:
+                    out = ('늦음', r.rel_lh, r.dist)
+                    break
+                if not retry:
+                    out = ('헛짚음', r.rel_lh, r.dist)
+                    break
+                decl, armed = r.run_low, False
+        res, rel, ds = out or ('못함', np.nan, np.nan)
+        rows.append({'ev': ev, 'eid': g['eid'].iloc[0], 'year': g['t'].iloc[0].year, 'res': res, 'fails': fails,
+                     'rel_lh': rel, 'dist': ds})
+    return pd.DataFrame(rows)

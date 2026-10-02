@@ -148,3 +148,16 @@ def test_lh_samples_use_only_past_bars():
     a = S[S['zc2_close'] < cut].set_index(['eid', 'bar'])[FEATURES]
     b = Sc.set_index(['eid', 'bar'])[FEATURES].reindex(a.index)
     pd.testing.assert_frame_equal(a, b)                                    # 뒤 데이터를 지워도 단서 같음
+
+
+def test_entry_eval_success_needs_after_lh_and_within_pct():
+    from twin.lh import entry_eval
+    S = pd.DataFrame({'ev': 0, 'eid': 'e', 't': pd.Timestamp('2024-01-01'), 'bar': [0, 1, 2, 3, 4],
+                      'rel_lh': [-2, -1, 0, 1, 2], 'run_low': [105.0, 103.0, 100.0, 100.0, 100.0],
+                      'p_idx': [1, 2, 3, 4, 5], 'd': 1.0})
+    o = np.array([0, 106, 104, 100.5, 100.8, 102.0])                   # 봉3 선언 → 봉4 시가 100.8 (바닥 +0.8%)
+    p = pd.Series([0.9, 0.1, 0.1, 0.9, 0.9])
+    R = entry_eval(S, p, o, tau=0.8)                                   # 봉0 선언 → 바닥 깨짐(실패 1회) → 봉3 선언
+    assert R['res'].iloc[0] == '성공' and R['fails'].iloc[0] == 1 and R['rel_lh'].iloc[0] == 1
+    R2 = entry_eval(S, p, o, tau=0.8, retry=False)
+    assert R2['res'].iloc[0] == '헛짚음'

@@ -8,6 +8,7 @@ L/H 나오는 시점 인식 — 사건별(사례별) 장부
 - samples(): 사건 × 5분봉 표본과 단서
 - walk_forward(): 해마다 그 해 전에 ZC2가 끝난 사건만 배워 그 해 표본의 인식률(확률)을 냄
 - ledger(): 사건마다 인식 기록 — L/H 전 최대 인식률(헛짚음), L/H 뒤 0·3·6·12봉 인식률, 처음 알아본 시점, 캔들 모양, 문턱별 결과
+(사례 선택형 문턱·계단 수 예측은 실패해 삭제 — vault/05_실패한_모듈.md)
 """
 
 from typing import Dict, List, Optional
@@ -204,47 +205,3 @@ def ledger(S: pd.DataFrame, p: pd.Series) -> pd.DataFrame:
             r[f'ok_{tau}'] = first is not None and 0 <= first <= GRACE
         rows.append(r)
     return pd.DataFrame(rows)
-
-
-CASE_KEYS = ('low_body', 'low_wick_against', 'low_wick_with', 'low_vol', 'depth', 'n_new', 'since_frac', 'elapsed')
-
-
-def case_book(S: pd.DataFrame, p: pd.Series) -> pd.DataFrame:
-    """
-    사례 장부: 사건마다 L/H 봉 시점의 캔들 모양·맥락(CASE_KEYS)과 '이 사례에서 통했던 인식률 문턱'.
-    tau_star = L/H 전 최대 인식률 바로 위 (헛짚지 않는 가장 낮은 문턱). L/H+12 안에 그 문턱을 넘었으면 usable.
-    """
-    S = S.assign(p=p)[p.notna()]
-    at0 = S[S['rel_lh'] == 0].set_index('ev')
-    rows = []
-    for ev, g in S.groupby('ev', sort=False):
-        if ev not in at0.index:
-            continue
-        before = g.loc[g['rel_lh'] < 0, 'p']
-        win = g.loc[(g['rel_lh'] >= 0) & (g['rel_lh'] <= GRACE), 'p']
-        tau = float(before.max()) + 1e-3 if len(before) else 0.0
-        rows.append({'ev': ev, 'eid': g['eid'].iloc[0], 'zc2_close': g['zc2_close'].iloc[0], 'tau_star': tau,
-                     'usable': bool(len(win) and win.max() >= tau), **{k: at0.at[ev, k] for k in CASE_KEYS}})
-    return pd.DataFrame(rows)
-
-
-def select_by_cases(S: pd.DataFrame, p: pd.Series, book: pd.DataFrame, years: List[int], k: int = 30) -> pd.Series:
-    """
-    선택형 문턱: 표본마다 '지금 바닥 봉의 캔들 모양·맥락'과 닮은 과거 사례 k개(그 해 전에 끝난 usable 사례)의
-    tau_star 중앙값을 문턱으로 씀. 인식률 ≥ 문턱이면 '지금이 L/H' 선언. 돌려주는 값 = 표본별 문턱.
-    """
-    from sklearn.neighbors import NearestNeighbors
-    th = pd.Series(np.nan, index=S.index)
-    for y in years:
-        y1, y2 = pd.Timestamp(f'{y}-01-01'), pd.Timestamp(f'{y + 1}-01-01')
-        past = book[(book['zc2_close'] < y1) & book['usable']]
-        te = (S['t'] >= y1) & (S['t'] < y2) & p.notna()
-        if len(past) < k or not te.any():
-            continue
-        X = past[list(CASE_KEYS)].to_numpy(float)
-        mu, sd = np.nanmean(X, 0), np.nanstd(X, 0) + 1e-9
-        nn = NearestNeighbors(n_neighbors=k).fit(np.nan_to_num((X - mu) / sd))
-        Q = np.nan_to_num((S.loc[te, list(CASE_KEYS)].to_numpy(float) - mu) / sd)
-        _, idx = nn.kneighbors(Q)
-        th[te] = np.median(past['tau_star'].to_numpy()[idx], axis=1)
-    return th

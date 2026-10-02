@@ -35,6 +35,16 @@ FEATURES: List[str] = [
     'prev_gap_h',        # 직전 바닥과 지금 바닥 사이 시간
     'prev_rally_atr',    # 직전 바닥 뒤 반등이 최고로 간 거리 ÷ ATR (실패한 반등 크기)
     'div_m5', 'div_m15', 'div_h1',   # 지금 바닥 봉 히스토그램 ÷ 직전 바닥 봉 히스토그램 (1보다 작으면 힘 빠짐)
+    # 계단 단위 하락 힘 (계단 = A 높이 10% 이상 더 내려간 새 바닥)
+    'step_k',            # 지금 몇 번째 계단 (0부터)
+    'step_drop_ratio',   # 이번 계단 낙폭 ÷ 지난 계단 낙폭 (1보다 작으면 힘 빠짐)
+    'step_dur_ratio',    # 이번 계단 걸린 시간 ÷ 지난 계단
+    'step_vol_ratio',    # 이번 계단 평균 거래량 ÷ 지난 계단
+    'step_h1_ratio', 'step_m15_ratio',   # 이번 계단 히스토그램 최저 ÷ 지난 계단 최저 (작으면 힘 빠짐)
+    'drop_trend',        # 계단 낙폭들의 기울기 (음수 = 갈수록 작아짐), 계단 3개 이상일 때
+    # 큰 흐름
+    'h4', 'd1_trend',    # 마감된 4h 히스토그램 ÷ ATR, 마감된 하루 종가 - 하루 EMA20 ÷ ATR (반등 쪽 +)
+    'dist_low7d',        # 지금 바닥 - 구간 시작 전 7일 최저 ÷ ATR (음수 = 7일 최저 아래로 내려옴)
 ]
 CANDLE = ('low_body', 'low_wick_against', 'low_wick_with', 'low_vol')
 TAUS = (0.5, 0.6, 0.7, 0.8, 0.9)
@@ -50,10 +60,24 @@ def _atr_1h(df5: pd.DataFrame) -> pd.Series:
     return atr
 
 
+def _closed_series(df5: pd.DataFrame, rule: str, values) -> np.ndarray:
+    """큰 봉 값(마감 시각 기준)을 5분봉 마감 시각에 맞춤 — 마감된 봉만"""
+    g = rd.resample(df5, rule)
+    v = values(g).to_numpy()
+    close_t = g.index + pd.Timedelta(rule)
+    k = close_t.searchsorted(df5.index + pd.Timedelta(minutes=5), side='right') - 1
+    return np.where(k >= 0, v[np.clip(k, 0, None)], np.nan)
+
+
 def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
+    from twin.zc import _macd_hist
     t5 = df5.index
     atr = _atr_1h(df5)
     atr_t, atr_v = atr.index, atr.to_numpy()
+    h4_all = _closed_series(df5, '4h', lambda g: _macd_hist(g['close']))
+    d1_all = _closed_series(df5, '24h', lambda g: g['close'] - g['close'].ewm(span=20, adjust=False).mean())
+    lo7_all = pd.Series(df5['low'].to_numpy()).rolling(2016, min_periods=200).min().to_numpy()
+    hi7_all = pd.Series(df5['high'].to_numpy()).rolling(2016, min_periods=200).max().to_numpy()
     out = []
     for n, e in enumerate(raw_events(df5)):
         A0, M, N, p, d = e['A0'], e['M'], e['N'], e['p'], e['d']
@@ -67,16 +91,22 @@ def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
         final = lo[lh]
         run_v, run_i, n_new, last_new = np.inf, M, 0, None
         prev_i, cur_sig_i = None, None                            # 직전 의미 있는 바닥, 지금 의미 있는 바닥
+        steps = []                                                # 계단 바닥 위치들
+        ref7 = lo7_all[p + M - 1] if d > 0 else -hi7_all[p + M - 1]   # 구간 시작 전 7일 최저 (뒤집은 가격)
         vsum = 0.0
         for i in range(M, N):
             if lo[i] < run_v:
                 run_v, run_i = lo[i], i
                 if last_new is None:
                     last_new, cur_sig_i = run_v, i
+                    steps.append(i)
                 elif last_new - run_v >= 0.1 * aH:               # A 높이 10% 이상 더 내려간 새 바닥
                     n_new += 1
                     last_new = run_v
                     prev_i, cur_sig_i = cur_sig_i, i
+                    steps.append(i)
+                else:
+                    steps[-1] = i                                 # 같은 계단 안에서 바닥만 갱신
             vsum += v[i]
             if i < M + 11 or (i - M) % step:                     # ZC1 봉 마감(M+11 봉 마감) 뒤부터
                 continue
@@ -96,8 +126,23 @@ def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
                    'prev_gap_h': (run_i - prev_i) / 12 if prev_i is not None else np.nan,
                    'prev_rally_atr': (hi[prev_i:run_i + 1].max() - lo[prev_i]) / at if prev_i is not None else np.nan,
                    'div_m5': _div(e['m5']), 'div_m15': _div(e['m15']), 'div_h1': _div(e['m1h'])}
+            st = {'step_k': len(steps) - 1, 'step_drop_ratio': np.nan, 'step_dur_ratio': np.nan, 'step_vol_ratio': np.nan,
+                  'step_h1_ratio': np.nan, 'step_m15_ratio': np.nan, 'drop_trend': np.nan}
+            if len(steps) >= 3:
+                a0, a1, a2 = steps[-3], steps[-2], steps[-1]
+                d_prev, d_last = lo[a0] - lo[a1], lo[a1] - lo[a2]
+                st['step_drop_ratio'] = d_last / d_prev if d_prev > 0 else np.nan
+                st['step_dur_ratio'] = (a2 - a1) / max(a1 - a0, 1)
+                st['step_vol_ratio'] = v[a1:a2 + 1].mean() / max(v[a0:a1 + 1].mean(), 1e-12)
+                for key, arr in (('step_h1_ratio', e['m1h']), ('step_m15_ratio', e['m15'])):
+                    mp, ml = np.nanmin(arr[a0:a1 + 1]), np.nanmin(arr[a1:a2 + 1])
+                    st[key] = ml / mp if np.isfinite(mp) and mp < 0 and np.isfinite(ml) else np.nan
+                drops = -np.diff(lo[steps])
+                st['drop_trend'] = float(np.polyfit(np.arange(len(drops)), drops / at, 1)[0])
+            big = {'h4': h4_all[p + i] * d / at, 'd1_trend': d1_all[p + i] * d / at,
+                   'dist_low7d': (run_v - ref7) / at if np.isfinite(ref7) else np.nan}
             out.append({
-                **rel,
+                **rel, **st, **big,
                 'ev': n, 'eid': e['zc2'].strftime('%Y-%m-%dT%H'), 'side': 'L' if d > 0 else 'H',
                 't': t5[p + i] + pd.Timedelta(minutes=5), 'zc2_close': e['zc2_close'], 'bar': i, 'lh': lh,
                 'rel_lh': i - lh,                                    # 0 = L/H 봉 마감

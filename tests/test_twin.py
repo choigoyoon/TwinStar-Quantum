@@ -171,3 +171,14 @@ def test_shuffled_days_keeps_bars_valid_and_breaks_order():
     r0, r1 = np.log(df5['close']).diff().dropna(), np.log(f['close']).diff().dropna()
     assert abs(r0.std() - r1.std()) / r0.std() < 0.1                     # 변동성 크기는 비슷
     assert not np.allclose(df5['close'].to_numpy(), f['close'].to_numpy())  # 순서는 바뀜
+
+
+def test_lh_other_timeframe_events_and_multi_training():
+    from twin.lh import samples, walk_forward
+    df5 = _ohlcv(n=12 * 24 * 420, freq='5min', seed=13)                  # 2020~2021 (해를 넘겨야 연도별 학습)
+    S1 = samples(df5, step=6)
+    S15 = samples(df5, step=2, rule='15min')
+    assert S15['ev'].nunique() > S1['ev'].nunique() and (S15['tf'] == '15min').all()
+    yrs = sorted(S1['t'].dt.year.unique())[1:]
+    p = walk_forward(S1, yrs, extra=[S15])
+    assert p.notna().any() and p.dropna().between(0, 1).all()

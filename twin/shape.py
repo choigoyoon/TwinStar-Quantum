@@ -109,9 +109,11 @@ def _skel_vec(legs: List[Dict]) -> np.ndarray:
 
 # ── 사건 원자료 (각 봉 값은 그 봉 마감까지의 정보) ───────────────────────────
 
-def raw_events(df5: pd.DataFrame) -> List[Dict]:
-    h = rd.resample(df5, '1h')
-    H = pd.Timedelta(hours=1)
+def raw_events(df5: pd.DataFrame, rule: str = '1h') -> List[Dict]:
+    """ZC 사건 (기본 1h MACD). rule을 바꾸면 같은 구조의 사건을 다른 시간봉(15min·30min·4h)에서 만듦.
+    'm1h' 키 = 그 시간봉(rule)의 히스토그램 (1h일 때 이름 그대로)"""
+    h = rd.resample(df5, rule)
+    H = pd.Timedelta(rule)
     hist1 = _macd_hist(h['close']).to_numpy()
     s = pd.Series(np.sign(hist1)).replace(0, np.nan).ffill().to_numpy()
     zc = [i for i in range(1, len(s)) if not np.isnan(s[i - 1]) and s[i] != s[i - 1]]
@@ -120,7 +122,7 @@ def raw_events(df5: pd.DataFrame) -> List[Dict]:
     v5 = df5['volume'].to_numpy(dtype=float)
     m5 = _macd_hist(df5['close']).to_numpy()
     m15 = _closed_on_5m(df5, '15min')
-    m1h = _closed_on_5m(df5, '1h')
+    m1h = _closed_on_5m(df5, rule)
     out = []
     for j in range(3, len(zc)):
         zp, z0, z1, z2 = zc[j - 3], zc[j - 2], zc[j - 1], zc[j]

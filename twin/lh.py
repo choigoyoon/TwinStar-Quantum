@@ -52,12 +52,12 @@ TAUS = (0.5, 0.6, 0.7, 0.8, 0.9)
 GRACE = 12
 
 
-def _atr_1h(df5: pd.DataFrame) -> pd.Series:
-    h = rd.resample(df5, '1h')
+def _atr_1h(df5: pd.DataFrame, rule: str = '1h') -> pd.Series:
+    h = rd.resample(df5, rule)
     tr = pd.concat([h['high'] - h['low'], (h['high'] - h['close'].shift()).abs(),
                     (h['low'] - h['close'].shift()).abs()], axis=1).max(axis=1)
     atr = tr.rolling(14).mean()
-    atr.index = atr.index + pd.Timedelta(hours=1)                 # 마감 시각 기준
+    atr.index = atr.index + pd.Timedelta(rule)                    # 마감 시각 기준
     return atr
 
 
@@ -70,17 +70,19 @@ def _closed_series(df5: pd.DataFrame, rule: str, values) -> np.ndarray:
     return np.where(k >= 0, v[np.clip(k, 0, None)], np.nan)
 
 
-def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
+def samples(df5: pd.DataFrame, step: int = 1, rule: str = '1h') -> pd.DataFrame:
+    """rule = 사건을 만드는 MACD 시간봉. 15min·30min·4h 사건도 같은 상대 단서로 표본을 만듦 (더 배우기용)"""
     from twin.zc import _macd_hist
     t5 = df5.index
-    atr = _atr_1h(df5)
+    atr = _atr_1h(df5, rule)
+    bpt = int(pd.Timedelta(rule) / pd.Timedelta(minutes=5))      # 시간봉 하나 = 5분봉 몇 개
     atr_t, atr_v = atr.index, atr.to_numpy()
     h4_all = _closed_series(df5, '4h', lambda g: _macd_hist(g['close']))
     d1_all = _closed_series(df5, '24h', lambda g: g['close'] - g['close'].ewm(span=20, adjust=False).mean())
     lo7_all = pd.Series(df5['low'].to_numpy()).rolling(2016, min_periods=200).min().to_numpy()
     hi7_all = pd.Series(df5['high'].to_numpy()).rolling(2016, min_periods=200).max().to_numpy()
     out = []
-    for n, e in enumerate(raw_events(df5)):
+    for n, e in enumerate(raw_events(df5, rule)):
         A0, M, N, p, d = e['A0'], e['M'], e['N'], e['p'], e['d']
         o, hi, lo, c, v = e['o'], e['hi'], e['lo'], e['c'], e['v']
         aH = hi[A0:M].max() - lo[A0:M].min()
@@ -109,7 +111,7 @@ def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
                 else:
                     steps[-1] = i                                 # 같은 계단 안에서 바닥만 갱신
             vsum += v[i]
-            if i < M + 11 or (i - M) % step:                     # ZC1 봉 마감(M+11 봉 마감) 뒤부터
+            if i < M + bpt - 1 or (i - M) % step:                # ZC1 봉 마감 뒤부터
                 continue
             k = atr_t.searchsorted(t5[p + i] + pd.Timedelta(minutes=5), side='right') - 1
             at = atr_v[k] if k >= 0 else np.nan
@@ -144,7 +146,7 @@ def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
                    'dist_low7d': (run_v - ref7) / at if np.isfinite(ref7) else np.nan}
             out.append({
                 **rel, **st, **big,
-                'ev': n, 'eid': e['zc2'].strftime('%Y-%m-%dT%H'), 'side': 'L' if d > 0 else 'H',
+                'ev': n, 'tf': rule, 'eid': e['zc2'].strftime('%Y-%m-%dT%H%M'), 'side': 'L' if d > 0 else 'H',
                 't': t5[p + i] + pd.Timedelta(minutes=5), 'zc2_close': e['zc2_close'], 'bar': i, 'lh': lh,
                 'rel_lh': i - lh,                                    # 0 = L/H 봉 마감
                 'y': int(run_v <= final),                            # 지금 바닥이 진짜 L/H (평가·학습 표시)
@@ -166,19 +168,22 @@ def samples(df5: pd.DataFrame, step: int = 1) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-def walk_forward(S: pd.DataFrame, years: List[int], seed: int = 0) -> pd.Series:
-    """해마다: 그 해 1월 1일 전에 ZC2가 끝난 사건의 표본만 배우고 그 해 표본의 인식률을 냄"""
+def walk_forward(S: pd.DataFrame, years: List[int], seed: int = 0, extra: Optional[List[pd.DataFrame]] = None) -> pd.Series:
+    """해마다: 그 해 1월 1일 전에 ZC2가 끝난 사건의 표본만 배우고 그 해 표본(S)의 인식률을 냄.
+    extra = 다른 시간봉(15min·30min·4h) 사건 표본 — 같은 규칙(그 해 전에 끝난 것만)으로 학습에만 더함 (1h 사건 4천 → 3만 2천)"""
     from sklearn.ensemble import HistGradientBoostingClassifier
     p = pd.Series(np.nan, index=S.index)
     for y in years:
         y1, y2 = pd.Timestamp(f'{y}-01-01'), pd.Timestamp(f'{y + 1}-01-01')
-        tr = S['zc2_close'] < y1
         te = (S['t'] >= y1) & (S['t'] < y2)
-        if tr.sum() < 5000 or not te.any():
+        train = pd.concat([x[x['zc2_close'] < y1] for x in [S] + list(extra or [])], ignore_index=True)
+        if len(train) < 5000 or not te.any():
             continue
-        clf = HistGradientBoostingClassifier(max_iter=400, learning_rate=0.05, max_leaf_nodes=31,
-                                             min_samples_leaf=100, l2_regularization=1.0, random_state=seed)
-        clf.fit(S.loc[tr, FEATURES], S.loc[tr, 'y'])
+        big = extra is not None
+        clf = HistGradientBoostingClassifier(max_iter=500 if big else 400, learning_rate=0.05,
+                                             max_leaf_nodes=63 if big else 31, min_samples_leaf=200 if big else 100,
+                                             l2_regularization=1.0, random_state=seed)
+        clf.fit(train[FEATURES], train['y'])
         p[te] = clf.predict_proba(S.loc[te, FEATURES])[:, 1]
     return p
 

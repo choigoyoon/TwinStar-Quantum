@@ -211,3 +211,22 @@ def test_prelh_contract_range_and_judge():
     assert research_qs(E[0])[-1] <= a['range_end_q'] <= a['actual_LH_q'] + 13
     lh = a['actual_LH_q']
     assert judge(None, a) == '실패' and judge(lh, a) == '이전' and judge(lh + 1, a) == 'L/H 봉' and judge(lh + 5, a) == '+1~+12'
+
+
+def test_old28_events_and_prelh_ignore_bars_after_extreme():
+    from twin.old28 import build_events, classify, shape_features_prelh, COLS
+    df = _ohlcv(n=12 * 24 * 60, freq='5min')
+    E, M = build_events(df)
+    assert len(M) > 20 and set(M['event_code'].str[0]) == {'L', 'H'}
+    g = E[E['event_code'] == M['event_code'].iloc[5]]
+    a = g[COLS].to_numpy(float)
+    ext = int(M['ext_offset_bars'].iloc[5])
+    d = 1 if M['event_code'].iloc[5][0] == 'L' else -1
+    assert a[ext, 2 if d > 0 else 1] == M['ext_price'].iloc[5]
+    b = a.copy()
+    b[ext + 1:, :4] *= 1.5                                   # 극값 뒤 봉을 바꿔도 PRE_LH 특징은 같아야 함
+    f1, v1, _ = shape_features_prelh(a, ext, d)
+    f2, v2, _ = shape_features_prelh(b, ext, d)
+    assert f1 == f2 and np.array_equal(v1, v2)
+    R = classify(E, M)
+    assert R['manifest_ok'].all() and (R['shape_group'] != '').all() and (R['pre_group'] != '').all()

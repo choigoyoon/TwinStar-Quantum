@@ -40,13 +40,22 @@ def _st(y: np.ndarray, n: int) -> np.ndarray:
     return np.interp(np.linspace(0, len(y) - 1, n), np.arange(len(y)), np.nan_to_num(y))
 
 
-def pre_lh(ev: Dict, q: int) -> Optional[Dict]:
-    """[ZC0, q) 구간 JSON. q는 사건 시작(ZC0 전 파동 시작) 기준 위치. 역사 사건은 q = L/H 봉 + 1"""
+OBS_KEYS = ('o', 'hi', 'lo', 'c', 'v', 'm5', 'm15', 'm1h')
+
+
+def observe(ev: Dict, q: int) -> Dict:
+    """계산 함수에 넘기는 유일한 입력: ZC0 ~ q 직전까지 닫힌 봉의 복사본 + ZC0 위치·방향.
+    L/H 위치·최종 가격·최종 길이·ZC2는 여기에 없다 (구조상 계산에 들어갈 수 없음)"""
     A0 = ev['A0']
-    if q - A0 < 6:
+    return {'d': ev['d'], **{k: np.array(ev[k][A0:q], dtype=float) for k in OBS_KEYS}}
+
+
+def pre_lh_obs(ob: Dict) -> Optional[Dict]:
+    """관측(observe 결과)만으로 PRE_LH JSON"""
+    if len(ob['c']) < 6:
         return None
-    o, hi, lo, c, v = (ev[k][A0:q] for k in ('o', 'hi', 'lo', 'c', 'v'))
-    pct = (c / c[0] - 1.0) * 100.0 * ev['d']
+    o, hi, lo, c, v = (ob[k] for k in ('o', 'hi', 'lo', 'c', 'v'))
+    pct = (c / c[0] - 1.0) * 100.0 * ob['d']
     span = max(pct.max() - pct.min(), 1e-9)
     piv = zigzag(pct, ZZ_PCT * span)
     legs = []
@@ -74,12 +83,17 @@ def pre_lh(ev: Dict, q: int) -> Optional[Dict]:
     candle = np.array([[x[a:b].mean() if b > a else 0.0 for x in (body, uw, lw)] for a, b in zip(cuts[:-1], cuts[1:])]).ravel()
     macd = []
     for k in ('m5', 'm15', 'm1h'):
-        x = np.nan_to_num(ev[k][A0:q])
+        x = np.nan_to_num(ob[k])
         macd.append(_st(x / max(np.abs(x).max(), 1e-12), GS))
     vol = v / max(v.mean(), 1e-12)
     return {'n_bars': n, 'price_path': _st(pct, G), 'relative_moves': lv, 'relative_times': np.array(times),
             'candidate_progress': cand, 'candle_path': candle, 'macd_path': np.concatenate(macd),
             'volume_path': _st(vol, GS)}
+
+
+def pre_lh(ev: Dict, q: int) -> Optional[Dict]:
+    """[ZC0, q) 구간 JSON = pre_lh_obs(observe(ev, q))"""
+    return pre_lh_obs(observe(ev, q))
 
 
 CHANNELS = ('price_path', 'relative_moves', 'relative_times', 'candidate_progress', 'candle_path', 'macd_path',
@@ -115,3 +129,28 @@ def history(df5: pd.DataFrame, rule: str = '1h') -> pd.DataFrame:
         rows.append({'ev': n, 'eid': e['zc2'].strftime('%Y-%m-%dT%H%M'), 'zc2': e['zc2'], 'zc2_close': e['zc2_close'],
                      'lh_bar': lh, 'js': js})
     return pd.DataFrame(rows)
+
+
+GRACE = 12               # 실제 L/H 봉 뒤 몇 개 5분봉까지 연구 범위 (= 1시간)
+# (L/H형 vs 가짜 바닥형 대조 기억 ContrastLibrary는 실패해 삭제 — vault/05_실패한_모듈.md)
+
+
+def answer(ev: Dict) -> Dict:
+    """역사 답지 (계산에 안 씀): 실제 L/H 봉 위치(사건 시작 기준)와 연구 범위 끝"""
+    M, N = ev['M'], ev['N']
+    lh = M + int(np.argmin(ev['lo'][M:N]))
+    return {'actual_LH_q': lh, 'range_end_q': min(lh + 1 + GRACE, N)}
+
+
+def research_qs(ev: Dict, step: int = 6) -> List[int]:
+    """PRE_LH_PLUS_1H: ZC0 봉 마감부터 실제 L/H + 12봉까지 (q = 그 시점까지 닫힌 봉 수, 사건 시작 기준)"""
+    a = answer(ev)
+    return list(range(ev['A0'] + 12, a['range_end_q'] + 1, step))
+
+
+def judge(first_q: Optional[int], ans: Dict) -> str:
+    """사후 평가 (답지 기준): 처음 알아챈 q가 L/H 이전 / L/H 봉 / +1~+12 / 범위 안 못 알아챔"""
+    if first_q is None:
+        return '실패'
+    rel = first_q - 1 - ans['actual_LH_q']                    # q-1 = 그 시점 마지막 닫힌 봉
+    return '이전' if rel < 0 else ('L/H 봉' if rel == 0 else '+1~+12')

@@ -198,3 +198,16 @@ def test_prelh_json_uses_only_bars_before_q():
     b = pre_lh(e2, q)
     for k in CHANNELS:
         np.testing.assert_allclose(a[k], b[k])                              # PRE_LH JSON은 그대로
+
+
+def test_prelh_contract_range_and_judge():
+    from twin.shape import raw_events
+    from twin.prelh import observe, answer, research_qs, judge
+    df5 = _ohlcv(n=12 * 1500, freq='5min', seed=15)
+    E = [e for e in raw_events(df5) if e['N'] - e['M'] > 40][:40]
+    ob = observe(E[0], E[0]['M'] + 20)
+    assert set(ob) == {'d', 'o', 'hi', 'lo', 'c', 'v', 'm5', 'm15', 'm1h'}   # L/H·ZC2·길이 정보 없음
+    a = answer(E[0])
+    assert research_qs(E[0])[-1] <= a['range_end_q'] <= a['actual_LH_q'] + 13
+    lh = a['actual_LH_q']
+    assert judge(None, a) == '실패' and judge(lh, a) == '이전' and judge(lh + 1, a) == 'L/H 봉' and judge(lh + 5, a) == '+1~+12'

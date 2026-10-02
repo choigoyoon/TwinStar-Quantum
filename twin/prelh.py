@@ -154,3 +154,5 @@ def judge(first_q: Optional[int], ans: Dict) -> str:
         return '실패'
     rel = first_q - 1 - ans['actual_LH_q']                    # q-1 = 그 시점 마지막 닫힌 봉
     return '이전' if rel < 0 else ('L/H 봉' if rel == 0 else '+1~+12')
+
+# (PRE_LH 단서를 인식기에 넣는 features·add_features는 효과가 없어 삭제 — vault/05_실패한_모듈.md)
